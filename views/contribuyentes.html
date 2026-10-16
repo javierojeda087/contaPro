@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Registro de Contribuyentes (ADM) - Sistema Contable')}">
+</head>
+<body style="background: var(--bg-color);">
+
+    <!-- Left Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Navbar -->
+        <div th:replace="~{fragments/layout :: navbar('Registro de Contribuyentes')}"></div>
+
+        <div class="content-area">
+            
+            <!-- Main Table Card Window -->
+            <div style="background: white; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 8px 25px rgba(0,0,0,0.06); overflow: hidden; width: 100%;">
+                
+                <!-- Toolbar & Search Header -->
+                <div style="padding: 14px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    
+                    <!-- Action Toolbar Buttons -->
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button type="button" class="btn" onclick="abrirModalNuevo()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #1e293b; padding: 7px 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s;" onmouseover="this.style.borderColor='#16a34a'; this.style.color='#16a34a'" onmouseout="this.style.borderColor='#cbd5e1'; this.style.color='#1e293b'">
+                            <i class="ph ph-plus-circle" style="color: #16a34a; font-size: 1.15rem;"></i> Nuevo Contribuyente
+                        </button>
+                        <button type="button" class="btn" onclick="abrirModalEditar()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #1e293b; padding: 7px 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s;" onmouseover="this.style.borderColor='#15803d'; this.style.color='#15803d'" onmouseout="this.style.borderColor='#cbd5e1'; this.style.color='#1e293b'">
+                            <i class="ph ph-pencil-simple" style="color: #15803d; font-size: 1.15rem;"></i> Modificar
+                        </button>
+                        <button type="button" class="btn" onclick="eliminarContribuyente()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #ef4444; padding: 7px 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s;" onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#fca5a5'" onmouseout="this.style.background='white'; this.style.borderColor='#cbd5e1'">
+                            <i class="ph ph-trash" style="font-size: 1.15rem;"></i> Eliminar
+                        </button>
+                    </div>
+
+                    <!-- Search Input -->
+                    <div style="position: relative; width: 280px;">
+                        <input type="text" id="searchInput" class="form-control" placeholder="BUSCAR CONTRIBUYENTE..." onkeyup="filtrarContribuyentes()" style="padding-right: 36px; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; border-radius: 8px; border: 1px solid #cbd5e1; background: #fafafa;" autocomplete="off">
+                        <i class="ph ph-magnifying-glass" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #16a34a; font-size: 1.1rem;"></i>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div style="overflow-x: auto;">
+                    <table class="table table-hover align-middle m-0" style="font-size: 0.88rem;">
+                        <thead style="background: #f1f5f9; color: #475569; font-weight: 800; text-transform: uppercase; font-size: 0.76rem; letter-spacing: 0.04em;">
+                            <tr>
+                                <th style="padding: 14px 20px;">Código</th>
+                                <th style="padding: 14px 20px;">Razón Social / Nombre</th>
+                                <th style="padding: 14px 20px;">RUC</th>
+                                <th style="padding: 14px 20px;">Dirección</th>
+                                <th style="padding: 14px 20px;">Actividad</th>
+                                <th style="padding: 14px 20px; text-align: center;">Fact. Electrónica</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaBody">
+                            <tr>
+                                <td colspan="6" class="text-center py-5 text-muted">Cargando contribuyentes...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Modal Form Flotante Centrado -->
+    <div id="modalOverlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: white; border-radius: 14px; border: 1px solid #94a3b8; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.35); width: 100%; max-width: 650px; overflow: hidden; animation: modalSlideDown 0.25s ease;">
+            
+            <div style="padding: 16px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #16a34a, #15803d); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.15rem;">
+                        <i class="ph ph-buildings"></i>
+                    </div>
+                    <h4 id="modalTitle" style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #0f172a;">Agregar Contribuyente</h4>
+                </div>
+                <button type="button" class="btn-close" onclick="cerrarModal()"></button>
+            </div>
+
+            <div style="padding: 24px 28px; max-height: calc(85vh - 120px); overflow-y: auto;">
+                <form id="formContribuyente" autocomplete="off">
+                    <input type="hidden" id="codEmpresa">
+                    <input type="hidden" id="codPersona">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary small">RUC : <span style="color:#dc2626">*</span></label>
+                        <div style="display:flex; gap:8px;">
+                            <input type="text" id="rucEmpresa" class="form-control" placeholder="Ingrese el RUC y presione Enter (ej. 80012345)" autocomplete="off"
+                                   style="border-radius: 8px; font-weight:700;" onkeydown="if(event.key==='Enter'){event.preventDefault(); verificarRuc();}" onblur="verificarRuc()">
+                            <button type="button" id="btnVerificarRuc" onclick="verificarRuc(true)" title="Verificar RUC (BD / DNIT)"
+                                    style="border:1px solid #86efac; background:#f0fdf4; color:#15803d; border-radius:8px; padding:0 14px; font-weight:700; font-size:.8rem; white-space:nowrap;">
+                                <i class="ph ph-magnifying-glass"></i> Verificar
+                            </button>
+                        </div>
+                        <div id="rucEstado" style="display:none; margin-top:6px; font-size:.78rem; font-weight:600; padding:6px 10px; border-radius:6px;"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary small">Razón Social / Nombre del Contribuyente : <span style="color:#dc2626">*</span></label>
+                        <input type="text" id="descripcion" class="form-control" placeholder="Se completa al verificar el RUC" required autocomplete="off" style="font-weight: 700; border-radius: 8px;">
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold text-secondary small">Localidad / Ciudad :</label>
+                            <input type="text" id="localidad" class="form-control" placeholder="ASUNCIÓN" autocomplete="off" style="border-radius: 8px;">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold text-secondary small">Dirección Fiscal : <span style="color:#dc2626">*</span></label>
+                            <input type="text" id="direccion" class="form-control" placeholder="AVDA. PRINCIPAL NRO. 123" autocomplete="off" style="border-radius: 8px;">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-secondary small">Teléfono : <span style="color:#dc2626">*</span></label>
+                            <input type="text" id="telefono" class="form-control" placeholder="0981 123456" autocomplete="off" style="border-radius: 8px;">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary small">Actividad Económica Principal :</label>
+                        <input type="text" id="actividad" class="form-control" placeholder="VENTA AL POR MAYOR Y MENOR / SERVICIOS" style="border-radius: 8px;">
+                    </div>
+
+                    <div class="row mb-2">
+                        <div class="col-md-6">
+                            <label style="font-size: 0.85rem; font-weight: 700; color: #334155; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="chkRetieneIva" style="width: 17px; height: 17px; accent-color: #16a34a;"> Agente de Retención IVA
+                            </label>
+                        </div>
+                        <div class="col-md-6">
+                            <label style="font-size: 0.85rem; font-weight: 700; color: #334155; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="chkIndFacturacionElectronica" checked style="width: 17px; height: 17px; accent-color: #16a34a;"> Habilitado Facturación Electrónica
+                            </label>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+
+            <div style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarContribuyente()" style="background: linear-gradient(135deg, #16a34a, #15803d); border: none; font-weight: 700;">Guardar</button>
+            </div>
+
+        </div>
+    </div>
+
+    <style>
+        @keyframes modalSlideDown {
+            from { opacity: 0; transform: translateY(-20px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+    </style>
+
+    <div th:replace="~{fragments/layout :: scripts}"></div>
+
+    <script>
+        let listData = [];
+        let selectedId = null;
+
+        document.addEventListener('DOMContentLoaded', cargarContribuyentes);
+
+        function cargarContribuyentes() {
+            fetch('/api/contribuyentes/list')
+                .then(res => res.json())
+                .then(res => {
+                    if (res.status === 'success') {
+                        listData = res.data || [];
+                        renderTabla(listData);
+                    }
+                });
+        }
+
+        function renderTabla(data) {
+            const tbody = document.getElementById('tablaBody');
+            tbody.innerHTML = '';
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted">No se encontraron contribuyentes.</td></tr>';
+                return;
+            }
+
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.style.cursor = 'pointer';
+                if (selectedId && selectedId == item.COD_EMPRESA) tr.classList.add('fila-seleccionada');
+                
+                tr.onclick = function() {
+                    document.querySelectorAll('#tablaBody tr').forEach(r => r.classList.remove('fila-seleccionada'));
+                    tr.classList.add('fila-seleccionada');
+                    selectedId = item.COD_EMPRESA;
+                };
+
+                tr.ondblclick = abrirModalEditar;
+
+                const isFe = item.IND_FACTURACION_ELECTRONICA === 'S' ? '<span class="badge bg-success-subtle text-success border border-success">SÍ</span>' : '<span class="badge bg-secondary-subtle text-secondary border">NO</span>';
+
+                tr.innerHTML = `
+                    <td class="fw-bold text-primary" style="padding: 12px 20px;"><span class="badge bg-light text-primary border" style="font-size:0.85rem;">#${item.COD_EMPRESA || ''}</span></td>
+                    <td style="padding: 12px 20px; font-weight: 700; color: #1e293b;">${item.DESCRIPCION || ''}</td>
+                    <td style="padding: 12px 20px; font-weight: 600;">${item.RUC_EMPRESA || '-'}</td>
+                    <td style="padding: 12px 20px;">${item.DIRECCION || '-'}</td>
+                    <td style="padding: 12px 20px;">${item.ACTIVIDAD || '-'}</td>
+                    <td class="text-center" style="padding: 12px 20px;">${isFe}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filtrarContribuyentes() {
+            const query = document.getElementById('searchInput').value.trim().toUpperCase();
+            if (!query) return renderTabla(listData);
+            renderTabla(listData.filter(i => (i.DESCRIPCION && i.DESCRIPCION.toUpperCase().includes(query)) || (i.COD_EMPRESA && i.COD_EMPRESA.includes(query)) || (i.RUC_EMPRESA && i.RUC_EMPRESA.includes(query))));
+        }
+
+        function abrirModalNuevo() {
+            document.getElementById('formContribuyente').reset();
+            document.getElementById('codEmpresa').value = '';
+            document.getElementById('codPersona').value = '';
+            setRucEstado(null);
+            ultimoRucVerificado = '';
+            document.getElementById('modalTitle').innerText = 'Agregar Contribuyente';
+            document.getElementById('modalOverlay').style.display = 'flex';
+            setTimeout(() => document.getElementById('rucEmpresa').focus(), 80);
+        }
+
+        let ultimoRucVerificado = '';
+
+        function setRucEstado(tipo, html) {
+            const el = document.getElementById('rucEstado');
+            if (!tipo) { el.style.display = 'none'; return; }
+            const c = { ok: ['#f0fdf4','#15803d','#86efac'], info: ['#eff6ff','#1d4ed8','#bfdbfe'],
+                        warn: ['#fffbeb','#b45309','#fde68a'], err: ['#fef2f2','#b91c1c','#fecaca'],
+                        load: ['#f8fafc','#475569','#e2e8f0'] }[tipo];
+            el.style.cssText += `;display:block; background:${c[0]}; color:${c[1]}; border:1px solid ${c[2]};`;
+            el.innerHTML = html;
+        }
+
+        async function verificarRuc(forzar = false) {
+            const input = document.getElementById('rucEmpresa');
+            const ruc = input.value.trim();
+            if (!ruc) { setRucEstado(null); return; }
+            if (!forzar && ruc === ultimoRucVerificado) return;
+            ultimoRucVerificado = ruc;
+
+            setRucEstado('load', '<i class="ph ph-spinner-gap"></i> Verificando RUC en la base de datos y DNIT...');
+            const codEmp = document.getElementById('codEmpresa').value;
+            try {
+                const res = await fetch(`/api/contribuyentes/verificar-ruc?ruc=${encodeURIComponent(ruc)}&codEmpresa=${encodeURIComponent(codEmp)}`);
+                const d = await res.json();
+                const setIf = (id, v) => { if (v) document.getElementById(id).value = v; };
+
+                switch (d.status) {
+                    case 'CONTRIBUYENTE_EXISTE':
+                        setRucEstado('err', `<i class="ph ph-warning-circle"></i> Este RUC ya está registrado como contribuyente <b>#${d.codEmpresa} - ${d.nombre}</b>.`);
+                        break;
+                    case 'PERSONA_EXISTE':
+                        document.getElementById('codPersona').value = d.codPersona || '';
+                        setIf('rucEmpresa', d.ruc); setIf('descripcion', d.nombre);
+                        setIf('direccion', d.direccion); setIf('telefono', d.telefono);
+                        ultimoRucVerificado = input.value.trim();
+                        setRucEstado('ok', `<i class="ph ph-user-check"></i> Persona existente (Cód. ${d.codPersona}). Se cargaron sus datos; complete lo que falte.`);
+                        break;
+                    case 'DNIT':
+                        document.getElementById('codPersona').value = '';
+                        setIf('rucEmpresa', d.ruc); setIf('descripcion', d.nombre);
+                        ultimoRucVerificado = input.value.trim();
+                        const est = d.estado && d.estado !== 'ACTIVO'
+                            ? ` <span style="color:#b91c1c">Estado DNIT: <b>${d.estado}</b></span>` : (d.estado ? ` Estado: <b>${d.estado}</b>` : '');
+                        setRucEstado(d.estado && d.estado !== 'ACTIVO' ? 'warn' : 'info',
+                            `<i class="ph ph-globe"></i> Datos obtenidos de la DNIT (turuc.com.py).${est} Se creará como nueva persona; cargue dirección y teléfono.`);
+                        document.getElementById('direccion').focus();
+                        break;
+                    case 'SIN_CONEXION':
+                        setRucEstado('warn', '<i class="ph ph-wifi-slash"></i> No se pudo conectar a turuc.com.py. Cargue los datos manualmente.');
+                        break;
+                    case 'INVALIDO':
+                        setRucEstado('warn', '<i class="ph ph-warning"></i> RUC inválido.');
+                        break;
+                    default:
+                        document.getElementById('codPersona').value = '';
+                        setRucEstado('warn', '<i class="ph ph-question"></i> RUC no encontrado en la BD ni en la DNIT. Cargue los datos manualmente.');
+                }
+            } catch (e) {
+                setRucEstado('err', 'Error al verificar el RUC.');
+            }
+        }
+
+        function abrirModalEditar() {
+            if (!selectedId) return Swal.fire('Atención', 'Seleccione un contribuyente de la lista.', 'warning');
+            const item = listData.find(x => x.COD_EMPRESA == selectedId);
+            if (!item) return;
+
+            document.getElementById('codEmpresa').value = item.COD_EMPRESA;
+            document.getElementById('codPersona').value = '';
+            setRucEstado(null);
+            ultimoRucVerificado = item.RUC_EMPRESA || '';
+            document.getElementById('descripcion').value = item.DESCRIPCION || '';
+            document.getElementById('rucEmpresa').value = item.RUC_EMPRESA || '';
+            document.getElementById('direccion').value = item.DIRECCION || '';
+            document.getElementById('telefono').value = item.TELEFONO || '';
+            document.getElementById('actividad').value = item.ACTIVIDAD || '';
+            document.getElementById('localidad').value = item.LOCALIDAD || '';
+            document.getElementById('chkRetieneIva').checked = (item.RETIENE_IVA === 'S');
+            document.getElementById('chkIndFacturacionElectronica').checked = (item.IND_FACTURACION_ELECTRONICA === 'S');
+            document.getElementById('modalTitle').innerText = 'Modificar Contribuyente #' + item.COD_EMPRESA;
+            document.getElementById('modalOverlay').style.display = 'flex';
+        }
+
+        function cerrarModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+        }
+
+        function guardarContribuyente() {
+            const descripcion = document.getElementById('descripcion').value.trim();
+            const faltan = [];
+            if (!document.getElementById('rucEmpresa').value.trim()) faltan.push('RUC');
+            if (!descripcion) faltan.push('Razón Social');
+            if (!document.getElementById('direccion').value.trim()) faltan.push('Dirección');
+            if (!document.getElementById('telefono').value.trim()) faltan.push('Teléfono');
+            if (faltan.length) return Swal.fire('Atención', 'Campos obligatorios: ' + faltan.join(', '), 'warning');
+
+            const payload = {
+                codEmpresa: document.getElementById('codEmpresa').value,
+                codPersona: document.getElementById('codPersona').value,
+                descripcion: descripcion,
+                rucEmpresa: document.getElementById('rucEmpresa').value,
+                direccion: document.getElementById('direccion').value,
+                telefono: document.getElementById('telefono').value,
+                actividad: document.getElementById('actividad').value,
+                localidad: document.getElementById('localidad').value,
+                retieneIva: document.getElementById('chkRetieneIva').checked,
+                indFacturacionElectronica: document.getElementById('chkIndFacturacionElectronica').checked
+            };
+
+            fetch('/api/contribuyentes/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    Swal.fire('¡Éxito!', data.message, 'success');
+                    cerrarModal();
+                    cargarContribuyentes();
+                } else {
+                    Swal.fire('Error', data.message, 'error');
+                }
+            });
+        }
+
+        function eliminarContribuyente() {
+            if (!selectedId) return Swal.fire('Atención', 'Seleccione un contribuyente para eliminar.', 'warning');
+            Swal.fire({
+                title: '¿Eliminar Contribuyente?',
+                text: 'Esta acción eliminará el registro de la empresa.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444'
+            }).then(r => {
+                if (r.isConfirmed) {
+                    fetch('/api/contribuyentes/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ codEmpresa: selectedId })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            Swal.fire('Eliminado', data.message, 'success');
+                            selectedId = null;
+                            cargarContribuyentes();
+                        } else {
+                            Swal.fire({ icon: 'error', title: 'No se puede eliminar', html: data.message, confirmButtonColor: '#16a34a' });
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+</body>
+</html>

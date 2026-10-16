@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Cambio de Clave - Sistema Contable')}">
+</head>
+<body style="background: var(--bg-color);">
+
+    <!-- Sidebar Menu -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+        <!-- Top Navbar -->
+        <div th:replace="~{fragments/layout :: navbar('Cambio de Clave')}"></div>
+
+        <!-- Dynamic Content -->
+        <div class="content-area">
+            
+            <div style="background: white; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 8px 25px rgba(0,0,0,0.06); width: 100%; overflow: hidden;">
+                
+                <!-- Header Banner -->
+                <div style="padding: 18px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg, #16a34a, #15803d); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; box-shadow: 0 4px 10px rgba(22,163,74,0.3); flex-shrink: 0;">
+                            <i class="ph ph-key"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0f172a;">Cambiar Contraseña de Usuario</h3>
+                            <p style="margin: 2px 0 0 0; font-size: 0.82rem; color: #64748b;">Actualice su clave de acceso para garantizar la seguridad de su cuenta.</p>
+                        </div>
+                    </div>
+
+                    <div style="font-size: 0.82rem; font-weight: 700; color: #64748b; background: white; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="ph ph-user text-success" style="font-size: 1rem;"></i> 
+                        Usuario: <span style="color: #0f172a;" th:text="${session.usuario != null ? session.usuario : 'USUARIO'}">ADMIN</span>
+                    </div>
+                </div>
+
+                <!-- Form Content -->
+                <div style="padding: 28px 24px;">
+                    <form id="formCambiarClave" onsubmit="guardarNuevaClave(event)">
+                        
+                        <!-- 3 Columnas Distribuidas Horizontalmente -->
+                        <div class="row g-4 mb-4">
+                            
+                            <!-- Contraseña Actual -->
+                            <div class="col-12 col-md-4">
+                                <label class="form-label fw-bold text-secondary small">Contraseña Actual * :</label>
+                                <div style="position: relative; display: flex; align-items: center;">
+                                    <input type="password" id="currentPassword" class="form-control" placeholder="Ingrese su clave actual" required style="border-radius: 8px; font-weight: 600; padding: 10px 42px 10px 14px;">
+                                    <button type="button" onclick="togglePasswordVisibility('currentPassword', this)" style="position: absolute; right: 8px; background: transparent; border: none; padding: 6px; color: #64748b; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.15rem;" title="Mostrar / ocultar contraseña">
+                                        <i class="ph ph-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Nueva Contraseña -->
+                            <div class="col-12 col-md-4">
+                                <label class="form-label fw-bold text-secondary small">Nueva Contraseña * :</label>
+                                <div style="position: relative; display: flex; align-items: center;">
+                                    <input type="password" id="newPassword" class="form-control" placeholder="Ingrese la nueva clave" required oninput="verificarCoincidencia()" style="border-radius: 8px; font-weight: 600; padding: 10px 42px 10px 14px;">
+                                    <button type="button" onclick="togglePasswordVisibility('newPassword', this)" style="position: absolute; right: 8px; background: transparent; border: none; padding: 6px; color: #64748b; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.15rem;" title="Mostrar / ocultar contraseña">
+                                        <i class="ph ph-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Confirmar Nueva Contraseña -->
+                            <div class="col-12 col-md-4">
+                                <label class="form-label fw-bold text-secondary small">Confirmar Nueva Contraseña * :</label>
+                                <div style="position: relative; display: flex; align-items: center;">
+                                    <input type="password" id="confirmPassword" class="form-control" placeholder="Confirme la nueva clave" required oninput="verificarCoincidencia()" style="border-radius: 8px; font-weight: 600; padding: 10px 42px 10px 14px;">
+                                    <button type="button" onclick="togglePasswordVisibility('confirmPassword', this)" style="position: absolute; right: 8px; background: transparent; border: none; padding: 6px; color: #64748b; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.15rem;" title="Mostrar / ocultar contraseña">
+                                        <i class="ph ph-eye"></i>
+                                    </button>
+                                </div>
+                                <div id="matchMessage" style="font-size: 0.75rem; font-weight: 700; margin-top: 6px; display: none;"></div>
+                            </div>
+
+                        </div>
+
+                        <!-- Barra de Acciones al Pie -->
+                        <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+                            <a href="/menu" class="btn btn-outline" style="padding: 9px 20px; font-weight: 700; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; color: #64748b; border: 1px solid #cbd5e1;">
+                                <i class="ph ph-x"></i> Cancelar
+                            </a>
+                            <button type="submit" id="btnGuardarClave" class="btn btn-primary" style="padding: 9px 24px; font-weight: 700; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px;">
+                                <i class="ph ph-check-circle" style="font-size: 1.2rem;"></i> Guardar Nueva Clave
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        function togglePasswordVisibility(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('ph-eye');
+                icon.classList.add('ph-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('ph-eye-slash');
+                icon.classList.add('ph-eye');
+            }
+        }
+
+        function verificarCoincidencia() {
+            const newPass = document.getElementById('newPassword').value;
+            const confirmPass = document.getElementById('confirmPassword').value;
+            const matchMsg = document.getElementById('matchMessage');
+
+            if (confirmPass.length > 0) {
+                matchMsg.style.display = 'block';
+                if (newPass === confirmPass) {
+                    matchMsg.style.color = '#16a34a';
+                    matchMsg.innerHTML = '<i class="ph ph-check-circle" style="vertical-align: middle;"></i> Las contraseñas coinciden';
+                } else {
+                    matchMsg.style.color = '#dc2626';
+                    matchMsg.innerHTML = '<i class="ph ph-x-circle" style="vertical-align: middle;"></i> Las contraseñas no coinciden';
+                }
+            } else {
+                matchMsg.style.display = 'none';
+            }
+        }
+
+        function guardarNuevaClave(e) {
+            e.preventDefault();
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (newPassword !== confirmPassword) {
+                return Swal.fire('Atención', 'Las nuevas contraseñas no coinciden.', 'warning');
+            }
+
+            const btn = document.getElementById('btnGuardarClave');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph ph-spinner ph-spin" style="font-size: 1.2rem;"></i> Guardando...';
+
+            const formData = new FormData();
+            formData.append('currentPassword', currentPassword);
+            formData.append('newPassword', newPassword);
+            formData.append('confirmPassword', confirmPassword);
+
+            fetch('/api/usuarios/change-password', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+
+                if (data.status === 'success') {
+                    Swal.fire({
+                        title: '¡Éxito!',
+                        text: data.message,
+                        icon: 'success',
+                        confirmButtonColor: '#16a34a',
+                        confirmButtonText: 'Aceptar'
+                    }).then(() => {
+                        document.getElementById('formCambiarClave').reset();
+                        document.getElementById('matchMessage').style.display = 'none';
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error',
+                        text: data.message || 'No se pudo actualizar la contraseña.',
+                        icon: 'error',
+                        confirmButtonColor: '#ef4444'
+                    });
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Ocurrió un error al procesar la solicitud.',
+                    icon: 'error',
+                    confirmButtonColor: '#ef4444'
+                });
+            });
+        }
+    </script>
+</body>
+</html>

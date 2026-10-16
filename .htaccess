@@ -1,0 +1,28 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Bloquear acceso directo por navegador a carpetas internas del sistema
+    RewriteRule ^(config|core|app|database)/ - [F,L]
+
+    # Permitir acceso directo a archivos y carpetas estáticas existentes (css, js, images)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # Redirigir todas las rutas al Front Controller index.php
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# Impedir listado de directorios en cPanel
+Options -Indexes
+
+# Proteger archivos sensibles (.sql, .env, .md, etc.) compatible con Apache 2.2 y 2.4
+<FilesMatch "\.(sql|key|p12|env|md|sh|bak)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+

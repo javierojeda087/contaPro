@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Directorio de Clientes - Sistema Contable')}">
+</head>
+<body style="background: var(--bg-color);">
+
+    <!-- Left Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Navbar -->
+        <div th:replace="~{fragments/layout :: navbar('Directorio de Clientes')}"></div>
+
+        <div class="content-area">
+            <div style="background: white; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 8px 25px rgba(0,0,0,0.06); overflow: hidden; width: 100%;">
+                
+                <div style="padding: 14px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; gap: 10px;">
+                        <button type="button" class="btn" onclick="abrirModalNuevo()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #1e293b; padding: 7px 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
+                            <i class="ph ph-plus-circle" style="color: #16a34a;"></i> Nuevo Cliente
+                        </button>
+                        <button type="button" class="btn" onclick="abrirModalEditar()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #1e293b; padding: 7px 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
+                            <i class="ph ph-pencil-simple" style="color: #15803d;"></i> Modificar
+                        </button>
+                        <button type="button" class="btn" onclick="eliminarRegistro()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #ef4444; padding: 7px 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
+                            <i class="ph ph-trash"></i> Eliminar
+                        </button>
+                    </div>
+
+                    <div style="position: relative; width: 280px;">
+                        <input type="text" id="searchInput" class="form-control" placeholder="BUSCAR CLIENTE..." onkeyup="filtrarRegistros()" style="padding-right: 36px; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; border-radius: 8px; border: 1px solid #cbd5e1; background: #fafafa;">
+                        <i class="ph ph-magnifying-glass" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #16a34a;"></i>
+                    </div>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table class="table table-hover align-middle m-0" style="font-size: 0.88rem;">
+                        <thead style="background: #f1f5f9; color: #475569; font-weight: 800; text-transform: uppercase; font-size: 0.76rem;">
+                            <tr>
+                                <th style="padding: 14px 20px;">Código</th>
+                                <th style="padding: 14px 20px;">Cód. Persona</th>
+                                <th style="padding: 14px 20px;">Nombre / Razón Social</th>
+                                <th style="padding: 14px 20px;">Tipo & N° Documento</th>
+                                <th style="padding: 14px 20px;">Teléfono</th>
+                                <th style="padding: 14px 20px;">Email</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaBody">
+                            <tr><td colspan="6" class="text-center py-4 text-muted">Cargando clientes...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- PERFECT CENTERED MODAL OVERLAY -->
+    <div id="modalOverlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: white; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.35); width: 100%; max-width: 650px; overflow: hidden; animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);">
+            
+            <!-- Modal Header -->
+            <div style="padding: 16px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 34px; height: 34px; border-radius: 8px; background: linear-gradient(135deg, #16a34a, #15803d); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.15rem;">
+                        <i class="ph ph-user-plus"></i>
+                    </div>
+                    <h4 id="modalTitle" style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #0f172a;">Nuevo Cliente</h4>
+                </div>
+                <button type="button" class="btn-close" onclick="cerrarModal()" style="font-size: 0.9rem; cursor: pointer;"></button>
+            </div>
+
+            <!-- Modal Form Body -->
+            <div style="padding: 24px 28px;">
+                <form id="formCli" onsubmit="event.preventDefault(); guardarRegistro();">
+                    <input type="hidden" id="codCliente">
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label class="form-label" style="font-weight: 700; color: #475569; font-size: 0.83rem; margin: 0;">Nombre o Razón Social :</label>
+                        <button type="button" onclick="toggleSetSearch()" style="background: none; border: none; color: #0284c7; font-weight: 700; font-size: 0.78rem; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 0;">
+                            <i class="ph ph-magnifying-glass-plus"></i> ¿No existe? Consultar a la DNIT
+                        </button>
+                    </div>
+
+                    <!-- Panel Búsqueda DNIT -->
+                    <div id="setSearchPanel" style="display: none; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 14px; margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 0.75rem; font-weight: 800; color: #0284c7; text-transform: uppercase;"><i class="ph ph-globe"></i> Consultar a la DNIT (turuc.com.py)</span>
+                            <button type="button" onclick="toggleSetSearch()" style="background: none; border: none; font-size: 0.8rem; color: #94a3b8; cursor: pointer;">✕</button>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                            <input type="text" id="setRucInput" class="form-control form-control-sm" placeholder="Ej: 80001234" style="border-radius: 6px; font-weight: 600;" onkeypress="if(event.key === 'Enter'){consultarSet(); event.preventDefault();}">
+                            <button class="btn btn-sm" type="button" onclick="consultarSet()" id="btnConsultarSet" style="background: #0284c7; color: white; font-weight: 700; border-radius: 6px; padding: 4px 14px; white-space: nowrap;">
+                                <i class="ph ph-magnifying-glass"></i> Buscar
+                            </button>
+                        </div>
+                        <div id="setResultPanel" style="display: none; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; font-size: 0.85rem;">
+                            <div style="margin-bottom: 4px;"><strong style="color: #64748b;">Razón Social:</strong> <span id="setRazonSocial" style="font-weight: 700; color: #0f172a;"></span></div>
+                            <div style="margin-bottom: 4px;"><strong style="color: #64748b;">RUC:</strong> <span id="setRucFull" style="font-weight: 700; color: #0f172a;"></span></div>
+                            <div style="margin-bottom: 8px;"><strong style="color: #64748b;">Estado:</strong> <span id="setEstado" style="font-weight: 700; color: #16a34a;"></span></div>
+                            <button type="button" id="btnCrearSet" class="btn btn-sm" onclick="importarDatosSet()" style="width: 100%; background: #16a34a; color: white; font-weight: 700; border-radius: 6px; padding: 6px; font-size: 0.82rem; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                <i class="ph ph-check-circle"></i> Importar Datos al Formulario
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <input type="text" id="nombre" class="form-control" placeholder="EJ: COMERCIAL YGUAZU S.R.L. / JUAN PÉREZ" required style="border-radius: 8px; font-weight: 700;">
+                    </div>
+                    
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-5">
+                            <label class="form-label" style="font-weight: 700; color: #475569; font-size: 0.83rem;">Tipo Documento :</label>
+                            <select id="tipoDocumento" class="form-select" onchange="onTipoDocumentoChange()" style="border-radius: 8px; font-weight: 700;">
+                                <option value="RUC">RUC (Paraguay)</option>
+                                <option value="CI">C.I. (Cédula)</option>
+                                <option value="PASAPORTE">Pasaporte / Doc. Extranjero</option>
+                                <option value="INNOMINADO">Sin Doc. / Consumidor Final</option>
+                            </select>
+                        </div>
+                        <div class="col-md-7">
+                            <label id="lblRuc" class="form-label" style="font-weight: 700; color: #475569; font-size: 0.83rem;">N° Documento / RUC :</label>
+                            <div class="input-group">
+                                <input type="text" id="ruc" class="form-control" placeholder="EJ: 80012345-6" onchange="verificarYRucAutomatico()" onkeypress="if(event.key === 'Enter'){verificarYRucAutomatico(); event.preventDefault();}" style="border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: 600;">
+                                <button type="button" class="btn" onclick="verificarYRucAutomatico()" title="Consultar / Verificar RUC" style="border-top-right-radius: 8px; border-bottom-right-radius: 8px; font-weight: 700; font-size: 0.8rem; background: #f8fafc; color: #0284c7; border: 1px solid #cbd5e1; border-left: none;">
+                                    <i class="ph ph-globe"></i> DNIT / BD
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" style="font-weight: 700; color: #475569; font-size: 0.83rem;">Dirección :</label>
+                        <input type="text" id="direccion" class="form-control" placeholder="EJ: AV. MCAL. LÓPEZ 1234" style="border-radius: 8px;">
+                    </div>
+                    
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label" style="font-weight: 700; color: #475569; font-size: 0.83rem;">Teléfono :</label>
+                            <input type="text" id="telefono" class="form-control" placeholder="EJ: 0981 123456" style="border-radius: 8px;">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" style="font-weight: 700; color: #475569; font-size: 0.83rem;">Email :</label>
+                            <input type="email" id="email" class="form-control" placeholder="EJ: contacto@yguazu.com.py" style="border-radius: 8px;">
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Modal Footer -->
+            <div style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="btn" onclick="cerrarModal()" style="background: white; border: 1px solid #cbd5e1; color: #334155; font-weight: 700; border-radius: 8px; padding: 7px 18px; font-size: 0.85rem; display: flex; align-items: center; gap: 6px;"><i class="ph ph-x" style="font-size: 0.95rem;"></i> Cancelar</button>
+                <button type="button" class="btn" onclick="guardarRegistro()" style="background: #16a34a; border: none; color: white; font-weight: 700; border-radius: 8px; padding: 7px 22px; font-size: 0.85rem;">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <div th:replace="~{fragments/layout :: scripts}"></div>
+
+    <script>
+        let listData = [];
+        let selectedId = null;
+        let setDataCache = null;
+
+        document.addEventListener('DOMContentLoaded', cargarRegistros);
+
+        function toggleSetSearch() {
+            const panel = document.getElementById('setSearchPanel');
+            if (panel.style.display === 'none' || !panel.style.display) {
+                panel.style.display = 'block';
+                const currentRuc = document.getElementById('ruc').value.trim();
+                if (currentRuc) {
+                    document.getElementById('setRucInput').value = currentRuc;
+                }
+                document.getElementById('setRucInput').focus();
+            } else {
+                panel.style.display = 'none';
+            }
+        }
+
+        async function verificarYRucAutomatico() {
+            const rucInput = document.getElementById('ruc').value.trim();
+            if (!rucInput || rucInput.length < 3) return;
+
+            const tipoDoc = document.getElementById('tipoDocumento').value;
+            if (tipoDoc === 'INNOMINADO') return;
+
+            const codCliente = document.getElementById('codCliente').value;
+
+            try {
+                // 1. Primero verificar en la BD local (co_clientes y ident_personas / personas)
+                const resLocal = await fetch(`/api/co_clientes/verificar-ruc?ruc=${encodeURIComponent(rucInput)}&codCliente=${encodeURIComponent(codCliente || '')}`);
+                const dataLocal = await resLocal.json();
+
+                if (dataLocal.status === 'CLIENTE_EXISTE') {
+                    if (dataLocal.nombre) document.getElementById('nombre').value = dataLocal.nombre;
+                    if (dataLocal.direccion) document.getElementById('direccion').value = dataLocal.direccion;
+                    if (dataLocal.telefono) document.getElementById('telefono').value = dataLocal.telefono;
+                    if (dataLocal.email) document.getElementById('email').value = dataLocal.email;
+                    if (dataLocal.tipoDocumento) document.getElementById('tipoDocumento').value = dataLocal.tipoDocumento;
+                    onTipoDocumentoChange();
+                    if (dataLocal.ruc) document.getElementById('ruc').value = dataLocal.ruc;
+
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Cliente ya registrado',
+                        html: `El RUC <b>${dataLocal.ruc}</b> ya pertenece al cliente registrado:<br><b>Cliente #${dataLocal.codCliente} - ${dataLocal.nombre}</b>.<br><br>Se han cargado sus datos en el formulario.`,
+                        confirmButtonColor: '#16a34a'
+                    });
+                    return;
+                }
+
+                if (dataLocal.status === 'PERSONA_EXISTE') {
+                    if (dataLocal.nombre) document.getElementById('nombre').value = dataLocal.nombre;
+                    if (dataLocal.direccion) document.getElementById('direccion').value = dataLocal.direccion;
+                    if (dataLocal.telefono) document.getElementById('telefono').value = dataLocal.telefono;
+                    if (dataLocal.email) document.getElementById('email').value = dataLocal.email;
+                    if (dataLocal.tipoDocumento) document.getElementById('tipoDocumento').value = dataLocal.tipoDocumento;
+                    onTipoDocumentoChange();
+                    if (dataLocal.ruc) document.getElementById('ruc').value = dataLocal.ruc;
+
+                    showToast(`Persona encontrada en la Base de Datos (Cód. Pers: ${dataLocal.codPersona}). Datos cargados.`, 'success');
+                    return;
+                }
+
+                // 2. Si no existe en la BD local, buscar en turuc.com.py (DNIT)
+                const rucBase = rucInput.split('-')[0].trim();
+                const resDnit = await fetch(`/api/dnit/consultar-ruc?ruc=${encodeURIComponent(rucBase)}`);
+                const jsonProxy = await resDnit.json();
+                const dataDnit = jsonProxy.status === 'SUCCESS' ? jsonProxy : null;
+
+                if (dataDnit && dataDnit.data && dataDnit.data.razonSocial) {
+                    const d = dataDnit.data;
+                    document.getElementById('nombre').value = d.razonSocial;
+                    document.getElementById('tipoDocumento').value = 'RUC';
+                    onTipoDocumentoChange();
+
+                    let rucToUse = d.ruc || rucBase;
+                    if (d.dv !== undefined && !String(rucToUse).includes('-')) {
+                        rucToUse = `${rucToUse}-${d.dv}`;
+                    }
+                    document.getElementById('ruc').value = rucToUse;
+
+                    showToast(`RUC verificado en la DNIT (turuc.com.py). Razón Social: ${d.razonSocial}`, 'success');
+                } else {
+                    showToast('RUC no encontrado en BD local ni en la DNIT. Ingrese los datos manualmente.', 'info');
+                }
+            } catch (err) {
+                console.error("Error al verificar RUC:", err);
+            }
+        }
+
+        async function consultarSet() {
+            const rucInput = document.getElementById('setRucInput').value.trim();
+            if (!rucInput) {
+                return Swal.fire('Atención', 'Ingrese un número de RUC sin DV o con DV.', 'warning');
+            }
+            const btn = document.getElementById('btnConsultarSet');
+            btn.innerHTML = '<i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite;"></i> Buscando...';
+            btn.disabled = true;
+
+            const rucBase = rucInput.split('-')[0].trim();
+
+            try {
+                // Verificar en BD local primero
+                const resLocal = await fetch(`/api/co_clientes/verificar-ruc?ruc=${encodeURIComponent(rucInput)}`);
+                const dataLocal = await resLocal.json();
+
+                if (dataLocal.status === 'CLIENTE_EXISTE' || dataLocal.status === 'PERSONA_EXISTE') {
+                    if (dataLocal.nombre) document.getElementById('nombre').value = dataLocal.nombre;
+                    if (dataLocal.direccion) document.getElementById('direccion').value = dataLocal.direccion;
+                    if (dataLocal.telefono) document.getElementById('telefono').value = dataLocal.telefono;
+                    if (dataLocal.email) document.getElementById('email').value = dataLocal.email;
+                    if (dataLocal.tipoDocumento) document.getElementById('tipoDocumento').value = dataLocal.tipoDocumento;
+                    onTipoDocumentoChange();
+                    if (dataLocal.ruc) document.getElementById('ruc').value = dataLocal.ruc;
+
+                    const msg = dataLocal.status === 'CLIENTE_EXISTE'
+                        ? `El RUC ya está registrado como Cliente #${dataLocal.codCliente} (${dataLocal.nombre}). Se cargaron sus datos.`
+                        : `Persona encontrada en BD (Cód: ${dataLocal.codPersona} - ${dataLocal.nombre}). Se cargaron sus datos.`;
+                    
+                    Swal.fire('Registrado en BD', msg, 'info');
+                    document.getElementById('setSearchPanel').style.display = 'none';
+                    return;
+                }
+
+                // Si no está en BD local, buscar en DNIT (turuc.com.py)
+                const res = await fetch(`/api/dnit/consultar-ruc?ruc=${encodeURIComponent(rucBase)}`);
+                const jsonProxy = await res.json();
+                const data = jsonProxy.status === 'SUCCESS' ? jsonProxy : null;
+                
+                if (data && data.data) {
+                    setDataCache = data.data;
+                    document.getElementById('setRazonSocial').innerText = data.data.razonSocial || "N/A";
+                    let rucToUse = data.data.ruc || rucBase;
+                    if (data.data.dv !== undefined && !String(rucToUse).includes('-')) {
+                        rucToUse = `${rucToUse}-${data.data.dv}`;
+                    }
+                    setDataCache.rucFormat = rucToUse;
+                    document.getElementById('setRucFull').innerText = rucToUse;
+                    document.getElementById('setEstado').innerText = data.data.estado || "N/A";
+                    document.getElementById('setResultPanel').style.display = 'block';
+                } else {
+                    Swal.fire('No encontrado', 'El RUC no fue encontrado en la base de la DNIT (turuc.com.py).', 'warning');
+                    setDataCache = null;
+                    document.getElementById('setResultPanel').style.display = 'none';
+                }
+            } catch (err) {
+                console.error("Error API RUC:", err);
+                Swal.fire('Error', 'No se pudo conectar a turuc.com.py', 'error');
+                setDataCache = null;
+                document.getElementById('setResultPanel').style.display = 'none';
+            } finally {
+                btn.innerHTML = '<i class="ph ph-magnifying-glass"></i> Buscar';
+                btn.disabled = false;
+            }
+        }
+
+        function importarDatosSet() {
+            if (!setDataCache) return;
+            document.getElementById('nombre').value = setDataCache.razonSocial || '';
+            document.getElementById('tipoDocumento').value = 'RUC';
+            onTipoDocumentoChange();
+            document.getElementById('ruc').value = setDataCache.rucFormat || '';
+            showToast('Datos de DNIT importados correctamente');
+            document.getElementById('setSearchPanel').style.display = 'none';
+        }
+
+        async function buscarRucDirectoDesdeInput() {
+            await verificarYRucAutomatico();
+        }
+
+        function onTipoDocumentoChange() {
+            const tipo = document.getElementById('tipoDocumento').value;
+            const lbl = document.getElementById('lblRuc');
+            const inputRuc = document.getElementById('ruc');
+
+            if (tipo === 'RUC') {
+                lbl.innerText = 'N° RUC (con DV) :';
+                inputRuc.placeholder = 'EJ: 80012345-6';
+            } else if (tipo === 'CI') {
+                lbl.innerText = 'Cédula de Identidad (C.I.) :';
+                inputRuc.placeholder = 'EJ: 4512389';
+            } else if (tipo === 'PASAPORTE') {
+                lbl.innerText = 'Pasaporte / DNI Extranjero :';
+                inputRuc.placeholder = 'EJ: PA-9876543';
+            } else if (tipo === 'INNOMINADO') {
+                lbl.innerText = 'Documento Innominado :';
+                inputRuc.placeholder = '44444401-7';
+                if (!inputRuc.value) inputRuc.value = '44444401-7';
+            }
+        }
+
+        function cargarRegistros() {
+            fetch('/api/co_clientes/list')
+                .then(res => res.json())
+                .then(res => {
+                    if (res.status === 'success') {
+                        listData = res.data || [];
+                        renderTabla(listData);
+                    }
+                });
+        }
+
+        function renderTabla(data) {
+            const tbody = document.getElementById('tablaBody');
+            tbody.innerHTML = '';
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No se encontraron clientes.</td></tr>';
+                return;
+            }
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.style.cursor = 'pointer';
+                if (selectedId && selectedId == item.COD_CLIENTE) tr.classList.add('fila-seleccionada');
+                tr.onclick = function() {
+                    document.querySelectorAll('#tablaBody tr').forEach(r => r.classList.remove('fila-seleccionada'));
+                    tr.classList.add('fila-seleccionada');
+                    selectedId = item.COD_CLIENTE;
+                };
+                tr.ondblclick = abrirModalEditar;
+
+                const tipoDoc = item.TIPO_DOCUMENTO || 'RUC';
+                let badgeClass = 'bg-primary';
+                if (tipoDoc === 'CI') badgeClass = 'bg-info text-dark';
+                else if (tipoDoc === 'PASAPORTE') badgeClass = 'bg-warning text-dark';
+                else if (tipoDoc === 'INNOMINADO') badgeClass = 'bg-secondary';
+
+                tr.innerHTML = `
+                    <td class="fw-bold" style="padding: 12px 20px;"><span class="badge bg-light border" style="font-size:0.85rem; padding: 4px 8px; color: #15803d;">${item.COD_CLIENTE || ''}</span></td>
+                    <td style="padding: 12px 20px;"><span class="badge bg-light text-dark border" style="font-size:0.82rem; padding: 4px 8px; font-weight: 700;">${item.COD_PERSONA || '-'}</span></td>
+                    <td style="padding: 12px 20px; font-weight: 700; color: #1e293b;">${item.NOMBRE || ''}</td>
+                    <td style="padding: 12px 20px;">
+                        <span class="badge ${badgeClass}" style="margin-right: 6px; font-size: 0.72rem; padding: 3px 6px;">${tipoDoc}</span>
+                        <span style="font-weight: 600;">${item.RUC || '-'}</span>
+                    </td>
+                    <td style="padding: 12px 20px;">${item.TELEFONO || '-'}</td>
+                    <td style="padding: 12px 20px;">${item.EMAIL || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filtrarRegistros() {
+            const query = document.getElementById('searchInput').value.trim().toUpperCase();
+            if (!query) return renderTabla(listData);
+            renderTabla(listData.filter(i => (i.NOMBRE && i.NOMBRE.toUpperCase().includes(query)) || (i.COD_CLIENTE && String(i.COD_CLIENTE).includes(query)) || (i.COD_PERSONA && String(i.COD_PERSONA).includes(query)) || (i.RUC && i.RUC.toUpperCase().includes(query))));
+        }
+
+        function abrirModalNuevo() {
+            document.getElementById('formCli').reset();
+            document.getElementById('codCliente').value = '';
+            document.getElementById('tipoDocumento').value = 'RUC';
+            onTipoDocumentoChange();
+            document.getElementById('modalTitle').innerText = 'Nuevo Cliente';
+            document.getElementById('modalOverlay').style.display = 'flex';
+        }
+
+        function abrirModalEditar() {
+            if (!selectedId) return Swal.fire('Atención', 'Seleccione un registro.', 'warning');
+            const item = listData.find(x => x.COD_CLIENTE == selectedId);
+            if (!item) return;
+            document.getElementById('codCliente').value = item.COD_CLIENTE;
+            document.getElementById('nombre').value = item.NOMBRE || '';
+            document.getElementById('tipoDocumento').value = item.TIPO_DOCUMENTO || 'RUC';
+            onTipoDocumentoChange();
+            document.getElementById('ruc').value = item.RUC || '';
+            document.getElementById('direccion').value = item.DIRECCION || '';
+            document.getElementById('telefono').value = item.TELEFONO || '';
+            document.getElementById('email').value = item.EMAIL || '';
+            document.getElementById('modalTitle').innerText = 'Modificar Cliente #' + item.COD_CLIENTE;
+            document.getElementById('modalOverlay').style.display = 'flex';
+        }
+
+        function cerrarModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+        }
+
+        function guardarRegistro() {
+            const nombre = document.getElementById('nombre').value.trim();
+            if (!nombre) return Swal.fire('Atención', 'El nombre es obligatorio.', 'warning');
+
+            const payload = {
+                codCliente: document.getElementById('codCliente').value,
+                nombre: nombre,
+                tipoDocumento: document.getElementById('tipoDocumento').value,
+                ruc: document.getElementById('ruc').value,
+                direccion: document.getElementById('direccion').value,
+                telefono: document.getElementById('telefono').value,
+                email: document.getElementById('email').value
+            };
+
+            fetch('/api/co_clientes/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    Swal.fire('¡Éxito!', data.message, 'success');
+                    cerrarModal();
+                    cargarRegistros();
+                } else {
+                    Swal.fire('Error', data.message, 'error');
+                }
+            });
+        }
+
+        function eliminarRegistro() {
+            if (!selectedId) return Swal.fire('Atención', 'Seleccione un registro.', 'warning');
+            Swal.fire({
+                title: '¿Eliminar cliente?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444'
+            }).then(r => {
+                if (r.isConfirmed) {
+                    fetch('/api/co_clientes/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ codCliente: selectedId })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            Swal.fire('Eliminado', data.message, 'success');
+                            selectedId = null;
+                            cargarRegistros();
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+</body>
+</html>

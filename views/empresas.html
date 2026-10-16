@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sistema - Empresas (BSEMPRES)')}">
+</head>
+<body>
+    
+    <!-- Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="main-content">
+        <div th:replace="~{fragments/layout :: navbar('Empresas (BSEMPRES)')}"></div>
+
+        <div class="content-area">
+            <div class="card">
+                <div class="card-header" style="flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i class="ph ph-buildings" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+                        <h2 style="margin: 0; font-size: 1.2rem; color: var(--text-main); font-weight: 700;">Gestión de Empresas</h2>
+                    </div>
+                    
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <div style="position: relative; width: 320px;">
+                            <i class="ph ph-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.2rem;"></i>
+                            <input type="text" id="searchInput" class="form-control" placeholder="Buscar por código, nombre o RUC..." style="padding-left: 40px; padding-right: 30px; border-radius: 20px; width: 100%; height: 38px;" onkeyup="handleSearchKey(event)">
+                            <i class="ph ph-x" id="clearSearchBtn" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1rem; cursor: pointer; display: none; transition: color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--text-muted)'" onclick="document.getElementById('searchInput').value = ''; loadData(); this.style.display = 'none';"></i>
+                        </div>
+                        <button class="btn btn-primary" onclick="openModal()" style="height: 38px; border-radius: 8px;">
+                            <i class="ph ph-plus"></i> Nueva Empresa
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-grid" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>CÓDIGO</th>
+                                <th>DESCRIPCIÓN / RAZÓN SOCIAL</th>
+                                <th>RUC</th>
+                                <th>DIRECCIÓN</th>
+                                <th>LOCALIDAD / DEPARTAMENTO</th>
+                                <th>RETIENE IVA</th>
+                                <th>FACT. ELECTRÓNICA</th>
+                                <th style="text-align: center;">ACCIONES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 2rem;">
+                                    <i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite; font-size: 2rem; color: var(--primary-color);"></i>
+                                    <p style="color: var(--text-muted); margin-top: 10px;">Cargando empresas...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Form -->
+    <div id="formModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(4px); transition: opacity 0.3s ease; opacity: 0;">
+        <div id="modalContentBox" style="background: white; width: 750px; max-width: 95%; max-height: 90vh; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; transform: translateY(20px); transition: transform 0.3s ease;">
+            
+            <div style="padding: 1.25rem 1.75rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border-radius: 16px 16px 0 0;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="ph ph-building-office" style="font-size: 1.4rem; color: var(--primary-color);"></i>
+                    <h3 id="modalTitle" style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #1e293b;">Nueva Empresa</h3>
+                </div>
+                <i class="ph ph-x" onclick="closeModal()" style="font-size: 1.4rem; color: #94a3b8; cursor: pointer;"></i>
+            </div>
+            
+            <div style="padding: 1.75rem; overflow-y: auto;">
+                <form id="dataForm" onsubmit="saveData(event)" autocomplete="off">
+                    <input type="hidden" id="actionType" value="create">
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 16px; margin-bottom: 1.25rem;">
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">Código *</label>
+                            <input type="text" id="codEmpresa" class="form-control" required placeholder="Ej. 1" style="width: 100%; border-radius: 8px;" oninput="this.value = this.value.toUpperCase()">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">Razón Social / Nombre *</label>
+                            <input type="text" id="descripcion" class="form-control" required placeholder="Ej. YGUAZU S.A." style="width: 100%; border-radius: 8px;">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 16px; margin-bottom: 1.25rem;">
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">RUC Empresa</label>
+                            <input type="text" id="rucEmpresa" class="form-control" placeholder="Ej. 80012345-6" style="width: 100%; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">Dirección</label>
+                            <input type="text" id="direccion" class="form-control" placeholder="Dirección principal" style="width: 100%; border-radius: 8px;">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 1.25rem;">
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">Localidad</label>
+                            <input type="text" id="localidad" class="form-control" placeholder="Ciudad" style="width: 100%; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">Departamento</label>
+                            <input type="text" id="departamento" class="form-control" placeholder="Dpto / Región" style="width: 100%; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">Ramo / Rubro</label>
+                            <input type="text" id="ramo" class="form-control" placeholder="Ej. Construcción" style="width: 100%; border-radius: 8px;">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 1.25rem;">
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">Actividad Económica</label>
+                            <input type="text" id="actividad" class="form-control" placeholder="Descripción de actividad" style="width: 100%; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">N° Patronal MJT / IPS</label>
+                            <input type="text" id="nroPatronal" class="form-control" placeholder="N° registro patronal" style="width: 100%; border-radius: 8px;">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 1.75rem;">
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">Retiene IVA</label>
+                            <select id="retieneIva" class="form-control" style="width: 100%; border-radius: 8px;">
+                                <option value="S">Sí (S)</option>
+                                <option value="N" selected>No (N)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">Fact. Electrónica</label>
+                            <select id="indFacturacionElectronica" class="form-control" style="width: 100%; border-radius: 8px;">
+                                <option value="S">Sí (S)</option>
+                                <option value="N" selected>No (N)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">Moneda Origen</label>
+                            <input type="text" id="codMonedaOrigen" class="form-control" value="1" placeholder="1" style="width: 100%; border-radius: 8px;">
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #f1f5f9; padding-top: 1.25rem;">
+                        <button type="button" class="btn btn-outline" onclick="closeModal()" style="border-radius: 8px; padding: 0.6rem 1.2rem; background: white;">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btnSubmit" style="border-radius: 8px; padding: 0.6rem 1.5rem; box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.3);">
+                            <i class="ph ph-floppy-disk"></i> Guardar Empresa
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Layout Scripts -->
+    <div th:replace="~{fragments/layout :: scripts}"></div>
+
+    <script>
+        let allData = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+        });
+
+        async function loadData() {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 2rem;">
+                        <i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite; font-size: 2rem; color: var(--primary-color);"></i>
+                        <p style="color: var(--text-muted); margin-top: 10px;">Cargando empresas...</p>
+                    </td>
+                </tr>
+            `;
+
+            try {
+                const search = document.getElementById('searchInput').value.trim();
+                const response = await fetch(`/api/empresas/list?search=${encodeURIComponent(search)}`);
+                allData = await response.json();
+                renderTable(allData);
+            } catch (error) {
+                console.error('Error al cargar empresas:', error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 2rem; color: #ef4444;">
+                            <i class="ph ph-warning-circle" style="font-size: 2rem;"></i>
+                            <p style="margin-top: 10px;">Error al cargar empresas.</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function renderTable(data) {
+            const tableBody = document.getElementById('tableBody');
+            if (!data || data.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+                            <i class="ph ph-folder-open" style="font-size: 2.5rem; color: #cbd5e1;"></i>
+                            <p style="margin-top: 8px; font-weight: 500;">No se encontraron empresas registradas.</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let html = '';
+            data.forEach(item => {
+                const locDept = [item.localidad, item.departamento].filter(Boolean).join(' / ') || '-';
+                const retIvaBadge = item.retieneIva === 'S' 
+                    ? '<span style="background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700;">SÍ</span>' 
+                    : '<span style="background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700;">NO</span>';
+                
+                const feBadge = item.indFacturacionElectronica === 'S' 
+                    ? '<span style="background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700;">SÍ</span>' 
+                    : '<span style="background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700;">NO</span>';
+
+                html += `
+                    <tr>
+                        <td style="font-weight: 800; color: #15803d;">${item.codEmpresa || ''}</td>
+                        <td style="font-weight: 700; color: #0f172a;">${item.descripcion || ''}</td>
+                        <td>${item.rucEmpresa || '-'}</td>
+                        <td>${item.direccion || '-'}</td>
+                        <td>${locDept}</td>
+                        <td>${retIvaBadge}</td>
+                        <td>${feBadge}</td>
+                        <td style="text-align: center;">
+                            <div style="display: flex; gap: 8px; justify-content: center;">
+                                <button class="btn btn-outline" onclick="editItem('${item.codEmpresa}')" style="padding: 4px 10px; font-size: 0.8rem; border-radius: 6px;" title="Editar">
+                                    <i class="ph ph-pencil-simple" style="color: #15803d;"></i>
+                                </button>
+                                <button class="btn btn-outline" onclick="deleteItem('${item.codEmpresa}')" style="padding: 4px 10px; font-size: 0.8rem; border-radius: 6px; border-color: #fecaca; background: #fef2f2;" title="Eliminar">
+                                    <i class="ph ph-trash" style="color: #ef4444;"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            tableBody.innerHTML = html;
+        }
+
+        function handleSearchKey(e) {
+            const val = document.getElementById('searchInput').value;
+            document.getElementById('clearSearchBtn').style.display = val.length > 0 ? 'block' : 'none';
+            if (e.key === 'Enter') {
+                loadData();
+            }
+        }
+
+        function openModal(isEdit = false) {
+            const modal = document.getElementById('formModal');
+            const modalContent = document.getElementById('modalContentBox');
+            
+            if (!isEdit) {
+                document.getElementById('actionType').value = 'create';
+                document.getElementById('modalTitle').innerText = 'Nueva Empresa';
+                document.getElementById('dataForm').reset();
+                document.getElementById('codEmpresa').readOnly = false;
+                document.getElementById('codEmpresa').style.background = '#ffffff';
+                document.getElementById('codMonedaOrigen').value = '1';
+                document.getElementById('retieneIva').value = 'N';
+                document.getElementById('indFacturacionElectronica').value = 'N';
+            }
+            
+            modal.style.display = 'flex';
+            setTimeout(() => {
+                modal.style.opacity = '1';
+                modalContent.style.transform = 'translateY(0)';
+                if (!isEdit) document.getElementById('codEmpresa').focus();
+            }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('formModal');
+            const modalContent = document.getElementById('modalContentBox');
+            
+            modal.style.opacity = '0';
+            modalContent.style.transform = 'translateY(20px)';
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        }
+
+        function editItem(codEmpresa) {
+            const item = allData.find(d => d.codEmpresa === codEmpresa);
+            if (!item) return;
+
+            document.getElementById('actionType').value = 'update';
+            document.getElementById('modalTitle').innerText = 'Editar Empresa: ' + codEmpresa;
+            
+            document.getElementById('codEmpresa').value = item.codEmpresa || '';
+            document.getElementById('codEmpresa').readOnly = true;
+            document.getElementById('codEmpresa').style.background = '#f1f5f9';
+            
+            document.getElementById('descripcion').value = item.descripcion || '';
+            document.getElementById('rucEmpresa').value = item.rucEmpresa || '';
+            document.getElementById('direccion').value = item.direccion || '';
+            document.getElementById('localidad').value = item.localidad || '';
+            document.getElementById('departamento').value = item.departamento || '';
+            document.getElementById('ramo').value = item.ramo || '';
+            document.getElementById('actividad').value = item.actividad || '';
+            document.getElementById('nroPatronal').value = item.nroPatronal || '';
+            document.getElementById('retieneIva').value = item.retieneIva || 'N';
+            document.getElementById('indFacturacionElectronica').value = item.indFacturacionElectronica || 'N';
+            document.getElementById('codMonedaOrigen').value = item.codMonedaOrigen || '1';
+
+            openModal(true);
+        }
+
+        async function saveData(e) {
+            e.preventDefault();
+            
+            const btn = document.getElementById('btnSubmit');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite;"></i> Guardando...';
+
+            const params = new URLSearchParams({
+                codEmpresa: document.getElementById('codEmpresa').value.trim(),
+                descripcion: document.getElementById('descripcion').value.trim(),
+                rucEmpresa: document.getElementById('rucEmpresa').value.trim(),
+                direccion: document.getElementById('direccion').value.trim(),
+                localidad: document.getElementById('localidad').value.trim(),
+                departamento: document.getElementById('departamento').value.trim(),
+                ramo: document.getElementById('ramo').value.trim(),
+                actividad: document.getElementById('actividad').value.trim(),
+                nroPatronal: document.getElementById('nroPatronal').value.trim(),
+                retieneIva: document.getElementById('retieneIva').value,
+                indFacturacionElectronica: document.getElementById('indFacturacionElectronica').value,
+                codMonedaOrigen: document.getElementById('codMonedaOrigen').value.trim()
+            });
+
+            try {
+                const response = await fetch('/api/empresas/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params
+                });
+
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    showToast(result.message || 'Empresa guardada correctamente', 'success');
+                    closeModal();
+                    loadData();
+                } else {
+                    showAlert(result.message || 'Error al guardar empresa', 'error');
+                }
+            } catch (error) {
+                showAlert('Ocurrió un error inesperado al conectar con el servidor', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ph ph-floppy-disk"></i> Guardar Empresa';
+            }
+        }
+
+        async function deleteItem(codEmpresa) {
+            const confirmRes = await showConfirm(`¿Está seguro de eliminar la empresa "${codEmpresa}"?`);
+            if (!confirmRes.isConfirmed) return;
+
+            try {
+                const response = await fetch('/api/empresas/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ codEmpresa: codEmpresa })
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showToast(result.message || 'Empresa eliminada', 'success');
+                    loadData();
+                } else {
+                    showAlert(result.message || 'Error al eliminar la empresa', 'error');
+                }
+            } catch (error) {
+                showAlert('Error al conectar con el servidor', 'error');
+            }
+        }
+    </script>
+    <style>
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</body>
+</html>

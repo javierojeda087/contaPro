@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Impresión Libro Ventas</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 8mm;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 10px;
+            color: #000;
+            background: #fff;
+            margin: 0;
+            padding: 10px;
+        }
+
+        /* Action bar for screen view */
+        .no-print-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #1e293b;
+            color: white;
+            padding: 10px 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn-print {
+            background: #16a34a;
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .btn-print:hover { background: #15803d; }
+
+        .btn-close {
+            background: #64748b;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        @media print {
+            .no-print-bar {
+                display: none !important;
+            }
+            body {
+                padding: 0;
+            }
+        }
+
+        /* Report Header Styling matching reference image */
+        .report-header-title {
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        .report-header-title h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .report-header-title h2 {
+            margin: 3px 0 0 0;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        /* Top 4 Header Boxes Table */
+        .top-boxes-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        .top-boxes-table td {
+            vertical-align: top;
+            padding: 0 3px;
+        }
+        .box-title {
+            font-size: 9px;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+        .box-subtable {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #000;
+        }
+        .box-subtable th {
+            border: 1px solid #000;
+            background: #fff;
+            font-size: 8.5px;
+            font-weight: bold;
+            text-align: center;
+            padding: 3px 4px;
+            text-transform: uppercase;
+        }
+        .box-subtable td {
+            border: 1px solid #000;
+            font-size: 9.5px;
+            font-weight: normal;
+            text-align: center;
+            padding: 4px;
+            text-transform: uppercase;
+        }
+
+        /* Main Data Table */
+        .report-data-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #000;
+        }
+        .report-data-table th {
+            border: 1px solid #000;
+            background: #fff;
+            font-size: 9px;
+            font-weight: bold;
+            text-align: center;
+            padding: 4px 3px;
+            text-transform: uppercase;
+        }
+        .report-data-table td {
+            border: 1px solid #000;
+            font-size: 9px;
+            padding: 3px 4px;
+            white-space: nowrap;
+        }
+        .report-data-table tfoot td {
+            font-weight: bold;
+            font-size: 9.5px;
+            border-top: 2px solid #000;
+            border-bottom: 2px solid #000;
+        }
+
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-left { text-align: left; }
+    </style>
+</head>
+<body>
+
+    <!-- Action Bar for Screen Browser View -->
+    <div class="no-print-bar">
+        <div>
+            <strong style="font-size: 15px;">Vista Previa de Impresión - Libro Ventas</strong>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn-print" onclick="window.print()">🖨️ Imprimir</button>
+            <button type="button" class="btn-close" onclick="window.close()">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- Title Header -->
+    <div class="report-header-title">
+        <h1>LIBRO VENTAS</h1>
+        <h2 th:text="'ACTIVIDAD: ' + ${empresa.actividad}">ACTIVIDAD: IRE-GENERAL/IRACIS</h2>
+    </div>
+
+    <!-- 4 Information Header Boxes matching image format -->
+    <table class="top-boxes-table">
+        <tr>
+            <!-- 1. Identificador del Contribuyente -->
+            <td style="width: 32%;">
+                <div class="box-title">1. Identificador del Contribuyente</div>
+                <table class="box-subtable">
+                    <thead>
+                        <tr>
+                            <th style="width: 70%;">RAZÓN SOCIAL/NOMBRES Y APELLIDOS</th>
+                            <th style="width: 30%;">RUC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-left" th:text="${empresa.descripcion}">CONTRIBUYENTE DEMOSTRATIVO</td>
+                            <td th:text="${empresa.rucEmpresa}">5555-7</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </td>
+
+            <!-- 2. Periodo Fiscal -->
+            <td style="width: 18%;">
+                <div class="box-title">2. Periodo Fiscal</div>
+                <table class="box-subtable">
+                    <thead>
+                        <tr>
+                            <th style="width: 50%;">DESDE</th>
+                            <th style="width: 50%;">HASTA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td th:text="${fechaDesdeFmt}">05/10/2026</td>
+                            <td th:text="${fechaHastaFmt}">05/10/2026</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </td>
+
+            <!-- 3. Representante Legal -->
+            <td style="width: 20%;">
+                <div class="box-title">3. Representante Legal</div>
+                <table class="box-subtable">
+                    <thead>
+                        <tr>
+                            <th>NOMBRES Y APELLIDOS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td th:text="${empresa.repLegal}">FLARO S.A.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </td>
+
+            <!-- 4. Identificador del Contador -->
+            <td style="width: 30%;">
+                <div class="box-title">4. Identificador del Contador</div>
+                <table class="box-subtable">
+                    <thead>
+                        <tr>
+                            <th style="width: 65%;">NOMBRES Y APELLIDOS</th>
+                            <th style="width: 35%;">RUC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-left" th:text="${empresa.nomContador}">FLARO S.A.</td>
+                            <td th:text="${empresa.rucContador}">80078755-2</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Main Data Table matching screenshot headers and alignments -->
+    <table class="report-data-table">
+        <thead>
+            <tr>
+                <th rowspan="2" style="width: 5%;">DIA-MES</th>
+                <th rowspan="2" style="width: 11%;">DOCUMENTO</th>
+                <th rowspan="2" style="width: 8%;">TIMB.</th>
+                <th colspan="3" style="width: 36%;">CLIENTE</th>
+                <th rowspan="2" style="width: 4%;">COND</th>
+                <th colspan="6" style="width: 36%;">VALORES DE VENTAS</th>
+            </tr>
+            <tr>
+                <!-- Sub-headers for CLIENTE -->
+                <th style="width: 25%;">RAZÓN SOCIAL</th>
+                <th style="width: 8%;">RUC</th>
+                <th style="width: 3%;">DV</th>
+                <!-- Sub-headers for VALORES DE VENTAS -->
+                <th style="width: 7%;">GRAV. 10%</th>
+                <th style="width: 5%;">GRAV. 5%</th>
+                <th style="width: 6%;">IVA 10%</th>
+                <th style="width: 5%;">IVA 5%</th>
+                <th style="width: 5%;">EXENTAS</th>
+                <th style="width: 8%;">TOTAL</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="r : ${records}" th:style="${r.anulada} ? 'text-decoration: line-through; background-color: #fee2e2;' : ''">
+                <td class="text-center" th:text="${r.diaMes}">05-10</td>
+                <td class="text-left" th:text="${r.documento}">001-001-0000001</td>
+                <td class="text-center" th:text="${r.timbrado}">12345671</td>
+                <td class="text-left" th:text="${r.razonSocial}">OJEDA SANDOVAL, CARLOS JAVIER</td>
+                <td class="text-center" th:text="${r.rucNum}">5567097</td>
+                <td class="text-center" th:text="${r.rucDv}">0</td>
+                <td class="text-center" th:text="${r.condicion}">CON</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(r.grav10, 1, 'POINT')}">6.000.000</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(r.grav5, 1, 'POINT')}">0</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(r.iva10, 1, 'POINT')}">600.000</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(r.iva5, 1, 'POINT')}">0</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(r.exentas, 1, 'POINT')}">0</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(r.total, 1, 'POINT')}">6.600.000</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(records)}">
+                <td colspan="13" class="text-center" style="padding: 15px; font-weight: bold; color: #64748b;">
+                    No existen registros para el período fiscal indicado.
+                </td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="7" class="text-left">TOTAL GENERAL</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(totales.grav10, 1, 'POINT')}">6.000.000</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(totales.grav5, 1, 'POINT')}">0</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(totales.iva10, 1, 'POINT')}">600.000</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(totales.iva5, 1, 'POINT')}">0</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(totales.exentas, 1, 'POINT')}">0</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(totales.total, 1, 'POINT')}">6.600.000</td>
+            </tr>
+        </tfoot>
+    </table>
+
+</body>
+</html>

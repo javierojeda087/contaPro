@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sistema - Copia de Seguridad')}">
+</head>
+<body>
+
+    <!-- Sidebar Menu -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+        <!-- Top Navbar -->
+        <div th:replace="~{fragments/layout :: navbar('Copia de Seguridad')}"></div>
+
+        <!-- Dynamic Content -->
+        <div class="content-area">
+            
+            <!-- Banner / Header Principal -->
+            <div style="background: white; border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border: 1px solid rgba(203, 213, 225, 0.6); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="background: linear-gradient(135deg, #16a34a, #15803d); color: white; width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.75rem; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);">
+                        <i class="ph ph-database"></i>
+                    </div>
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.35rem; color: #0f172a; font-weight: 700;">Respaldo de Base de Datos</h2>
+                        <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9rem;">Genere copias de seguridad completas (DDL, Datos, Vistas y Funciones PL/SQL) o descargue respaldos anteriores.</p>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="generarBackup()" id="btnGenerarMain" style="padding: 0.75rem 1.6rem; font-size: 1rem; border-radius: 10px; font-weight: 700; box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-hard-drives" style="font-size: 1.3rem;"></i>
+                    <span>Generar Backup Ahora</span>
+                </button>
+            </div>
+
+            <!-- Stats & Info Grid -->
+            <div id="latestBackupCard" style="display: none; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 1.25rem 1.75rem; margin-bottom: 1.5rem; animation: fadeIn 0.3s ease-out;">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i class="ph ph-check-circle" style="font-size: 2rem; color: #15803d;"></i>
+                        <div>
+                            <h4 style="margin: 0; font-size: 1.05rem; color: #166534; font-weight: 700;">¡Último Respaldo Generado Con Éxito!</h4>
+                            <span id="latestBackupInfo" style="font-size: 0.88rem; color: #0c4a6e;">-</span>
+                        </div>
+                    </div>
+                    <a id="btnDownloadLatest" href="#" class="btn" style="background: #15803d; color: white; border-radius: 8px; font-weight: 600; text-decoration: none; padding: 0.55rem 1.25rem; display: flex; align-items: center; gap: 6px;">
+                        <i class="ph ph-download-simple"></i> Descargar Archivo .SQL
+                    </a>
+                </div>
+            </div>
+
+            <!-- Table Card: Historial de Backups -->
+            <div class="card" style="background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border: 1px solid rgba(203, 213, 225, 0.6);">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
+                    <h3 style="margin: 0; font-size: 1.1rem; color: #0f172a; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                        <i class="ph ph-clock-counter-clockwise" style="color: #16a34a;"></i> Archivos de Copias de Seguridad
+                    </h3>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button class="btn" onclick="cargarHistorial()" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; padding: 0.45rem 0.9rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                            <i class="ph ph-arrows-clockwise"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-container" style="overflow-x: auto;">
+                    <table class="data-grid" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f8fafc; text-align: left;">
+                                <th style="padding: 12px 16px; font-size: 0.78rem; font-weight: 700; color: #475569; text-transform: uppercase;">Archivo SQL</th>
+                                <th style="padding: 12px 16px; font-size: 0.78rem; font-weight: 700; color: #475569; text-transform: uppercase;">Fecha y Hora</th>
+                                <th style="padding: 12px 16px; font-size: 0.78rem; font-weight: 700; color: #475569; text-transform: uppercase;">Tamaño</th>
+                                <th style="padding: 12px 16px; font-size: 0.78rem; font-weight: 700; color: #475569; text-transform: uppercase; text-align: center;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <tr>
+                                <td colspan="4" style="text-align: center; padding: 2rem;">
+                                    <i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite; font-size: 2rem; color: var(--primary-color);"></i>
+                                    <p style="color: var(--text-muted); margin-top: 10px;">Cargando historial de respaldos...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Box informativo de restauración / ayuda -->
+            <div style="margin-top: 1.5rem; background: rgba(255,255,255,0.8); border: 1px dashed #cbd5e1; border-radius: 12px; padding: 1.25rem 1.5rem; color: #475569; font-size: 0.88rem;">
+                <h5 style="margin: 0 0 6px 0; color: #1e293b; font-size: 0.95rem; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                    <i class="ph ph-info" style="color: #16a34a;"></i> Información de Seguridad y Restauración
+                </h5>
+                <ul style="margin: 0; padding-left: 1.25rem; line-height: 1.6;">
+                    <li>Los archivos `.sql` contienen las sentencias DDL (tablas, secuencias, funciones, vistas) y todas las consultas <code>INSERT</code> con <code>COMMIT</code> de la base de datos Oracle.</li>
+                    <li>Las copias de seguridad se almacenan automáticamente en la carpeta <code>/backups</code> del servidor.</li>
+                    <li>Para restaurar un backup en la base de datos, puede ejecutar el archivo SQL directamente desde <strong>Oracle SQL Developer</strong>, <strong>SQL*Plus</strong> o la herramienta <strong>Command Prompt</strong> del sistema.</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <!-- Overlay de Carga -->
+    <div id="loadingOverlay" style="position: fixed; inset: 0; background: rgba(15,23,42,0.7); backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; z-index: 9999; flex-direction: column; gap: 16px; color: white;">
+        <i class="ph ph-spinner-gap" style="font-size: 3.5rem; animation: spin 1s linear infinite; color: #38bdf8;"></i>
+        <div style="text-align: center;">
+            <h3 style="margin: 0 0 6px 0; font-size: 1.3rem; font-weight: 700;">Generando Copia de Seguridad...</h3>
+            <p style="margin: 0; color: #94a3b8; font-size: 0.95rem;">Extrayendo esquema DDL, funciones y registros de tablas... Por favor espere.</p>
+        </div>
+    </div>
+
+    <style>
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            cargarHistorial();
+        });
+
+        async function cargarHistorial() {
+            const tbody = document.getElementById('tableBody');
+            try {
+                const res = await fetch('/api/backup/list');
+                const list = await res.json();
+
+                if (!list || list.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="4" style="text-align: center; padding: 2.5rem; color: #94a3b8;">
+                                <i class="ph ph-folder-open" style="font-size: 2.5rem; margin-bottom: 8px;"></i>
+                                <p style="margin: 0; font-size: 0.95rem;">No hay respaldos generados actualmente.</p>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                list.forEach(item => {
+                    html += `
+                        <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                            <td style="padding: 12px 16px; font-weight: 600; color: #0f172a; font-family: monospace; font-size: 0.92rem;">
+                                <i class="ph ph-file-sql" style="color: #16a34a; font-size: 1.2rem; vertical-align: middle; margin-right: 6px;"></i>
+                                ${item.fileName}
+                            </td>
+                            <td style="padding: 12px 16px; color: #475569; font-size: 0.88rem;">
+                                ${item.lastModifiedFormatted}
+                            </td>
+                            <td style="padding: 12px 16px; color: #475569; font-size: 0.88rem; font-weight: 600;">
+                                ${item.fileSizeFormatted}
+                            </td>
+                            <td style="padding: 12px 16px; text-align: center;">
+                                <div style="display: flex; justify-content: center; gap: 8px;">
+                                    <a href="/api/backup/download/${item.fileName}" class="btn" style="background: #dcfce7; color: #15803d; padding: 5px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px;" title="Descargar archivo .sql">
+                                        <i class="ph ph-download-simple"></i> Descargar
+                                    </a>
+                                    <button onclick="eliminarBackup('${item.fileName}')" class="btn" style="background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; padding: 5px 10px; border-radius: 6px; font-size: 0.82rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;" title="Eliminar respaldo">
+                                        <i class="ph ph-trash"></i> Eliminar
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+
+            } catch (err) {
+                console.error("Error al cargar historial:", err);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 2rem; color: #ef4444;">
+                            <i class="ph ph-warning-circle" style="font-size: 2rem;"></i>
+                            <p style="margin-top: 6px;">Error al conectar con el servidor para obtener los respaldos.</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        async function generarBackup() {
+            const btn = document.getElementById('btnGenerarMain');
+            const overlay = document.getElementById('loadingOverlay');
+
+            btn.disabled = true;
+            overlay.style.display = 'flex';
+
+            try {
+                const res = await fetch('/api/backup/generar', {
+                    method: 'POST'
+                });
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    const info = data.data;
+                    
+                    // Mostrar card del último backup
+                    const card = document.getElementById('latestBackupCard');
+                    const infoTxt = document.getElementById('latestBackupInfo');
+                    const btnDl = document.getElementById('btnDownloadLatest');
+
+                    infoTxt.innerText = `Archivo: ${info.fileName} | Tablas: ${info.tablesCount} | Registros: ${info.recordsCount} | Tamaño: ${info.fileSizeFormatted} (${info.durationSeconds}s)`;
+                    btnDl.href = `/api/backup/download/${info.fileName}`;
+                    card.style.display = 'block';
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Copia de Seguridad Generada!',
+                        html: `
+                            <div style="text-align: left; font-size: 0.9rem; line-height: 1.6; margin-top: 10px;">
+                                <p><strong>Archivo:</strong> <code>${info.fileName}</code></p>
+                                <p><strong>Tablas Exportadas:</strong> ${info.tablesCount}</p>
+                                <p><strong>Registros Exportados:</strong> ${info.recordsCount}</p>
+                                <p><strong>Tamaño del Archivo:</strong> ${info.fileSizeFormatted}</p>
+                                <p><strong>Tiempo de Ejecución:</strong> ${info.durationSeconds} segundos</p>
+                            </div>
+                        `,
+                        confirmButtonText: '<i class="ph ph-download-simple"></i> Descargar SQL Ahora',
+                        showCancelButton: true,
+                        cancelButtonText: 'Cerrar',
+                        confirmButtonColor: '#16a34a'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = `/api/backup/download/${info.fileName}`;
+                        }
+                    });
+
+                    cargarHistorial();
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error al Generar Backup',
+                        text: data.message || 'Ocurrió un problema al exportar la base de datos.'
+                    });
+                }
+            } catch (err) {
+                console.error("Error al generar backup:", err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de Conexión',
+                    text: 'No se pudo completar la generación del respaldo.'
+                });
+            } finally {
+                overlay.style.display = 'none';
+                btn.disabled = false;
+            }
+        }
+
+        function eliminarBackup(fileName) {
+            Swal.fire({
+                title: '¿Eliminar Copia de Seguridad?',
+                text: `¿Está seguro de eliminar permanentemente "${fileName}"?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Sí, Eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        const res = await fetch('/api/backup/eliminar', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: new URLSearchParams({ fileName: fileName })
+                        });
+                        const data = await res.json();
+                        if (data.status === 'success') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Eliminado',
+                                text: 'El archivo de backup ha sido eliminado.',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                            cargarHistorial();
+                        } else {
+                            Swal.fire('Error', data.message, 'error');
+                        }
+                    } catch (err) {
+                        Swal.fire('Error', 'No se pudo eliminar el archivo.', 'error');
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

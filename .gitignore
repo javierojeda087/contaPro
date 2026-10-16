@@ -1,0 +1,4 @@
+.well-known/
+ContaPro_cPanel_Deploy.zip
+*.bak
+*.log

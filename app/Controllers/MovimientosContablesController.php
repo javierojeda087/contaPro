@@ -1,0 +1,1161 @@
+<?php
+namespace App\Controllers;
+
+use Core\Database;
+use Core\TenantContext;
+use Core\View;
+use App\Services\MenuService;
+use App\Services\SifenClientService;
+
+class MovimientosContablesController {
+
+    private static function requireAuth(bool $json = true): bool {
+        if (!TenantContext::check()) {
+            if ($json) {
+                View::json(['status' => 'error', 'message' => 'No autenticado', 'error' => 'No autenticado'], 401);
+            } else {
+                header('Location: /login');
+            }
+            return false;
+        }
+        return true;
+    }
+
+    private static function renderFormPage(string $template, array $extra = []): void {
+        if (!self::requireAuth(false)) return;
+        $menu = MenuService::obtenerMenuPorUsuario(TenantContext::usuario(), TenantContext::grupo());
+        View::renderTemplate($template, array_merge([
+            'usuario'    => TenantContext::usuario(),
+            'empresa'    => TenantContext::empresa(),
+            'sucursal'   => TenantContext::sucursal(),
+            'nomEmpresa' => TenantContext::nomEmpresa(),
+            'ejercicio'  => TenantContext::ejercicio(),
+            'modulos'    => $menu,
+        ], $extra));
+    }
+
+    private static function getInput(): array {
+        $raw = file_get_contents('php://input');
+        $json = $raw ? json_decode($raw, true) : null;
+        if (is_array($json)) {
+            return array_merge($_GET, $_POST, $json);
+        }
+        return array_merge($_GET, $_POST);
+    }
+
+    private static function parseSqlDate(?string $fec): ?string {
+        if (!$fec || trim($fec) === '') return null;
+        $f = trim($fec);
+        if (str_contains($f, 'T')) $f = explode('T', $f)[0];
+        if (str_contains($f, ' ')) $f = explode(' ', $f)[0];
+        if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $f, $m)) {
+            return "{$m[3]}-{$m[2]}-{$m[1]}";
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $f)) {
+            return $f;
+        }
+        return null;
+    }
+
+    public static function formatNroFactura(?string $nroFactura): string {
+        if (!$nroFactura || trim($nroFactura) === '') return '';
+        $s = trim($nroFactura);
+        if (str_contains($s, '-')) {
+            $parts = explode('-', $s);
+            if (count($parts) === 3) {
+                return str_pad(trim($parts[0]), 3, '0', STR_PAD_LEFT) . '-'
+                     . str_pad(trim($parts[1]), 3, '0', STR_PAD_LEFT) . '-'
+                     . str_pad(trim($parts[2]), 7, '0', STR_PAD_LEFT);
+            }
+        } elseif (ctype_digit($s)) {
+            if (strlen($s) === 13) {
+                return substr($s, 0, 3) . '-' . substr($s, 3, 3) . '-' . str_pad(substr($s, 6), 7, '0', STR_PAD_LEFT);
+            } elseif (strlen($s) <= 7) {
+                return '001-001-' . str_pad($s, 7, '0', STR_PAD_LEFT);
+            }
+        }
+        return $s;
+    }
+
+    private static function calcularDvModulo11(string $numero): int {
+        $baseMax = 11;
+        $k = 2;
+        $total = 0;
+        for ($i = strlen($numero) - 1; $i >= 0; $i--) {
+            $total += ((int)$numero[$i]) * $k;
+            $k++;
+            if ($k > $baseMax) $k = 2;
+        }
+        $resto = $total % 11;
+        $digit = 11 - $resto;
+        return ($digit >= 10) ? 0 : $digit;
+    }
+
+    // =========================================================================
+    // VISTAS HTML (Egresos, Ingresos, Asientos)
+    // =========================================================================
+    public static function pageEgresos(): void {
+        if (!self::requireAuth(false)) return;
+        $idProp = TenantContext::idPropietario();
+        $emp = TenantContext::empresa();
+        $contribuyenteNombre = TenantContext::nomEmpresa();
+        if ($contribuyenteNombre === '') {
+            $contribuyenteNombre = (string)(Database::queryForValue(
+                "SELECT descripcion FROM empresas WHERE id_propietario = ? AND cod_empresa = ? LIMIT 1",
+                [$idProp, $emp]
+            ) ?? '');
+        }
+        self::renderFormPage('egresos_registro', [
+            'contribuyenteNombre' => $contribuyenteNombre,
+        ]);
+    }
+
+    public static function pageIngresos(): void {
+        self::renderFormPage('ingresos_registro');
+    }
+
+    public static function pageAsientos(): void {
+        self::renderFormPage('asientos', [
+            'nomForma'    => 'COASIENT',
+            'tituloForma' => 'Registro de Asientos Contables',
+            'currentYear' => (int)date('Y'),
+        ]);
+    }
+
+    // =========================================================================
+    // API SIFEN CDC (/api/sifen/consultar-cdc, /api/egresos/verificar-cdc, /api/ingresos/verificar-cdc)
+    // =========================================================================
+    public static function apiSifenConsultarCdc(): void {
+        if (!self::requireAuth()) return;
+        $in = self::getInput();
+        $cdc = trim((string)($in['cdc'] ?? $_GET['cdc'] ?? ''));
+        View::json(SifenClientService::consultarCdc($cdc));
+    }
+
+    public static function apiVerificarCdc(): void {
+        if (!self::requireAuth()) return;
+        $cdc = preg_replace('/\s+/', '', (string)($_GET['cdc'] ?? ''));
+        if (strlen($cdc) !== 44) {
+            View::json(['valid' => false, 'message' => 'El CDC debe contener exactamente 44 dígitos.']);
+            return;
+        }
+        if (!ctype_digit($cdc)) {
+            View::json(['valid' => false, 'message' => 'El CDC solo debe contener números.']);
+            return;
+        }
+        $dvIngresado = (int)$cdc[43];
+        $baseCdc = substr($cdc, 0, 43);
+        $dvCalculado = self::calcularDvModulo11($baseCdc);
+
+        if ($dvIngresado === $dvCalculado) {
+            View::json([
+                'valid'       => true,
+                'message'     => 'CDC Válido. Estructura y Dígito Verificador (Mód. 11 SIFEN) verificados correctamente.',
+                'dvCalculado' => $dvCalculado,
+            ]);
+        } else {
+            View::json([
+                'valid'   => false,
+                'message' => "CDC Inválido. El dígito verificador ingresado ({$dvIngresado}) no coincide con el esperado ({$dvCalculado}).",
+            ]);
+        }
+    }
+
+    // =========================================================================
+    // API EGRESOS (/api/egresos/*)
+    // =========================================================================
+    private static function resolveTipoEgresoId(?string $val, int $idProp): string {
+        if (!$val || trim($val) === '' || strcasecmp(trim($val), 'null') === 0) return '1';
+        $v = trim($val);
+        if (ctype_digit($v)) return $v;
+        $up = strtoupper($v);
+        if (str_contains($up, 'GASTOS GENERALES')) return '1';
+        if (str_contains($up, 'MERCADER')) return '2';
+        if (str_contains($up, 'COMBUSTIBLE')) return '3';
+        if (str_contains($up, 'SERVICIO') || str_contains($up, 'LUZ') || str_contains($up, 'AGUA')) return '4';
+        if (str_contains($up, 'ALQUILER')) return '5';
+        if (str_contains($up, 'HONORARIO')) return '6';
+
+        $id = Database::queryForValue(
+            "SELECT cod_tipo FROM co_tipos_egreso WHERE id_propietario IN (?, 1) AND UPPER(TRIM(descripcion)) = ? LIMIT 1",
+            [$idProp, $up]
+        );
+        return $id !== null ? (string)$id : '1';
+    }
+
+    private static function resolveClasificacionGastoId(?string $val, int $idProp): string {
+        if (!$val || trim($val) === '' || strcasecmp(trim($val), 'null') === 0) return '1';
+        $v = trim($val);
+        if (ctype_digit($v)) return $v;
+        $up = strtoupper($v);
+        if (str_contains($up, 'RELACIONADA')) return '2';
+        if (str_contains($up, 'INVERSIONES PERSONAL') || str_contains($up, 'INVERSIONES DE FAMILIAR') || str_contains($up, 'INVERSIONES Y DE FAMILIAR')) return '3';
+        if (str_contains($up, 'GASTOS PERSONAL') || str_contains($up, 'GASTOS FAMILIAR')) return '4';
+        if ($up === 'GASTO') return '1';
+
+        $id = Database::queryForValue(
+            "SELECT cod_clasificacion FROM co_clasificacion_gasto WHERE id_propietario IN (?, 1) AND UPPER(TRIM(descripcion)) = ? LIMIT 1",
+            [$idProp, $up]
+        );
+        return $id !== null ? (string)$id : '1';
+    }
+
+    private static function resolveRegimenId(?string $val, int $idProp): int {
+        if (!$val || trim($val) === '' || strcasecmp(trim($val), 'null') === 0) return 1;
+        $v = trim($val);
+        if (ctype_digit($v)) return (int)$v;
+        $up = strtoupper($v);
+        if (str_contains($up, 'IRP') && str_contains($up, 'IVA')) return 1;
+        if (str_contains($up, 'IRP')) return 2;
+        if (str_contains($up, 'IVA')) return 3;
+        if (str_contains($up, 'CAPITAL')) return 4;
+
+        $id = Database::queryForValue(
+            "SELECT cod_regimen FROM co_regimen WHERE id_propietario IN (?, 1) AND UPPER(TRIM(descripcion)) = ? LIMIT 1",
+            [$idProp, $up]
+        );
+        return $id !== null ? (int)$id : 1;
+    }
+
+    public static function apiEgresosList(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $anio = trim((string)($_GET['anio'] ?? ''));
+        $mes  = trim((string)($_GET['mes'] ?? ''));
+
+        try {
+            $sql = "SELECT id_egreso, cdc, tip_doc, tip_timb, tip_egreso, clasificacion_gasto,
+                           COALESCE(cod_regimen, 1) AS cod_regimen, regimen, nro_timbrado,
+                           DATE_FORMAT(venc_timbrado, '%Y-%m-%d') AS venc_timbrado,
+                           DATE_FORMAT(venc_timbrado, '%d/%m/%Y') AS venc_timbrado_fmt,
+                           nro_factura, cod_proveedor,
+                           DATE_FORMAT(fec_egreso, '%d/%m/%Y') AS fec_egreso_fmt,
+                           DATE_FORMAT(fec_egreso, '%Y-%m-%d') AS fec_egreso,
+                           condicion, cod_moneda, nom_proveedor, ruc_proveedor,
+                           COALESCE(exentas, 0) AS exentas, COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
+                           COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10, COALESCE(tot_iva, 0) AS tot_iva,
+                           COALESCE(valor_total, 0) AS valor_total, estado
+                    FROM co_egresos
+                    WHERE id_propietario = ? AND cod_empresa = ? ";
+            $params = [$idProp, $empresa];
+
+            if ($anio !== '' && strcasecmp($anio, 'TODOS') !== 0) {
+                $sql .= "AND YEAR(fec_egreso) = ? ";
+                $params[] = (int)$anio;
+            }
+            if ($mes !== '' && strcasecmp($mes, 'TODOS') !== 0) {
+                $sql .= "AND MONTH(fec_egreso) = ? ";
+                $params[] = (int)$mes;
+            }
+            $sql .= "ORDER BY id_egreso DESC";
+
+            $list = Database::queryForListUpper($sql, $params);
+            View::json(['status' => 'success', 'data' => $list]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al listar egresos: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiEgresosGet(string $id): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+
+        try {
+            $sql = "SELECT id_egreso, cdc, tip_doc, COALESCE(cod_regimen, 1) AS cod_regimen, regimen,
+                           clasificacion_gasto, tip_timb, nro_timbrado,
+                           DATE_FORMAT(venc_timbrado, '%Y-%m-%d') AS venc_timbrado, nro_factura, serie,
+                           DATE_FORMAT(fec_egreso, '%Y-%m-%d') AS fec_egreso, comprador, cod_proveedor,
+                           nom_proveedor, ruc_proveedor, tip_egreso, form_120, condicion, form_145,
+                           cod_moneda, tasa_cambio, grav10, iva10, grav5, iva5, exentas, tot_iva,
+                           valor_total, observacion
+                    FROM co_egresos
+                    WHERE id_propietario = ? AND id_egreso = ? AND cod_empresa = ? LIMIT 1";
+            $list = Database::queryForListUpper($sql, [$idProp, (int)$id, $empresa]);
+            if (!empty($list)) {
+                View::json(['status' => 'success', 'data' => $list[0]]);
+            } else {
+                View::json(['status' => 'error', 'message' => 'Egreso no encontrado.']);
+            }
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al obtener egreso: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiEgresosSave(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $usuario = TenantContext::usuario();
+        $payload = self::getInput();
+
+        try {
+            $cdc       = isset($payload['cdc']) ? trim((string)$payload['cdc']) : null;
+            $tipDoc    = trim((string)($payload['tipDoc'] ?? 'Factura')) ?: 'Factura';
+            $rawReg    = (string)($payload['codRegimen'] ?? $payload['regimen'] ?? '1');
+            $codRegimen = self::resolveRegimenId($rawReg, $idProp);
+            $regimen   = (string)$codRegimen;
+            $clasificacionGasto = self::resolveClasificacionGastoId((string)($payload['clasificacionGasto'] ?? '1'), $idProp);
+            $tipTimb   = trim((string)($payload['tipTimb'] ?? 'Pre-impreso')) ?: 'Pre-impreso';
+            $nroTimbrado = isset($payload['nroTimbrado']) ? trim((string)$payload['nroTimbrado']) : null;
+            $vencTimbrado = self::parseSqlDate((string)($payload['vencTimbrado'] ?? ''));
+            if (stripos($tipTimb, 'electr') !== false && !$vencTimbrado) {
+                $vencTimbrado = '2100-12-31';
+            }
+            $nroFactura = self::formatNroFactura((string)($payload['nroFactura'] ?? ''));
+            $serie      = isset($payload['serie']) ? trim((string)$payload['serie']) : null;
+            $fecEgreso  = self::parseSqlDate((string)($payload['fecEgreso'] ?? ''));
+
+            if ($fecEgreso && $vencTimbrado && $fecEgreso > $vencTimbrado) {
+                $f1 = date('d/m/Y', strtotime($fecEgreso));
+                $f2 = date('d/m/Y', strtotime($vencTimbrado));
+                View::json([
+                    'status'  => 'error',
+                    'message' => "La fecha del comprobante ({$f1}) no puede ser mayor a la fecha de vencimiento del timbrado ({$f2}).",
+                ]);
+                return;
+            }
+
+            $comprador = trim((string)($payload['comprador'] ?? ''));
+            if ($comprador === '') {
+                $comprador = TenantContext::nomEmpresa();
+                if ($comprador === '') {
+                    $comprador = (string)(Database::queryForValue(
+                        "SELECT descripcion FROM empresas WHERE id_propietario = ? AND cod_empresa = ? LIMIT 1",
+                        [$idProp, $empresa]
+                    ) ?? '');
+                }
+            }
+
+            $codProveedor = trim((string)($payload['codProveedor'] ?? ''));
+            $nomProveedor = trim((string)($payload['nomProveedor'] ?? ''));
+            $rucProveedor = trim((string)($payload['rucProveedor'] ?? ''));
+
+            if ($codProveedor === '' || strcasecmp($codProveedor, 'null') === 0) {
+                if ($rucProveedor !== '') {
+                    $rucNoDash = str_replace(['-', ' '], '', $rucProveedor);
+                    $foundProv = Database::queryForValue(
+                        "SELECT cod_proveedor FROM co_proveedores
+                         WHERE id_propietario = ?
+                           AND (UPPER(TRIM(ruc)) = UPPER(?) OR UPPER(REPLACE(ruc, '-', '')) = UPPER(?))
+                         ORDER BY CASE WHEN cod_empresa = ? THEN 1 ELSE 2 END, CAST(cod_proveedor AS UNSIGNED) DESC
+                         LIMIT 1",
+                        [$idProp, $rucProveedor, $rucNoDash, $empresa]
+                    );
+                    if ($foundProv !== null) {
+                        $codProveedor = (string)$foundProv;
+                    }
+                }
+            }
+
+            $tipEgreso = self::resolveTipoEgresoId((string)($payload['tipEgreso'] ?? '1'), $idProp);
+            $form120   = trim((string)($payload['form120'] ?? 'Directo')) ?: 'Directo';
+            $rawCond   = strtoupper(trim((string)($payload['condicion'] ?? 'CON')));
+            $condicion = (str_starts_with($rawCond, 'CR') || $rawCond === 'CRE') ? 'CRE' : 'CON';
+            $form145   = trim((string)($payload['form145'] ?? 'Original')) ?: 'Original';
+
+            $rawMoneda = strtoupper(trim((string)($payload['codMoneda'] ?? '1')));
+            if (str_contains($rawMoneda, 'DOLAR') || str_contains($rawMoneda, 'DÓLAR') || $rawMoneda === '2' || $rawMoneda === 'USD') {
+                $codMoneda = '2';
+            } elseif (str_contains($rawMoneda, 'REAL') || $rawMoneda === '3' || $rawMoneda === 'BRL') {
+                $codMoneda = '3';
+            } elseif (ctype_digit($rawMoneda)) {
+                $codMoneda = $rawMoneda;
+            } else {
+                $codMoneda = '1';
+            }
+
+            $tasaCambio = (float)($payload['tasaCambio'] ?? 1);
+            $grav10     = (float)($payload['grav10'] ?? 0);
+            $iva10      = (float)($payload['iva10'] ?? 0);
+            $grav5      = (float)($payload['grav5'] ?? 0);
+            $iva5       = (float)($payload['iva5'] ?? 0);
+            $exentas    = (float)($payload['exentas'] ?? 0);
+            $totIva     = (float)($payload['totIva'] ?? 0);
+            $valorTotal = (float)($payload['valorTotal'] ?? 0);
+            $observacion = isset($payload['observacion']) ? trim((string)$payload['observacion']) : null;
+
+            $idEgreso = !empty($payload['idEgreso']) ? (int)$payload['idEgreso'] : null;
+
+            // Validar comprobante duplicado
+            if ($nroFactura !== '' && $nroTimbrado && $nroTimbrado !== '') {
+                $rucClean = strtoupper(str_replace(['-', ' '], '', $rucProveedor));
+                $facClean = str_replace(['-', ' '], '', $nroFactura);
+
+                $dupSql = "SELECT COUNT(*) FROM co_egresos
+                           WHERE id_propietario = ? AND cod_empresa = ?
+                             AND UPPER(TRIM(tip_doc)) = UPPER(TRIM(?))
+                             AND TRIM(nro_timbrado) = TRIM(?)
+                             AND (REPLACE(nro_factura, '-', '') = ? OR TRIM(nro_factura) = ?) ";
+                $dupParams = [$idProp, $empresa, $tipDoc, $nroTimbrado, $facClean, $nroFactura];
+
+                if ($rucClean !== '' || $codProveedor !== '') {
+                    $dupSql .= "AND (";
+                    $hasRuc = false;
+                    if ($rucClean !== '') {
+                        $dupSql .= "UPPER(REPLACE(TRIM(ruc_proveedor), '-', '')) = ? ";
+                        $dupParams[] = $rucClean;
+                        $hasRuc = true;
+                    }
+                    if ($codProveedor !== '') {
+                        if ($hasRuc) $dupSql .= "OR ";
+                        $dupSql .= "cod_proveedor = ? ";
+                        $dupParams[] = $codProveedor;
+                    }
+                    $dupSql .= ") ";
+                }
+                if ($idEgreso !== null) {
+                    $dupSql .= "AND id_egreso <> ? ";
+                    $dupParams[] = $idEgreso;
+                }
+                $countDup = (int)Database::queryForValue($dupSql, $dupParams);
+                if ($countDup > 0) {
+                    $provDesc = $nomProveedor !== '' ? $nomProveedor : ($rucProveedor ?: 'este proveedor');
+                    View::json([
+                        'status'  => 'error',
+                        'message' => "El comprobante ya se encuentra registrado: Ya existe una " . strtoupper($tipDoc)
+                                   . " con Factura N° {$nroFactura} y Timbrado {$nroTimbrado} para el proveedor {$provDesc}.",
+                    ]);
+                    return;
+                }
+            }
+
+            $debeList  = is_array($payload['asientoDebe'] ?? null) ? $payload['asientoDebe'] : [];
+            $haberList = is_array($payload['asientoHaber'] ?? null) ? $payload['asientoHaber'] : [];
+
+            if ($idEgreso === null) {
+                $maxId = (int)Database::queryForValue(
+                    "SELECT COALESCE(MAX(id_egreso), 0) + 1 FROM co_egresos WHERE id_propietario = ?",
+                    [$idProp]
+                );
+                Database::update(
+                    "INSERT INTO co_egresos (
+                        id_propietario, id_egreso, cod_empresa, cdc, tip_doc, cod_regimen, regimen,
+                        clasificacion_gasto, tip_timb, nro_timbrado, venc_timbrado, nro_factura, serie,
+                        fec_egreso, comprador, cod_proveedor, nom_proveedor, ruc_proveedor, tip_egreso,
+                        form_120, condicion, form_145, cod_moneda, tasa_cambio, grav10, iva10, grav5,
+                        iva5, exentas, tot_iva, valor_total, observacion, estado, usuario_reg
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'A', ?)",
+                    [
+                        $idProp, $maxId, $empresa, $cdc, $tipDoc, $codRegimen, $regimen,
+                        $clasificacionGasto, $tipTimb, $nroTimbrado, $vencTimbrado, $nroFactura, $serie,
+                        $fecEgreso, $comprador, $codProveedor ?: null, $nomProveedor ?: null, $rucProveedor ?: null, $tipEgreso,
+                        $form120, $condicion, $form145, $codMoneda, $tasaCambio, $grav10, $iva10, $grav5,
+                        $iva5, $exentas, $totIva, $valorTotal, $observacion, $usuario
+                    ]
+                );
+                self::registrarAsientoContableEgreso($idProp, $maxId, $empresa, $usuario, $fecEgreso, $nroFactura, $nomProveedor, $debeList, $haberList);
+
+                View::json([
+                    'status'   => 'success',
+                    'message'  => "Egreso registrado correctamente con el ID #{$maxId}",
+                    'idEgreso' => $maxId,
+                ]);
+            } else {
+                Database::update(
+                    "UPDATE co_egresos SET
+                        cdc = ?, tip_doc = ?, cod_regimen = ?, regimen = ?, clasificacion_gasto = ?, tip_timb = ?,
+                        nro_timbrado = ?, venc_timbrado = ?, nro_factura = ?, serie = ?, fec_egreso = ?,
+                        comprador = ?, cod_proveedor = ?, nom_proveedor = ?, ruc_proveedor = ?, tip_egreso = ?,
+                        form_120 = ?, condicion = ?, form_145 = ?, cod_moneda = ?, tasa_cambio = ?,
+                        grav10 = ?, iva10 = ?, grav5 = ?, iva5 = ?, exentas = ?, tot_iva = ?, valor_total = ?, observacion = ?
+                     WHERE id_propietario = ? AND id_egreso = ? AND cod_empresa = ?",
+                    [
+                        $cdc, $tipDoc, $codRegimen, $regimen, $clasificacionGasto, $tipTimb,
+                        $nroTimbrado, $vencTimbrado, $nroFactura, $serie, $fecEgreso,
+                        $comprador, $codProveedor ?: null, $nomProveedor ?: null, $rucProveedor ?: null, $tipEgreso,
+                        $form120, $condicion, $form145, $codMoneda, $tasaCambio,
+                        $grav10, $iva10, $grav5, $iva5, $exentas, $totIva, $valorTotal, $observacion,
+                        $idProp, $idEgreso, $empresa
+                    ]
+                );
+                self::registrarAsientoContableEgreso($idProp, $idEgreso, $empresa, $usuario, $fecEgreso, $nroFactura, $nomProveedor, $debeList, $haberList);
+
+                View::json([
+                    'status'   => 'success',
+                    'message'  => "Registro de Egreso #{$idEgreso} actualizado con éxito.",
+                    'idEgreso' => $idEgreso,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al guardar el egreso: ' . $e->getMessage()]);
+        }
+    }
+
+    private static function registrarAsientoContableEgreso(
+        int $idProp, int $idEgreso, string $empresa, string $usuario,
+        ?string $fecEgreso, string $nroFactura, string $nomProveedor,
+        array $debeList, array $haberList
+    ): void {
+        try {
+            $existing = Database::queryForList(
+                "SELECT num_asiento FROM co_asientos_cab
+                 WHERE id_propietario = ? AND cod_empresa = ? AND origen_comprobante = 'COEGRES' AND id_comprobante = ?",
+                [$idProp, $empresa, (string)$idEgreso]
+            );
+            foreach ($existing as $row) {
+                $num = (int)$row['num_asiento'];
+                Database::update("DELETE FROM co_asientos_det WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ?", [$idProp, $empresa, $num]);
+                Database::update("DELETE FROM co_asientos_cab WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ?", [$idProp, $empresa, $num]);
+            }
+
+            if (empty($debeList) && empty($haberList)) return;
+
+            $numAsiento = (int)Database::queryForValue(
+                "SELECT COALESCE(MAX(num_asiento), 0) + 1 FROM co_asientos_cab WHERE id_propietario = ? AND cod_empresa = ?",
+                [$idProp, $empresa]
+            );
+            $fecUse = $fecEgreso ?: date('Y-m-d');
+            $ejercicio = (int)substr($fecUse, 0, 4);
+
+            $totalDebe  = 0.0;
+            $totalHaber = 0.0;
+            $detRows    = [];
+            $secuencia  = 1;
+            $descBase   = "Factura N° {$nroFactura} - {$nomProveedor}";
+
+            foreach ($debeList as $d) {
+                $fullCta = trim((string)($d['cuenta'] ?? ''));
+                if ($fullCta === '') continue;
+                $codCta = $fullCta;
+                $nomCta = $fullCta;
+                if (str_contains($fullCta, ' - ')) {
+                    [$codCta, $nomCta] = array_map('trim', explode(' - ', $fullCta, 2));
+                }
+                $montoDebe = (float)($d['debe'] ?? 0);
+                $totalDebe += $montoDebe;
+                $detRows[] = [$idProp, $empresa, $numAsiento, $secuencia++, $codCta, $nomCta, $descBase, $montoDebe, 0.0];
+            }
+
+            foreach ($haberList as $h) {
+                $fullCta = trim((string)($h['cuenta'] ?? ''));
+                if ($fullCta === '') continue;
+                $codCta = $fullCta;
+                $nomCta = $fullCta;
+                if (str_contains($fullCta, ' - ')) {
+                    [$codCta, $nomCta] = array_map('trim', explode(' - ', $fullCta, 2));
+                }
+                $montoHaber = (float)($h['haber'] ?? 0);
+                $totalHaber += $montoHaber;
+                $detRows[] = [$idProp, $empresa, $numAsiento, $secuencia++, $codCta, $nomCta, $descBase, 0.0, $montoHaber];
+            }
+
+            Database::update(
+                "INSERT INTO co_asientos_cab (
+                    id_propietario, cod_empresa, num_asiento, fec_asiento, ejercicio, cod_sucursal,
+                    origen_comprobante, id_comprobante, concepto, total_debe, total_haber, estado, usuario_reg
+                 ) VALUES (?, ?, ?, ?, ?, '1', 'COEGRES', ?, ?, ?, ?, 'A', ?)",
+                [$idProp, $empresa, $numAsiento, $fecUse, $ejercicio, (string)$idEgreso, $descBase, $totalDebe, $totalHaber, $usuario]
+            );
+
+            foreach ($detRows as $r) {
+                Database::update(
+                    "INSERT INTO co_asientos_det (
+                        id_propietario, cod_empresa, num_asiento, secuencia, cod_cuenta, nom_cuenta, descripcion, debe, haber
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    $r
+                );
+            }
+        } catch (\Throwable $ignored) {}
+    }
+
+    public static function apiEgresosDelete(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $payload = self::getInput();
+        $idEgreso = (int)($payload['idEgreso'] ?? 0);
+
+        try {
+            Database::update(
+                "DELETE FROM co_egresos WHERE id_propietario = ? AND id_egreso = ? AND cod_empresa = ?",
+                [$idProp, $idEgreso, $empresa]
+            );
+            View::json(['status' => 'success', 'message' => "Egreso #{$idEgreso} eliminado con éxito."]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al eliminar egreso: ' . $e->getMessage()]);
+        }
+    }
+
+    // =========================================================================
+    // API INGRESOS (/api/ingresos/*)
+    // =========================================================================
+    private static function resolveTipoIngresoId(?string $val, int $idProp): string {
+        if (!$val || trim($val) === '' || strcasecmp(trim($val), 'null') === 0) return '1';
+        $v = trim($val);
+        if (ctype_digit($v)) return $v;
+        $up = strtoupper($v);
+        if (str_contains($up, 'VENTA') || str_contains($up, 'MERCADER')) return '1';
+        if (str_contains($up, 'PROFESIONAL') || str_contains($up, 'SERVICIO')) return '2';
+        if (str_contains($up, 'ALQUILER') || str_contains($up, 'INMUEBLE') || str_contains($up, 'EQUIPO')) return '3';
+        if (str_contains($up, 'OTRO')) return '4';
+
+        $id = Database::queryForValue(
+            "SELECT cod_tipo_ingreso FROM co_tipo_ingreso WHERE id_propietario IN (?, 1) AND UPPER(TRIM(descripcion)) = ? LIMIT 1",
+            [$idProp, $up]
+        );
+        return $id !== null ? (string)$id : '1';
+    }
+
+    public static function apiIngresosTiposDocumentos(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $list = Database::queryForListDual(
+            "SELECT tip_comprobante AS cod, descripcion AS nombre
+             FROM co_tipos_comprobantes
+             WHERE id_propietario IN (?, 1)
+               AND COALESCE(estado, 'A') = 'A'
+               AND (UPPER(cod_modulo) = 'INGRESOS' OR UPPER(cod_modulo) = 'AMBOS')
+             ORDER BY descripcion",
+            [$idProp]
+        );
+        if (empty($list)) {
+            foreach (['Factura', 'Nota de Débito', 'Nota de Crédito', 'Autofactura'] as $d) {
+                $list[] = ['cod' => $d, 'COD' => $d, 'nombre' => $d, 'NOMBRE' => $d];
+            }
+        }
+        View::json($list);
+    }
+
+    public static function apiIngresosList(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $anio = trim((string)($_GET['anio'] ?? ''));
+        $mes  = trim((string)($_GET['mes'] ?? ''));
+
+        try {
+            $sql = "SELECT id_ingreso, cdc, tip_doc, COALESCE(cod_regimen, 1) AS cod_regimen, regimen,
+                           COALESCE(cod_tipo_ingreso, 1) AS cod_tipo_ingreso, tip_ingreso, nro_timbrado,
+                           DATE_FORMAT(venc_timbrado, '%Y-%m-%d') AS venc_timbrado,
+                           DATE_FORMAT(venc_timbrado, '%d/%m/%Y') AS venc_timbrado_fmt,
+                           nro_factura, cod_cliente,
+                           DATE_FORMAT(fec_ingreso, '%d/%m/%Y') AS fec_ingreso_fmt,
+                           DATE_FORMAT(fec_ingreso, '%Y-%m-%d') AS fec_ingreso,
+                           condicion, cod_moneda, nom_cliente, ruc_cliente,
+                           COALESCE(exentas, 0) AS exentas, COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
+                           COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10, COALESCE(tot_iva, 0) AS tot_iva,
+                           COALESCE(valor_total, 0) AS valor_total, estado
+                    FROM co_ingresos
+                    WHERE id_propietario = ? AND cod_empresa = ? ";
+            $params = [$idProp, $empresa];
+
+            if ($anio !== '' && strcasecmp($anio, 'TODOS') !== 0) {
+                $sql .= "AND YEAR(fec_ingreso) = ? ";
+                $params[] = (int)$anio;
+            }
+            if ($mes !== '' && strcasecmp($mes, 'TODOS') !== 0) {
+                $sql .= "AND MONTH(fec_ingreso) = ? ";
+                $params[] = (int)$mes;
+            }
+            $sql .= "ORDER BY id_ingreso DESC";
+
+            $list = Database::queryForListUpper($sql, $params);
+            View::json(['status' => 'success', 'data' => $list]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al listar ingresos: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiIngresosGet(string $id): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+
+        try {
+            $sql = "SELECT id_ingreso, cdc, tip_doc, COALESCE(cod_regimen, 1) AS cod_regimen, regimen,
+                           anulada, inutilizado, nro_timbrado,
+                           DATE_FORMAT(venc_timbrado, '%Y-%m-%d') AS venc_timbrado, nro_factura, serie,
+                           DATE_FORMAT(fec_ingreso, '%Y-%m-%d') AS fec_ingreso, condicion, cod_cliente,
+                           nom_cliente, ruc_cliente, COALESCE(cod_tipo_ingreso, 1) AS cod_tipo_ingreso,
+                           tip_ingreso, form_145, cod_moneda, tasa_cambio, grav10, iva10, grav5, iva5,
+                           exentas, tot_iva, valor_bruto, no_gravado, redondeo, valor_total, observacion
+                    FROM co_ingresos
+                    WHERE id_propietario = ? AND id_ingreso = ? AND cod_empresa = ? LIMIT 1";
+            $list = Database::queryForListUpper($sql, [$idProp, (int)$id, $empresa]);
+            if (!empty($list)) {
+                View::json(['status' => 'success', 'data' => $list[0]]);
+            } else {
+                View::json(['status' => 'error', 'message' => 'Ingreso no encontrado.']);
+            }
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al obtener ingreso: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiIngresosSave(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $usuario = TenantContext::usuario();
+        $payload = self::getInput();
+
+        try {
+            $cdc       = isset($payload['cdc']) ? trim((string)$payload['cdc']) : null;
+            $tipDoc    = trim((string)($payload['tipDoc'] ?? 'Factura')) ?: 'Factura';
+            $rawReg    = (string)($payload['codRegimen'] ?? $payload['regimen'] ?? '1');
+            $codRegimen = self::resolveRegimenId($rawReg, $idProp);
+            $regimen   = (string)$codRegimen;
+            $anulada   = (!empty($payload['anulada']) && $payload['anulada'] !== 'N' && $payload['anulada'] !== 'false') ? 'S' : 'N';
+            $inutilizado = (!empty($payload['inutilizado']) && $payload['inutilizado'] !== 'N' && $payload['inutilizado'] !== 'false') ? 'S' : 'N';
+            $nroTimbrado = isset($payload['nroTimbrado']) ? trim((string)$payload['nroTimbrado']) : null;
+            $vencTimbrado = self::parseSqlDate((string)($payload['vencTimbrado'] ?? ''));
+            $nroFactura = self::formatNroFactura((string)($payload['nroFactura'] ?? ''));
+            $serie      = isset($payload['serie']) ? trim((string)$payload['serie']) : null;
+            $fecIngreso = self::parseSqlDate((string)($payload['fecIngreso'] ?? ''));
+
+            if ($fecIngreso && $vencTimbrado && $fecIngreso > $vencTimbrado) {
+                $f1 = date('d/m/Y', strtotime($fecIngreso));
+                $f2 = date('d/m/Y', strtotime($vencTimbrado));
+                View::json([
+                    'status'  => 'error',
+                    'message' => "La fecha del comprobante ({$f1}) no puede ser mayor a la fecha de vencimiento del timbrado ({$f2}).",
+                ]);
+                return;
+            }
+
+            $rawCond = strtoupper(trim((string)($payload['condicion'] ?? 'CON')));
+            $condicion = (str_contains($rawCond, 'CRED') || str_contains($rawCond, 'CRÉD') || $rawCond === 'CRE') ? 'CRE' : 'CON';
+
+            $rucCliente = trim((string)($payload['rucCliente'] ?? ''));
+            $codCliente = trim((string)($payload['codCliente'] ?? ''));
+            $nomCliente = trim((string)($payload['nomCliente'] ?? ''));
+
+            if ($codCliente === '' || strcasecmp($codCliente, 'null') === 0 || ($rucCliente !== '' && $codCliente === $rucCliente) || (str_contains($codCliente, '-') && strlen($codCliente) >= 5)) {
+                if ($rucCliente !== '') {
+                    $rucNoDash = str_replace(['-', ' '], '', $rucCliente);
+                    $foundCli = Database::queryForValue(
+                        "SELECT cod_cliente FROM co_clientes
+                         WHERE id_propietario = ?
+                           AND (UPPER(TRIM(ruc)) = UPPER(?) OR UPPER(REPLACE(ruc, '-', '')) = UPPER(?))
+                         ORDER BY CASE WHEN cod_empresa = ? THEN 1 ELSE 2 END, CAST(cod_cliente AS UNSIGNED) DESC
+                         LIMIT 1",
+                        [$idProp, $rucCliente, $rucNoDash, $empresa]
+                    );
+                    if ($foundCli !== null) {
+                        $codCliente = (string)$foundCli;
+                    }
+                }
+            }
+
+            $rawTipIng = (string)($payload['codTipoIngreso'] ?? $payload['tipIngreso'] ?? '1');
+            $tipIngreso = self::resolveTipoIngresoId($rawTipIng, $idProp);
+            $codTipoIngreso = (int)$tipIngreso;
+
+            $form145 = trim((string)($payload['form145'] ?? 'Original')) ?: 'Original';
+
+            $rawMoneda = strtoupper(trim((string)($payload['codMoneda'] ?? '1')));
+            if (str_contains($rawMoneda, 'DOLAR') || str_contains($rawMoneda, 'DÓLAR') || $rawMoneda === '2' || $rawMoneda === 'USD') {
+                $codMoneda = '2';
+            } elseif (str_contains($rawMoneda, 'REAL') || $rawMoneda === '3' || $rawMoneda === 'BRL') {
+                $codMoneda = '3';
+            } elseif (ctype_digit($rawMoneda)) {
+                $codMoneda = $rawMoneda;
+            } else {
+                $codMoneda = '1';
+            }
+
+            $tasaCambio = (float)($payload['tasaCambio'] ?? 1);
+            $grav10     = (float)($payload['grav10'] ?? 0);
+            $iva10      = (float)($payload['iva10'] ?? 0);
+            $grav5      = (float)($payload['grav5'] ?? 0);
+            $iva5       = (float)($payload['iva5'] ?? 0);
+            $exentas    = (float)($payload['exentas'] ?? 0);
+            $totIva     = (float)($payload['totIva'] ?? 0);
+            $valorBruto = (float)($payload['valorBruto'] ?? 0);
+            $noGravado  = (float)($payload['noGravado'] ?? 0);
+            $redondeo   = (float)($payload['redondeo'] ?? 0);
+            $valorTotal = (float)($payload['valorTotal'] ?? 0);
+            $observacion = isset($payload['observacion']) ? trim((string)$payload['observacion']) : null;
+
+            $idIngreso = !empty($payload['idIngreso']) ? (int)$payload['idIngreso'] : null;
+
+            $isFactura = str_starts_with(strtoupper($tipDoc), 'FAC') && !str_contains(strtoupper($tipDoc), 'AUTO');
+            if ($isFactura && $nroFactura !== '' && $nroTimbrado && $nroTimbrado !== '') {
+                $cleanFac = str_replace('-', '', $nroFactura);
+                $checkSql = "SELECT COUNT(*) FROM co_ingresos
+                             WHERE id_propietario = ? AND cod_empresa = ?
+                               AND (UPPER(tip_doc) LIKE 'FAC%' AND UPPER(tip_doc) NOT LIKE '%AUTO%')
+                               AND (REPLACE(nro_factura, '-', '') = ? OR TRIM(nro_factura) = ?)
+                               AND TRIM(nro_timbrado) = ? ";
+                $checkParams = [$idProp, $empresa, $cleanFac, $nroFactura, $nroTimbrado];
+                if ($idIngreso !== null) {
+                    $checkSql .= "AND id_ingreso <> ? ";
+                    $checkParams[] = $idIngreso;
+                }
+                $dupCount = (int)Database::queryForValue($checkSql, $checkParams);
+                if ($dupCount > 0) {
+                    View::json([
+                        'status'  => 'error',
+                        'message' => "Ya existe una Factura registrada con el N° {$nroFactura} y Timbrado {$nroTimbrado} para esta empresa.",
+                    ]);
+                    return;
+                }
+            }
+
+            if ($idIngreso === null) {
+                $maxId = (int)Database::queryForValue(
+                    "SELECT COALESCE(MAX(id_ingreso), 0) + 1 FROM co_ingresos WHERE id_propietario = ?",
+                    [$idProp]
+                );
+                Database::update(
+                    "INSERT INTO co_ingresos (
+                        id_propietario, id_ingreso, cod_empresa, cdc, tip_doc, cod_regimen, regimen,
+                        anulada, inutilizado, nro_timbrado, venc_timbrado, nro_factura, serie, fec_ingreso,
+                        condicion, cod_cliente, nom_cliente, ruc_cliente, cod_tipo_ingreso, tip_ingreso,
+                        form_145, cod_moneda, tasa_cambio, grav10, iva10, grav5, iva5, exentas, tot_iva,
+                        valor_bruto, no_gravado, redondeo, valor_total, observacion, estado, usuario_reg
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'A', ?)",
+                    [
+                        $idProp, $maxId, $empresa, $cdc, $tipDoc, $codRegimen, $regimen,
+                        $anulada, $inutilizado, $nroTimbrado, $vencTimbrado, $nroFactura, $serie, $fecIngreso,
+                        $condicion, $codCliente ?: null, $nomCliente ?: null, $rucCliente ?: null, $codTipoIngreso, $tipIngreso,
+                        $form145, $codMoneda, $tasaCambio, $grav10, $iva10, $grav5, $iva5, $exentas, $totIva,
+                        $valorBruto, $noGravado, $redondeo, $valorTotal, $observacion, $usuario
+                    ]
+                );
+                View::json([
+                    'status'    => 'success',
+                    'message'   => "Ingreso registrado correctamente con el ID #{$maxId}",
+                    'idIngreso' => $maxId,
+                ]);
+            } else {
+                Database::update(
+                    "UPDATE co_ingresos SET
+                        cdc = ?, tip_doc = ?, cod_regimen = ?, regimen = ?, anulada = ?, inutilizado = ?,
+                        nro_timbrado = ?, venc_timbrado = ?, nro_factura = ?, serie = ?, fec_ingreso = ?,
+                        condicion = ?, cod_cliente = ?, nom_cliente = ?, ruc_cliente = ?,
+                        cod_tipo_ingreso = ?, tip_ingreso = ?, form_145 = ?, cod_moneda = ?, tasa_cambio = ?,
+                        grav10 = ?, iva10 = ?, grav5 = ?, iva5 = ?, exentas = ?, tot_iva = ?,
+                        valor_bruto = ?, no_gravado = ?, redondeo = ?, valor_total = ?, observacion = ?
+                     WHERE id_propietario = ? AND id_ingreso = ? AND cod_empresa = ?",
+                    [
+                        $cdc, $tipDoc, $codRegimen, $regimen, $anulada, $inutilizado,
+                        $nroTimbrado, $vencTimbrado, $nroFactura, $serie, $fecIngreso,
+                        $condicion, $codCliente ?: null, $nomCliente ?: null, $rucCliente ?: null,
+                        $codTipoIngreso, $tipIngreso, $form145, $codMoneda, $tasaCambio,
+                        $grav10, $iva10, $grav5, $iva5, $exentas, $totIva,
+                        $valorBruto, $noGravado, $redondeo, $valorTotal, $observacion,
+                        $idProp, $idIngreso, $empresa
+                    ]
+                );
+                View::json([
+                    'status'    => 'success',
+                    'message'   => "Registro de Ingreso #{$idIngreso} actualizado con éxito.",
+                    'idIngreso' => $idIngreso,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al guardar el ingreso: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiIngresosDelete(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $payload = self::getInput();
+        $idIngreso = (int)($payload['idIngreso'] ?? 0);
+
+        try {
+            Database::update(
+                "DELETE FROM co_ingresos WHERE id_propietario = ? AND id_ingreso = ? AND cod_empresa = ?",
+                [$idProp, $idIngreso, $empresa]
+            );
+            View::json(['status' => 'success', 'message' => "Ingreso #{$idIngreso} eliminado con éxito."]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al eliminar ingreso: ' . $e->getMessage()]);
+        }
+    }
+
+    // =========================================================================
+    // API ASIENTOS CONTABLES (/api/asientos/*)
+    // =========================================================================
+    public static function apiAsientosList(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $codEmpresa = TenantContext::empresa();
+
+        $ejercicio   = isset($_GET['ejercicio']) && $_GET['ejercicio'] !== '' ? (int)$_GET['ejercicio'] : null;
+        $mes         = isset($_GET['mes']) && $_GET['mes'] !== '' ? (int)$_GET['mes'] : null;
+        $codSucursal = trim((string)($_GET['codSucursal'] ?? ''));
+        $origen      = trim((string)($_GET['origen'] ?? ''));
+        $search      = trim((string)($_GET['search'] ?? ''));
+
+        $sql = "SELECT c.cod_empresa AS COD_EMPRESA, c.num_asiento AS NUM_ASIENTO,
+                       DATE_FORMAT(c.fec_asiento, '%Y-%m-%d') AS FEC_ASIENTO_STR,
+                       c.ejercicio AS EJERCICIO, c.cod_sucursal AS COD_SUCURSAL,
+                       COALESCE(s.descripcion, c.cod_sucursal) AS NOM_SUCURSAL,
+                       c.origen_comprobante AS ORIGEN_COMPROBANTE, c.id_comprobante AS ID_COMPROBANTE,
+                       c.concepto AS CONCEPTO, c.total_debe AS TOTAL_DEBE, c.total_haber AS TOTAL_HABER,
+                       c.estado AS ESTADO, c.usuario_reg AS USUARIO_REG
+                FROM co_asientos_cab c
+                LEFT JOIN sucursales s ON s.id_propietario = c.id_propietario
+                     AND s.cod_empresa = c.cod_empresa
+                     AND s.cod_sucursal = c.cod_sucursal
+                WHERE c.id_propietario = ? AND c.cod_empresa = ? ";
+        $params = [$idProp, $codEmpresa];
+
+        if ($ejercicio !== null && $ejercicio > 0) {
+            $sql .= "AND c.ejercicio = ? ";
+            $params[] = $ejercicio;
+        }
+        if ($mes !== null && $mes >= 1 && $mes <= 12) {
+            $sql .= "AND MONTH(c.fec_asiento) = ? ";
+            $params[] = $mes;
+        }
+        if ($codSucursal !== '' && strcasecmp($codSucursal, 'TODAS') !== 0) {
+            $sql .= "AND c.cod_sucursal = ? ";
+            $params[] = $codSucursal;
+        }
+        if ($origen !== '' && strcasecmp($origen, 'TODOS') !== 0) {
+            $sql .= "AND UPPER(c.origen_comprobante) = ? ";
+            $params[] = strtoupper($origen);
+        }
+        if ($search !== '') {
+            $sql .= "AND (UPPER(c.concepto) LIKE ? OR UPPER(c.id_comprobante) LIKE ? OR CAST(c.num_asiento AS CHAR) LIKE ?) ";
+            $q = '%' . strtoupper($search) . '%';
+            $params[] = $q; $params[] = $q; $params[] = $q;
+        }
+        $sql .= "ORDER BY c.num_asiento DESC";
+
+        View::json(Database::queryForListUpper($sql, $params));
+    }
+
+    public static function apiAsientosObtener(string $numAsiento): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $codEmpresa = TenantContext::empresa();
+        $num = (int)$numAsiento;
+
+        try {
+            $cabList = Database::queryForListUpper(
+                "SELECT cod_empresa, num_asiento, DATE_FORMAT(fec_asiento, '%Y-%m-%d') AS fec_asiento,
+                        ejercicio, cod_sucursal, origen_comprobante, id_comprobante, concepto,
+                        total_debe, total_haber, estado, usuario_reg
+                 FROM co_asientos_cab
+                 WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ? LIMIT 1",
+                [$idProp, $codEmpresa, $num]
+            );
+            if (empty($cabList)) {
+                View::json(['status' => 'error', 'message' => 'No se encontró el asiento especificado.']);
+                return;
+            }
+            $detalles = Database::queryForListUpper(
+                "SELECT secuencia, cod_cuenta, nom_cuenta, descripcion, debe, haber
+                 FROM co_asientos_det
+                 WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ?
+                 ORDER BY secuencia ASC",
+                [$idProp, $codEmpresa, $num]
+            );
+            View::json([
+                'status'   => 'success',
+                'cabecera' => $cabList[0],
+                'detalles' => $detalles,
+            ]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al obtener el asiento: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiAsientosSiguienteNumero(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $codEmpresa = TenantContext::empresa();
+
+        $maxNum = (int)Database::queryForValue(
+            "SELECT COALESCE(MAX(num_asiento), 0) + 1 FROM co_asientos_cab WHERE id_propietario = ? AND cod_empresa = ?",
+            [$idProp, $codEmpresa]
+        );
+        View::json(['status' => 'success', 'siguienteNumero' => $maxNum > 0 ? $maxNum : 1]);
+    }
+
+    public static function apiAsientosBuscarCuentas(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $search = trim((string)($_GET['search'] ?? ''));
+
+        $sql = "SELECT cod_cuenta, descripcion, tipo_cuenta, nivel, asentable
+                FROM co_plan_cuentas
+                WHERE id_propietario = ? AND COALESCE(estado, 'A') = 'A' ";
+        $params = [$idProp];
+        if ($search !== '') {
+            $sql .= "AND (UPPER(cod_cuenta) LIKE ? OR UPPER(descripcion) LIKE ?) ";
+            $q = '%' . strtoupper($search) . '%';
+            $params[] = $q; $params[] = $q;
+        }
+        $sql .= "ORDER BY cod_cuenta ASC";
+        $rows = Database::queryForListUpper($sql, $params);
+        if (empty($rows) && $idProp !== 1) {
+            $params[0] = 1;
+            $rows = Database::queryForListUpper($sql, $params);
+        }
+        View::json($rows);
+    }
+
+    public static function apiAsientosSucursales(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $codEmpresa = TenantContext::empresa();
+        $rows = Database::queryForListUpper(
+            "SELECT cod_sucursal, descripcion FROM sucursales
+             WHERE id_propietario = ? AND cod_empresa = ?
+             ORDER BY cod_sucursal ASC",
+            [$idProp, $codEmpresa]
+        );
+        if (empty($rows)) {
+            $rows = [['COD_SUCURSAL' => '1', 'DESCRIPCION' => 'CASA MATRIZ']];
+        }
+        View::json($rows);
+    }
+
+    public static function apiAsientosGuardar(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $codEmpresa = TenantContext::empresa();
+        $usuario = TenantContext::usuario();
+        $payload = self::getInput();
+
+        $fecha       = trim((string)($payload['fecha'] ?? ''));
+        $codSucursal = trim((string)($payload['codSucursal'] ?? '1'));
+        $concepto    = trim((string)($payload['concepto'] ?? ''));
+        $detalles    = is_array($payload['detalles'] ?? null) ? $payload['detalles'] : [];
+
+        if ($fecha === '') {
+            View::json(['status' => 'error', 'message' => 'La fecha del asiento es obligatoria.']);
+            return;
+        }
+        if ($codSucursal === '') {
+            View::json(['status' => 'error', 'message' => 'Debe seleccionar una sucursal.']);
+            return;
+        }
+        if ($concepto === '') {
+            View::json(['status' => 'error', 'message' => 'El concepto del asiento es obligatorio.']);
+            return;
+        }
+        if (count($detalles) < 2) {
+            View::json(['status' => 'error', 'message' => 'El asiento debe tener al menos 2 líneas contables.']);
+            return;
+        }
+
+        $totalDebe = 0.0;
+        $totalHaber = 0.0;
+        foreach ($detalles as $idx => $det) {
+            $cta = trim((string)($det['codCuenta'] ?? ''));
+            if ($cta === '') {
+                View::json(['status' => 'error', 'message' => 'La línea #' . ($idx + 1) . ' no tiene código de cuenta.']);
+                return;
+            }
+            $debe  = (float)($det['debe'] ?? 0);
+            $haber = (float)($det['haber'] ?? 0);
+            if ($debe < 0 || $haber < 0) {
+                View::json(['status' => 'error', 'message' => 'Los montos de la línea #' . ($idx + 1) . ' no pueden ser negativos.']);
+                return;
+            }
+            $totalDebe += $debe;
+            $totalHaber += $haber;
+        }
+
+        if (abs($totalDebe - $totalHaber) > 0.009) {
+            View::json([
+                'status'  => 'error',
+                'message' => "El asiento está desbalanceado. Total Debe ({$totalDebe}) != Total Haber ({$totalHaber}).",
+            ]);
+            return;
+        }
+        if ($totalDebe <= 0) {
+            View::json(['status' => 'error', 'message' => 'El monto total del asiento debe ser mayor a cero.']);
+            return;
+        }
+
+        $ejercicio = !empty($payload['ejercicio']) && (int)$payload['ejercicio'] > 0
+            ? (int)$payload['ejercicio']
+            : (int)substr($fecha, 0, 4);
+        $numAsiento = !empty($payload['numAsiento']) && (int)$payload['numAsiento'] > 0
+            ? (int)$payload['numAsiento']
+            : null;
+        $origenComprobante = strtoupper(trim((string)($payload['origenComprobante'] ?? 'MANUAL'))) ?: 'MANUAL';
+        $idComprobante     = trim((string)($payload['idComprobante'] ?? ''));
+
+        try {
+            if ($numAsiento === null) {
+                $numAsiento = (int)Database::queryForValue(
+                    "SELECT COALESCE(MAX(num_asiento), 0) + 1 FROM co_asientos_cab WHERE id_propietario = ? AND cod_empresa = ?",
+                    [$idProp, $codEmpresa]
+                );
+                if ($numAsiento <= 0) $numAsiento = 1;
+
+                Database::update(
+                    "INSERT INTO co_asientos_cab (
+                        id_propietario, cod_empresa, num_asiento, fec_asiento, ejercicio, cod_sucursal,
+                        origen_comprobante, id_comprobante, concepto, total_debe, total_haber, estado, usuario_reg
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'A', ?)",
+                    [$idProp, $codEmpresa, $numAsiento, $fecha, $ejercicio, $codSucursal, $origenComprobante, $idComprobante, $concepto, $totalDebe, $totalHaber, $usuario]
+                );
+            } else {
+                Database::update(
+                    "UPDATE co_asientos_cab SET
+                        fec_asiento = ?, ejercicio = ?, cod_sucursal = ?, origen_comprobante = ?,
+                        id_comprobante = ?, concepto = ?, total_debe = ?, total_haber = ?, usuario_reg = ?
+                     WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ?",
+                    [$fecha, $ejercicio, $codSucursal, $origenComprobante, $idComprobante, $concepto, $totalDebe, $totalHaber, $usuario, $idProp, $codEmpresa, $numAsiento]
+                );
+                Database::update(
+                    "DELETE FROM co_asientos_det WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ?",
+                    [$idProp, $codEmpresa, $numAsiento]
+                );
+            }
+
+            foreach ($detalles as $idx => $det) {
+                $secuencia = $idx + 1;
+                $debe  = (float)($det['debe'] ?? 0);
+                $haber = (float)($det['haber'] ?? 0);
+                $descLinea = trim((string)($det['descripcion'] ?? '')) ?: $concepto;
+
+                Database::update(
+                    "INSERT INTO co_asientos_det (
+                        id_propietario, cod_empresa, num_asiento, secuencia, cod_cuenta, nom_cuenta, descripcion, debe, haber
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    [
+                        $idProp, $codEmpresa, $numAsiento, $secuencia,
+                        trim((string)($det['codCuenta'] ?? '')),
+                        trim((string)($det['nomCuenta'] ?? '')),
+                        $descLinea, $debe, $haber
+                    ]
+                );
+            }
+
+            View::json([
+                'status'     => 'success',
+                'numAsiento' => $numAsiento,
+                'message'    => "Asiento Contable N° {$numAsiento} guardado correctamente.",
+            ]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al guardar el asiento contable: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiAsientosAnular(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $codEmpresa = TenantContext::empresa();
+        $payload = self::getInput();
+
+        if (empty($payload['numAsiento'])) {
+            View::json(['status' => 'error', 'message' => 'Número de asiento no especificado.']);
+            return;
+        }
+        $numAsiento = (int)$payload['numAsiento'];
+
+        try {
+            Database::update(
+                "UPDATE co_asientos_cab SET estado = 'I' WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ?",
+                [$idProp, $codEmpresa, $numAsiento]
+            );
+            View::json(['status' => 'success', 'message' => "Asiento Contable N° {$numAsiento} anulado correctamente."]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al anular el asiento: ' . $e->getMessage()]);
+        }
+    }
+}

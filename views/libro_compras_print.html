@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>LIBRO COMPRAS</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 8mm;
+        }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 8.5pt;
+            color: #000;
+            background: #fff;
+            margin: 0;
+            padding: 10px;
+        }
+        .header-title {
+            text-align: center;
+            font-size: 16pt;
+            font-weight: bold;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .header-subtitle {
+            text-align: center;
+            font-size: 9pt;
+            font-weight: bold;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+        
+        /* Grid para los 4 cuadros superiores */
+        .info-grid {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            width: 100%;
+        }
+        .info-box {
+            border: 1px solid #000;
+            box-sizing: border-box;
+            background: #fff;
+        }
+        .box-1 { flex: 4; }
+        .box-2 { flex: 2; }
+        .box-3 { flex: 2.5; }
+        .box-4 { flex: 3.5; }
+
+        .box-title {
+            font-size: 7.5pt;
+            font-weight: bold;
+            padding: 2px 4px;
+            border-bottom: 1px solid #000;
+            background: #fff;
+        }
+        .box-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .box-table th {
+            font-size: 7pt;
+            font-weight: bold;
+            text-align: center;
+            border-bottom: 1px solid #000;
+            border-right: 1px solid #000;
+            padding: 2px;
+            background: #fff;
+            text-transform: uppercase;
+        }
+        .box-table th:last-child {
+            border-right: none;
+        }
+        .box-table td {
+            font-size: 8pt;
+            font-weight: normal;
+            text-align: center;
+            padding: 3px 4px;
+            border-right: 1px solid #000;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .box-table td:last-child {
+            border-right: none;
+        }
+
+        /* Tabla principal de compras */
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8pt;
+        }
+        .report-table th, .report-table td {
+            border: 1px solid #000;
+            padding: 3px 4px;
+        }
+        .report-table th {
+            background: #fff;
+            font-weight: bold;
+            text-align: center;
+            text-transform: uppercase;
+            font-size: 7.5pt;
+        }
+        .report-table td {
+            font-size: 8pt;
+        }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-left { text-align: left; }
+        
+        .row-anulada {
+            text-decoration: line-through;
+            color: #555;
+        }
+
+        .total-row td {
+            font-weight: bold;
+            background: #fff;
+            border-top: 2px solid #000;
+        }
+
+        @media print {
+            .no-print { display: none; }
+            body { padding: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Botón flotante para imprimir -->
+    <div class="no-print" style="margin-bottom: 15px; text-align: right;">
+        <button onclick="window.print()" style="background: #0284c7; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 10pt;">
+            🖨️ Imprimir / Guardar PDF
+        </button>
+    </div>
+
+    <!-- Título Principal -->
+    <div class="header-title">LIBRO COMPRAS</div>
+    <div class="header-subtitle" th:text="'ACTIVIDAD: ' + ${empresa.actividad}">ACTIVIDAD: IRE-GENERAL/IRACIS</div>
+
+    <!-- Cuadros de Encabezado Tributario (1, 2, 3, 4) -->
+    <div class="info-grid">
+        <!-- 1. Identificador del Contribuyente -->
+        <div class="info-box box-1">
+            <div class="box-title">1. Identificador del Contribuyente</div>
+            <table class="box-table">
+                <thead>
+                    <tr>
+                        <th style="width: 70%;">RAZÓN SOCIAL/NOMBRES Y APELLIDOS</th>
+                        <th style="width: 30%;">RUC</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="text-left" style="font-weight: bold;" th:text="${empresa.descripcion}">CONTRIBUYENTE DEMOSTRATIVO</td>
+                        <td th:text="${empresa.rucEmpresa}">5555-7</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 2. Periodo Fiscal -->
+        <div class="info-box box-2">
+            <div class="box-title">2. Periodo Fiscal</div>
+            <table class="box-table">
+                <thead>
+                    <tr>
+                        <th>DESDE</th>
+                        <th>HASTA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td th:text="${fechaDesdeFmt}">05/10/2026</td>
+                        <td th:text="${fechaHastaFmt}">06/10/2026</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 3. Representante Legal -->
+        <div class="info-box box-3">
+            <div class="box-title">3. Representante Legal</div>
+            <table class="box-table">
+                <thead>
+                    <tr>
+                        <th>NOMBRES Y APELLIDOS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="text-left" th:text="${empresa.repLegal}">FLARO S.A.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 4. Identificador del Contador -->
+        <div class="info-box box-4">
+            <div class="box-title">4. Identificador del Contador</div>
+            <table class="box-table">
+                <thead>
+                    <tr>
+                        <th style="width: 65%;">NOMBRES Y APELLIDOS</th>
+                        <th style="width: 35%;">RUC</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="text-left" th:text="${empresa.nomContador}">FLARO S.A.</td>
+                        <td th:text="${empresa.rucContador}">80078755-2</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Tabla de Registros de Compras -->
+    <table class="report-table">
+        <thead>
+            <tr>
+                <th rowspan="2" style="width: 5%;">DIA-MES</th>
+                <th rowspan="2" style="width: 11%;">DOCUMENTO</th>
+                <th rowspan="2" style="width: 7%;">TIMB.</th>
+                <th colspan="3">PROVEEDOR</th>
+                <th rowspan="2" style="width: 4%;">COND</th>
+                <th colspan="7">VALORES DE COMPRAS</th>
+            </tr>
+            <tr>
+                <th style="width: 20%;">RAZÓN SOCIAL</th>
+                <th style="width: 7%;">RUC</th>
+                <th style="width: 3%;">DV</th>
+                <th style="width: 7%;">GRAV. 10%</th>
+                <th style="width: 6%;">GRAV. 5%</th>
+                <th style="width: 6%;">IVA 10%</th>
+                <th style="width: 6%;">IVA 5%</th>
+                <th style="width: 6%;">EXENTAS</th>
+                <th style="width: 5%;">BASE IMP.</th>
+                <th style="width: 7%;">TOTAL</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="r : ${records}" th:classappend="${r.anulada} ? 'row-anulada' : ''">
+                <td class="text-center" th:text="${r.diaMes}">05-10</td>
+                <td class="text-center" th:text="${r.documento}">001-001-0000001</td>
+                <td class="text-center" th:text="${r.timbrado}">12345679</td>
+                <td class="text-left" th:text="${r.razonSocial}">OJEDA CARDOZO, CARLOS ANTONIO</td>
+                <td class="text-right" th:text="${r.rucNum}">2025910</td>
+                <td class="text-center" th:text="${r.rucDv}">7</td>
+                <td class="text-center" th:text="${r.condicion}">CON</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(r.grav10, 0, 'POINT')}">2.000.000</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(r.grav5, 0, 'POINT')}">0</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(r.iva10, 0, 'POINT')}">200.000</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(r.iva5, 0, 'POINT')}">0</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(r.exentas, 0, 'POINT')}">0</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(r.baseImp, 0, 'POINT')}">0</td>
+                <td class="text-right" style="font-weight: bold;" th:text="${#numbers.formatInteger(r.total, 0, 'POINT')}">2.200.000</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(records)}">
+                <td colspan="14" class="text-center" style="padding: 15px; font-style: italic;">No se registraron movimientos de compras en el periodo seleccionado.</td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td colspan="7" class="text-left" style="font-weight: bold;">TOTAL GENERAL</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(totales.grav10, 0, 'POINT')}">8.000.000</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(totales.grav5, 0, 'POINT')}">0</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(totales.iva10, 0, 'POINT')}">800.000</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(totales.iva5, 0, 'POINT')}">0</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(totales.exentas, 0, 'POINT')}">0</td>
+                <td class="text-right" th:text="${#numbers.formatInteger(totales.baseImp, 0, 'POINT')}">0</td>
+                <td class="text-right" style="font-size: 8.5pt;" th:text="${#numbers.formatInteger(totales.total, 0, 'POINT')}">8.800.000</td>
+            </tr>
+        </tfoot>
+    </table>
+
+</body>
+</html>

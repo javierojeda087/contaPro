@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estado de Licencia - JO System</title>
+    <link rel="icon" href="data:," />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root {
+            --primary-color: #16a34a;
+            --primary-hover: #15803d;
+            --background-start: #0f172a;
+            --background-end: #1e293b;
+            --card-bg: rgba(30, 41, 59, 0.95);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--background-start) 0%, var(--background-end) 100%);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1.5rem;
+            box-sizing: border-box;
+        }
+        .license-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border-radius: 20px;
+            padding: 3rem 2.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 480px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+        .icon-badge {
+            width: 70px;
+            height: 70px;
+            background: rgba(22, 163, 74, 0.15);
+            color: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem auto;
+            font-size: 2rem;
+            border: 1px solid rgba(22, 163, 74, 0.3);
+        }
+        h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin: 0 0 0.75rem 0;
+            color: #ffffff;
+        }
+        p {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin: 0 0 1.75rem 0;
+        }
+        .status-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.3rem 0;
+        }
+        .status-label { color: var(--text-muted); }
+        .status-value { font-weight: 600; color: #ffffff; }
+        
+        .form-group {
+            text-align: left;
+            margin-bottom: 1.25rem;
+        }
+        .form-group label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        .form-group input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 0.9rem 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 1rem;
+            outline: none;
+            background: rgba(15, 23, 42, 0.8);
+            color: #ffffff;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .form-group input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.2);
+        }
+        .btn-activate {
+            background: linear-gradient(to right, var(--primary-color), var(--primary-hover));
+            color: white;
+            border: none;
+            padding: 0.95rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.1s, box-shadow 0.2s;
+            font-family: inherit;
+            box-shadow: 0 4px 14px rgba(22, 163, 74, 0.4);
+        }
+        .btn-activate:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(22, 163, 74, 0.5);
+        }
+        
+        .dev-badge {
+            margin-top: 2rem;
+            display: inline-flex;
+            align-items: center;
+            background: #0f172a;
+            border: 1px solid #334155;
+            padding: 0.5rem 1.25rem;
+            border-radius: 9999px;
+            gap: 0.6rem;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="license-card">
+        <div class="icon-badge" th:text="${lifetime ? '⚡' : (valid ? '⏳' : '🔒')}">🔒</div>
+
+        <h1 th:text="${lifetime ? 'Sistema Activado (Definitivo)' : (valid ? 'Período de Prueba Activo' : 'Licencia Expirada')}">Licencia Expirada</h1>
+
+        <p th:if="${lifetime}">
+            Tu sistema cuenta con una **Licencia Definitiva Ilimitada (LIFETIME)**. Puedes continuar utilizando el sistema sin restricciones.
+        </p>
+
+        <p th:if="${valid and !lifetime}">
+            Tu sistema está funcionando bajo el **Período de Prueba de 7 Días**. Te quedan <strong th:text="${diasRestantes}">7</strong> días de evaluación.
+        </p>
+
+        <p th:if="${!valid and !lifetime}">
+            El período de evaluación de 7 días ha finalizado. Por favor contacta al proveedor para activar la **licencia definitiva ilimitada**.
+        </p>
+
+        <div class="status-box">
+            <div class="status-item">
+                <span class="status-label">Estado actual:</span>
+                <span class="status-value" th:style="${lifetime ? 'color: #38bdf8;' : (valid ? 'color: #34d399;' : 'color: #f87171;')}" th:text="${lifetime ? 'LIFETIME (Ilimitado)' : (valid ? 'Prueba Vigente' : 'Expirado')}">Expirado</span>
+            </div>
+            <div class="status-item" th:if="${!lifetime}">
+                <span class="status-label">Fecha Límite:</span>
+                <span class="status-value" th:text="${expiraFecha}">2026-10-15</span>
+            </div>
+            <div class="status-item" th:if="${!lifetime}">
+                <span class="status-label">Intentos usados:</span>
+                <span class="status-value" id="intentosBadge" th:style="${intentosFallidos >= 7 ? 'color: #f87171;' : (intentosFallidos > 0 ? 'color: #fbbf24;' : 'color: #38bdf8;')}" th:text="${intentosFallidos + ' de 10'}">0 de 10</span>
+            </div>
+        </div>
+
+        <a th:if="${lifetime or valid}" href="/login" class="btn-activate" style="text-decoration: none; display: inline-block; box-sizing: border-box; margin-bottom: 1.5rem;">Ir al Login del Sistema</a>
+
+        <form id="licenseForm" onsubmit="activarLicencia(event)" th:if="${!lifetime}">
+            <div class="form-group">
+                <label>Clave de Activación Definitiva</label>
+                <input type="text" id="clave" name="clave" placeholder="Ej: XXXX-XXXX-XXXX-XXXX" required autocomplete="off" th:disabled="${bloqueado}">
+            </div>
+            <button type="submit" class="btn-activate" id="btnActivar" th:disabled="${bloqueado}" th:text="${bloqueado ? 'BLOQUEADO (10/10 INTENTOS FALLIDOS)' : 'Activar Licencia Definitiva'}">Activar Licencia Definitiva</button>
+            <div id="intentosMsgBox" style="margin-top: 10px; font-size: 0.85rem; color: #f87171; font-weight: 600;" th:style="${intentosFallidos > 0 ? 'margin-top: 10px; font-size: 0.85rem; color: #f87171; font-weight: 600; display: block;' : 'display: none;'}">
+                ⚠️ Intentos fallidos realizados: <span id="numIntentos" th:text="${intentosFallidos}">0</span> de 10 permitidos
+            </div>
+        </form>
+
+        <div>
+            <a href="https://www.josystem.click/" target="_blank" rel="noopener noreferrer" class="dev-badge">
+                <span>Desarrollado por</span>
+                <strong style="color: #38bdf8;">JO System</strong> | <span style="color: #38bdf8; font-weight: 600;">SOFTWARE</span>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        async function activarLicencia(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnActivar');
+            const inputClave = document.getElementById('clave');
+            btn.disabled = true;
+            btn.textContent = 'Verificando Clave...';
+
+            const clave = inputClave.value;
+
+            try {
+                const response = await fetch('/api/licencia/activar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ clave: clave })
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Sistema Activado!',
+                        text: result.message,
+                        confirmButtonText: 'Ir al Login'
+                    }).then(() => {
+                        window.location.href = '/login';
+                    });
+                } else {
+                    const badge = document.getElementById('intentosBadge');
+                    const numSpan = document.getElementById('numIntentos');
+                    const msgBox = document.getElementById('intentosMsgBox');
+
+                    if (badge) badge.textContent = `${result.intentosFallidos} de 10`;
+                    if (numSpan) numSpan.textContent = result.intentosFallidos;
+                    if (msgBox) msgBox.style.display = 'block';
+
+                    if (result.bloqueado || result.intentosFallidos >= 10) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Límite de Intentos Superado',
+                            html: `<p style="color:#ef4444; font-weight:600;">${result.message}</p>`,
+                            confirmButtonColor: '#ef4444'
+                        });
+                        btn.disabled = true;
+                        inputClave.disabled = true;
+                        btn.textContent = 'BLOQUEADO (10/10 INTENTOS FALLIDOS)';
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Clave Incorrecta',
+                            html: `<p>${result.message}</p><div style="margin-top:12px; padding:10px; background:rgba(239,68,68,0.15); border-radius:8px; color:#ef4444; font-weight:700;">Intentos fallidos acumulados: ${result.intentosFallidos} / 10</div>`,
+                            confirmButtonColor: '#16a34a'
+                        });
+                        btn.disabled = false;
+                        btn.textContent = 'Activar Licencia Definitiva';
+                    }
+                }
+            } catch (err) {
+                Swal.fire('Error', 'No se pudo comunicar con el servidor de licencias.', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Activar Licencia Definitiva';
+            }
+        }
+    </script>
+</body>
+</html>

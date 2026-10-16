@@ -1,0 +1,1872 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Registrar Egreso - Sistema Contable')}">
+</head>
+<body style="background: var(--bg-color);">
+
+    <!-- Left Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Navbar -->
+        <div th:replace="~{fragments/layout :: navbar('Registro de Egresos de Compra')}"></div>
+
+        <div class="content-area">
+            
+            <!-- MAIN TABLE CARD WINDOW MATCHING DIRECTORIO DE CLIENTES -->
+            <div style="background: white; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 8px 25px rgba(0,0,0,0.06); overflow: hidden; width: 100%; min-height: calc(100vh - 140px); display: flex; flex-direction: column;">
+                
+                <!-- Toolbar & Search Header -->
+                <div style="padding: 14px 22px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; flex-shrink: 0;">
+                    
+                    <!-- Action Toolbar Buttons -->
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <button type="button" class="btn" onclick="abrirModalNuevo()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #1e293b; height: 38px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 0.2s;" onmouseover="this.style.borderColor='#16a34a'; this.style.color='#16a34a'" onmouseout="this.style.borderColor='#cbd5e1'; this.style.color='#1e293b'">
+                            <i class="ph ph-plus-circle" style="color: #16a34a; font-size: 1.15rem;"></i> Nuevo
+                        </button>
+                        <button type="button" class="btn" onclick="abrirModalEditar()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #1e293b; height: 38px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 0.2s;" onmouseover="this.style.borderColor='#15803d'; this.style.color='#15803d'" onmouseout="this.style.borderColor='#cbd5e1'; this.style.color='#1e293b'">
+                            <i class="ph ph-pencil-simple" style="color: #15803d; font-size: 1.15rem;"></i> Modificar
+                        </button>
+                        <button type="button" class="btn" onclick="eliminarEgreso()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #ef4444; height: 38px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 0.2s;" onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#fca5a5'" onmouseout="this.style.background='white'; this.style.borderColor='#cbd5e1'">
+                            <i class="ph ph-trash" style="font-size: 1.15rem;"></i> Eliminar
+                        </button>
+
+                        <div style="height: 24px; width: 1px; background: #cbd5e1; margin: 0 4px;"></div>
+
+                        <button type="button" class="btn" onclick="importarMarangatu()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #475569; height: 38px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
+                            <i class="ph ph-download-simple" style="font-size: 1.15rem; color: #16a34a;"></i> Importar Marangatu
+                        </button>
+                        <button type="button" class="btn" onclick="importarComprobante()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #475569; height: 38px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
+                            <i class="ph ph-upload-simple" style="font-size: 1.15rem; color: #16a34a;"></i> Importar
+                        </button>
+                    </div>
+
+                    <!-- Periodo & Search Controls matching Reference Image -->
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 8px; background: #ffffff; height: 38px; padding: 0 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.88rem;">
+                            <span style="font-weight: 700; color: #64748b;">Periodo:</span>
+                            <!-- Año Select -->
+                            <select id="filtroAnio" onchange="cargarEgresos()" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 8px; font-weight: 700; color: #0f172a; font-size: 0.85rem; outline: none; background: #f8fafc; cursor: pointer; height: 28px;">
+                                <option value="TODOS">Todos</option>
+                            </select>
+                            <!-- Mes Select -->
+                            <select id="filtroMes" onchange="cargarEgresos()" style="border: 2px solid #16a34a; border-radius: 6px; padding: 3px 8px; font-weight: 800; color: #15803d; font-size: 0.85rem; outline: none; background: #dcfce7; cursor: pointer; height: 28px;" title="Seleccionar Mes">
+                                <option value="TODOS">Todos</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8">8</option>
+                                <option value="9">9</option>
+                                <option value="10">10</option>
+                                <option value="11">11</option>
+                                <option value="12">12</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro Régimen -->
+                        <div style="display: flex; align-items: center; gap: 8px; background: #ffffff; height: 38px; padding: 0 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.88rem;">
+                            <span style="font-weight: 700; color: #64748b;">Régimen:</span>
+                            <select id="filtroRegimen" onchange="filtrarEgresos()" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 8px; font-weight: 700; color: #0f172a; font-size: 0.85rem; outline: none; background: #f8fafc; cursor: pointer; height: 28px;">
+                                <option value="TODOS">Todos</option>
+                                <option value="1">IRP & IVA</option>
+                                <option value="2">IRP</option>
+                                <option value="3">IVA</option>
+                                <option value="4">G. CAPITAL</option>
+                            </select>
+                        </div>
+
+                        <!-- Search Input with CTRL+F placeholder -->
+                        <div style="position: relative; width: 230px;">
+                            <input type="text" id="searchInput" class="form-control" placeholder="BUSCAR" onkeyup="filtrarEgresos()" style="padding-right: 36px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; height: 38px;" autocomplete="off">
+                            <i class="ph ph-magnifying-glass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #64748b; font-size: 1.1rem;"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Egresos Table matching Reference Image -->
+                <div style="overflow-x: auto; flex: 1; min-height: 520px;">
+                    <table class="table table-hover align-middle m-0" style="font-size: 0.9rem;">
+                        <thead style="background: #f8fafc; color: #334155; font-weight: 800; font-size: 0.85rem; border-bottom: 2px solid #e2e8f0;">
+                            <tr>
+                                <th onclick="ordenarTabla('nroFactura')" style="padding: 14px 16px; cursor: pointer; user-select: none;">
+                                    Factura <span class="sort-icon" id="sort_nroFactura" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                </th>
+                                <th onclick="ordenarTabla('nroTimbrado')" style="padding: 14px 16px; cursor: pointer; user-select: none;">
+                                    Timbrado <span class="sort-icon" id="sort_nroTimbrado" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                </th>
+                                <th onclick="ordenarTabla('tipDoc')" style="padding: 14px 16px; cursor: pointer; user-select: none;">
+                                    Tipo <span class="sort-icon" id="sort_tipDoc" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                </th>
+                                <th onclick="ordenarTabla('fecEgreso')" style="padding: 14px 16px; text-align: center; cursor: pointer; user-select: none;">
+                                    Fecha <span class="sort-icon" id="sort_fecEgreso" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                </th>
+                                <th onclick="ordenarTabla('rucProveedor')" style="padding: 14px 16px; cursor: pointer; user-select: none;">
+                                    Ruc <span class="sort-icon" id="sort_rucProveedor" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                </th>
+                                <th onclick="ordenarTabla('nomProveedor')" style="padding: 14px 16px; cursor: pointer; user-select: none;">
+                                    Proveedor <span class="sort-icon" id="sort_nomProveedor" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                </th>
+                                <th onclick="ordenarTabla('regimen')" style="padding: 14px 16px; text-align: center; cursor: pointer; user-select: none;">
+                                    Régimen <span class="sort-icon" id="sort_regimen" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                </th>
+                                <th onclick="ordenarTabla('condicion')" style="padding: 14px 16px; text-align: center; cursor: pointer; user-select: none;">
+                                    C.V. <span class="sort-icon" id="sort_condicion" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                </th>
+                                <th onclick="ordenarTabla('codMoneda')" style="padding: 14px 16px; text-align: center; cursor: pointer; user-select: none;">
+                                    Mon. <span class="sort-icon" id="sort_codMoneda" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                </th>
+                                <th onclick="ordenarTabla('exentas')" style="padding: 14px 16px; text-align: right; cursor: pointer; user-select: none;">
+                                    Exenta <span class="sort-icon" id="sort_exentas" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                </th>
+                                <th onclick="ordenarTabla('iva5')" style="padding: 14px 16px; text-align: right; cursor: pointer; user-select: none;">
+                                    IVA 5% <span class="sort-icon" id="sort_iva5" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                </th>
+                                <th onclick="ordenarTabla('iva10')" style="padding: 14px 16px; text-align: right; cursor: pointer; user-select: none;">
+                                    IVA 10% <span class="sort-icon" id="sort_iva10" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                </th>
+                                <th onclick="ordenarTabla('valorTotal')" style="padding: 14px 16px; text-align: right; cursor: pointer; user-select: none;">
+                                    Total <span class="sort-icon" id="sort_valorTotal" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaEgresosBody">
+                            <tr>
+                                <td colspan="13" class="text-center py-5 text-muted">
+                                    <i class="ph ph-spinner-gap" style="font-size: 2rem; animation: spin 1s linear infinite;" display="block"></i>
+                                    <div class="mt-2" style="font-size: 0.95rem; font-weight: 600;">Cargando egresos registrados...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- PERFECT CENTERED FORM MODAL OVERLAY (SIN DIFUMINADO DE FONDO, MAS ANCHO Y ALTO) -->
+    <div id="egresoModalOverlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.45); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 16px; transition: opacity 0.2s ease;">
+        
+        <div style="background: white; border-radius: 14px; border: 1px solid #94a3b8; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.35); width: 96vw; max-width: 1280px; max-height: 94vh; display: flex; flex-direction: column; overflow: hidden; animation: modalSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1);">
+            
+            <!-- Window Header -->
+            <div style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 34px; height: 34px; border-radius: 8px; background: linear-gradient(135deg, #16a34a, #15803d); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                        <i class="ph ph-hand-coins"></i>
+                    </div>
+                    <h3 id="modalTitle" style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0f172a;">Registrar / Modificar egreso</h3>
+                </div>
+                <button type="button" class="btn-close" onclick="cerrarModal()" style="font-size: 0.95rem; cursor: pointer;"></button>
+            </div>
+
+            <!-- Tab Header -->
+            <div style="background: #f1f5f9; border-bottom: 1px solid #cbd5e1; padding: 0 24px; display: flex; gap: 6px; flex-shrink: 0;">
+                <button type="button" id="btnEgresoTabEncabezado" onclick="switchTab('encabezado')" style="padding: 10px 22px; background: white; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: 700; color: #15803d; border: 1px solid #cbd5e1; border-bottom: none; margin-bottom: -1px; font-size: 0.92rem; cursor: pointer;">
+                    Encabezado
+                </button>
+                <button type="button" id="btnEgresoTabAsientoDebe" onclick="switchTab('asientoDebe')" style="padding: 10px 22px; background: #e2e8f0; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: 600; color: #64748b; border: 1px solid transparent; margin-bottom: -1px; font-size: 0.92rem; cursor: pointer;">
+                    Asiento Debe
+                </button>
+                <button type="button" id="btnEgresoTabAsientoHaber" onclick="switchTab('asientoHaber')" style="padding: 10px 22px; background: #e2e8f0; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: 600; color: #64748b; border: 1px solid transparent; margin-bottom: -1px; font-size: 0.92rem; cursor: pointer;">
+                    Asiento Haber
+                </button>
+                <button type="button" id="btnEgresoTabAnexoF120" onclick="switchTab('anexoF120')" style="padding: 10px 22px; background: #e2e8f0; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: 600; color: #64748b; border: 1px solid transparent; margin-bottom: -1px; font-size: 0.92rem; cursor: pointer;">
+                    Anexo F120
+                </button>
+            </div>
+
+            <!-- Form Fields Body -->
+            <div style="padding: 20px 26px; overflow-y: auto; flex: 1; max-height: calc(94vh - 125px);">
+                <form id="formEgreso">
+                    <input type="hidden" id="idEgreso">
+                    <input type="hidden" id="codProveedor">
+
+                    <!-- TAB 1: ENCABEZADO -->
+                    <div id="tabContentEncabezado">
+                        <!-- CDC Row -->
+                        <div style="display: grid; grid-template-columns: 125px 1fr 100px 85px; gap: 10px; align-items: center; margin-bottom: 12px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">CDC :</label>
+                            <div style="position: relative; display: flex; align-items: center;">
+                                <input type="text" id="cdc" maxlength="44" placeholder="____________________________________________" style="width: 100%; letter-spacing: 2px; font-family: monospace; font-weight: 700; font-size: 0.92rem; height: 38px; padding: 4px 34px 4px 10px; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #fafafa;" oninput="formatCDC(this)">
+                                <i class="ph ph-info" style="position: absolute; right: 10px; color: #16a34a; font-size: 1.25rem; cursor: pointer;" title="Código de Control Documental (44 dígitos SIFEN)"></i>
+                            </div>
+                            <button type="button" class="btn" onclick="verificarCDC()" style="border: 1.5px solid #cbd5e1; background: white; font-weight: 700; font-size: 0.85rem; color: #334155; height: 38px; padding: 0 10px; border-radius: 8px;">Verificar</button>
+                            <button type="button" class="btn" onclick="abrirQRModal()" style="border: 1.5px solid #cbd5e1; background: white; font-weight: 700; font-size: 0.85rem; color: #334155; height: 38px; padding: 0 10px; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                                <i class="ph ph-qr-code" style="font-size: 1.15rem;"></i> QR
+                            </button>
+                        </div>
+
+                        <!-- Tipo de Doc / Régimen Row -->
+                        <div style="display: grid; grid-template-columns: 125px 1.2fr 1.6fr; gap: 10px; align-items: center; margin-bottom: 12px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Tipo de Doc. :</label>
+                            <select id="tipDoc" class="form-control" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; border: 1.5px solid #cbd5e1;">
+                                <option value="Factura" selected>Factura</option>
+                                <option value="Nota de Débito">Nota de Débito</option>
+                                <option value="Nota de Crédito">Nota de Crédito</option>
+                                <option value="Autofactura">Autofactura</option>
+                                <option value="Boleta de Respaldo">Boleta de Respaldo</option>
+                            </select>
+
+                            <select id="regimen" class="form-control" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; font-weight: 600; border: 1.5px solid #cbd5e1;">
+                                <option value="1" selected>IRP & IVA</option>
+                                <option value="2">IRP</option>
+                                <option value="3">IVA</option>
+                                <option value="4">G. CAPITAL</option>
+                            </select>
+                        </div>
+
+                        <!-- Tipo timb / Timbrado / Venc. Timb Row -->
+                        <div style="display: grid; grid-template-columns: 125px 1.1fr 85px 1.1fr 95px 1.1fr; gap: 8px; align-items: center; margin-bottom: 12px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Tipo timb :</label>
+                            <select id="tipTimb" class="form-control" onchange="onTipoTimbChange()" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; border: 1.5px solid #cbd5e1;">
+                                <option value="Pre-impreso" selected>Pre-impreso</option>
+                                <option value="Autoimpresor">Autoimpresor</option>
+                                <option value="Electrónico">Electrónico</option>
+                            </select>
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Timbrado :</label>
+                            <input type="text" id="nroTimbrado" class="form-control" placeholder="17865432" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; border: 1.5px solid #cbd5e1;">
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Venc. timb :</label>
+                            <input type="date" id="vencTimbrado" class="form-control" onchange="validarFechasComprobanteVencimiento()" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; border: 1.5px solid #cbd5e1;">
+                        </div>
+
+                        <!-- Factura / Serie / Fecha Row -->
+                        <div style="display: grid; grid-template-columns: 125px 1.5fr 60px 1fr 65px 1.2fr; gap: 8px; align-items: center; margin-bottom: 12px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Factura :</label>
+                            <div style="display: flex; gap: 4px; align-items: center;">
+                                <input type="text" id="facEst" maxlength="3" value="001" style="width: 48px; text-align: center; border-radius: 8px; border: 1.5px solid #cbd5e1; height: 38px; font-size: 0.92rem; font-weight: 700; padding: 0;">
+                                <span>-</span>
+                                <input type="text" id="facPto" maxlength="3" value="001" style="width: 48px; text-align: center; border-radius: 8px; border: 1.5px solid #cbd5e1; height: 38px; font-size: 0.92rem; font-weight: 700; padding: 0;">
+                                <span>-</span>
+                                <input type="text" id="facNro" maxlength="7" placeholder="0194144" style="flex: 1; min-width: 85px; text-align: right; border-radius: 8px; border: 1.5px solid #cbd5e1; height: 38px; font-size: 0.95rem; font-weight: 700; padding: 4px 10px;">
+                            </div>
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Serie :</label>
+                            <input type="text" id="serie" maxlength="5" placeholder="" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; text-transform: uppercase; border: 1.5px solid #cbd5e1;">
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Fecha :</label>
+                            <input type="date" id="fecEgreso" class="form-control" onchange="validarFechasComprobanteVencimiento()" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; border: 1.5px solid #cbd5e1;">
+                        </div>
+
+                        <!-- Comprador Row -->
+                        <div style="display: grid; grid-template-columns: 125px 1fr; gap: 10px; align-items: center; margin-bottom: 12px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Comprador :</label>
+                            <div style="position: relative; display: flex; align-items: center;">
+                                <i class="ph ph-lock-key" style="position: absolute; left: 10px; color: #94a3b8; font-size: 1.1rem; pointer-events: none;" title="Bloqueado: Asignado automáticamente a la persona contribuyente"></i>
+                                <input type="text" id="comprador" class="form-control" th:value="${contribuyenteNombre != null ? contribuyenteNombre : (empresaDesc != null ? empresaDesc : session.empresaDesc)}" readonly tabindex="-1" placeholder="Nombre de la persona contribuyente..." style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px 4px 34px; text-transform: uppercase; border: 1.5px solid #cbd5e1; background: #f8fafc; color: #0f172a; font-weight: 700; cursor: not-allowed; width: 100%;">
+                            </div>
+                        </div>
+
+                        <!-- Proveedor Row -->
+                        <div style="display: grid; grid-template-columns: 125px 150px 1fr 90px; gap: 10px; align-items: center; margin-bottom: 12px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Proveedor :</label>
+                            <input type="text" id="rucProveedor" class="form-control" placeholder="RUC / Cód" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1;" onchange="verificarYCrearProveedorEgreso()" onkeypress="if(event.key === 'Enter'){verificarYCrearProveedorEgreso(); event.preventDefault();}">
+                            <input type="text" id="nomProveedor" class="form-control" placeholder="Razón Social (autocompletada por RUC)..." readonly tabindex="-1" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; background: #f8fafc; font-weight: 700; color: #1e293b; cursor: default; border: 1.5px solid #cbd5e1;">
+                            <button type="button" class="btn" onclick="buscarProveedorModal()" style="border: 1.5px solid #cbd5e1; background: #f8fafc; font-weight: 700; font-size: 0.88rem; color: #334155; height: 38px; padding: 0 10px; border-radius: 8px;">Buscar</button>
+                        </div>
+
+                        <!-- Tipo de Egreso & Clasificación de Gasto Row -->
+                        <div style="display: grid; grid-template-columns: 125px 1.3fr 95px 1.5fr; gap: 10px; align-items: center; margin-bottom: 12px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Tipo de Egreso :</label>
+                            <select id="tipEgreso" class="form-control" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; border: 1.5px solid #cbd5e1;">
+                                <option value="1" selected>GASTOS GENERALES Y OPERATIVOS</option>
+                                <option value="2">COMPRA DE MERCADERÍAS / MATERIA PRIMA</option>
+                                <option value="3">COMBUSTIBLES Y LUBRICANTES</option>
+                                <option value="4">SERVICIOS BÁSICOS (Luz, Agua, Teléfono, Internet)</option>
+                                <option value="5">ALQUILERES PAGADOS</option>
+                                <option value="6">HONORARIOS PROFESIONALES</option>
+                            </select>
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Clasif. Gasto :</label>
+                            <select id="clasificacionGasto" class="form-control" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; font-weight: 700; color: #15803d; background-color: #f0fdf4; border: 1.5px solid #86efac;">
+                                <option value="1" selected>Gasto</option>
+                                <option value="2">Inversiones Relacionadas a la Actividad Gravada</option>
+                                <option value="3">Inversiones Personales y de familiares a Cargo</option>
+                                <option value="4">Gastos Personales y Familiares a Cargo</option>
+                            </select>
+                        </div>
+
+                        <!-- Formulario 120 & Condición Row -->
+                        <div style="display: grid; grid-template-columns: 125px 1.3fr 1fr; gap: 14px; align-items: center; margin-bottom: 12px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Formulario 120 :</label>
+                            <select id="form120" class="form-control" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; border: 1.5px solid #cbd5e1;">
+                                <option value="Directo" selected>Directo</option>
+                                <option value="Prorrateo">Prorrateo</option>
+                            </select>
+
+                            <div style="display: flex; gap: 20px; align-items: center; padding-left: 8px;">
+                                <label style="font-size: 0.9rem; font-weight: 700; color: #1e293b; cursor: pointer; display: flex; align-items: center; gap: 6px; margin: 0;">
+                                    <input type="radio" name="condicion" value="CON" checked onchange="recalcularTotales()" style="accent-color: #16a34a; width: 17px; height: 17px;"> Contado
+                                </label>
+                                <label style="font-size: 0.9rem; font-weight: 700; color: #1e293b; cursor: pointer; display: flex; align-items: center; gap: 6px; margin: 0;">
+                                    <input type="radio" name="condicion" value="CRE" onchange="recalcularTotales()" style="accent-color: #16a34a; width: 17px; height: 17px;"> Crédito
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Formulario 145 Row -->
+                        <div style="display: grid; grid-template-columns: 125px 1.3fr 1fr; gap: 14px; align-items: center; margin-bottom: 12px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Formulario 145 :</label>
+                            <select id="form145" class="form-control" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; border: 1.5px solid #cbd5e1;">
+                                <option value="Original" selected>Original</option>
+                                <option value="Rectificativa">Rectificativa</option>
+                            </select>
+                            <div></div>
+                        </div>
+
+                        <!-- Moneda & Tasa de Cambio Row -->
+                        <div style="display: grid; grid-template-columns: 125px 1.5fr 110px 1fr; gap: 10px; align-items: center; margin-bottom: 14px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Moneda :</label>
+                            <select id="codMoneda" class="form-control" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; border: 1.5px solid #cbd5e1;">
+                                <option value="1" selected>GUARANÍ</option>
+                                <option value="2">DOLAR AMERICANO</option>
+                                <option value="3">REAL</option>
+                            </select>
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Tasa Cambio :</label>
+                            <input type="number" id="tasaCambio" value="1" step="0.0001" style="text-align: right; border-radius: 8px; border: 1.5px solid #cbd5e1; height: 38px; padding: 4px 10px; font-size: 0.92rem; font-weight: 700;">
+                        </div>
+
+                        <!-- TAX BREAKDOWN AND TOTALS GRID -->
+                        <div style="border-top: 1px dashed #cbd5e1; padding-top: 14px; margin-top: 8px;">
+                            
+                            <div style="display: grid; grid-template-columns: 125px 1fr 110px 1fr; gap: 10px 18px; align-items: center;">
+                                <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Grav. 10% :</label>
+                                <input type="number" id="grav10" value="0" class="form-control text-end" oninput="recalcularTotales()" style="border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1;">
+
+                                <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">I.V.A. 10% :</label>
+                                <input type="text" id="iva10" value="0" readonly class="form-control text-end" style="border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; background: #f8fafc; color: #15803d; border: 1.5px solid #cbd5e1;">
+
+                                <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Grav. 05% :</label>
+                                <input type="number" id="grav5" value="0" class="form-control text-end" oninput="recalcularTotales()" style="border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1;">
+
+                                <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">I.V.A. 05% :</label>
+                                <input type="text" id="iva5" value="0" readonly class="form-control text-end" style="border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; background: #f8fafc; color: #15803d; border: 1.5px solid #cbd5e1;">
+
+                                <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Exentas :</label>
+                                <input type="number" id="exentas" value="0" class="form-control text-end" oninput="recalcularTotales()" style="border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1;">
+
+                                <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Total I.V.A. :</label>
+                                <input type="text" id="totIva" value="0" readonly class="form-control text-end" style="border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 800; background: #dcfce7; color: #166534; border: 1.5px solid #86efac;">
+
+                                <div></div>
+                                <div></div>
+
+                                <label style="text-align: right; font-weight: 800; font-size: 0.95rem; color: #0f172a;">Valor Total :</label>
+                                <input type="text" id="valorTotal" value="0" readonly class="form-control text-end" style="border-radius: 8px; font-size: 1.25rem; height: 44px; padding: 4px 10px; font-weight: 900; background: #dcfce7; color: #15803d; border: 2px solid #86efac;">
+                            </div>
+
+                            <!-- Observacion Row -->
+                            <div style="display: grid; grid-template-columns: 125px 1fr; gap: 10px; align-items: center; margin-top: 12px;">
+                                <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Observación :</label>
+                                <input type="text" id="observacion" class="form-control" placeholder="Detalle o notas adicionales sobre este egreso..." style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; border: 1.5px solid #cbd5e1;">
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: ASIENTO DEBE -->
+                    <div id="tabContentAsientoDebe" style="display: none; padding: 12px 0;">
+                        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h5 style="margin: 0; font-size: 1rem; font-weight: 800; color: #0f172a;"><i class="ph ph-arrow-circle-right" style="color: #16a34a;"></i> Asiento Contable Generado - DEBE</h5>
+                                <p style="margin: 2px 0 0 0; font-size: 0.84rem; color: #64748b;">Calculado automáticamente con las cuentas predefinidas de la persona / proveedor.</p>
+                            </div>
+                            <span id="badgeTotalDebe" style="font-weight: 800; font-size: 1rem; color: #15803d; background: #dcfce7; padding: 6px 14px; border-radius: 8px; border: 1px solid #86efac;">Total Debe: Gs. 0</span>
+                        </div>
+                        <div style="border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: white;">
+                            <table class="table align-middle m-0" style="font-size: 0.9rem; width: 100%;">
+                                <thead style="background: #f1f5f9; color: #334155; font-weight: 800;">
+                                    <tr>
+                                        <th style="padding: 12px 16px; width: 20%;">Tipo</th>
+                                        <th style="padding: 12px 16px; width: 55%;">Cuenta Contable</th>
+                                        <th style="padding: 12px 16px; width: 25%; text-align: right;">Monto Debe (Gs.)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyAsientoDebe">
+                                    <tr><td colspan="3" style="text-align: center; color: #94a3b8; padding: 2rem;">Cargue los montos en la pestaña Encabezado para ver el asiento automático.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: ASIENTO HABER -->
+                    <div id="tabContentAsientoHaber" style="display: none; padding: 12px 0;">
+                        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h5 style="margin: 0; font-size: 1rem; font-weight: 800; color: #0f172a;"><i class="ph ph-arrow-circle-left" style="color: #0284c7;"></i> Asiento Contable Generado - HABER</h5>
+                                <p style="margin: 2px 0 0 0; font-size: 0.84rem; color: #64748b;">Contrapartida calculada automáticamente según la condición (Contado / Crédito).</p>
+                            </div>
+                            <span id="badgeTotalHaber" style="font-weight: 800; font-size: 1rem; color: #0369a1; background: #e0f2fe; padding: 6px 14px; border-radius: 8px; border: 1px solid #7dd3fc;">Total Haber: Gs. 0</span>
+                        </div>
+                        <div style="border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: white;">
+                            <table class="table align-middle m-0" style="font-size: 0.9rem; width: 100%;">
+                                <thead style="background: #f1f5f9; color: #334155; font-weight: 800;">
+                                    <tr>
+                                        <th style="padding: 12px 16px; width: 20%;">Tipo</th>
+                                        <th style="padding: 12px 16px; width: 55%;">Cuenta Contable (Contrapartida)</th>
+                                        <th style="padding: 12px 16px; width: 25%; text-align: right;">Monto Haber (Gs.)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyAsientoHaber">
+                                    <tr><td colspan="3" style="text-align: center; color: #94a3b8; padding: 2rem;">Cargue los montos en la pestaña Encabezado para ver la contrapartida.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- TAB 4: ANEXO F120 -->
+                    <div id="tabContentAnexoF120" style="display: none; padding: 12px 0;">
+                        <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 10px; padding: 14px; margin-bottom: 14px;">
+                            <h5 style="margin: 0; font-size: 1rem; font-weight: 800; color: #166534;"><i class="ph ph-file-text"></i> Desglose para Formulario 120 v3 (Declaración Jurada IVA)</h5>
+                            <p style="margin: 2px 0 0 0; font-size: 0.84rem; color: #15803d;">Resumen de importación directa a Rubro 3 de Compras Locales.</p>
+                        </div>
+                        <div style="border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: white;">
+                            <table class="table align-middle m-0" style="font-size: 0.9rem; width: 100%;">
+                                <thead style="background: #f1f5f9; color: #334155; font-weight: 800;">
+                                    <tr>
+                                        <th style="padding: 12px 16px;">Rubro / Concepto F120</th>
+                                        <th style="padding: 12px 16px; text-align: right;">Base Gravada 10%</th>
+                                        <th style="padding: 12px 16px; text-align: right;">Crédito Fiscal 10%</th>
+                                        <th style="padding: 12px 16px; text-align: right;">Base Gravada 5%</th>
+                                        <th style="padding: 12px 16px; text-align: right;">Crédito Fiscal 5%</th>
+                                        <th style="padding: 12px 16px; text-align: right;">Exentas</th>
+                                        <th style="padding: 12px 16px; text-align: right;">Total Comprobante</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyAnexoF120">
+                                    <tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 2rem;">Cargue los montos en la pestaña Encabezado para ver el desglose del Formulario 120.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+
+            <!-- Modal Action Footer -->
+            <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 12px 24px; display: flex; justify-content: flex-end; gap: 12px; flex-shrink: 0;">
+                <button type="button" class="btn" onclick="cerrarModal()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.9rem; color: #475569; padding: 8px 22px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
+                    <i class="ph ph-x" style="font-size: 1.1rem;"></i> Cancelar
+                </button>
+                <button type="button" class="btn" onclick="guardarEgreso()" style="background: linear-gradient(135deg, #16a34a, #15803d); border: none; font-weight: 800; font-size: 0.95rem; color: white; padding: 8px 28px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(22,163,74,0.35);">
+                    <i class="ph ph-check-bold" style="font-size: 1.15rem;"></i> Guardar
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+
+    </div>
+
+    <!-- Modal QR Simulator -->
+    <div id="qrModal" class="modal fade" tabindex="-1" style="display:none; background: rgba(0,0,0,0.5); z-index: 2500;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 12px;">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold"><i class="ph ph-qr-code text-primary"></i> Lectura de Código QR</h5>
+                    <button type="button" class="btn-close" onclick="cerrarQRModal()"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <div style="width: 160px; height: 160px; margin: 0 auto 15px; border: 3px dashed #16a34a; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: #f0fdf4;">
+                        <i class="ph ph-qr-code" style="font-size: 4rem; color: #15803d;"></i>
+                    </div>
+                    <p class="text-muted small">Escanee el código QR de la factura electrónica de compra o pegue la URL de SIFEN:</p>
+                    <input type="text" id="qrText" class="form-control" placeholder="https://ekuatia.set.gov.py/consultas/qr?nVersion=1.5&cdc=...">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="cerrarQRModal()">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="procesarQR()">Procesar QR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes modalSlideDown {
+            from { opacity: 0; transform: translateY(-20px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .table tbody tr.fila-seleccionada > td {
+            background-color: #dcfce7 !important;
+            color: #0f172a !important;
+            font-weight: 600 !important;
+        }
+        .table tbody tr.fila-seleccionada {
+            border-left: 5px solid #16a34a !important;
+            box-shadow: inset 0 0 0 1px #86efac;
+        }
+        .table tbody tr {
+            transition: background-color 0.15s ease, border-left 0.15s ease;
+        }
+    </style>
+
+    <!-- Layout Scripts -->
+    <div th:replace="~{fragments/layout :: scripts}"></div>
+
+    <script>
+        const CONTRIBUYENTE_NOMBRE = '[[${contribuyenteNombre != null ? contribuyenteNombre : (empresaDesc != null ? empresaDesc : session.empresaDesc)}]]';
+        let listEgresosData = [];
+        let selectedIdEgreso = null;
+        let currentSortColumn = null;
+        let currentSortAsc = true;
+
+        function onTipoTimbChange() {
+            const tipEl = document.getElementById('tipTimb');
+            const vencEl = document.getElementById('vencTimbrado');
+            if (!tipEl || !vencEl) return;
+
+            const tipVal = (tipEl.value || '').trim();
+            if (tipVal.toLowerCase().includes('electr')) {
+                vencEl.value = '2100-12-31';
+                vencEl.readOnly = true;
+                vencEl.style.backgroundColor = '#f8fafc';
+                vencEl.style.cursor = 'not-allowed';
+                vencEl.style.color = '#475569';
+                vencEl.style.border = '1.5px solid #cbd5e1';
+                vencEl.title = 'Timbrado electrónico: Vencimiento automático fijado al 31/12/2100';
+            } else {
+                if (vencEl.value === '2100-12-31') {
+                    vencEl.value = '';
+                }
+                vencEl.readOnly = false;
+                vencEl.style.backgroundColor = '#ffffff';
+                vencEl.style.cursor = 'text';
+                vencEl.style.color = '#0f172a';
+                vencEl.title = 'Ingrese la fecha de vencimiento del timbrado';
+            }
+            validarFechasComprobanteVencimiento();
+        }
+
+        function validarFechasComprobanteVencimiento() {
+            const elFec = document.getElementById('fecEgreso');
+            const elVenc = document.getElementById('vencTimbrado');
+            if (!elFec || !elVenc) return true;
+            const fecEgresoVal = (elFec.value || '').trim();
+            const vencTimbradoVal = (elVenc.value || '').trim();
+
+            if (fecEgresoVal && vencTimbradoVal && fecEgresoVal > vencTimbradoVal) {
+                elFec.style.border = '2px solid #dc2626';
+                elFec.style.backgroundColor = '#fef2f2';
+                elVenc.style.border = '2px solid #dc2626';
+                elVenc.style.backgroundColor = '#fef2f2';
+                return false;
+            } else {
+                if (elFec.style.borderColor === 'rgb(220, 38, 38)' || (elFec.style.border && elFec.style.border.includes('2626'))) {
+                    elFec.style.border = '1px solid #cbd5e1';
+                    elFec.style.backgroundColor = '#ffffff';
+                }
+                if (elVenc.style.borderColor === 'rgb(220, 38, 38)' || (elVenc.style.border && elVenc.style.border.includes('2626'))) {
+                    elVenc.style.border = '1px solid #cbd5e1';
+                    const isElectr = (document.getElementById('tipTimb')?.value || '').toLowerCase().includes('electr');
+                    elVenc.style.backgroundColor = isElectr ? '#f8fafc' : '#ffffff';
+                }
+                return true;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (CONTRIBUYENTE_NOMBRE) {
+                const compEl = document.getElementById('comprador');
+                if (compEl) compEl.value = CONTRIBUYENTE_NOMBRE;
+            }
+            onTipoTimbChange();
+            inicializarFiltroPeriodo();
+            cargarEgresos();
+            cargarTiposComprobantes('EGRESOS');
+            cargarRegimenesDynamic();
+            cargarTiposEgresoDynamic();
+            cargarClasificacionesGasto();
+            cargarMonedasDynamic();
+
+            // Atajo de teclado CTRL+F para buscar
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && (e.key === 'f' || e.key === 'F')) {
+                    e.preventDefault();
+                    const sInput = document.getElementById('searchInput');
+                    if (sInput) {
+                        sInput.focus();
+                        sInput.select();
+                    }
+                }
+            });
+        });
+
+        function inicializarFiltroPeriodo() {
+            const selectAnio = document.getElementById('filtroAnio');
+            if (!selectAnio) return;
+
+            const anioActual = new Date().getFullYear();
+            let html = '<option value="TODOS">Todos</option>';
+            for (let y = anioActual + 1; y >= anioActual - 5; y--) {
+                html += `<option value="${y}">${y}</option>`;
+            }
+            selectAnio.innerHTML = html;
+
+            const ejSession = '[[${session.ejercicio}]]';
+            if (ejSession && ejSession !== '' && selectAnio.querySelector(`option[value="${ejSession}"]`)) {
+                selectAnio.value = ejSession;
+            } else {
+                selectAnio.value = String(anioActual);
+            }
+        }
+
+        async function cargarMonedasDynamic() {
+            try {
+                const res = await fetch('/api/monedas/all');
+                const list = await res.json();
+                const select = document.getElementById('codMoneda');
+                if (select && list && list.length > 0) {
+                    const currentVal = select.value;
+                    select.innerHTML = '';
+                    let defaultVal = '1';
+                    list.forEach(m => {
+                        const cod = String(m.COD_MONEDA || m.cod_moneda || m.codMoneda || '1');
+                        const desc = m.DESCRIPCION || m.descripcion || m.SIGLAS || m.siglas || cod;
+                        const opt = document.createElement('option');
+                        opt.value = cod;
+                        opt.text = desc;
+                        select.appendChild(opt);
+
+                        if (cod === '1' || desc.toUpperCase().includes('GUARAN')) {
+                            defaultVal = cod;
+                        }
+                    });
+
+                    if (currentVal && Array.from(select.options).some(o => o.value === currentVal)) {
+                        select.value = currentVal;
+                    } else {
+                        select.value = defaultVal;
+                    }
+                }
+            } catch (e) {
+                console.warn('Error al cargar monedas:', e);
+            }
+        }
+
+        async function cargarRegimenesDynamic() {
+            try {
+                const res = await fetch('/api/regimen/list');
+                const list = await res.json();
+                const select = document.getElementById('regimen');
+                if (select && list && list.length > 0) {
+                    const currentVal = String(select.value || '1');
+                    select.innerHTML = '';
+                    list.filter(item => (item.ESTADO || item.estado) === 'A' || String(item.COD_REGIMEN || item.cod_regimen) === currentVal).forEach(item => {
+                        const cod = item.COD_REGIMEN || item.cod_regimen;
+                        const desc = item.DESCRIPCION || item.descripcion;
+                        const opt = document.createElement('option');
+                        opt.value = cod;
+                        opt.text = desc;
+                        select.appendChild(opt);
+                    });
+                    if (currentVal && Array.from(select.options).some(o => o.value == currentVal)) {
+                        select.value = currentVal;
+                    } else {
+                        select.value = '1';
+                    }
+                }
+
+                const filtroSelect = document.getElementById('filtroRegimen');
+                if (filtroSelect && list && list.length > 0) {
+                    const currentFiltro = filtroSelect.value || 'TODOS';
+                    filtroSelect.innerHTML = '<option value="TODOS">Todos</option>';
+                    list.filter(item => (item.ESTADO || item.estado) === 'A').forEach(item => {
+                        const cod = item.COD_REGIMEN || item.cod_regimen;
+                        const desc = item.DESCRIPCION || item.descripcion;
+                        const opt = document.createElement('option');
+                        opt.value = cod;
+                        opt.text = desc;
+                        filtroSelect.appendChild(opt);
+                    });
+                    if (currentFiltro && Array.from(filtroSelect.options).some(o => o.value == currentFiltro)) {
+                        filtroSelect.value = currentFiltro;
+                    }
+                }
+            } catch (e) {
+                console.warn('Error al cargar regímenes:', e);
+            }
+        }
+
+        async function cargarTiposEgresoDynamic() {
+            try {
+                const res = await fetch('/api/tipo_egreso/list');
+                const list = await res.json();
+                if (list && list.length > 0) {
+                    const select = document.getElementById('tipEgreso');
+                    if (select) {
+                        const currentVal = select.value;
+                        select.innerHTML = '';
+                        list.filter(item => (item.ESTADO || item.estado) === 'A' || String(item.COD_TIPO || item.cod_tipo) === String(currentVal)).forEach(item => {
+                            const id = String(item.COD_TIPO || item.cod_tipo);
+                            const desc = item.DESCRIPCION || item.descripcion;
+                            const opt = document.createElement('option');
+                            opt.value = id;
+                            opt.text = desc;
+                            select.appendChild(opt);
+                        });
+                        if (currentVal && Array.from(select.options).some(o => o.value === String(currentVal))) {
+                            select.value = String(currentVal);
+                        } else if (select.options.length > 0) {
+                            select.selectedIndex = 0;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('Error al cargar tipos de egreso:', e);
+            }
+        }
+
+        async function cargarClasificacionesGasto() {
+            try {
+                const res = await fetch('/api/clasificacion_gasto/list');
+                const list = await res.json();
+                if (list && list.length > 0) {
+                    const select = document.getElementById('clasificacionGasto');
+                    if (select) {
+                        const currentVal = select.value;
+                        select.innerHTML = '';
+                        list.filter(item => (item.ESTADO || item.estado) === 'A' || String(item.COD_CLASIFICACION || item.cod_clasificacion) === String(currentVal)).forEach(item => {
+                            const id = String(item.COD_CLASIFICACION || item.cod_clasificacion);
+                            const desc = item.DESCRIPCION || item.descripcion;
+                            const opt = document.createElement('option');
+                            opt.value = id;
+                            opt.text = desc;
+                            select.appendChild(opt);
+                        });
+                        if (currentVal && Array.from(select.options).some(o => o.value === String(currentVal))) {
+                            select.value = String(currentVal);
+                        } else if (select.options.length > 0) {
+                            select.selectedIndex = 0;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('Error al cargar clasificaciones de gasto:', e);
+            }
+        }
+
+        function cargarEgresos() {
+            const anioVal = document.getElementById('filtroAnio')?.value || 'TODOS';
+            const mesVal = document.getElementById('filtroMes')?.value || 'TODOS';
+
+            fetch(`/api/egresos/list?anio=${encodeURIComponent(anioVal)}&mes=${encodeURIComponent(mesVal)}`)
+                .then(res => res.json())
+                .then(res => {
+                    if (res.status === 'success') {
+                        listEgresosData = res.data || [];
+                        filtrarEgresos();
+                    }
+                })
+                .catch(err => {
+                    console.error('Error al cargar egresos:', err);
+                });
+        }
+
+        function formatFechaTabla(fec) {
+            if (!fec) return '-';
+            let str = String(fec).trim();
+            if (str.includes('T')) str = str.split('T')[0];
+            if (str.includes(' ')) str = str.split(' ')[0];
+            if (str.matches && str.matches(/\d{2}\/\d{2}\/\d{4}/)) return str;
+            if (str.includes('-')) {
+                const parts = str.split('-');
+                if (parts.length === 3) {
+                    return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+                }
+            }
+            return str;
+        }
+
+        function formatNroFactura(nroFactura, tipDoc) {
+            if (!nroFactura) return '-';
+            let s = String(nroFactura).trim();
+            if (!s || s === '-') return '-';
+
+            if (s.includes('-')) {
+                let parts = s.split('-');
+                if (parts.length === 3) {
+                    let est = parts[0].trim().padStart(3, '0');
+                    let pto = parts[1].trim().padStart(3, '0');
+                    let num = parts[2].trim().padStart(7, '0');
+                    return `${est}-${pto}-${num}`;
+                }
+            } else if (/^\d+$/.test(s)) {
+                if (s.length === 13) {
+                    let est = s.substring(0, 3);
+                    let pto = s.substring(3, 6);
+                    let num = s.substring(6).padStart(7, '0');
+                    return `${est}-${pto}-${num}`;
+                } else {
+                    return `001-001-${s.padStart(7, '0')}`;
+                }
+            }
+            return s;
+        }
+
+        function renderTabla(data) {
+            const tbody = document.getElementById('tablaEgresosBody');
+            tbody.innerHTML = '';
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="13" class="text-center py-5 text-muted" style="font-weight:600;">No se encontraron registros de egresos para el periodo seleccionado.</td></tr>';
+                return;
+            }
+
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.dataset.id = item.ID_EGRESO || item.id_egreso;
+                tr.style.cursor = 'pointer';
+                tr.style.transition = 'all 0.15s ease';
+
+                const isSelected = (selectedIdEgreso && selectedIdEgreso == (item.ID_EGRESO || item.id_egreso));
+                if (isSelected) {
+                    tr.classList.add('fila-seleccionada');
+                }
+
+                tr.onclick = function() {
+                    document.querySelectorAll('#tablaEgresosBody tr').forEach(r => {
+                        r.classList.remove('fila-seleccionada');
+                    });
+                    tr.classList.add('fila-seleccionada');
+                    selectedIdEgreso = item.ID_EGRESO || item.id_egreso;
+                };
+
+                tr.ondblclick = function() {
+                    selectedIdEgreso = item.ID_EGRESO || item.id_egreso;
+                    abrirModalEditar();
+                };
+
+                const fecStr = formatFechaTabla(item.FEC_EGRESO_FMT || item.fec_egreso_fmt || item.FEC_EGRESO || item.fec_egreso);
+                const rawFac = item.NRO_FACTURA || item.nro_factura || '-';
+                const tipDocStr = item.TIP_DOC || item.tip_doc || 'Pre-impreso';
+                const nroFac = formatNroFactura(rawFac, tipDocStr);
+                const nroTimb = item.NRO_TIMBRADO || item.nro_timbrado || '-';
+                const rucStr = item.RUC_PROVEEDOR || item.ruc_proveedor || '-';
+                const nomStr = item.NOM_PROVEEDOR || item.nom_proveedor || '-';
+                const rawReg = String(item.COD_REGIMEN || item.cod_regimen || item.REGIMEN || item.regimen || '1').trim();
+                let regStr = 'IRP & IVA';
+                let regBadgeStyle = 'background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;';
+                if (rawReg === '1' || rawReg.toUpperCase().includes('IRP & IVA')) {
+                    regStr = 'IRP & IVA';
+                    regBadgeStyle = 'background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;';
+                } else if (rawReg === '2' || rawReg.toUpperCase() === 'IRP') {
+                    regStr = 'IRP';
+                    regBadgeStyle = 'background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0;';
+                } else if (rawReg === '3' || rawReg.toUpperCase() === 'IVA') {
+                    regStr = 'IVA';
+                    regBadgeStyle = 'background: #faf5ff; color: #7e22ce; border: 1px solid #e9d5ff;';
+                } else if (rawReg === '4' || rawReg.toUpperCase().includes('CAPITAL')) {
+                    regStr = 'G. CAPITAL';
+                    regBadgeStyle = 'background: #fffbeb; color: #b45309; border: 1px solid #fde68a;';
+                } else {
+                    regStr = rawReg;
+                    regBadgeStyle = 'background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1;';
+                }
+                
+                // Condición de Venta (C.V.): CRE o CON
+                const condStr = (item.CONDICION || item.condicion || 'CON').toUpperCase();
+                const cvTag = (condStr.startsWith('CRE') || condStr.includes('CRED')) ? 'CRE' : 'CON';
+                
+                // Moneda: US$ o Gs / GS.
+                const monRaw = String(item.COD_MONEDA || item.cod_moneda || '1').toUpperCase();
+                const monTag = (monRaw === '2' || monRaw.includes('DOLAR') || monRaw.includes('USD') || monRaw.includes('US$')) ? 'US$' : (monRaw === '3' || monRaw.includes('REAL') ? 'R$' : 'Gs');
+
+                const valExenta = parseFloat(item.EXENTAS || item.exentas || 0);
+                const valIva5 = parseFloat(item.IVA5 || item.iva5 || 0);
+                const valIva10 = parseFloat(item.IVA10 || item.iva10 || 0);
+                const valTot = parseFloat(item.VALOR_TOTAL || item.valor_total || 0);
+
+                const formattedExenta = valExenta.toLocaleString('es-PY');
+                const formattedIva5 = valIva5.toLocaleString('es-PY');
+                const formattedIva10 = valIva10.toLocaleString('es-PY');
+                const formattedTotal = valTot.toLocaleString('es-PY');
+
+                tr.innerHTML = `
+                    <td style="padding: 13px 16px; font-weight: 700; color: #15803d; font-size: 0.92rem;">${nroFac}</td>
+                    <td style="padding: 13px 16px; color: #334155; font-size: 0.88rem;">${nroTimb}</td>
+                    <td style="padding: 13px 16px; color: #475569; font-size: 0.88rem;">${tipDocStr}</td>
+                    <td class="text-center" style="padding: 13px 16px; color: #334155; font-size: 0.88rem;">${fecStr}</td>
+                    <td style="padding: 13px 16px; font-weight: 600; color: #475569; font-size: 0.88rem;">${rucStr}</td>
+                    <td style="padding: 13px 16px; font-weight: 700; color: #0f172a; font-size: 0.92rem;">${nomStr}</td>
+                    <td class="text-center" style="padding: 13px 16px;">
+                        <span style="${regBadgeStyle} font-weight: 700; font-size: 0.78rem; padding: 4px 10px; border-radius: 6px; white-space: nowrap;">${regStr}</span>
+                    </td>
+                    <td class="text-center" style="padding: 13px 16px; font-weight: 800; color: #15803d; font-size: 0.88rem;">${cvTag}</td>
+                    <td class="text-center" style="padding: 13px 16px; font-weight: 800; color: #475569; font-size: 0.88rem;">${monTag}</td>
+                    <td class="text-end" style="padding: 13px 16px; font-weight: 600; color: #64748b; font-size: 0.9rem;">${formattedExenta}</td>
+                    <td class="text-end" style="padding: 13px 16px; font-weight: 600; color: #0284c7; font-size: 0.9rem;">${formattedIva5}</td>
+                    <td class="text-end" style="padding: 13px 16px; font-weight: 600; color: #0284c7; font-size: 0.9rem;">${formattedIva10}</td>
+                    <td class="text-end" style="padding: 13px 16px; font-weight: 800; color: #0f172a; font-size: 0.95rem;">${formattedTotal}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function ordenarTabla(columnKey) {
+            if (currentSortColumn === columnKey) {
+                currentSortAsc = !currentSortAsc;
+            } else {
+                currentSortColumn = columnKey;
+                currentSortAsc = true;
+            }
+
+            document.querySelectorAll('.sort-icon').forEach(icon => icon.innerText = '↕');
+            const iconEl = document.getElementById('sort_' + columnKey);
+            if (iconEl) {
+                iconEl.innerText = currentSortAsc ? '▲' : '▼';
+            }
+
+            const dataToSort = [...listEgresosData];
+            dataToSort.sort((a, b) => {
+                let valA = a[columnKey] || a[columnKey.toUpperCase()] || a[columnKey.toLowerCase()] || '';
+                let valB = b[columnKey] || b[columnKey.toUpperCase()] || b[columnKey.toLowerCase()] || '';
+
+                if (columnKey === 'tipEgreso') {
+                    valA = a.TIP_EGRESO || a.tip_egreso || '';
+                    valB = b.TIP_EGRESO || b.tip_egreso || '';
+                } else if (columnKey === 'clasificacionGasto') {
+                    valA = a.CLASIFICACION_GASTO || a.clasificacion_gasto || '';
+                    valB = b.CLASIFICACION_GASTO || b.clasificacion_gasto || '';
+                }
+
+                if (columnKey === 'valorTotal') {
+                    valA = parseFloat(valA) || 0;
+                    valB = parseFloat(valB) || 0;
+                } else {
+                    valA = String(valA).toUpperCase();
+                    valB = String(valB).toUpperCase();
+                }
+
+                if (valA < valB) return currentSortAsc ? -1 : 1;
+                if (valA > valB) return currentSortAsc ? 1 : -1;
+                return 0;
+            });
+
+            renderTabla(dataToSort);
+        }
+
+        function filtrarEgresos() {
+            const query = document.getElementById('searchInput').value.trim().toUpperCase();
+            const filtroReg = document.getElementById('filtroRegimen') ? document.getElementById('filtroRegimen').value : 'TODOS';
+
+            let filtered = listEgresosData;
+
+            if (filtroReg && filtroReg !== 'TODOS') {
+                filtered = filtered.filter(item => {
+                    const r = String(item.COD_REGIMEN || item.cod_regimen || item.REGIMEN || item.regimen || '1').trim();
+                    if (r === filtroReg) return true;
+                    if (filtroReg === '1' && (r.toUpperCase().includes('IRP & IVA') || r === '1')) return true;
+                    if (filtroReg === '2' && (r.toUpperCase() === 'IRP' || r === '2')) return true;
+                    if (filtroReg === '3' && (r.toUpperCase() === 'IVA' || r === '3')) return true;
+                    if (filtroReg === '4' && (r.toUpperCase().includes('CAPITAL') || r === '4')) return true;
+                    return false;
+                });
+            }
+
+            if (query) {
+                filtered = filtered.filter(item => {
+                    const fac = String(item.NRO_FACTURA || item.nro_factura || '').toUpperCase();
+                    const nom = String(item.NOM_PROVEEDOR || item.nom_proveedor || '').toUpperCase();
+                    const ruc = String(item.RUC_PROVEEDOR || item.ruc_proveedor || '').toUpperCase();
+                    const timb = String(item.NRO_TIMBRADO || item.nro_timbrado || '').toUpperCase();
+                    const tip = String(item.TIP_DOC || item.tip_doc || '').toUpperCase();
+                    const reg = String(item.REGIMEN || item.regimen || '').toUpperCase();
+                    const tipEg = String(item.TIP_EGRESO || item.tip_egreso || '').toUpperCase();
+                    const clasG = String(item.CLASIFICACION_GASTO || item.clasificacion_gasto || '').toUpperCase();
+                    return fac.includes(query) || nom.includes(query) || ruc.includes(query) || timb.includes(query) || tip.includes(query) || reg.includes(query) || tipEg.includes(query) || clasG.includes(query);
+                });
+            }
+
+            renderTabla(filtered);
+        }
+
+        async function cargarTiposComprobantes(modulo) {
+            try {
+                const res = await fetch(`/api/co_tipos_comprobantes/list?modulo=${modulo}`);
+                const json = await res.json();
+                if (json.status === 'success' && json.data && json.data.length > 0) {
+                    const select = document.getElementById('tipDoc');
+                    const currentVal = select.value;
+                    select.innerHTML = '';
+                    json.data.forEach(item => {
+                        const val = item.TIP_COMPROBANTE || item.tip_comprobante;
+                        const desc = item.DESCRIPCION || item.descripcion || val;
+                        const opt = document.createElement('option');
+                        opt.value = val;
+                        opt.text = desc;
+                        select.appendChild(opt);
+                    });
+                    if (currentVal && Array.from(select.options).some(o => o.value === currentVal)) {
+                        select.value = currentVal;
+                    }
+                }
+            } catch (e) {
+                console.warn('Error al cargar tipos de comprobante:', e);
+            }
+        }
+
+        let _personaAsientosCache = null;
+        let _calculadoDebeList = [];
+        let _calculadoHaberList = [];
+
+        function switchTab(tab) {
+            ['encabezado', 'asientoDebe', 'asientoHaber', 'anexoF120'].forEach(t => {
+                const btn = document.getElementById('btnEgresoTab' + t.charAt(0).toUpperCase() + t.slice(1));
+                const content = document.getElementById('tabContent' + t.charAt(0).toUpperCase() + t.slice(1));
+                if (btn && content) {
+                    if (t === tab) {
+                        btn.style.background = 'white';
+                        btn.style.color = '#15803d';
+                        btn.style.borderColor = '#cbd5e1';
+                        btn.style.fontWeight = '700';
+                        content.style.display = 'block';
+                    } else {
+                        btn.style.background = '#e2e8f0';
+                        btn.style.color = '#64748b';
+                        btn.style.borderColor = 'transparent';
+                        btn.style.fontWeight = '600';
+                        content.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        async function cargarAsientosPredefinidosProveedor() {
+            const ruc = document.getElementById('rucProveedor').value.trim();
+            if (!ruc) {
+                _personaAsientosCache = null;
+                actualizarAsientosCalculados();
+                return;
+            }
+            try {
+                const res = await fetch(`/api/personas/asientos-predefinidos-by-ruc?ruc=${encodeURIComponent(ruc)}`);
+                const data = await res.json();
+                if (data.status === 'success') {
+                    _personaAsientosCache = data;
+                } else {
+                    _personaAsientosCache = null;
+                }
+            } catch(e) {
+                _personaAsientosCache = null;
+            }
+            actualizarAsientosCalculados();
+        }
+
+        function abrirModalNuevo() {
+            resetFormBorders();
+            document.getElementById('formEgreso').reset();
+            document.getElementById('idEgreso').value = '';
+            document.getElementById('codProveedor').value = '';
+            document.getElementById('regimen').value = '1';
+            document.getElementById('tipTimb').value = 'Pre-impreso';
+            onTipoTimbChange();
+            document.getElementById('modalTitle').innerText = 'Registrar egreso';
+            document.getElementById('fecEgreso').valueAsDate = new Date();
+            document.querySelectorAll('input[name="condicion"]').forEach(r => {
+                r.checked = (r.value === 'CON');
+            });
+            switchTab('encabezado');
+            recalcularTotales();
+
+            const overlay = document.getElementById('egresoModalOverlay');
+            overlay.style.display = 'flex';
+        }
+
+        function abrirModalEditar() {
+            resetFormBorders();
+            if (!selectedIdEgreso) {
+                Swal.fire('Atención', 'Por favor seleccione un egreso de la tabla para editar.', 'warning');
+                return;
+            }
+
+            fetch(`/api/egresos/get/${selectedIdEgreso}`)
+                .then(res => res.json())
+                .then(async res => {
+                    if (res.status === 'success' && res.data) {
+                        const item = res.data;
+                        document.getElementById('idEgreso').value = item.ID_EGRESO || '';
+                        document.getElementById('modalTitle').innerText = 'Modificar egreso #' + (item.ID_EGRESO || '');
+                        document.getElementById('cdc').value = item.CDC || '';
+                        document.getElementById('tipDoc').value = item.TIP_DOC || 'Factura';
+                        
+                        const rawReg = String(item.COD_REGIMEN || item.cod_regimen || item.REGIMEN || item.regimen || '1').trim();
+                        const regSel = document.getElementById('regimen');
+                        if (regSel) {
+                            let matched = false;
+                            for (let opt of regSel.options) {
+                                if (opt.value === rawReg || opt.text.toUpperCase() === rawReg.toUpperCase()) {
+                                    regSel.value = opt.value;
+                                    matched = true;
+                                    break;
+                                }
+                            }
+                            if (!matched) {
+                                if (rawReg.toUpperCase().includes('IVA') && rawReg.toUpperCase().includes('IRP')) regSel.value = '1';
+                                else if (rawReg.toUpperCase() === 'IRP') regSel.value = '2';
+                                else if (rawReg.toUpperCase() === 'IVA') regSel.value = '3';
+                                else if (rawReg.toUpperCase().includes('CAPITAL')) regSel.value = '4';
+                                else if (regSel.options.length > 0) regSel.selectedIndex = 0;
+                            }
+                        }
+                        const rawClasG = String(item.CLASIFICACION_GASTO || item.clasificacion_gasto || '1').trim();
+                        const clasSel = document.getElementById('clasificacionGasto');
+                        if (clasSel) {
+                            let matched = false;
+                            for (let opt of clasSel.options) {
+                                if (opt.value === rawClasG || opt.text.toUpperCase() === rawClasG.toUpperCase()) {
+                                    clasSel.value = opt.value;
+                                    matched = true;
+                                    break;
+                                }
+                            }
+                            if (!matched && clasSel.options.length > 0) clasSel.selectedIndex = 0;
+                        }
+
+                        document.getElementById('tipTimb').value = item.TIP_TIMB || item.tip_timb || 'Pre-impreso';
+                        document.getElementById('nroTimbrado').value = item.NRO_TIMBRADO || item.nro_timbrado || '';
+
+                        const rawVenc = item.VENC_TIMBRADO || item.venc_timbrado || '';
+                        let cleanVenc = rawVenc ? (rawVenc.includes('T') ? rawVenc.split('T')[0] : (rawVenc.includes(' ') ? rawVenc.split(' ')[0] : rawVenc)) : '';
+                        if (cleanVenc && cleanVenc.includes('/')) {
+                            const vp = cleanVenc.split('/');
+                            if (vp.length === 3) cleanVenc = `${vp[2]}-${vp[1]}-${vp[0]}`;
+                        }
+                        const curTip = (document.getElementById('tipTimb').value || '').trim();
+                        if (curTip.toLowerCase().includes('electr')) {
+                            document.getElementById('vencTimbrado').value = '2100-12-31';
+                        } else {
+                            document.getElementById('vencTimbrado').value = (cleanVenc && cleanVenc !== '2100-12-31') ? cleanVenc : (cleanVenc || '');
+                        }
+                        onTipoTimbChange();
+
+                        if (item.NRO_FACTURA || item.nro_factura) {
+                            const formattedFac = formatNroFactura(item.NRO_FACTURA || item.nro_factura, item.TIP_DOC || item.tip_doc);
+                            const parts = formattedFac.split('-');
+                            if (parts.length === 3) {
+                                document.getElementById('facEst').value = parts[0];
+                                document.getElementById('facPto').value = parts[1];
+                                document.getElementById('facNro').value = parts[2];
+                            }
+                        }
+
+                        document.getElementById('serie').value = item.SERIE || item.serie || '';
+                        document.getElementById('fecEgreso').value = item.FEC_EGRESO || item.fec_egreso || '';
+                        document.getElementById('comprador').value = CONTRIBUYENTE_NOMBRE || item.COMPRADOR || item.comprador || '';
+                        document.getElementById('rucProveedor').value = item.RUC_PROVEEDOR || item.ruc_proveedor || '';
+                        document.getElementById('nomProveedor').value = item.NOM_PROVEEDOR || item.nom_proveedor || '';
+                        document.getElementById('codProveedor').value = item.COD_PROVEEDOR || item.cod_proveedor || '';
+
+                        const rawTipEg = String(item.TIP_EGRESO || item.tip_egreso || '1').trim();
+                        const tipSel = document.getElementById('tipEgreso');
+                        if (tipSel) {
+                            let matched = false;
+                            for (let opt of tipSel.options) {
+                                if (opt.value === rawTipEg || opt.text.toUpperCase() === rawTipEg.toUpperCase()) {
+                                    tipSel.value = opt.value;
+                                    matched = true;
+                                    break;
+                                }
+                            }
+                            if (!matched && tipSel.options.length > 0) tipSel.selectedIndex = 0;
+                        }
+                        document.getElementById('form120').value = item.FORM_120 || 'Directo';
+
+                        const radiosCond = document.querySelectorAll('input[name="condicion"]');
+                        const cVal = (item.CONDICION || item.condicion || 'CON').toUpperCase();
+                        const isCre = cVal.startsWith('CRE') || cVal.includes('CRED');
+                        radiosCond.forEach(r => {
+                            r.checked = isCre ? (r.value === 'CRE') : (r.value === 'CON');
+                        });
+
+                        document.getElementById('form145').value = item.FORM_145 || 'Original';
+                        const rawMon = String(item.COD_MONEDA || item.cod_moneda || '1').toUpperCase();
+                        let monVal = '1';
+                        if (rawMon.includes('DOLAR') || rawMon.includes('USD') || rawMon === '2') {
+                            monVal = '2';
+                        } else if (rawMon.includes('REAL') || rawMon === '3') {
+                            monVal = '3';
+                        } else if (rawMon.match(/^[0-9]+$/)) {
+                            monVal = rawMon;
+                        } else {
+                            monVal = '1';
+                        }
+                        document.getElementById('codMoneda').value = monVal;
+                        document.getElementById('tasaCambio').value = item.TASA_CAMBIO || 1;
+
+                        document.getElementById('grav10').value = item.GRAV10 || 0;
+                        document.getElementById('grav5').value = item.GRAV5 || 0;
+                        document.getElementById('exentas').value = item.EXENTAS || 0;
+
+                        document.getElementById('observacion').value = item.OBSERVACION || '';
+
+                        switchTab('encabezado');
+                        await cargarAsientosPredefinidosProveedor();
+                        recalcularTotales();
+
+                        const overlay = document.getElementById('egresoModalOverlay');
+                        overlay.style.display = 'flex';
+                    }
+                })
+                .catch(err => {
+                    Swal.fire('Error', 'No se pudo cargar la información del egreso.', 'error');
+                });
+        }
+
+        function cerrarModal() {
+            const overlay = document.getElementById('egresoModalOverlay');
+            overlay.style.display = 'none';
+        }
+
+        function formatCDC(input) {
+            let val = input.value.replace(/\D/g, '');
+            if (val.length > 44) val = val.substring(0, 44);
+            input.value = val;
+        }
+
+        function recalcularTotales() {
+            const g10 = parseFloat(document.getElementById('grav10').value) || 0;
+            const g5 = parseFloat(document.getElementById('grav5').value) || 0;
+            const ex = parseFloat(document.getElementById('exentas').value) || 0;
+
+            const i10 = Math.round(g10 / 11);
+            const i5 = Math.round(g5 / 21);
+            const tIva = i10 + i5;
+
+            const vTotal = g10 + g5 + ex;
+
+            document.getElementById('iva10').value = i10.toLocaleString('es-PY');
+            document.getElementById('iva5').value = i5.toLocaleString('es-PY');
+            document.getElementById('totIva').value = tIva.toLocaleString('es-PY');
+            document.getElementById('valorTotal').value = vTotal.toLocaleString('es-PY');
+
+            actualizarAsientosCalculados();
+        }
+
+        function actualizarAsientosCalculados() {
+            const g10 = parseFloat(document.getElementById('grav10').value) || 0;
+            const g5 = parseFloat(document.getElementById('grav5').value) || 0;
+            const ex = parseFloat(document.getElementById('exentas').value) || 0;
+
+            const i10 = Math.round(g10 / 11);
+            const i5 = Math.round(g5 / 21);
+            const neto10 = g10 - i10;
+            const neto5 = g5 - i5;
+            const vTotal = g10 + g5 + ex;
+
+            const condRad = document.querySelector('input[name="condicion"]:checked');
+            const condicion = condRad ? condRad.value : 'CON';
+            const isContado = (condicion === 'CON' || condicion.toLowerCase().includes('contado'));
+
+            const defaultContado = {
+                CTA_IVA10: '01.01.03.05.03.01 - IVA CRÉDITO 10%',
+                CTA_IVA5: '01.01.03.05.03.02 - IVA CRÉDITO 05%',
+                CTA_GRAV10: '01.01.04.01.01 - MERCADERÍAS GRAVADAS POR EL IVA AL 10%',
+                CTA_GRAV5: '01.01.04.01.02 - MERCADERÍAS GRAVADAS POR EL IVA AL 5%',
+                CTA_EXENTAS: '01.01.04.01.03 - MERCADERÍAS EXENTAS DEL IVA',
+                CTA_CONTRAPARTIDA: '01.01.01.02.01 - CAJA GUARANÍES'
+            };
+            const defaultCredito = {
+                CTA_IVA10: '01.01.03.05.03.01 - IVA CRÉDITO 10%',
+                CTA_IVA5: '01.01.03.05.03.02 - IVA CRÉDITO 05%',
+                CTA_GRAV10: '01.01.04.01.01 - MERCADERÍAS GRAVADAS POR EL IVA AL 10%',
+                CTA_GRAV5: '01.01.04.01.02 - MERCADERÍAS GRAVADAS POR EL IVA AL 5%',
+                CTA_EXENTAS: '01.01.04.01.03 - MERCADERÍAS EXENTAS DEL IVA',
+                CTA_CONTRAPARTIDA: '02.01.01.01 - PROVEEDORES LOCALES [ CORTO PLAZO ]'
+            };
+
+            let cfg = isContado ? defaultContado : defaultCredito;
+            if (_personaAsientosCache) {
+                if (isContado && _personaAsientosCache.contado) {
+                    cfg = { ...defaultContado, ..._personaAsientosCache.contado };
+                } else if (!isContado && _personaAsientosCache.credito) {
+                    cfg = { ...defaultCredito, ..._personaAsientosCache.credito };
+                }
+            }
+
+            // DEBE LIST
+            _calculadoDebeList = [];
+            if (neto10 > 0) {
+                _calculadoDebeList.push({ tipo: 'Gravadas 10%', cuenta: cfg.CTA_GRAV10, debe: neto10 });
+            }
+            if (i10 > 0) {
+                _calculadoDebeList.push({ tipo: 'Iva 10%', cuenta: cfg.CTA_IVA10, debe: i10 });
+            }
+            if (neto5 > 0) {
+                _calculadoDebeList.push({ tipo: 'Gravadas 5%', cuenta: cfg.CTA_GRAV5, debe: neto5 });
+            }
+            if (i5 > 0) {
+                _calculadoDebeList.push({ tipo: 'Iva 5%', cuenta: cfg.CTA_IVA5, debe: i5 });
+            }
+            if (ex > 0) {
+                _calculadoDebeList.push({ tipo: 'Exentas', cuenta: cfg.CTA_EXENTAS, debe: ex });
+            }
+
+            // HABER LIST
+            _calculadoHaberList = [];
+            if (vTotal > 0) {
+                _calculadoHaberList.push({
+                    tipo: isContado ? 'Activo (Pago)' : 'Pasivo (Proveedor)',
+                    cuenta: cfg.CTA_CONTRAPARTIDA,
+                    haber: vTotal
+                });
+            }
+
+            // RENDER DEBE TABLE
+            const tbodyDebe = document.getElementById('tbodyAsientoDebe');
+            let totDebe = 0;
+            if (_calculadoDebeList.length === 0) {
+                tbodyDebe.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #94a3b8; padding: 1.5rem;">Cargue los montos en la pestaña Encabezado para ver el asiento automático.</td></tr>`;
+            } else {
+                let html = '';
+                _calculadoDebeList.forEach(item => {
+                    totDebe += item.debe;
+                    html += `<tr>
+                        <td style="font-weight: 700; color: #16a34a; padding: 10px 14px;">${item.tipo}</td>
+                        <td style="padding: 10px 14px; font-weight: 600; color: #334155;">${item.cuenta}</td>
+                        <td style="padding: 10px 14px; text-align: right; font-family: monospace; font-weight: 700; color: #0f172a;">${item.debe.toLocaleString('es-PY')}</td>
+                    </tr>`;
+                });
+                tbodyDebe.innerHTML = html;
+            }
+            document.getElementById('badgeTotalDebe').innerText = `Total Debe: Gs. ${totDebe.toLocaleString('es-PY')}`;
+
+            // RENDER HABER TABLE
+            const tbodyHaber = document.getElementById('tbodyAsientoHaber');
+            let totHaber = 0;
+            if (_calculadoHaberList.length === 0) {
+                tbodyHaber.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #94a3b8; padding: 1.5rem;">Cargue los montos en la pestaña Encabezado para ver la contrapartida.</td></tr>`;
+            } else {
+                let html = '';
+                _calculadoHaberList.forEach(item => {
+                    totHaber += item.haber;
+                    html += `<tr>
+                        <td style="font-weight: 700; color: #0284c7; padding: 10px 14px;">${item.tipo}</td>
+                        <td style="padding: 10px 14px; font-weight: 600; color: #334155;">${item.cuenta}</td>
+                        <td style="padding: 10px 14px; text-align: right; font-family: monospace; font-weight: 700; color: #0f172a;">${item.haber.toLocaleString('es-PY')}</td>
+                    </tr>`;
+                });
+                tbodyHaber.innerHTML = html;
+            }
+            document.getElementById('badgeTotalHaber').innerText = `Total Haber: Gs. ${totHaber.toLocaleString('es-PY')}`;
+
+            // RENDER ANEXO F120 TABLE
+            const tbodyF120 = document.getElementById('tbodyAnexoF120');
+            if (vTotal === 0) {
+                tbodyF120.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 1.5rem;">Cargue los montos en la pestaña Encabezado para ver el desglose del Formulario 120.</td></tr>`;
+            } else {
+                tbodyF120.innerHTML = `
+                    <tr>
+                        <td style="font-weight: 700; color: #166534; padding: 10px 14px;">a. Enajenación de Bienes / Servicios (Rubro 3 Compras)</td>
+                        <td style="padding: 10px 14px; text-align: right; font-family: monospace; font-weight: 600;">${neto10.toLocaleString('es-PY')}</td>
+                        <td style="padding: 10px 14px; text-align: right; font-family: monospace; font-weight: 700; color: #16a34a;">${i10.toLocaleString('es-PY')}</td>
+                        <td style="padding: 10px 14px; text-align: right; font-family: monospace; font-weight: 600;">${neto5.toLocaleString('es-PY')}</td>
+                        <td style="padding: 10px 14px; text-align: right; font-family: monospace; font-weight: 700; color: #16a34a;">${i5.toLocaleString('es-PY')}</td>
+                        <td style="padding: 10px 14px; text-align: right; font-family: monospace; font-weight: 600;">${ex.toLocaleString('es-PY')}</td>
+                        <td style="padding: 10px 14px; text-align: right; font-family: monospace; font-weight: 800; color: #15803d; background: #f0fdf4;">${vTotal.toLocaleString('es-PY')}</td>
+                    </tr>
+                `;
+            }
+        }
+
+        function verificarCDC() {
+            const cdc = document.getElementById('cdc').value;
+            if (!cdc) {
+                Swal.fire('Atención', 'Ingrese el Código CDC de 44 dígitos.', 'warning');
+                return;
+            }
+            fetch('/api/egresos/verificar-cdc?cdc=' + encodeURIComponent(cdc))
+                .then(res => res.json())
+                .then(data => {
+                    if (data.valid) {
+                        Swal.fire('CDC Válido', data.message, 'success');
+                    } else {
+                        Swal.fire('CDC Inválido', data.message, 'error');
+                    }
+                })
+                .catch(err => {
+                    Swal.fire('Error', 'No se pudo verificar el CDC.', 'error');
+                });
+        }
+
+        function abrirQRModal() {
+            document.getElementById('qrModal').style.display = 'block';
+            document.getElementById('qrModal').classList.add('show');
+        }
+
+        function cerrarQRModal() {
+            document.getElementById('qrModal').style.display = 'none';
+            document.getElementById('qrModal').classList.remove('show');
+        }
+
+        function procesarQR() {
+            const url = document.getElementById('qrText').value;
+            if (url && url.includes('cdc=')) {
+                const match = url.match(/cdc=([0-9]{44})/);
+                if (match && match[1]) {
+                    document.getElementById('cdc').value = match[1];
+                    cerrarQRModal();
+                    Swal.fire('¡Éxito!', 'CDC extraído del código QR correctamente.', 'success');
+                    verificarCDC();
+                    return;
+                }
+            }
+            Swal.fire('Atención', 'No se encontró un CDC válido en la cadena ingresada.', 'warning');
+        }
+
+        async function verificarYCrearProveedorEgreso(esBusquedaManual = false) {
+            const rucVal = document.getElementById('rucProveedor').value.trim();
+            if (!rucVal || rucVal.length < 3) return;
+
+            // Limpiar Razón Social previa antes de verificar
+            document.getElementById('nomProveedor').value = '';
+
+            try {
+                // 1. Verificar si ya existe en co_proveedores o ident_personas/personas
+                const res1 = await fetch('/api/co_proveedores/auto-registrar-ruc', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ruc: rucVal, nombre: '' })
+                });
+                const data1 = await res1.json();
+
+                if (data1.status === 'PROVEEDOR_EXISTE') {
+                    document.getElementById('rucProveedor').value = data1.ruc || rucVal;
+                    document.getElementById('nomProveedor').value = data1.nombre || '';
+                    document.getElementById('codProveedor').value = data1.codProveedor || '';
+                    await cargarAsientosPredefinidosProveedor();
+                    return;
+                }
+
+                if (data1.status === 'CREADO') {
+                    document.getElementById('rucProveedor').value = data1.ruc || rucVal;
+                    document.getElementById('nomProveedor').value = data1.nombre || '';
+                    document.getElementById('codProveedor').value = data1.codProveedor || '';
+                    await cargarAsientosPredefinidosProveedor();
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Nuevo Proveedor Registrado!',
+                        html: `Persona encontrada en BD local y registrada como <b>Proveedor #${data1.codProveedor || ''}</b>:<br><b>${data1.nombre}</b>.`,
+                        confirmButtonColor: '#16a34a'
+                    });
+                    return;
+                }
+
+                // 2. Si no existe en la BD local, buscar en turuc.com.py (DNIT)
+                const rucBase = rucVal.split('-')[0].trim();
+                let dataDnit = null;
+                try {
+                    const resDnit = await fetch(`/api/dnit/consultar-ruc?ruc=${encodeURIComponent(rucBase)}`);
+                    if (resDnit.ok) {
+                        const jsonProxy = await resDnit.json();
+                        if (jsonProxy.status === 'SUCCESS' && jsonProxy.data) {
+                            dataDnit = { data: jsonProxy.data };
+                        }
+                    }
+                } catch (ignored) {}
+
+                if (dataDnit && dataDnit.data && dataDnit.data.razonSocial) {
+                    const d = dataDnit.data;
+                    const nomDnit = d.razonSocial;
+                    let rucToUse = d.ruc || rucBase;
+                    if (d.dv !== undefined && !String(rucToUse).includes('-')) {
+                        rucToUse = `${rucToUse}-${d.dv}`;
+                    }
+
+                    document.getElementById('rucProveedor').value = rucToUse;
+                    document.getElementById('nomProveedor').value = nomDnit;
+                    await cargarAsientosPredefinidosProveedor();
+
+                    // 3. Crear automáticamente como Persona y Proveedor en la BD
+                    const resCreate = await fetch('/api/co_proveedores/auto-registrar-ruc', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ruc: rucToUse, nombre: nomDnit })
+                    });
+                    const dataCreate = await resCreate.json();
+
+                    if (dataCreate.status === 'CREADO') {
+                        document.getElementById('codProveedor').value = dataCreate.codProveedor || '';
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Nuevo Proveedor Creado!',
+                            html: `RUC verificado en la DNIT (turuc.com.py).<br>Se creó la persona e insertó en <b>ident_personas</b> y <b>Proveedor #${dataCreate.codProveedor || ''}</b>:<br><b>${nomDnit}</b>`,
+                            confirmButtonColor: '#16a34a'
+                        });
+                    } else if (dataCreate.status === 'PROVEEDOR_EXISTE') {
+                        document.getElementById('codProveedor').value = dataCreate.codProveedor || '';
+                        document.getElementById('rucProveedor').value = dataCreate.ruc || rucToUse;
+                        document.getElementById('nomProveedor').value = dataCreate.nombre || nomDnit;
+                    }
+                } else {
+                    document.getElementById('nomProveedor').value = '';
+                    document.getElementById('codProveedor').value = '';
+                    await cargarAsientosPredefinidosProveedor();
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'RUC No Encontrado o Inválido',
+                        text: 'El RUC no fue encontrado en la base local ni en la DNIT (turuc.com.py).',
+                        confirmButtonColor: '#16a34a'
+                    });
+                }
+
+            } catch (e) {
+                console.error('Error al verificar RUC en Egresos:', e);
+                document.getElementById('nomProveedor').value = '';
+                document.getElementById('codProveedor').value = '';
+            }
+        }
+
+        async function buscarProveedorModal() {
+            const { value: rucInput } = await Swal.fire({
+                title: 'Buscar o Registrar Proveedor por RUC',
+                input: 'text',
+                inputLabel: 'Ingrese RUC o Cédula:',
+                inputPlaceholder: 'Ej: 80079378-1 o 5567097-0',
+                showCancelButton: true,
+                confirmButtonText: 'Verificar / Buscar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#16a34a'
+            });
+
+            if (rucInput) {
+                document.getElementById('rucProveedor').value = rucInput;
+                await verificarYCrearProveedorEgreso(true);
+            }
+        }
+
+        function validarCamposObligatoriosEgreso() {
+            let missingFields = [];
+            let firstInvalidEl = null;
+
+            function checkField(id, name, isInvalidCondition = null) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const val = (el.value || '').trim();
+                const invalid = isInvalidCondition ? isInvalidCondition(val) : (!val);
+
+                if (invalid) {
+                    el.style.border = '2px solid #dc2626';
+                    el.style.backgroundColor = '#fef2f2';
+                    missingFields.push(name);
+                    if (!firstInvalidEl) firstInvalidEl = el;
+                } else {
+                    el.style.border = '1px solid #cbd5e1';
+                    el.style.backgroundColor = (id === 'nomProveedor') ? '#f8fafc' : '#ffffff';
+                }
+            }
+
+            checkField('tipTimb', 'Tipo de Timbrado');
+            checkField('nroTimbrado', 'Número de Timbrado');
+
+            const tipTimbVal = (document.getElementById('tipTimb').value || '').trim();
+            if (tipTimbVal.toLowerCase().includes('electr')) {
+                const vencEl = document.getElementById('vencTimbrado');
+                if (vencEl && !vencEl.value) {
+                    vencEl.value = '2100-12-31';
+                }
+            } else {
+                checkField('vencTimbrado', 'Fecha de Vencimiento del Timbrado', val => !val || val === '2100-12-31');
+            }
+
+            checkField('facNro', 'Número de Factura');
+            checkField('rucProveedor', 'RUC de Proveedor');
+            checkField('nomProveedor', 'Nombre / Razón Social del Proveedor');
+            checkField('fecEgreso', 'Fecha del Egreso');
+
+            if (missingFields.length > 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Campos Obligatorios Incompletos',
+                    html: `Debe completar los campos obligatorios marcados en rojo antes de guardar:<br><br><div style="text-align:left; background:#fef2f2; border:1px solid #fca5a5; padding:10px 14px; border-radius:6px; color:#991b1b; font-size:0.85rem;"><ul style="margin:0; padding-left:20px;">${missingFields.map(f => `<li><b>${f}</b></li>`).join('')}</ul></div>`,
+                    confirmButtonColor: '#dc2626',
+                    confirmButtonText: 'Entendido'
+                }).then(() => {
+                    if (firstInvalidEl) {
+                        if (firstInvalidEl.id === 'nomProveedor') {
+                            const rucEl = document.getElementById('rucProveedor');
+                            if (rucEl) rucEl.focus();
+                        } else {
+                            firstInvalidEl.focus();
+                        }
+                    }
+                });
+                return false;
+            }
+
+            // ─── Validación: La fecha del comprobante no puede ser mayor a la fecha de vencimiento ───
+            const fecEgresoVal = (document.getElementById('fecEgreso')?.value || '').trim();
+            const vencTimbradoVal = (document.getElementById('vencTimbrado')?.value || '').trim();
+
+            if (fecEgresoVal && vencTimbradoVal && fecEgresoVal > vencTimbradoVal) {
+                const elFec = document.getElementById('fecEgreso');
+                const elVenc = document.getElementById('vencTimbrado');
+                if (elFec) {
+                    elFec.style.border = '2px solid #dc2626';
+                    elFec.style.backgroundColor = '#fef2f2';
+                }
+                if (elVenc) {
+                    elVenc.style.border = '2px solid #dc2626';
+                    elVenc.style.backgroundColor = '#fef2f2';
+                }
+
+                const fmtFec = formatFechaTabla(fecEgresoVal);
+                const fmtVenc = formatFechaTabla(vencTimbradoVal);
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Fecha del Comprobante Inválida',
+                    html: `La <b>fecha del comprobante</b> (<b>${fmtFec}</b>) no puede ser mayor a la <b>fecha de vencimiento del timbrado</b> (<b>${fmtVenc}</b>).<br><br><span style="color: #b91c1c; font-weight: 600;">El comprobante no puede haberse emitido con un timbrado ya vencido.</span>`,
+                    confirmButtonColor: '#dc2626',
+                    confirmButtonText: 'Corregir Fechas'
+                }).then(() => {
+                    if (elFec) elFec.focus();
+                });
+                return false;
+            }
+
+            return true;
+        }
+
+        function resetFormBorders() {
+            ['tipTimb', 'nroTimbrado', 'vencTimbrado', 'facEst', 'facPto', 'facNro', 'rucProveedor', 'nomProveedor', 'comprador', 'fecEgreso'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.style.border = '1px solid #cbd5e1';
+                    if (id === 'nomProveedor' || id === 'comprador') {
+                        el.style.backgroundColor = '#f8fafc';
+                    } else if (id === 'vencTimbrado' && document.getElementById('tipTimb') && document.getElementById('tipTimb').value.toLowerCase().includes('electr')) {
+                        el.style.backgroundColor = '#f8fafc';
+                    } else {
+                        el.style.backgroundColor = '#ffffff';
+                    }
+                }
+            });
+        }
+
+        function limpiarPantallaParaNuevoEgreso() {
+            resetFormBorders();
+            selectedIdEgreso = null;
+            document.querySelectorAll('.table tbody tr').forEach(tr => tr.classList.remove('fila-seleccionada'));
+
+            document.getElementById('idEgreso').value = '';
+            document.getElementById('modalTitle').innerText = 'Registrar egreso';
+
+            // Comprador asignado permanentemente a la persona contribuyente
+            document.getElementById('comprador').value = CONTRIBUYENTE_NOMBRE || '';
+
+            // Limpiar comprobante y proveedor
+            document.getElementById('cdc').value = '';
+            document.getElementById('tipTimb').value = 'Pre-impreso';
+            onTipoTimbChange();
+            document.getElementById('nroTimbrado').value = '';
+            document.getElementById('facNro').value = '';
+            document.getElementById('serie').value = '';
+            document.getElementById('rucProveedor').value = '';
+            document.getElementById('nomProveedor').value = '';
+            document.getElementById('codProveedor').value = '';
+
+            // Limpiar montos e impuestos
+            document.getElementById('grav10').value = 0;
+            document.getElementById('grav5').value = 0;
+            document.getElementById('exentas').value = 0;
+            document.getElementById('iva10').value = 0;
+            document.getElementById('iva5').value = 0;
+            document.getElementById('totIva').value = 0;
+            document.getElementById('valorTotal').value = 0;
+            document.getElementById('observacion').value = '';
+            document.getElementById('codMoneda').value = '1';
+            document.getElementById('tasaCambio').value = 1;
+
+            _calculadoDebeList = [];
+            _calculadoHaberList = [];
+
+            switchTab('encabezado');
+            recalcularTotales();
+
+            // Foco en el campo RUC para seguir registrando de inmediato
+            setTimeout(() => {
+                const rucEl = document.getElementById('rucProveedor');
+                if (rucEl) rucEl.focus();
+            }, 100);
+        }
+
+        function guardarEgreso() {
+            resetFormBorders();
+            if (!validarCamposObligatoriosEgreso()) {
+                return;
+            }
+
+            const cdc = document.getElementById('cdc').value;
+            const rucProveedor = document.getElementById('rucProveedor').value;
+            const nomProveedor = document.getElementById('nomProveedor').value;
+
+            const est = (document.getElementById('facEst').value || '1').trim().padStart(3, '0');
+            const pto = (document.getElementById('facPto').value || '1').trim().padStart(3, '0');
+            const nro = (document.getElementById('facNro').value || '').trim();
+            const formattedNro = nro ? nro.padStart(7, '0') : '';
+            const nroFactura = nro ? `${est}-${pto}-${formattedNro}` : '';
+
+            // ─── Validación preventiva de duplicados (Mismo proveedor, tipo, factura y timbrado) ───
+            const rucClean = (rucProveedor || '').replace(/[-\s]/g, '').toUpperCase();
+            const facClean = (nroFactura || '').replace(/[-\s]/g, '');
+            const timbClean = (document.getElementById('nroTimbrado').value || '').trim();
+            const tipDocVal = (document.getElementById('tipDoc').value || '').trim().toUpperCase();
+            const curId = document.getElementById('idEgreso').value;
+
+            if (listEgresosData && listEgresosData.length > 0 && facClean && timbClean && rucClean) {
+                const dupFound = listEgresosData.find(item => {
+                    if (curId && String(item.ID_EGRESO || item.id_egreso) === String(curId)) return false;
+                    const itemTip = String(item.TIP_DOC || item.tip_doc || '').trim().toUpperCase();
+                    const itemTimb = String(item.NRO_TIMBRADO || item.nro_timbrado || '').trim();
+                    const itemFac = String(item.NRO_FACTURA || item.nro_factura || '').replace(/[-\s]/g, '');
+                    const itemRuc = String(item.RUC_PROVEEDOR || item.ruc_proveedor || '').replace(/[-\s]/g, '').toUpperCase();
+
+                    return itemTip === tipDocVal && itemTimb === timbClean && itemFac === facClean && itemRuc === rucClean;
+                });
+
+                if (dupFound) {
+                    const elFac = document.getElementById('facNro');
+                    const elTimb = document.getElementById('nroTimbrado');
+                    if (elFac) { elFac.style.border = '2px solid #dc2626'; elFac.style.backgroundColor = '#fef2f2'; }
+                    if (elTimb) { elTimb.style.border = '2px solid #dc2626'; elTimb.style.backgroundColor = '#fef2f2'; }
+
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Comprobante Duplicado',
+                        html: `Ya se encuentra registrada una <b>${tipDocVal}</b> con Factura N° <b>${nroFactura}</b> y Timbrado <b>${timbClean}</b> para este proveedor.<br><br><span style="color:#b91c1c; font-weight:600;">No se permite registrar el mismo comprobante dos veces.</span>`,
+                        confirmButtonColor: '#dc2626',
+                        confirmButtonText: 'Revisar Datos'
+                    });
+                    return;
+                }
+            }
+
+            const payload = {
+                idEgreso: document.getElementById('idEgreso').value,
+                cdc: cdc,
+                tipDoc: document.getElementById('tipDoc').value,
+                regimen: document.getElementById('regimen').value,
+                codRegimen: document.getElementById('regimen').value,
+                clasificacionGasto: document.getElementById('clasificacionGasto').value,
+                tipTimb: document.getElementById('tipTimb').value,
+                nroTimbrado: document.getElementById('nroTimbrado').value,
+                vencTimbrado: document.getElementById('vencTimbrado').value,
+                nroFactura: nroFactura,
+                serie: document.getElementById('serie').value,
+                fecEgreso: document.getElementById('fecEgreso').value,
+                comprador: document.getElementById('comprador').value,
+                codProveedor: document.getElementById('codProveedor').value || '',
+                rucProveedor: rucProveedor,
+                nomProveedor: nomProveedor,
+                tipEgreso: document.getElementById('tipEgreso').value,
+                form120: document.getElementById('form120').value,
+                condicion: (document.querySelector('input[name="condicion"]:checked')?.value || 'CON').toUpperCase().startsWith('CRE') ? 'CRE' : 'CON',
+                form145: document.getElementById('form145').value,
+                codMoneda: document.getElementById('codMoneda').value,
+                tasaCambio: document.getElementById('tasaCambio').value,
+                grav10: document.getElementById('grav10').value,
+                iva10: document.getElementById('iva10').value.replace(/\./g, ''),
+                grav5: document.getElementById('grav5').value,
+                iva5: document.getElementById('iva5').value.replace(/\./g, ''),
+                exentas: document.getElementById('exentas').value,
+                totIva: document.getElementById('totIva').value.replace(/\./g, ''),
+                valorTotal: document.getElementById('valorTotal').value.replace(/\./g, ''),
+                observacion: document.getElementById('observacion').value,
+                asientoDebe: _calculadoDebeList,
+                asientoHaber: _calculadoHaberList
+            };
+
+            fetch('/api/egresos/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // 1. Actualizar el listado abajo inmediatamente
+                    cargarEgresos();
+
+                    // 2. Limpiar la pantalla de carga para seguir registrando comprobantes
+                    limpiarPantallaParaNuevoEgreso();
+
+                    // 3. Notificación de éxito
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: '¡Comprobante guardado con éxito!',
+                        text: 'Listado actualizado. Pantalla lista para el siguiente comprobante.',
+                        showConfirmButton: false,
+                        timer: 2500,
+                        timerProgressBar: true
+                    });
+                } else {
+                    Swal.fire('Error', data.message, 'error');
+                }
+            })
+            .catch(err => {
+                Swal.fire('Error', 'Fallo de conexión al guardar el egreso.', 'error');
+            });
+        }
+
+        function eliminarEgreso() {
+            if (!selectedIdEgreso) {
+                Swal.fire('Atención', 'Seleccione un egreso de la tabla para eliminar.', 'warning');
+                return;
+            }
+
+            Swal.fire({
+                title: '¿Eliminar Egreso?',
+                text: 'Esta acción no se puede deshacer.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then(result => {
+                if (result.isConfirmed) {
+                    fetch('/api/egresos/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ idEgreso: selectedIdEgreso })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            Swal.fire('Eliminado', data.message, 'success');
+                            selectedIdEgreso = null;
+                            cargarEgresos();
+                        } else {
+                            Swal.fire('Error', data.message, 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function importarMarangatu() {
+            Swal.fire('Importación Marangatu', 'Función de sincronización con compras de la SET.', 'info');
+        }
+
+        function importarComprobante() {
+            Swal.fire('Importación de Comprobantes', 'Seleccione archivo de comprobante de egreso para importar.', 'info');
+        }
+    </script>
+</body>
+</html>

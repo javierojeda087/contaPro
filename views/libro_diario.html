@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sistema - Reporte Libro Diario (COLIBDIA)')}">
+</head>
+<style>
+    @media print {
+        @page {
+            size: A4 portrait;
+            margin: 10mm;
+        }
+        body {
+            background-color: #ffffff !important;
+            font-family: Arial, sans-serif !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .app-sidebar, .top-navbar, .filter-toolbar, .no-print {
+            display: none !important;
+        }
+        .main-content {
+            margin-left: 0 !important;
+            padding: 0 !important;
+        }
+        .content-area {
+            padding: 0 !important;
+        }
+        .report-card {
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        .tr-seat-sep td {
+            border-bottom: 1px solid #000000 !important;
+        }
+        .tr-date-sep td {
+            border-bottom: 2px solid #000000 !important;
+        }
+    }
+
+    .report-canvas {
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        max-width: 920px;
+        margin: 20px auto;
+        padding: 35px;
+        font-family: Arial, Helvetica, sans-serif;
+        color: #000000;
+    }
+
+    /* Grid Boxes Header */
+    .hdr-boxes-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        margin-bottom: 20px;
+        font-size: 11px;
+    }
+    .hdr-boxes-table td.hdr-box {
+        border: 1.5px solid #000000;
+        vertical-align: top;
+        padding: 4px;
+    }
+    .hdr-box-title {
+        font-weight: bold;
+        font-size: 11px;
+        margin-bottom: 4px;
+    }
+    .inner-box-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10px;
+    }
+    .inner-box-table th {
+        border-bottom: 1px solid #000000;
+        border-right: 1px solid #000000;
+        font-weight: bold;
+        padding: 3px 4px;
+        text-align: center;
+        background: #f8fafc;
+    }
+    .inner-box-table th:last-child {
+        border-right: none;
+    }
+    .inner-box-table td {
+        border-right: 1px solid #000000;
+        padding: 4px;
+        font-weight: 500;
+    }
+    .inner-box-table td:last-child {
+        border-right: none;
+    }
+
+    /* Main Table */
+    .diario-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+    }
+    .diario-table thead tr {
+        border-top: 2px solid #000000;
+        border-bottom: 2px solid #000000;
+    }
+    .diario-table thead th {
+        padding: 6px;
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: 11px;
+    }
+    .diario-table tbody td {
+        padding: 3px 6px;
+        vertical-align: top;
+    }
+
+    /* Date Header & Separators */
+    .tr-date-header td {
+        text-align: center;
+        font-weight: bold;
+        font-size: 11px;
+        padding: 12px 0 6px 0;
+    }
+    .tr-seat-sep td {
+        border-bottom: 1px solid #000000;
+        padding-bottom: 6px !important;
+        margin-bottom: 6px !important;
+    }
+    .tr-date-sep td {
+        border-bottom: 2px solid #000000;
+        padding-bottom: 10px !important;
+    }
+
+    /* Footer Table */
+    .footer-transporte-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+        font-weight: bold;
+        margin-top: 20px;
+    }
+    .footer-transporte-table tr {
+        border: 1.5px solid #000000;
+    }
+    .footer-transporte-table td {
+        padding: 6px 8px;
+    }
+
+    /* Slash Cancellation Line Container */
+    .cancellation-slash-container {
+        position: relative;
+        height: 40px;
+        margin-top: 10px;
+        overflow: hidden;
+    }
+    .cancellation-slash-svg {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
+</style>
+<body style="background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    
+    <!-- Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="main-content">
+        <div th:replace="~{fragments/layout :: navbar('Reporte - Libro Diario (COLIBDIA)')}"></div>
+
+        <div class="content-area" style="padding: 20px;">
+
+            <!-- Filter Toolbar (No Print) -->
+            <div class="card mb-4 no-print" style="border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <div class="card-body" style="padding: 16px;">
+                    <div id="qfBar" style="margin-bottom: 12px;"></div>
+                    <form id="filterForm" onsubmit="event.preventDefault(); cargarLibroDiario();" class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label for="fechaDesde" class="form-label font-bold" style="font-size: 0.85rem; font-weight: 600; color: #334155;">
+                                <i class="ph ph-calendar" style="color: #0284c7; margin-right: 4px;"></i> Fecha Desde
+                            </label>
+                            <input type="date" id="fechaDesde" class="form-control form-control-sm" th:value="${firstDayOfMonth}">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="fechaHasta" class="form-label font-bold" style="font-size: 0.85rem; font-weight: 600; color: #334155;">
+                                <i class="ph ph-calendar" style="color: #0284c7; margin-right: 4px;"></i> Fecha Hasta
+                            </label>
+                            <input type="date" id="fechaHasta" class="form-control form-control-sm" th:value="${currentDate}">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="codSucursal" class="form-label font-bold" style="font-size: 0.85rem; font-weight: 600; color: #334155;">
+                                <i class="ph ph-buildings" style="color: #0284c7; margin-right: 4px;"></i> Sucursal
+                            </label>
+                            <select id="codSucursal" class="form-select form-select-sm">
+                                <option value="TODAS">TODAS</option>
+                                <option value="1" selected>CASA MATRIZ</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary btn-sm flex-grow-1" style="font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                                <i class="ph ph-magnifying-glass" style="font-size: 1rem;"></i> Generar Reporte
+                            </button>
+                            <button type="button" onclick="window.print()" class="btn btn-outline-secondary btn-sm" style="font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="ph ph-printer" style="font-size: 1rem;"></i> Imprimir
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Printable Report Document Container -->
+            <div class="report-canvas report-card">
+                
+                <!-- Report Title -->
+                <div style="text-align: center; margin-bottom: 4px;">
+                    <h2 style="font-weight: bold; font-size: 22px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; color: #000000;">
+                        LIBRO DIARIO
+                    </h2>
+                    <div style="font-weight: bold; font-size: 13px; margin-top: 3px; color: #000000;">
+                        ACTIVIDAD: <span id="lblActividad">IRE-GENERAL/IRACIS</span>
+                    </div>
+                </div>
+
+                <!-- 4 Box Grid Header (Matching exact format from user screenshot) -->
+                <table class="hdr-boxes-table">
+                    <tr>
+                        <!-- Box 1: Identificador del Contribuyente -->
+                        <td class="hdr-box" style="width: 32%;">
+                            <div class="hdr-box-title">1. Identificador del Contribuyente</div>
+                            <table class="inner-box-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 70%;">RAZÓN SOCIAL/NOMBRES Y APELLIDOS</th>
+                                        <th style="width: 30%;">RUC</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td id="lblRazonSocial">CONTRIBUYENTE DEMOSTRATIVO</td>
+                                        <td id="lblRuc" style="text-align: center;">5555-7</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </td>
+
+                        <!-- Box 2: Periodo Fiscal -->
+                        <td class="hdr-box" style="width: 22%;">
+                            <div class="hdr-box-title">2. Periodo Fiscal</div>
+                            <table class="inner-box-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 50%;">DESDE</th>
+                                        <th style="width: 50%;">HASTA</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td id="lblDesde" style="text-align: center;">01/10/2026</td>
+                                        <td id="lblHasta" style="text-align: center;">07/10/2026</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </td>
+
+                        <!-- Box 3: Representante Legal -->
+                        <td class="hdr-box" style="width: 21%;">
+                            <div class="hdr-box-title">3. Representante Legal</div>
+                            <table class="inner-box-table">
+                                <thead>
+                                    <tr>
+                                        <th>NOMBRES Y APELLIDOS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td id="lblRepLegal"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </td>
+
+                        <!-- Box 4: Identificador del Contador -->
+                        <td class="hdr-box" style="width: 25%;">
+                            <div class="hdr-box-title">4. Identificador del Contador</div>
+                            <table class="inner-box-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 65%;">NOMBRES Y APELLIDOS</th>
+                                        <th style="width: 35%;">RUC</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td id="lblContadorNombre"></td>
+                                        <td id="lblContadorRuc" style="text-align: center;"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- Main Table: ASIENTO | CUENTA CONTABLE | DEBE | HABER -->
+                <table class="diario-table">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; width: 12%;">ASIENTO</th>
+                            <th style="text-align: center; width: 56%;">CUENTA CONTABLE</th>
+                            <th style="text-align: right; width: 16%;">DEBE</th>
+                            <th style="text-align: right; width: 16%;">HABER</th>
+                        </tr>
+                    </thead>
+                    <tbody id="diarioTbody">
+                        <!-- Content dynamically generated by JS -->
+                    </tbody>
+                </table>
+
+                <!-- Cancellation Slash Area (Diagonal slash across empty area) -->
+                <div class="cancellation-slash-container">
+                    <svg class="cancellation-slash-svg" preserveAspectRatio="none" viewBox="0 0 100 100">
+                        <line x1="100" y1="0" x2="80" y2="100" stroke="#000000" stroke-width="0.8" />
+                    </svg>
+                </div>
+
+                <!-- Footer Table Row: Transporte -->
+                <table class="footer-transporte-table">
+                    <tr>
+                        <td style="width: 68%; border-right: 1px solid #000000;">Transporte</td>
+                        <td id="lblTotalDebe" style="width: 16%; text-align: right; border-right: 1px solid #000000; font-family: monospace; font-size: 12px;">0</td>
+                        <td id="lblTotalHaber" style="width: 16%; text-align: right; font-family: monospace; font-size: 12px;">0</td>
+                    </tr>
+                </table>
+
+                <!-- Printable Page Footer Meta -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 10px; font-weight: 500; color: #000000;">
+                    <div>
+                        Creado por ContaPro Fecha <span id="lblTimestamp">07/10/2026 00:00:00</span>
+                    </div>
+                    <div>
+                        PÁGINA : 1/1
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Scripts Section -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script th:src="@{/js/filtros-rapidos.js}"></script>
+    <script th:inline="javascript">
+        document.addEventListener('DOMContentLoaded', function() {
+            FiltrosRapidos.init({ container: 'qfBar', ini: /*[[${ejerInicio}]]*/ '', fin: /*[[${ejerFinal}]]*/ '', ejercicio: /*[[${ejercicio}]]*/ '', onApply: () => cargarLibroDiario() });
+            loadSucursales();
+            cargarLibroDiario();
+        });
+
+        function loadSucursales() {
+            fetch('/api/asientos/sucursales')
+                .then(r => r.json())
+                .then(list => {
+                    const sel = document.getElementById('codSucursal');
+                    sel.innerHTML = '<option value="TODAS">TODAS</option>';
+                    if (list && list.length > 0) {
+                        list.forEach(s => {
+                            const opt = document.createElement('option');
+                            opt.value = s.COD_SUCURSAL || s.cod_sucursal;
+                            opt.textContent = (s.DESCRIPCION || s.descripcion || s.COD_SUCURSAL);
+                            sel.appendChild(opt);
+                        });
+                    }
+                })
+                .catch(() => {});
+        }
+
+        function cargarLibroDiario() {
+            const desde = document.getElementById('fechaDesde').value;
+            const hasta = document.getElementById('fechaHasta').value;
+            const sucursal = document.getElementById('codSucursal').value;
+
+            const url = `/api/libro-diario/datos?fechaDesde=${encodeURIComponent(desde)}&fechaHasta=${encodeURIComponent(hasta)}&codSucursal=${encodeURIComponent(sucursal)}`;
+
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    renderLibroDiario(data);
+                })
+                .catch(err => {
+                    console.error("Error cargando Libro Diario:", err);
+                    document.getElementById('diarioTbody').innerHTML = `
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-danger font-bold">
+                                Error al cargar datos del Libro Diario.
+                            </td>
+                        </tr>`;
+                });
+        }
+
+        function renderLibroDiario(data) {
+            if (data.fechaDesde) document.getElementById('fechaDesde').value = data.fechaDesde;
+            if (data.fechaHasta) document.getElementById('fechaHasta').value = data.fechaHasta;
+            const emp = data.empresaInfo || {};
+            document.getElementById('lblRazonSocial').textContent = emp.razonSocial || 'CONTRIBUYENTE DEMOSTRATIVO';
+            document.getElementById('lblRuc').textContent = emp.ruc || '5555-7';
+            document.getElementById('lblActividad').textContent = emp.actividad || 'IRE-GENERAL/IRACIS';
+            document.getElementById('lblDesde').textContent = emp.fechaDesdeStr || '';
+            document.getElementById('lblHasta').textContent = emp.fechaHastaStr || '';
+            document.getElementById('lblRepLegal').textContent = emp.repLegalNombre || '';
+            document.getElementById('lblContadorNombre').textContent = emp.contadorNombre || '';
+            document.getElementById('lblContadorRuc').textContent = emp.contadorRuc || '';
+            document.getElementById('lblTimestamp').textContent = data.timestampGeneracion || '';
+
+            document.getElementById('lblTotalDebe').textContent = formatNumber(data.totalDebe || 0);
+            document.getElementById('lblTotalHaber').textContent = formatNumber(data.totalHaber || 0);
+
+            const detalles = data.detalles || [];
+            const tbody = document.getElementById('diarioTbody');
+            tbody.innerHTML = '';
+
+            if (detalles.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center py-4 text-muted" style="font-size: 0.9rem;">
+                            No se encontraron asientos contables registrados para el periodo seleccionado.
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            // Group by Date -> Group by Asiento
+            const groupedByDate = {};
+            detalles.forEach(item => {
+                const dateStr = item.FEC_ASIENTO_STR || 'SIN FECHA';
+                if (!groupedByDate[dateStr]) {
+                    groupedByDate[dateStr] = {};
+                }
+                const numAsiento = item.NUM_ASIENTO;
+                if (!groupedByDate[dateStr][numAsiento]) {
+                    groupedByDate[dateStr][numAsiento] = {
+                        numAsiento: numAsiento,
+                        concepto: item.CAB_CONCEPTO,
+                        origen: item.ORIGEN_COMPROBANTE,
+                        idComprobante: item.ID_COMPROBANTE,
+                        items: []
+                    };
+                }
+                groupedByDate[dateStr][numAsiento].items.push(item);
+            });
+
+            // Render each date group
+            const dates = Object.keys(groupedByDate);
+            dates.forEach((dateStr, dIndex) => {
+                // Date Header Row
+                const trDate = document.createElement('tr');
+                trDate.className = 'tr-date-header';
+                trDate.innerHTML = `<td colspan="4">${dateStr}</td>`;
+                tbody.appendChild(trDate);
+
+                const asientosObj = groupedByDate[dateStr];
+                const seatNumbers = Object.keys(asientosObj);
+
+                seatNumbers.forEach((sNum, sIndex) => {
+                    const asientoData = asientosObj[sNum];
+                    const numPadded = String(asientoData.numAsiento).padStart(7, '0');
+                    const items = asientoData.items || [];
+
+                    items.forEach((item, itemIndex) => {
+                        const tr = document.createElement('tr');
+                        const isDebe = Number(item.DEBE || 0) > 0;
+                        const isHaber = Number(item.HABER || 0) > 0 && !isDebe;
+
+                        // Seat Num on 1st row only
+                        const colAsiento = (itemIndex === 0) ? numPadded : '';
+                        
+                        // Account formatting (Haber accounts are indented)
+                        let accountStyle = 'font-weight: 500;';
+                        let accountText = (item.NOM_CUENTA || item.COD_CUENTA || '').toUpperCase();
+                        if (isHaber) {
+                            accountStyle += ' padding-left: 35px;';
+                        }
+
+                        const debeText = (Number(item.DEBE) > 0) ? formatNumber(item.DEBE) : '0';
+                        const haberText = (Number(item.HABER) > 0) ? formatNumber(item.HABER) : '0';
+
+                        tr.innerHTML = `
+                            <td style="font-weight: bold;">${colAsiento}</td>
+                            <td style="${accountStyle}">${accountText}</td>
+                            <td style="text-align: right; font-family: monospace; font-weight: 500;">${debeText}</td>
+                            <td style="text-align: right; font-family: monospace; font-weight: 500;">${haberText}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+
+                    // Summary Concept Row
+                    let descripcionTxt = (asientoData.concepto || '').trim();
+                    if (asientoData.idComprobante) {
+                        if (!descripcionTxt.toUpperCase().includes(asientoData.idComprobante.toUpperCase())) {
+                            descripcionTxt += ' ' + asientoData.idComprobante;
+                        }
+                    }
+
+                    const trDesc = document.createElement('tr');
+                    trDesc.innerHTML = `
+                        <td></td>
+                        <td colspan="3" style="font-size: 10px; font-weight: bold; padding-top: 2px; padding-bottom: 4px;">
+                            DESCRIPCIÓN : ${descripcionTxt}
+                        </td>
+                    `;
+                    tbody.appendChild(trDesc);
+
+                    // Separator Line after each seat
+                    const trSep = document.createElement('tr');
+                    trSep.className = 'tr-seat-sep';
+                    trSep.innerHTML = `<td colspan="4"></td>`;
+                    tbody.appendChild(trSep);
+                });
+            });
+        }
+
+        function formatNumber(num) {
+            if (num === null || num === undefined) return '0';
+            const val = Number(num);
+            if (isNaN(val)) return '0';
+            return new Intl.NumberFormat('es-PY', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(val);
+        }
+    </script>
+</body>
+</html>

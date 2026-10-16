@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Actividades Económicas - ContaPro')}">
+</head>
+<body style="background: var(--bg-color);">
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="main-content">
+        <div th:replace="~{fragments/layout :: navbar('Actividades Económicas')}"></div>
+
+        <div class="content-area">
+            <div style="background: white; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 8px 25px rgba(0,0,0,0.06); overflow: hidden; width: 100%;">
+                <div style="padding: 14px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button type="button" class="btn tb-btn" onclick="abrirNuevo()"><i class="ph ph-plus-circle" style="color:#16a34a"></i> Nueva Actividad</button>
+                        <button type="button" class="btn tb-btn" onclick="abrirEditar()"><i class="ph ph-pencil-simple" style="color:#15803d"></i> Modificar</button>
+                        <button type="button" class="btn tb-btn" onclick="eliminar()" style="color:#ef4444"><i class="ph ph-trash"></i> Eliminar</button>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <span style="font-size:.8rem; color:#64748b; font-weight:600;">Contribuyente: <b th:text="${session.empresaDesc}" style="color:#15803d"></b></span>
+                        <div style="position: relative; width: 240px;">
+                            <input type="text" id="searchInput" class="form-control" placeholder="BUSCAR ACTIVIDAD..." onkeyup="render()" autocomplete="off"
+                                   style="padding-right: 36px; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; border-radius: 8px; border: 1px solid #cbd5e1; background: #fafafa;">
+                            <i class="ph ph-magnifying-glass" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #16a34a;"></i>
+                        </div>
+                    </div>
+                </div>
+                <table class="table table-hover align-middle m-0" style="font-size: 0.88rem;">
+                    <thead style="background: #f1f5f9; color: #475569; font-weight: 800; text-transform: uppercase; font-size: 0.76rem;">
+                        <tr>
+                            <th style="padding: 14px 20px; width:110px;">Código</th>
+                            <th style="padding: 14px 20px;">Descripción</th>
+                            <th style="padding: 14px 20px; text-align:center; width:150px;">Por defecto</th>
+                            <th style="padding: 14px 20px; text-align:center; width:120px;">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaBody"><tr><td colspan="4" class="text-center py-5 text-muted">Cargando...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <div id="modalOverlay" style="position: fixed; inset: 0; background: rgba(15,23,42,.65); backdrop-filter: blur(4px); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: white; border-radius: 14px; border: 1px solid #94a3b8; box-shadow: 0 25px 50px -12px rgba(0,0,0,.35); width: 100%; max-width: 480px; overflow: hidden; animation: modalSlideDown .25s ease;">
+            <div style="padding: 16px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg,#16a34a,#15803d); color: white; display: flex; align-items: center; justify-content: center;"><i class="ph ph-briefcase"></i></div>
+                    <h4 id="modalTitle" style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #0f172a;">Nueva Actividad</h4>
+                </div>
+                <button type="button" class="btn-close" onclick="cerrar()"></button>
+            </div>
+            <form id="formAct" autocomplete="off" style="padding: 22px 26px;" onsubmit="event.preventDefault(); guardar();">
+                <input type="hidden" id="codActividad">
+                <label class="form-label fw-bold text-secondary small">Descripción : <span style="color:#dc2626">*</span></label>
+                <input type="text" id="descripcion" class="form-control" placeholder="EJ: COMERCIAL, SERVICIOS, INDUSTRIAL" style="font-weight:700; border-radius:8px; text-transform:uppercase;">
+                <div style="display:flex; gap:24px; margin-top:16px;">
+                    <label style="font-size:.85rem; font-weight:700; color:#334155; display:flex; align-items:center; gap:8px; cursor:pointer;">
+                        <input type="checkbox" id="chkActivo" checked style="width:17px; height:17px; accent-color:#16a34a;"> Activa
+                    </label>
+                    <label style="font-size:.85rem; font-weight:700; color:#334155; display:flex; align-items:center; gap:8px; cursor:pointer;">
+                        <input type="checkbox" id="chkDefecto" style="width:17px; height:17px; accent-color:#16a34a;"> Por defecto en el login
+                    </label>
+                </div>
+            </form>
+            <div style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="btn btn-secondary" onclick="cerrar()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardar()" style="background: linear-gradient(135deg,#16a34a,#15803d); border: none; font-weight: 700;">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes modalSlideDown { from { opacity: 0; transform: translateY(-20px) scale(.97); } to { opacity: 1; transform: none; } }
+        .tb-btn { background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: .85rem; color: #1e293b; padding: 7px 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.05); transition: all .2s; }
+        .tb-btn i { font-size: 1.15rem; }
+        .tb-btn:hover { border-color: #16a34a; color: #16a34a; }
+    </style>
+
+    <div th:replace="~{fragments/layout :: scripts}"></div>
+
+    <script>
+        let data = [], selectedId = null;
+        const esc = s => (s || '').toString().replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+        document.addEventListener('DOMContentLoaded', cargar);
+
+        function cargar() {
+            fetch('/api/actividades/list').then(r => r.json()).then(r => {
+                data = r.status === 'success' ? r.data : [];
+                render();
+            });
+        }
+
+        function render() {
+            const q = document.getElementById('searchInput').value.trim().toUpperCase();
+            const rows = data.filter(i => !q || i.descripcion.toUpperCase().includes(q) || i.codActividad.includes(q));
+            const tb = document.getElementById('tablaBody');
+            if (!rows.length) { tb.innerHTML = '<tr><td colspan="4" class="text-center py-5 text-muted">No hay actividades cargadas para este contribuyente.</td></tr>'; return; }
+            tb.innerHTML = '';
+            rows.forEach(i => {
+                const tr = document.createElement('tr');
+                tr.style.cursor = 'pointer';
+                if (selectedId == i.codActividad) tr.classList.add('fila-seleccionada');
+                tr.onclick = () => { document.querySelectorAll('#tablaBody tr').forEach(x => x.classList.remove('fila-seleccionada')); tr.classList.add('fila-seleccionada'); selectedId = i.codActividad; };
+                tr.ondblclick = abrirEditar;
+                tr.innerHTML = `
+                    <td style="padding:12px 20px;"><span class="badge bg-light text-success border" style="font-size:.85rem;">#${esc(i.codActividad)}</span></td>
+                    <td style="padding:12px 20px; font-weight:700; color:#1e293b;">${esc(i.descripcion)}</td>
+                    <td class="text-center">${i.porDefecto === 'S' ? '<i class="ph-fill ph-star" style="color:#eab308; font-size:1.1rem;"></i>' : ''}</td>
+                    <td class="text-center">${i.estado === 'A' ? '<span class="badge bg-success-subtle text-success border border-success">ACTIVA</span>' : '<span class="badge bg-secondary-subtle text-secondary border">INACTIVA</span>'}</td>`;
+                tb.appendChild(tr);
+            });
+        }
+
+        function abrirNuevo() {
+            document.getElementById('formAct').reset();
+            document.getElementById('codActividad').value = '';
+            document.getElementById('chkDefecto').checked = data.length === 0;
+            document.getElementById('modalTitle').innerText = 'Nueva Actividad';
+            document.getElementById('modalOverlay').style.display = 'flex';
+            setTimeout(() => document.getElementById('descripcion').focus(), 80);
+        }
+
+        function abrirEditar() {
+            const i = data.find(x => x.codActividad == selectedId);
+            if (!i) return Swal.fire('Atención', 'Seleccione una actividad de la lista.', 'warning');
+            document.getElementById('codActividad').value = i.codActividad;
+            document.getElementById('descripcion').value = i.descripcion;
+            document.getElementById('chkActivo').checked = i.estado === 'A';
+            document.getElementById('chkDefecto').checked = i.porDefecto === 'S';
+            document.getElementById('modalTitle').innerText = 'Modificar Actividad #' + i.codActividad;
+            document.getElementById('modalOverlay').style.display = 'flex';
+        }
+
+        function cerrar() { document.getElementById('modalOverlay').style.display = 'none'; }
+
+        function guardar() {
+            const desc = document.getElementById('descripcion').value.trim();
+            if (!desc) return Swal.fire('Atención', 'La descripción es obligatoria.', 'warning');
+            fetch('/api/actividades/save', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    codActividad: document.getElementById('codActividad').value,
+                    descripcion: desc,
+                    activo: document.getElementById('chkActivo').checked,
+                    porDefecto: document.getElementById('chkDefecto').checked
+                })
+            }).then(r => r.json()).then(r => {
+                if (r.status === 'success') { Swal.fire('¡Éxito!', r.message, 'success'); cerrar(); cargar(); }
+                else Swal.fire('Error', r.message, 'error');
+            });
+        }
+
+        function eliminar() {
+            if (!selectedId) return Swal.fire('Atención', 'Seleccione una actividad para eliminar.', 'warning');
+            Swal.fire({ title: '¿Eliminar actividad?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Eliminar', cancelButtonText: 'Cancelar' })
+                .then(x => {
+                    if (!x.isConfirmed) return;
+                    fetch('/api/actividades/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ codActividad: selectedId }) })
+                        .then(r => r.json()).then(r => {
+                            if (r.status === 'success') { selectedId = null; cargar(); Swal.fire('Eliminado', r.message, 'success'); }
+                            else Swal.fire('Error', r.message, 'error');
+                        });
+                });
+        }
+    </script>
+</body>
+</html>

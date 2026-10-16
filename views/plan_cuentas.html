@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sistema - Plan de Cuentas (COPLANCT)')}">
+</head>
+<body style="background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    
+    <!-- Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="main-content">
+        <div th:replace="~{fragments/layout :: navbar('Plan de Cuentas (COPLANCT)')}"></div>
+
+        <div class="content-area" style="padding: 20px;">
+
+            <!-- Header Action Bar (Matching exact user screenshot layout) -->
+            <div style="background: white; border-radius: 8px 8px 0 0; padding: 12px 16px; border: 1px solid #e2e8f0; border-bottom: none; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                
+                <!-- Action Buttons: Nuevo, Modificar, Eliminar -->
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button type="button" class="btn" onclick="openModalForCreate()" 
+                            style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                            onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
+                        <i class="ph ph-plus-circle" style="font-size: 1rem; color: #0284c7;"></i> Nuevo
+                    </button>
+
+                    <button type="button" class="btn" onclick="openModalForEdit()" 
+                            style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                            onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
+                        <i class="ph ph-pencil-simple" style="font-size: 1rem; color: #d97706;"></i> Modificar
+                    </button>
+
+                    <button type="button" class="btn" onclick="deleteSelectedAccount()" 
+                            style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                            onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
+                        <i class="ph ph-trash" style="font-size: 1rem; color: #dc2626;"></i> Eliminar
+                    </button>
+                </div>
+
+                <!-- Search box (BUSCAR) -->
+                <div style="position: relative; width: 320px;">
+                    <input type="text" id="searchInput" class="form-control" placeholder="BUSCAR" 
+                           oninput="onSearchInput()"
+                           style="width: 100%; border-radius: 6px; border: 1px solid #cbd5e1; padding: 6px 12px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                </div>
+            </div>
+
+            <!-- Table Grid Container -->
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 0 0 8px 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); overflow: hidden;">
+                <div style="max-height: calc(100vh - 270px); overflow-y: auto;">
+                    <table class="data-grid" style="width: 100%; border-collapse: collapse; font-size: 0.84rem; table-layout: fixed;">
+                        <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 10;">
+                            <tr style="border-bottom: 2px solid #e2e8f0; color: #475569; text-align: left;">
+                                <th style="padding: 10px 16px; width: 220px; font-weight: 700; border-right: 1px solid #f1f5f9;">
+                                    Código <i class="ph ph-caret-up-down" style="font-size: 0.75rem; color: #94a3b8;"></i>
+                                </th>
+                                <th style="padding: 10px 16px; font-weight: 700; border-right: 1px solid #f1f5f9;">
+                                    Descripción <i class="ph ph-caret-up-down" style="font-size: 0.75rem; color: #94a3b8;"></i>
+                                </th>
+                                <th style="padding: 10px 16px; width: 160px; text-align: center; font-weight: 700;">
+                                    Tipo <i class="ph ph-caret-up-down" style="font-size: 0.75rem; color: #94a3b8;"></i>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <tr>
+                                <td colspan="3" style="text-align: center; padding: 3rem; color: #64748b;">
+                                    <i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite; font-size: 2rem; color: #0284c7;"></i>
+                                    <p style="margin-top: 8px; font-weight: 600;">Cargando plan de cuentas...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Footer Pagination Bar -->
+                <div style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #475569;">
+                    <div id="paginationSummary" style="font-weight: 600;">
+                        0 al 0 de 0
+                    </div>
+
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" id="btnPrev" class="btn" onclick="prevPage()" disabled
+                                style="background: white; border: 1px solid #cbd5e1; padding: 4px 12px; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">
+                            Anterior
+                        </button>
+                        <button type="button" id="btnNext" class="btn" onclick="nextPage()" disabled
+                                style="background: white; border: 1px solid #cbd5e1; padding: 4px 12px; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">
+                            Siguiente
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Modal Form (Nuevo / Editar Cuenta) -->
+    <div id="formModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.5); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(2px);">
+        <div style="background: white; border-radius: 10px; width: 500px; max-width: 90%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden; animation: modalSlide 0.2s ease-out;">
+            
+            <div style="background: #0f172a; padding: 14px 20px; color: white; display: flex; justify-content: space-between; align-items: center;">
+                <h3 id="modalTitle" style="margin: 0; font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-tree-structure" style="color: #38bdf8;"></i> <span id="modalTitleText">Nueva Cuenta Contable</span>
+                </h3>
+                <button type="button" onclick="closeModal()" style="background: none; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#94a3b8'">
+                    <i class="ph ph-x"></i>
+                </button>
+            </div>
+
+            <form id="planCuentaForm" onsubmit="savePlanCuenta(event)" style="padding: 20px;">
+                <input type="hidden" id="isEditMode" value="false">
+
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 6px;">CÓDIGO DE CUENTA <span style="color: #ef4444;">*</span></label>
+                    <input type="text" id="codCuenta" class="form-control" placeholder="Ej: 01.01.01.05" required style="font-weight: 700; font-family: monospace; font-size: 0.95rem;">
+                    <small style="color: #64748b; font-size: 0.75rem;">Utilizar formato con puntos para definir jerarquía (ej. 01 -> 01.01 -> 01.01.01)</small>
+                </div>
+
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 6px;">DESCRIPCIÓN <span style="color: #ef4444;">*</span></label>
+                    <input type="text" id="descripcion" class="form-control" placeholder="Ej: CAJA GENERAL EN GUARANÍES" required style="text-transform: uppercase; font-weight: 600;">
+                </div>
+
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 6px;">TIPO DE CUENTA <span style="color: #ef4444;">*</span></label>
+                    <select id="tipoCuenta" class="form-control" style="font-weight: 700;">
+                        <option value="IMPUTABLE">IMPUTABLE (Permite registrar asientos)</option>
+                        <option value="MAYORIZADOR">MAYORIZADOR (Cuenta de agrupamiento/totalizadora)</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 6px;">ESTADO</label>
+                    <select id="estado" class="form-control" style="font-weight: 700;">
+                        <option value="A">ACTIVO</option>
+                        <option value="I">INACTIVO</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; padding-top: 14px; border-top: 1px solid #e2e8f0;">
+                    <button type="button" class="btn" onclick="closeModal()" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 16px; font-weight: 700; font-size: 0.85rem; cursor: pointer;">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn" style="background: #0284c7; color: white; border: none; border-radius: 6px; padding: 8px 20px; font-weight: 700; font-size: 0.85rem; cursor: pointer; box-shadow: 0 2px 4px rgba(2,132,199,0.3);">
+                        <i class="ph ph-floppy-disk"></i> Guardar Cuenta
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes modalSlide { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .data-grid tr:hover { background-color: #f8fafc; }
+        .data-grid tr.selected-row { background-color: #e0f2fe !important; }
+        .data-grid td { padding: 8px 16px; border-bottom: 1px solid #f1f5f9; color: #1e293b; }
+    </style>
+
+    <script>
+        let allAccounts = [];
+        let filteredAccounts = [];
+        let selectedCodCuenta = null;
+        let currentPage = 1;
+        const pageSize = 50;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAccounts();
+
+            // Shortcut CTRL+F para enfocar buscador
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+                    e.preventDefault();
+                    document.getElementById('searchInput').focus();
+                    document.getElementById('searchInput').select();
+                }
+            });
+        });
+
+        function loadAccounts() {
+            fetch('/api/plan-cuentas/list')
+                .then(res => res.json())
+                .then(data => {
+                    allAccounts = data || [];
+                    applyFilter();
+                })
+                .catch(err => {
+                    console.error('Error cargando plan de cuentas:', err);
+                    document.getElementById('tableBody').innerHTML = `
+                        <tr><td colspan="3" style="text-align: center; padding: 2rem; color: #ef4444;">
+                            Error al cargar el plan de cuentas.
+                        </td></tr>`;
+                });
+        }
+
+        function onSearchInput() {
+            currentPage = 1;
+            applyFilter();
+        }
+
+        function applyFilter() {
+            const query = (document.getElementById('searchInput').value || '').trim().toUpperCase();
+            if (!query) {
+                filteredAccounts = [...allAccounts];
+            } else {
+                filteredAccounts = allAccounts.filter(item => 
+                    (item.COD_CUENTA && item.COD_CUENTA.toUpperCase().includes(query)) ||
+                    (item.DESCRIPCION && item.DESCRIPCION.toUpperCase().includes(query)) ||
+                    (item.TIPO_CUENTA && item.TIPO_CUENTA.toUpperCase().includes(query))
+                );
+            }
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            if (filteredAccounts.length === 0) {
+                tbody.innerHTML = `
+                    <tr><td colspan="3" style="text-align: center; padding: 2.5rem; color: #94a3b8; font-weight: 600;">
+                        No se encontraron registros en el plan de cuentas.
+                    </td></tr>`;
+                updatePaginationSummary(0, 0, 0);
+                return;
+            }
+
+            const total = filteredAccounts.length;
+            const totalPages = Math.ceil(total / pageSize) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const startIdx = (currentPage - 1) * pageSize;
+            const endIdx = Math.min(startIdx + pageSize, total);
+            const pageData = filteredAccounts.slice(startIdx, endIdx);
+
+            let html = '';
+            pageData.forEach(item => {
+                const isSelected = item.COD_CUENTA === selectedCodCuenta;
+                const rowClass = isSelected ? 'selected-row' : '';
+                const isMayorizador = item.TIPO_CUENTA === 'MAYORIZADOR';
+                const fontStyle = isMayorizador ? 'font-weight: 700; color: #0f172a;' : 'font-weight: 500; color: #334155;';
+
+                // Indentación por jerarquía según cantidad de puntos
+                const dots = (item.COD_CUENTA.match(/\./g) || []).length;
+                const paddingLeft = 16 + (dots * 16);
+
+                html += `
+                    <tr class="${rowClass}" onclick="selectRow('${item.COD_CUENTA}')" style="cursor: pointer; ${fontStyle}">
+                        <td style="padding-left: ${paddingLeft}px; font-family: monospace; font-weight: 700;">
+                            ${item.COD_CUENTA}
+                        </td>
+                        <td style="text-transform: uppercase;">
+                            ${item.DESCRIPCION}
+                        </td>
+                        <td style="text-align: center; font-size: 0.78rem; font-weight: 700; color: ${isMayorizador ? '#0369a1' : '#475569'};">
+                            ${item.TIPO_CUENTA}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+            updatePaginationSummary(startIdx + 1, endIdx, total);
+        }
+
+        function selectRow(codCuenta) {
+            selectedCodCuenta = codCuenta;
+            renderTable();
+        }
+
+        function updatePaginationSummary(start, end, total) {
+            document.getElementById('paginationSummary').innerText = `${start} al ${end} de ${total}`;
+            document.getElementById('btnPrev').disabled = (currentPage <= 1);
+            document.getElementById('btnNext').disabled = (end >= total);
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable();
+            }
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(filteredAccounts.length / pageSize);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTable();
+            }
+        }
+
+        function openModalForCreate() {
+            document.getElementById('isEditMode').value = "false";
+            document.getElementById('modalTitleText').innerText = "Nueva Cuenta Contable";
+            document.getElementById('codCuenta').value = "";
+            document.getElementById('codCuenta').readOnly = false;
+            document.getElementById('descripcion').value = "";
+            document.getElementById('tipoCuenta').value = "IMPUTABLE";
+            document.getElementById('estado').value = "A";
+            
+            // Sugerir código si hay una cuenta seleccionada
+            if (selectedCodCuenta) {
+                document.getElementById('codCuenta').value = selectedCodCuenta + ".";
+            }
+
+            document.getElementById('formModal').style.display = 'flex';
+            setTimeout(() => document.getElementById('codCuenta').focus(), 100);
+        }
+
+        function openModalForEdit() {
+            if (!selectedCodCuenta) {
+                alert("Por favor, seleccione una cuenta de la lista para modificar.");
+                return;
+            }
+
+            const item = allAccounts.find(a => a.COD_CUENTA === selectedCodCuenta);
+            if (!item) return;
+
+            document.getElementById('isEditMode').value = "true";
+            document.getElementById('modalTitleText').innerText = "Modificar Cuenta Contable";
+            document.getElementById('codCuenta').value = item.COD_CUENTA;
+            document.getElementById('codCuenta').readOnly = true;
+            document.getElementById('descripcion').value = item.DESCRIPCION || "";
+            document.getElementById('tipoCuenta').value = item.TIPO_CUENTA || "IMPUTABLE";
+            document.getElementById('estado').value = item.ESTADO || "A";
+
+            document.getElementById('formModal').style.display = 'flex';
+            setTimeout(() => document.getElementById('descripcion').focus(), 100);
+        }
+
+        function closeModal() {
+            document.getElementById('formModal').style.display = 'none';
+        }
+
+        function savePlanCuenta(e) {
+            e.preventDefault();
+
+            const payload = {
+                codCuenta: document.getElementById('codCuenta').value.trim(),
+                descripcion: document.getElementById('descripcion').value.trim(),
+                tipoCuenta: document.getElementById('tipoCuenta').value,
+                estado: document.getElementById('estado').value
+            };
+
+            fetch('/api/plan-cuentas/guardar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    closeModal();
+                    selectedCodCuenta = payload.codCuenta;
+                    loadAccounts();
+                } else {
+                    alert(res.message || 'Error al guardar.');
+                }
+            })
+            .catch(err => {
+                console.error('Error guardando cuenta:', err);
+                alert('Ocurrió un error al intentar guardar.');
+            });
+        }
+
+        function deleteSelectedAccount() {
+            if (!selectedCodCuenta) {
+                alert("Por favor, seleccione una cuenta de la lista para eliminar.");
+                return;
+            }
+
+            if (!confirm(`¿Está seguro de que desea eliminar la cuenta ${selectedCodCuenta}?`)) {
+                return;
+            }
+
+            fetch('/api/plan-cuentas/eliminar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ codCuenta: selectedCodCuenta })
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    selectedCodCuenta = null;
+                    loadAccounts();
+                } else {
+                    alert(res.message || 'Error al eliminar.');
+                }
+            })
+            .catch(err => {
+                console.error('Error eliminando cuenta:', err);
+                alert('Ocurrió un error al intentar eliminar.');
+            });
+        }
+    </script>
+</body>
+</html>

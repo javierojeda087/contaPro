@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Contabilidad - Libro Ventas')}">
+</head>
+<body style="background-color: #f8fafc; color: #1e293b;">
+
+    <!-- Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="main-content">
+        <div th:replace="~{fragments/layout :: navbar('Libro Ventas')}"></div>
+
+        <div class="content-area" style="padding: 1.5rem;">
+            
+            <!-- Filter Toolbar Card -->
+            <div class="card" style="background: #ffffff; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; margin-bottom: 1.5rem; overflow: hidden;">
+                <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; background: #ffffff; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 40px; height: 40px; border-radius: 10px; background: #dcfce7; color: #16a34a; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+                            <i class="ph ph-receipt"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0f172a;">Libro de Ventas</h3>
+                            <p style="margin: 0; font-size: 0.8rem; color: #64748b; font-weight: 500;">Módulo Contabilidad - Reporte de Comprobantes de Ventas / Ingresos</p>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button type="button" onclick="imprimirReporte()" style="background: #16a34a; color: white; border: none; padding: 0.55rem 1.25rem; border-radius: 10px; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
+                            <i class="ph ph-printer-bold" style="font-size: 1.1rem;"></i> Imprimir Libro Ventas
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Form Controls -->
+                <div style="padding: 1.25rem 1.5rem; background: #fafafa;">
+                    <!-- Filtros rápidos (siempre dentro del ejercicio activo) -->
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 1rem;">
+                        <span style="font-size: 0.72rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-right: 4px;">
+                            <i class="ph ph-lightning" style="color:#16a34a;"></i> Rápido · Ejercicio <span th:text="${ejercicio}">2026</span>:
+                        </span>
+                        <button type="button" class="qf-btn" data-qf="hoy">Hoy</button>
+                        <button type="button" class="qf-btn" data-qf="ayer">Ayer</button>
+                        <button type="button" class="qf-btn" data-qf="mes">Este mes</button>
+                        <button type="button" class="qf-btn" data-qf="mesAnt">Mes anterior</button>
+                        <button type="button" class="qf-btn" data-qf="trim">Trimestre</button>
+                        <button type="button" class="qf-btn" data-qf="anio">Todo el ejercicio</button>
+                        <span style="width:1px; height:22px; background:#cbd5e1; margin: 0 6px;"></span>
+                        <span id="qfMeses" style="display:flex; flex-wrap:wrap; gap:4px;"></span>
+                    </div>
+                    <form id="filterForm" onsubmit="event.preventDefault(); cargarLibroVentas();" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) 120px; gap: 1rem; align-items: flex-end;">
+                        
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Fecha Desde</label>
+                            <input type="date" id="fechaDesde" th:value="${defFechaDesde}" th:min="${ejerInicio}" th:max="${ejerFinal}" class="form-control" style="height: 42px; border-radius: 8px; font-weight: 600;">
+                        </div>
+
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Fecha Hasta</label>
+                            <input type="date" id="fechaHasta" th:value="${defFechaHasta}" th:min="${ejerInicio}" th:max="${ejerFinal}" class="form-control" style="height: 42px; border-radius: 8px; font-weight: 600;">
+                        </div>
+
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Cliente / Razón Social</label>
+                            <input type="text" id="codCliente" placeholder="Buscar cliente..." class="form-control" style="height: 42px; border-radius: 8px; font-weight: 600;">
+                        </div>
+
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Condición</label>
+                            <select id="condicion" class="form-control" style="height: 42px; border-radius: 8px; font-weight: 600;">
+                                <option value="TODOS">TODAS</option>
+                                <option value="CON">CONTADO (CON)</option>
+                                <option value="CRE">CRÉDITO (CRE)</option>
+                            </select>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 8px; height: 42px; padding-bottom: 4px;">
+                            <input type="checkbox" id="incluirAnulados" style="width: 18px; height: 18px; accent-color: #16a34a; cursor: pointer;">
+                            <label for="incluirAnulados" style="font-size: 0.82rem; font-weight: 700; color: #334155; cursor: pointer; margin: 0;">Anuladas</label>
+                        </div>
+
+                        <div>
+                            <button type="submit" style="width: 100%; height: 42px; background: #0f172a; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
+                                <i class="ph ph-magnifying-glass"></i> Filtrar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- KPI Cards Summary -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Total General Ventas</div>
+                    <div id="kpiTotal" style="font-size: 1.4rem; font-weight: 800; color: #15803d; margin-top: 4px;">Gs. 0</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Gravado 10%</div>
+                    <div id="kpiGrav10" style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-top: 4px;">Gs. 0</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">IVA 10%</div>
+                    <div id="kpiIva10" style="font-size: 1.25rem; font-weight: 800; color: #0284c7; margin-top: 4px;">Gs. 0</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Exentas</div>
+                    <div id="kpiExentas" style="font-size: 1.25rem; font-weight: 800; color: #64748b; margin-top: 4px;">Gs. 0</div>
+                </div>
+            </div>
+
+            <!-- Data Table Card -->
+            <div class="card" style="background: #ffffff; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; overflow: hidden;">
+                <div class="table-responsive">
+                    <table class="table" style="width: 100%; margin: 0; border-collapse: collapse; font-size: 0.88rem;">
+                        <thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #334155; font-weight: 800; text-transform: uppercase; font-size: 0.75rem;">
+                            <tr>
+                                <th style="padding: 12px 14px; text-align: center;">DÍA-MES</th>
+                                <th style="padding: 12px 14px;">DOCUMENTO</th>
+                                <th style="padding: 12px 14px;">TIMB.</th>
+                                <th style="padding: 12px 14px;">CLIENTE / RAZÓN SOCIAL</th>
+                                <th style="padding: 12px 14px; text-align: center;">RUC-DV</th>
+                                <th style="padding: 12px 14px; text-align: center;">COND</th>
+                                <th style="padding: 12px 14px; text-align: right;">GRAV. 10%</th>
+                                <th style="padding: 12px 14px; text-align: right;">GRAV. 5%</th>
+                                <th style="padding: 12px 14px; text-align: right;">IVA 10%</th>
+                                <th style="padding: 12px 14px; text-align: right;">IVA 5%</th>
+                                <th style="padding: 12px 14px; text-align: right;">EXENTAS</th>
+                                <th style="padding: 12px 14px; text-align: right;">TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaCuerpo" style="color: #0f172a; font-weight: 600;">
+                            <tr>
+                                <td colspan="12" style="text-align: center; padding: 2rem; color: #64748b;">Cargando datos...</td>
+                            </tr>
+                        </tbody>
+                        <tfoot id="tablaPie" style="background: #f1f5f9; border-top: 2px solid #cbd5e1; font-weight: 800; font-size: 0.9rem;">
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script th:inline="javascript">
+        const EJER_INI = /*[[${ejerInicio}]]*/ '2026-01-01';
+        const EJER_FIN = /*[[${ejerFinal}]]*/ '2026-12-31';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initFiltrosRapidos();
+            cargarLibroVentas();
+        });
+
+        // ---------- Filtros rápidos ----------
+        const pad = n => String(n).padStart(2, '0');
+        const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        const parseIso = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+        const clampIso = s => (s < EJER_INI ? EJER_INI : (s > EJER_FIN ? EJER_FIN : s));
+
+        function hoyEnEjercicio() {
+            const t = iso(new Date());
+            return parseIso(clampIso(t));
+        }
+
+        function aplicarRango(desde, hasta, btn) {
+            document.getElementById('fechaDesde').value = clampIso(iso(desde));
+            document.getElementById('fechaHasta').value = clampIso(iso(hasta));
+            document.querySelectorAll('.qf-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            cargarLibroVentas();
+        }
+
+        function initFiltrosRapidos() {
+            const y = parseIso(EJER_INI).getFullYear();
+            const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            const cont = document.getElementById('qfMeses');
+            meses.forEach((m, i) => {
+                const b = document.createElement('button');
+                b.type = 'button'; b.className = 'qf-btn qf-mes'; b.textContent = m;
+                const ini = new Date(y, i, 1), fin = new Date(y, i + 1, 0);
+                if (iso(fin) < EJER_INI || iso(ini) > EJER_FIN) b.disabled = true;
+                b.onclick = () => aplicarRango(ini, fin, b);
+                cont.appendChild(b);
+            });
+
+            document.querySelectorAll('.qf-btn[data-qf]').forEach(b => b.onclick = () => {
+                const ref = hoyEnEjercicio();
+                let d, h;
+                switch (b.dataset.qf) {
+                    case 'hoy':    d = h = ref; break;
+                    case 'ayer':   d = h = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() - 1); break;
+                    case 'mes':    d = new Date(ref.getFullYear(), ref.getMonth(), 1); h = new Date(ref.getFullYear(), ref.getMonth() + 1, 0); break;
+                    case 'mesAnt': d = new Date(ref.getFullYear(), ref.getMonth() - 1, 1); h = new Date(ref.getFullYear(), ref.getMonth(), 0); break;
+                    case 'trim':   { const q = Math.floor(ref.getMonth() / 3) * 3; d = new Date(ref.getFullYear(), q, 1); h = new Date(ref.getFullYear(), q + 3, 0); break; }
+                    case 'anio':   d = parseIso(EJER_INI); h = parseIso(EJER_FIN); break;
+                }
+                aplicarRango(d, h, b);
+            });
+
+            // Si el usuario escribe una fecha fuera del ejercicio, se corrige
+            ['fechaDesde', 'fechaHasta'].forEach(id => {
+                document.getElementById(id).addEventListener('change', e => {
+                    if (e.target.value) e.target.value = clampIso(e.target.value);
+                    document.querySelectorAll('.qf-btn').forEach(b => b.classList.remove('active'));
+                });
+            });
+        }
+
+        function formatGs(val) {
+            if (val === null || val === undefined || isNaN(val)) return '0';
+            return Math.round(val).toLocaleString('es-PY');
+        }
+
+        async function cargarLibroVentas() {
+            const fechaDesde = document.getElementById('fechaDesde').value;
+            const fechaHasta = document.getElementById('fechaHasta').value;
+            const codCliente = document.getElementById('codCliente').value;
+            const condicion = document.getElementById('condicion').value;
+            const incluirAnulados = document.getElementById('incluirAnulados').checked;
+
+            const tbody = document.getElementById('tablaCuerpo');
+            const tfoot = document.getElementById('tablaPie');
+
+            tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 2rem; color: #64748b;"><i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite; font-size: 1.5rem;"></i> Cargando Libro Ventas...</td></tr>`;
+
+            try {
+                const params = new URLSearchParams({
+                    fechaDesde: fechaDesde,
+                    fechaHasta: fechaHasta,
+                    codCliente: codCliente,
+                    condicion: condicion,
+                    incluirAnulados: incluirAnulados
+                });
+
+                const res = await fetch(`/api/reportes/libro-ventas?${params.toString()}`);
+                const data = await res.json();
+
+                const records = data.records || [];
+                const totales = data.totales || {};
+                // El servidor ajusta las fechas al ejercicio; reflejarlo en pantalla
+                if (data.fechaDesde) document.getElementById('fechaDesde').value = data.fechaDesde;
+                if (data.fechaHasta) document.getElementById('fechaHasta').value = data.fechaHasta;
+
+                // Update KPI Cards
+                document.getElementById('kpiTotal').innerText = 'Gs. ' + formatGs(totales.total);
+                document.getElementById('kpiGrav10').innerText = 'Gs. ' + formatGs(totales.grav10);
+                document.getElementById('kpiIva10').innerText = 'Gs. ' + formatGs(totales.iva10);
+                document.getElementById('kpiExentas').innerText = 'Gs. ' + formatGs(totales.exentas);
+
+                if (records.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 2rem; color: #94a3b8; font-weight: 700;">No se encontraron registros de ventas para el período seleccionado.</td></tr>`;
+                    tfoot.innerHTML = '';
+                    return;
+                }
+
+                let html = '';
+                records.forEach(r => {
+                    const isAnulada = r.anulada;
+                    const rowStyle = isAnulada ? 'background: #fef2f2; color: #ef4444; text-decoration: line-through;' : '';
+                    const condBadge = r.condicion === 'CRE' 
+                        ? `<span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 800;">CRE</span>`
+                        : `<span style="background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 800;">CON</span>`;
+
+                    const rucDvText = r.rucDv ? `${r.rucNum}-${r.rucDv}` : r.rucNum;
+
+                    html += `
+                        <tr style="${rowStyle} border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 10px 14px; text-align: center;">${r.diaMes || ''}</td>
+                            <td style="padding: 10px 14px; font-weight: 700;">${r.documento || ''}</td>
+                            <td style="padding: 10px 14px;">${r.timbrado || ''}</td>
+                            <td style="padding: 10px 14px;">${r.razonSocial || ''}</td>
+                            <td style="padding: 10px 14px; text-align: center;">${rucDvText || ''}</td>
+                            <td style="padding: 10px 14px; text-align: center;">${condBadge}</td>
+                            <td style="padding: 10px 14px; text-align: right;">${formatGs(r.grav10)}</td>
+                            <td style="padding: 10px 14px; text-align: right;">${formatGs(r.grav5)}</td>
+                            <td style="padding: 10px 14px; text-align: right;">${formatGs(r.iva10)}</td>
+                            <td style="padding: 10px 14px; text-align: right;">${formatGs(r.iva5)}</td>
+                            <td style="padding: 10px 14px; text-align: right;">${formatGs(r.exentas)}</td>
+                            <td style="padding: 10px 14px; text-align: right; font-weight: 800; color: #15803d;">${formatGs(r.total)}</td>
+                        </tr>
+                    `;
+                });
+
+                tbody.innerHTML = html;
+
+                tfoot.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="padding: 12px 14px; text-transform: uppercase;">TOTAL GENERAL</td>
+                        <td style="padding: 12px 14px; text-align: right;">${formatGs(totales.grav10)}</td>
+                        <td style="padding: 12px 14px; text-align: right;">${formatGs(totales.grav5)}</td>
+                        <td style="padding: 12px 14px; text-align: right;">${formatGs(totales.iva10)}</td>
+                        <td style="padding: 12px 14px; text-align: right;">${formatGs(totales.iva5)}</td>
+                        <td style="padding: 12px 14px; text-align: right;">${formatGs(totales.exentas)}</td>
+                        <td style="padding: 12px 14px; text-align: right; color: #15803d; font-size: 1.05rem;">${formatGs(totales.total)}</td>
+                    </tr>
+                `;
+
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 2rem; color: #dc2626; font-weight: 700;">Error cargando el reporte.</td></tr>`;
+            }
+        }
+
+        function imprimirReporte() {
+            const fechaDesde = document.getElementById('fechaDesde').value;
+            const fechaHasta = document.getElementById('fechaHasta').value;
+            const codCliente = document.getElementById('codCliente').value;
+            const condicion = document.getElementById('condicion').value;
+            const incluirAnulados = document.getElementById('incluirAnulados').checked;
+
+            const params = new URLSearchParams({
+                fechaDesde: fechaDesde,
+                fechaHasta: fechaHasta,
+                codCliente: codCliente,
+                condicion: condicion,
+                incluirAnulados: incluirAnulados
+            });
+
+            window.open(`/app/libro-ventas/print?${params.toString()}`, '_blank');
+        }
+    </script>
+    <style>
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .qf-btn { background: #fff; border: 1px solid #cbd5e1; color: #334155; font-size: 0.76rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; cursor: pointer; transition: all .15s; }
+        .qf-btn:hover:not(:disabled) { border-color: #16a34a; color: #15803d; background: #f0fdf4; }
+        .qf-btn.active { background: #16a34a; border-color: #16a34a; color: #fff; }
+        .qf-btn:disabled { opacity: .4; cursor: not-allowed; }
+        .qf-mes { padding: 4px 8px; min-width: 40px; }
+    </style>
+</body>
+</html>

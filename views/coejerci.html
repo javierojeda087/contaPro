@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sistema - Ejercicios Contables (COEJERCI)')}">
+</head>
+<body>
+    
+    <!-- Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="main-content">
+        <div th:replace="~{fragments/layout :: navbar('Ejercicios Contables (COEJERCI)')}"></div>
+
+        <div class="content-area">
+            <div class="card">
+                <!-- Toolbar & Search Header (estándar) -->
+                <div style="padding: 14px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button type="button" class="btn" id="btnNuevo" onclick="openModal()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #1e293b; padding: 7px 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s;" onmouseover="this.style.borderColor='#16a34a'; this.style.color='#16a34a'" onmouseout="this.style.borderColor='#cbd5e1'; this.style.color='#1e293b'">
+                            <i class="ph ph-plus-circle" style="color: #16a34a; font-size: 1.15rem;"></i> Nuevo Ejercicio
+                        </button>
+                        <button type="button" class="btn" id="btnModificar" onclick="editSelected()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #1e293b; padding: 7px 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s;" onmouseover="this.style.borderColor='#15803d'; this.style.color='#15803d'" onmouseout="this.style.borderColor='#cbd5e1'; this.style.color='#1e293b'">
+                            <i class="ph ph-pencil-simple" style="color: #15803d; font-size: 1.15rem;"></i> Modificar
+                        </button>
+                        <button type="button" class="btn" id="btnEliminar" onclick="deleteSelected()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #ef4444; padding: 7px 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s;" onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#fca5a5'" onmouseout="this.style.background='white'; this.style.borderColor='#cbd5e1'">
+                            <i class="ph ph-trash" style="font-size: 1.15rem;"></i> Eliminar
+                        </button>
+                    </div>
+
+                    <div style="position: relative; width: 280px;">
+                        <input type="text" id="searchInput" class="form-control" placeholder="BUSCAR EJERCICIO..." onkeyup="handleSearchKey(event)" style="padding-right: 36px; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; border-radius: 8px; border: 1px solid #cbd5e1; background: #fafafa;" autocomplete="off">
+                        <i class="ph ph-magnifying-glass" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #16a34a; font-size: 1.1rem;"></i>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-grid" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>CÓDIGO</th>
+                                <th>FECHA INICIO</th>
+                                <th>FECHA FINAL</th>
+                                <th>DUEÑO / PROPIETARIO</th>
+                                <th>REPRESENTANTE LEGAL</th>
+                                <th>CONTADOR</th>
+                                <th>N° FORMULARIO</th>
+                                <th>N° ORDEN</th>
+                                <th>ESTADO</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <tr>
+                                <td colspan="10" style="text-align: center; padding: 2rem;">
+                                    <i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite; font-size: 2rem; color: var(--primary-color);"></i>
+                                    <p style="color: var(--text-muted); margin-top: 10px;">Cargando ejercicios contables...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Form -->
+    <div id="formModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(4px); transition: opacity 0.3s ease; opacity: 0;">
+        <div id="modalContentBox" style="background: white; width: 720px; max-width: 95%; max-height: 90vh; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; transform: translateY(20px); transition: transform 0.3s ease;">
+            
+            <div style="padding: 1.25rem 1.75rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border-radius: 16px 16px 0 0;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="ph ph-calendar-plus" style="font-size: 1.4rem; color: var(--primary-color);"></i>
+                    <h3 id="modalTitle" style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #1e293b;">Nuevo Ejercicio Contable</h3>
+                </div>
+                <i class="ph ph-x" onclick="closeModal()" style="font-size: 1.4rem; color: #94a3b8; cursor: pointer;"></i>
+            </div>
+            
+            <div style="padding: 1.75rem; overflow-y: auto;">
+                <form id="dataForm" onsubmit="saveData(event)" autocomplete="off">
+                    <input type="hidden" id="actionType" value="create">
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 1.25rem;">
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">Código Ejercicio *</label>
+                            <input type="text" id="codEjercicio" class="form-control" required placeholder="Ej. 2026" style="width: 100%; border-radius: 8px;" oninput="this.value = this.value.toUpperCase()">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">Fecha Inicio</label>
+                            <input type="date" id="fecInicio" class="form-control" style="width: 100%; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">Fecha Final</label>
+                            <input type="date" id="fecFinal" class="form-control" style="width: 100%; border-radius: 8px;">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 1.25rem;">
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">Dueño / Propietario</label>
+                            <div class="persona-picker" data-target="codPerDueno"></div>
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">Representante Legal</label>
+                            <div class="persona-picker" data-target="codPerRepresLegal"></div>
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">Contador</label>
+                            <div class="persona-picker" data-target="codPerContador"></div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 1.25rem;">
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">N° Formulario</label>
+                            <input type="text" id="numFormulario" class="form-control" placeholder="Ej. 101" style="width: 100%; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">N° Orden</label>
+                            <input type="text" id="numOrden" class="form-control" placeholder="Ej. 1" style="width: 100%; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">Estado *</label>
+                            <select id="estado" class="form-control" style="width: 100%; border-radius: 8px;" required>
+                                <option value="A">Activo (A)</option>
+                                <option value="I">Inactivo (I)</option>
+                                <option value="C">Cerrado (C)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 1.75rem;">
+                        <label style="display: block; font-weight: 700; font-size: 0.8rem; color: #475569; margin-bottom: 0.4rem; text-transform: uppercase;">Firma Representante</label>
+                        <input type="text" id="firmaRepresentante" class="form-control" placeholder="Nombre para firmas en reportes" style="width: 100%; border-radius: 8px;">
+                    </div>
+                    
+                    <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #f1f5f9; padding-top: 1.25rem;">
+                        <button type="button" class="btn btn-outline" onclick="closeModal()" style="border-radius: 8px; padding: 0.6rem 1.2rem; background: white;">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btnSubmit" style="border-radius: 8px; padding: 0.6rem 1.5rem; box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.3);">
+                            <i class="ph ph-floppy-disk"></i> Guardar Ejercicio
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Layout Scripts -->
+    <div th:replace="~{fragments/layout :: scripts}"></div>
+
+    <script>
+        let allData = [];
+        let personasList = [];
+        let selectedId = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initPersonaPickers();
+            loadPersonasLookup();
+            loadData();
+        });
+
+        async function loadPersonasLookup() {
+            try {
+                const response = await fetch('/api/coejerci/personas');
+                const raw = await response.json();
+                personasList = (raw || []).map(p => ({
+                    cod_persona: String(p.cod_persona ?? p.COD_PERSONA ?? ''),
+                    nombre: p.nombre ?? p.NOMBRE ?? '',
+                    ruc: p.ruc ?? p.RUC ?? ''
+                })).filter(p => p.cod_persona);
+            } catch (error) {
+                console.error('Error cargando personas:', error);
+            }
+        }
+
+        // ---------- Buscador de personas por RUC / nombre ----------
+        function initPersonaPickers() {
+            document.querySelectorAll('.persona-picker').forEach(box => {
+                const id = box.dataset.target;
+                box.style.position = 'relative';
+                box.innerHTML = `
+                    <input type="hidden" id="${id}">
+                    <div style="position: relative;">
+                        <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#16a34a;"></i>
+                        <input type="text" id="${id}_txt" class="form-control" autocomplete="off"
+                               placeholder="Buscar por RUC / CI o nombre..."
+                               style="width:100%; border-radius:8px; padding-left:36px; padding-right:32px;">
+                        <i class="ph ph-x" id="${id}_clr" title="Quitar" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:#94a3b8; cursor:pointer; display:none;"></i>
+                    </div>
+                    <div id="${id}_res" class="persona-results"></div>`;
+
+                const hid = document.getElementById(id);
+                const txt = document.getElementById(id + '_txt');
+                const res = document.getElementById(id + '_res');
+                const clr = document.getElementById(id + '_clr');
+
+                const render = async () => {
+                    if (!personasList.length) await loadPersonasLookup();
+                    const q = txt.value.trim().toUpperCase();
+                    if (q.length < 1) { res.style.display = 'none'; return; }
+                    const qDoc = q.replace(/[^0-9A-Z]/g, '');
+                    const found = personasList.filter(p => {
+                        const ruc = (p.ruc || '').toUpperCase();
+                        return (qDoc && ruc.replace(/[^0-9A-Z]/g, '').includes(qDoc))
+                            || (p.nombre || '').toUpperCase().includes(q)
+                            || String(p.cod_persona) === q;
+                    }).slice(0, 15);
+                    res.innerHTML = found.length
+                        ? found.map(p => `<div class="persona-opt" data-cod="${p.cod_persona}">
+                                <div style="font-weight:700; color:#0f172a;">${p.nombre}</div>
+                                <div style="font-size:0.75rem; color:#64748b;">RUC/CI: ${p.ruc || '-'} &nbsp;·&nbsp; Cód: ${p.cod_persona}</div>
+                            </div>`).join('')
+                        : '<div style="padding:10px 12px; color:#94a3b8; font-size:0.85rem;">Sin resultados</div>';
+                    res.style.display = 'block';
+                };
+
+                txt.addEventListener('input', () => { hid.value = ''; clr.style.display = txt.value ? 'block' : 'none'; render(); });
+                txt.addEventListener('focus', render);
+                txt.addEventListener('blur', () => setTimeout(() => {
+                    res.style.display = 'none';
+                    if (!hid.value) { txt.value = ''; clr.style.display = 'none'; }
+                }, 180));
+                res.addEventListener('mousedown', ev => {
+                    const opt = ev.target.closest('.persona-opt');
+                    if (opt) setPersona(id, opt.dataset.cod);
+                });
+                clr.addEventListener('click', () => setPersona(id, ''));
+            });
+        }
+
+        function setPersona(id, cod) {
+            if (cod === undefined || cod === null || String(cod).toLowerCase() === 'undefined' || String(cod).toLowerCase() === 'null') cod = '';
+            const hid = document.getElementById(id);
+            const txt = document.getElementById(id + '_txt');
+            const clr = document.getElementById(id + '_clr');
+            const p = personasList.find(x => String(x.cod_persona) === String(cod || ''));
+            hid.value = p ? p.cod_persona : (cod || '');
+            txt.value = p ? `${p.nombre}${p.ruc ? ' - ' + p.ruc : ''}` : (cod ? cod : '');
+            clr.style.display = hid.value ? 'block' : 'none';
+            document.getElementById(id + '_res').style.display = 'none';
+        }
+
+        async function loadData() {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="10" style="text-align: center; padding: 2rem;">
+                        <i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite; font-size: 2rem; color: var(--primary-color);"></i>
+                        <p style="color: var(--text-muted); margin-top: 10px;">Cargando ejercicios contables...</p>
+                    </td>
+                </tr>
+            `;
+
+            try {
+                const search = document.getElementById('searchInput').value.trim();
+                const response = await fetch(`/api/coejerci/list?search=${encodeURIComponent(search)}`);
+                allData = await response.json();
+                renderTable(allData);
+            } catch (error) {
+                console.error('Error al cargar ejercicios:', error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="10" style="text-align: center; padding: 2rem; color: #ef4444;">
+                            <i class="ph ph-warning-circle" style="font-size: 2rem;"></i>
+                            <p style="margin-top: 10px;">Error al cargar la información. Revisa la consola o conexión.</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function renderTable(data) {
+            const tableBody = document.getElementById('tableBody');
+            if (!data || data.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="10" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+                            <i class="ph ph-folder-open" style="font-size: 2.5rem; color: #cbd5e1;"></i>
+                            <p style="margin-top: 8px; font-weight: 500;">No se encontraron ejercicios contables registrados.</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let html = '';
+            data.forEach(item => {
+                let badgeStatus = '<span style="background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700;">ACTIVO</span>';
+                if (item.estado === 'I') {
+                    badgeStatus = '<span style="background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700;">INACTIVO</span>';
+                } else if (item.estado === 'C') {
+                    badgeStatus = '<span style="background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700;">CERRADO</span>';
+                }
+
+                const duenoText = item.codPerDueno ? `${item.codPerDueno} ${item.nombreDueno ? '- ' + item.nombreDueno : ''}` : '-';
+                const represText = item.codPerRepresLegal ? `${item.codPerRepresLegal} ${item.nombreRepresLegal ? '- ' + item.nombreRepresLegal : ''}` : '-';
+                const contadorText = item.codPerContador ? `${item.codPerContador} ${item.nombreContador ? '- ' + item.nombreContador : ''}` : '-';
+
+                const sel = (selectedId && selectedId === item.codEjercicio) ? ' fila-seleccionada' : '';
+                html += `
+                    <tr class="fila-ejercicio${sel}" data-id="${item.codEjercicio}" style="cursor: pointer;"
+                        onclick="selectRow(this)" ondblclick="selectRow(this); editSelected()">
+                        <td style="font-weight: 800; color: #15803d;">${item.codEjercicio || ''}</td>
+                        <td>${item.fecInicio || '-'}</td>
+                        <td>${item.fecFinal || '-'}</td>
+                        <td style="font-size: 0.85rem;">${duenoText}</td>
+                        <td style="font-size: 0.85rem;">${represText}</td>
+                        <td style="font-size: 0.85rem;">${contadorText}</td>
+                        <td>${item.numFormulario || '-'}</td>
+                        <td>${item.numOrden || '-'}</td>
+                        <td>${badgeStatus}</td>
+                    </tr>
+                `;
+            });
+            tableBody.innerHTML = html;
+        }
+
+        function selectRow(tr) {
+            document.querySelectorAll('#tableBody tr').forEach(r => r.classList.remove('fila-seleccionada'));
+            tr.classList.add('fila-seleccionada');
+            selectedId = tr.dataset.id;
+        }
+
+        function editSelected() {
+            if (!selectedId) return showAlert('Seleccione un ejercicio de la lista.', 'warning');
+            editItem(selectedId);
+        }
+
+        function deleteSelected() {
+            if (!selectedId) return showAlert('Seleccione un ejercicio de la lista.', 'warning');
+            deleteItem(selectedId);
+        }
+
+        function handleSearchKey(e) {
+            const q = document.getElementById('searchInput').value.trim().toUpperCase();
+            if (!q) return renderTable(allData);
+            renderTable(allData.filter(i =>
+                [i.codEjercicio, i.numFormulario, i.numOrden, i.nombreDueno, i.nombreRepresLegal, i.nombreContador]
+                    .some(v => v && String(v).toUpperCase().includes(q))
+            ));
+        }
+
+        function openModal(isEdit = false) {
+            const modal = document.getElementById('formModal');
+            const modalContent = document.getElementById('modalContentBox');
+            
+            if (!isEdit) {
+                document.getElementById('actionType').value = 'create';
+                document.getElementById('modalTitle').innerText = 'Nuevo Ejercicio Contable';
+                document.getElementById('dataForm').reset();
+                document.getElementById('codEjercicio').readOnly = false;
+                document.getElementById('codEjercicio').style.background = '#ffffff';
+                document.getElementById('estado').value = 'A';
+                ['codPerDueno', 'codPerRepresLegal', 'codPerContador'].forEach(id => setPersona(id, ''));
+            }
+            
+            modal.style.display = 'flex';
+            setTimeout(() => {
+                modal.style.opacity = '1';
+                modalContent.style.transform = 'translateY(0)';
+                if (!isEdit) document.getElementById('codEjercicio').focus();
+            }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('formModal');
+            const modalContent = document.getElementById('modalContentBox');
+            
+            modal.style.opacity = '0';
+            modalContent.style.transform = 'translateY(20px)';
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        }
+
+        function editItem(codEjercicio) {
+            const item = allData.find(d => d.codEjercicio === codEjercicio);
+            if (!item) return;
+
+            document.getElementById('actionType').value = 'update';
+            document.getElementById('modalTitle').innerText = 'Editar Ejercicio: ' + codEjercicio;
+            
+            document.getElementById('codEjercicio').value = item.codEjercicio || '';
+            document.getElementById('codEjercicio').readOnly = true;
+            document.getElementById('codEjercicio').style.background = '#f1f5f9';
+            
+            document.getElementById('fecInicio').value = item.fecInicio || '';
+            document.getElementById('fecFinal').value = item.fecFinal || '';
+            setPersona('codPerDueno', item.codPerDueno || '');
+            setPersona('codPerRepresLegal', item.codPerRepresLegal || '');
+            setPersona('codPerContador', item.codPerContador || '');
+            document.getElementById('numFormulario').value = item.numFormulario || '';
+            document.getElementById('numOrden').value = item.numOrden || '';
+            document.getElementById('estado').value = item.estado || 'A';
+            document.getElementById('firmaRepresentante').value = item.firmaRepresentante || '';
+
+            openModal(true);
+        }
+
+        async function saveData(e) {
+            e.preventDefault();
+            
+            const btn = document.getElementById('btnSubmit');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite;"></i> Guardando...';
+
+            const params = new URLSearchParams({
+                codEjercicio: document.getElementById('codEjercicio').value.trim(),
+                fecInicio: document.getElementById('fecInicio').value,
+                fecFinal: document.getElementById('fecFinal').value,
+                codPerDueno: document.getElementById('codPerDueno').value,
+                codPerRepresLegal: document.getElementById('codPerRepresLegal').value,
+                codPerContador: document.getElementById('codPerContador').value,
+                numFormulario: document.getElementById('numFormulario').value.trim(),
+                numOrden: document.getElementById('numOrden').value.trim(),
+                estado: document.getElementById('estado').value,
+                firmaRepresentante: document.getElementById('firmaRepresentante').value.trim()
+            });
+
+            try {
+                const response = await fetch('/api/coejerci/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params
+                });
+
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    showToast(result.message || 'Ejercicio guardado correctamente', 'success');
+                    closeModal();
+                    loadData();
+                } else {
+                    showAlert(result.message || 'Error al guardar el ejercicio', 'error');
+                }
+            } catch (error) {
+                showAlert('Ocurrió un error inesperado al conectar con el servidor', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ph ph-floppy-disk"></i> Guardar Ejercicio';
+            }
+        }
+
+        async function deleteItem(codEjercicio) {
+            const confirmRes = await showConfirm(`¿Está seguro de eliminar el ejercicio contable "${codEjercicio}"?`);
+            if (!confirmRes.isConfirmed) return;
+
+            try {
+                const response = await fetch('/api/coejerci/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ codEjercicio: codEjercicio })
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showToast(result.message || 'Ejercicio eliminado', 'success');
+                    selectedId = null;
+                    loadData();
+                } else {
+                    showAlert(result.message || 'Error al eliminar el ejercicio', 'error');
+                }
+            } catch (error) {
+                showAlert('Error al conectar con el servidor', 'error');
+            }
+        }
+    </script>
+    <style>
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        #tableBody tr.fila-seleccionada td { background: #dcfce7 !important; }
+        #tableBody tr.fila-seleccionada td:first-child { box-shadow: inset 4px 0 0 #16a34a; }
+        #tableBody tr:hover td { background: #f0fdf4; }
+        .persona-results { display: none; position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 50; background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; box-shadow: 0 12px 28px rgba(15,23,42,0.15); max-height: 260px; overflow-y: auto; }
+        .persona-opt { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 0.86rem; }
+        .persona-opt:last-child { border-bottom: none; }
+        .persona-opt:hover { background: #f0fdf4; }
+    </style>
+</body>
+</html>

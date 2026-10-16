@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sistema - Exportar a Marangatu (RG 90/2021)')}">
+</head>
+<body style="background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    
+    <!-- Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="main-content">
+        <div th:replace="~{fragments/layout :: navbar('Exportar a Marangatu (RG 90/2021)')}"></div>
+
+        <div class="content-area" style="padding: 20px;">
+
+            <!-- Header Sub-Bar / Status Info (Matching exact user screenshot) -->
+            <div style="background: #1e293b; color: #f8fafc; padding: 10px 16px; border-radius: 8px 8px 0 0; font-size: 0.85rem; font-weight: 500; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0284c7;">
+                <div>
+                    <strong>Exportar a Marangatu(RG 90/2021)</strong> | 
+                    <span style="color: #94a3b8;">Contribuyente:</span> <span th:text="${empresaRuc + ' - ' + empresaNombre}">5555-7 - CONTRIBUYENTE DEMOSTRATIVO</span> | 
+                    <span style="color: #94a3b8;">Configuración:</span> IRE-GENERAL/IRACIS / CENTRAL / <span th:text="${#strings.substring(currentDate, 0, 4)}">2026</span>
+                </div>
+            </div>
+
+            <!-- Main Export Form Card -->
+            <div style="background: #ffffff; padding: 28px 32px; border: 1px solid #cbd5e1; border-top: none; border-radius: 0 0 8px 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); max-width: 900px; margin: 0 auto;">
+                
+                <form id="marangatuForm" method="GET" action="/api/marangatu/exportar-zip">
+                    
+                    <!-- Date Inputs Grid -->
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-6">
+                            <div style="position: relative;">
+                                <label for="fechaInicial" style="font-size: 0.82rem; font-weight: 600; color: #0284c7; background: #ffffff; padding: 0 6px; position: absolute; top: -10px; left: 12px; z-index: 2;">
+                                    Fecha Inicial
+                                </label>
+                                <input type="date" id="fechaInicial" name="fechaInicial" th:value="${firstDayOfMonth}" 
+                                       class="form-control" style="border: 1.5px solid #0284c7; border-radius: 6px; padding: 10px 14px; font-weight: 500;">
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div style="position: relative;">
+                                <label for="fechaFinal" style="font-size: 0.82rem; font-weight: 600; color: #0284c7; background: #ffffff; padding: 0 6px; position: absolute; top: -10px; left: 12px; z-index: 2;">
+                                    Fecha Final
+                                </label>
+                                <input type="date" id="fechaFinal" name="fechaFinal" th:value="${currentDate}" 
+                                       class="form-control" style="border: 1.5px solid #0284c7; border-radius: 6px; padding: 10px 14px; font-weight: 500;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Movimientos Contables Section -->
+                    <div class="mb-4" style="border-top: 1px solid #e2e8f0; padding-top: 20px;">
+                        <h6 style="font-weight: 700; color: #475569; margin-bottom: 16px; font-size: 0.95rem;">
+                            Movimientos Contables
+                        </h6>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-check" style="margin-bottom: 12px;">
+                                    <input class="form-check-input" type="checkbox" id="chkVentas" name="ventas" value="true" checked style="width: 18px; height: 18px; cursor: pointer;">
+                                    <label class="form-check-label" for="chkVentas" style="font-weight: 600; color: #334155; margin-left: 6px; font-size: 0.9rem; cursor: pointer;">
+                                        Ventas
+                                    </label>
+                                </div>
+                                <div class="form-check" style="margin-bottom: 12px;">
+                                    <input class="form-check-input" type="checkbox" id="chkOtrosIngresos" name="otrosIngresos" value="true" checked style="width: 18px; height: 18px; cursor: pointer;">
+                                    <label class="form-check-label" for="chkOtrosIngresos" style="font-weight: 600; color: #334155; margin-left: 6px; font-size: 0.9rem; cursor: pointer;">
+                                        Otros Ingresos
+                                    </label>
+                                </div>
+                                <div class="form-check" style="margin-bottom: 12px;">
+                                    <input class="form-check-input" type="checkbox" id="chkRecibosCobro" name="recibosCobro" value="true" checked style="width: 18px; height: 18px; cursor: pointer;">
+                                    <label class="form-check-label" for="chkRecibosCobro" style="font-weight: 600; color: #334155; margin-left: 6px; font-size: 0.9rem; cursor: pointer;">
+                                        Recibos de Cobro
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-check" style="margin-bottom: 12px;">
+                                    <input class="form-check-input" type="checkbox" id="chkCompras" name="compras" value="true" checked style="width: 18px; height: 18px; cursor: pointer;">
+                                    <label class="form-check-label" for="chkCompras" style="font-weight: 600; color: #334155; margin-left: 6px; font-size: 0.9rem; cursor: pointer;">
+                                        Compras
+                                    </label>
+                                </div>
+                                <div class="form-check" style="margin-bottom: 12px;">
+                                    <input class="form-check-input" type="checkbox" id="chkOtrosEgresos" name="otrosEgresos" value="true" checked style="width: 18px; height: 18px; cursor: pointer;">
+                                    <label class="form-check-label" for="chkOtrosEgresos" style="font-weight: 600; color: #334155; margin-left: 6px; font-size: 0.9rem; cursor: pointer;">
+                                        Otros Egresos
+                                    </label>
+                                </div>
+                                <div class="form-check" style="margin-bottom: 12px;">
+                                    <input class="form-check-input" type="checkbox" id="chkRecibosPago" name="recibosPago" value="true" checked style="width: 18px; height: 18px; cursor: pointer;">
+                                    <label class="form-check-label" for="chkRecibosPago" style="font-weight: 600; color: #334155; margin-left: 6px; font-size: 0.9rem; cursor: pointer;">
+                                        Recibos de Pago
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Documentos Relacionados Section -->
+                    <div class="mb-4" style="border-top: 1px solid #e2e8f0; padding-top: 20px;">
+                        <h6 style="font-weight: 700; color: #475569; margin-bottom: 16px; font-size: 0.95rem;">
+                            Documentos Relacionados
+                        </h6>
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="chkIncluirExentas" name="incluirExentas" value="true" checked style="width: 18px; height: 18px; cursor: pointer;">
+                            <label class="form-check-label" for="chkIncluirExentas" style="font-weight: 600; color: #334155; margin-left: 6px; font-size: 0.9rem; cursor: pointer;">
+                                Incluir Documentos con Exentas
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Export Action Button -->
+                    <div class="text-center mt-5">
+                        <button type="submit" class="btn" 
+                                style="background: #e2e8f0; color: #1e293b; border: 1px solid #cbd5e1; padding: 10px 24px; border-radius: 6px; font-weight: 700; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s;"
+                                onmouseover="this.style.background='#dbeafe'; this.style.borderColor='#93c5fd'; this.style.color='#1e40af';" 
+                                onmouseout="this.style.background='#e2e8f0'; this.style.borderColor='#cbd5e1'; this.style.color='#1e293b';">
+                            <i class="ph ph-file-zip" style="font-size: 1.2rem; color: #0284c7;"></i> Exportar Archivo
+                        </button>
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Scripts Section -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</body>
+</html>

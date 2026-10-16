@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Definición de Regímenes - Sistema Contable')}">
+</head>
+<style>
+    .swal2-container {
+        z-index: 3000 !important;
+    }
+    .selected-row {
+        background-color: #bbf7d0 !important;
+        border-left: 6px solid #16a34a !important;
+    }
+    .selected-row td {
+        background-color: #bbf7d0 !important;
+        color: #0f172a !important;
+    }
+    tr.selected-row:hover td {
+        background-color: #86efac !important;
+    }
+    @keyframes modalPop {
+        from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+</style>
+<body style="background: var(--bg-color);">
+
+    <!-- Left Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Navbar -->
+        <div th:replace="~{fragments/layout :: navbar('Definición de Regímenes')}"></div>
+
+        <div class="content-area">
+            
+            <div style="background: white; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 8px 25px rgba(0,0,0,0.06); overflow: hidden; width: 100%;">
+                
+                <!-- Table Header Toolbar -->
+                <div style="padding: 14px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button type="button" class="btn" onclick="abrirModalNuevo()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #1e293b; padding: 7px 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                            <i class="ph ph-plus-circle" style="color: #16a34a; font-size: 1.15rem;"></i> Nuevo Régimen
+                        </button>
+                        <button type="button" class="btn" onclick="abrirModalEditar()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #1e293b; padding: 7px 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                            <i class="ph ph-pencil-simple" style="color: #15803d; font-size: 1.15rem;"></i> Modificar
+                        </button>
+                        <button type="button" class="btn" onclick="eliminarRegistro()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #ef4444; padding: 7px 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                            <i class="ph ph-trash" style="font-size: 1.15rem;"></i> Desactivar
+                        </button>
+                    </div>
+
+                    <div style="position: relative; width: 300px;">
+                        <input type="text" id="searchInput" class="form-control" placeholder="BUSCAR RÉGIMEN..." onkeyup="filtrarRegistros()" style="padding-right: 36px; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; border-radius: 8px; border: 1px solid #cbd5e1; background: #fafafa;">
+                        <i class="ph ph-magnifying-glass" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #16a34a;"></i>
+                    </div>
+                </div>
+
+                <!-- Table Content -->
+                <div style="overflow-x: auto;">
+                    <table class="table table-hover align-middle m-0" style="font-size: 0.88rem;">
+                        <thead style="background: #f1f5f9; color: #475569; font-weight: 800; text-transform: uppercase; font-size: 0.76rem; letter-spacing: 0.04em;">
+                            <tr>
+                                <th style="padding: 14px 20px; width: 90px; text-align: center;">Cód.</th>
+                                <th style="padding: 14px 20px;">Descripción de Régimen</th>
+                                <th style="padding: 14px 20px; text-align: center; width: 140px;">Imputa IVA</th>
+                                <th style="padding: 14px 20px; text-align: center; width: 140px;">Imputa IRP</th>
+                                <th style="padding: 14px 20px; text-align: center; width: 140px;">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaBody">
+                            <tr>
+                                <td colspan="5" class="text-center py-5 text-muted">
+                                    <i class="ph ph-spinner-gap" style="font-size: 1.8rem; animation: spin 1s linear infinite;" display="block"></i>
+                                    <div class="mt-2">Cargando definición de regímenes...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- PERFECT CENTERED FORM MODAL OVERLAY -->
+    <div id="modalOverlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; transition: opacity 0.25s ease;">
+        
+        <div style="background: white; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.35); width: 100%; max-width: 580px; overflow: hidden; animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);">
+            
+            <!-- Modal Header -->
+            <div style="padding: 16px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #16a34a, #15803d); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.15rem;">
+                        <i class="ph ph-receipt"></i>
+                    </div>
+                    <h3 id="modalTitle" style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #0f172a;">Nuevo Régimen</h3>
+                </div>
+                <button type="button" class="btn-close" onclick="cerrarModal()" style="font-size: 0.9rem; cursor: pointer;"></button>
+            </div>
+
+            <!-- Modal Form -->
+            <form id="formRegimen" onsubmit="guardarRegistro(event)">
+                <input type="hidden" id="codRegimen">
+
+                <div style="padding: 24px;">
+                    <div class="mb-3">
+                        <label for="descripcion" style="font-weight: 700; font-size: 0.82rem; color: #334155; margin-bottom: 6px; display: block;">
+                            Descripción de Régimen <span style="color: #ef4444;">*</span>
+                        </label>
+                        <input type="text" id="descripcion" class="form-control" placeholder="Ej: IRP & IVA, IRP, IVA, G. CAPITAL" required maxlength="100" style="text-transform: uppercase; border-radius: 8px; font-weight: 600; padding: 10px 14px; font-size: 0.9rem; border: 1px solid #cbd5e1;">
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+                        <div>
+                            <label for="imputaIva" style="font-weight: 700; font-size: 0.82rem; color: #334155; margin-bottom: 6px; display: block;">Imputa IVA</label>
+                            <select id="imputaIva" class="form-control" style="border-radius: 8px; font-weight: 600; padding: 10px 14px; font-size: 0.9rem; border: 1px solid #cbd5e1;">
+                                <option value="S" selected>Sí (Imputable)</option>
+                                <option value="N">No</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="imputaIrp" style="font-weight: 700; font-size: 0.82rem; color: #334155; margin-bottom: 6px; display: block;">Imputa IRP</label>
+                            <select id="imputaIrp" class="form-control" style="border-radius: 8px; font-weight: 600; padding: 10px 14px; font-size: 0.9rem; border: 1px solid #cbd5e1;">
+                                <option value="S">Sí (Imputable)</option>
+                                <option value="N" selected>No</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="estado" style="font-weight: 700; font-size: 0.82rem; color: #334155; margin-bottom: 6px; display: block;">Estado</label>
+                        <select id="estado" class="form-control" style="border-radius: 8px; font-weight: 600; padding: 10px 14px; font-size: 0.9rem; border: 1px solid #cbd5e1;">
+                            <option value="A" selected>Activo</option>
+                            <option value="I">Inactivo</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Modal Footer Toolbar -->
+                <div style="padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn" onclick="cerrarModal()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #475569; padding: 8px 18px; border-radius: 8px;">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn" style="background: linear-gradient(135deg, #16a34a, #15803d); border: none; font-weight: 800; font-size: 0.85rem; color: white; padding: 8px 22px; border-radius: 8px; box-shadow: 0 4px 12px rgba(22,163,74,0.3);">
+                        <i class="ph ph-floppy-disk" style="font-size: 1.1rem; vertical-align: middle; margin-right: 4px;"></i> Guardar
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+    <script>
+        let registros = [];
+        let selectedId = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            cargarTabla();
+
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && (e.key === 'f' || e.key === 'F')) {
+                    e.preventDefault();
+                    document.getElementById('searchInput').focus();
+                }
+            });
+        });
+
+        async function cargarTabla() {
+            const tbody = document.getElementById('tablaBody');
+            try {
+                const res = await fetch('/api/regimen/list');
+                registros = await res.json();
+                renderTabla(registros);
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-danger font-weight-bold">Error al cargar datos: ${err.message}</td></tr>`;
+            }
+        }
+
+        function renderTabla(lista) {
+            const tbody = document.getElementById('tablaBody');
+            tbody.innerHTML = '';
+
+            if (!lista || lista.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5 text-muted">No se encontraron regímenes registrados.</td></tr>';
+                return;
+            }
+
+            lista.forEach(item => {
+                const tr = document.createElement('tr');
+                const id = item.COD_REGIMEN || item.cod_regimen;
+                tr.dataset.id = id;
+                tr.style.cursor = 'pointer';
+
+                if (selectedId === id) {
+                    tr.classList.add('selected-row');
+                }
+
+                tr.onclick = function() {
+                    document.querySelectorAll('#tablaBody tr').forEach(r => r.classList.remove('selected-row'));
+                    tr.classList.add('selected-row');
+                    selectedId = id;
+                };
+
+                tr.ondblclick = function() {
+                    selectedId = id;
+                    abrirModalEditar();
+                };
+
+                const desc = item.DESCRIPCION || item.descripcion || '';
+                const impIva = item.IMPUTA_IVA || item.imputa_iva || 'S';
+                const impIrp = item.IMPUTA_IRP || item.imputa_irp || 'N';
+                const est = item.ESTADO || item.estado || 'A';
+
+                const badgeIva = impIva === 'S' 
+                    ? '<span class="badge" style="background: #dcfce7; color: #166534; font-weight: 700; padding: 4px 8px; border-radius: 6px;">SÍ</span>' 
+                    : '<span class="badge" style="background: #f1f5f9; color: #64748b; font-weight: 600; padding: 4px 8px; border-radius: 6px;">NO</span>';
+
+                const badgeIrp = impIrp === 'S' 
+                    ? '<span class="badge" style="background: #e0f2fe; color: #0369a1; font-weight: 700; padding: 4px 8px; border-radius: 6px;">SÍ</span>' 
+                    : '<span class="badge" style="background: #f1f5f9; color: #64748b; font-weight: 600; padding: 4px 8px; border-radius: 6px;">NO</span>';
+
+                const badgeEstado = est === 'A' 
+                    ? '<span class="badge" style="background: #dcfce7; color: #15803d; font-weight: 700; padding: 4px 8px; border-radius: 6px;">ACTIVO</span>' 
+                    : '<span class="badge" style="background: #fee2e2; color: #b91c1c; font-weight: 700; padding: 4px 8px; border-radius: 6px;">INACTIVO</span>';
+
+                tr.innerHTML = `
+                    <td style="padding: 12px 20px; font-weight: 700; text-align: center; color: #15803d;">${id}</td>
+                    <td style="padding: 12px 20px; font-weight: 700; color: #1e293b;">${desc}</td>
+                    <td style="padding: 12px 20px; text-align: center;">${badgeIva}</td>
+                    <td style="padding: 12px 20px; text-align: center;">${badgeIrp}</td>
+                    <td style="padding: 12px 20px; text-align: center;">${badgeEstado}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filtrarRegistros() {
+            const val = (document.getElementById('searchInput').value || '').trim().toUpperCase();
+            if (!val) {
+                renderTabla(registros);
+                return;
+            }
+            const filtrados = registros.filter(r => {
+                const desc = (r.DESCRIPCION || r.descripcion || '').toUpperCase();
+                const id = String(r.COD_REGIMEN || r.cod_regimen || '');
+                return desc.includes(val) || id.includes(val);
+            });
+            renderTabla(filtrados);
+        }
+
+        function abrirModalNuevo() {
+            document.getElementById('formRegimen').reset();
+            document.getElementById('codRegimen').value = '';
+            document.getElementById('imputaIva').value = 'S';
+            document.getElementById('imputaIrp').value = 'S';
+            document.getElementById('estado').value = 'A';
+            document.getElementById('modalTitle').innerText = 'Nuevo Régimen';
+            document.getElementById('modalOverlay').style.display = 'flex';
+            setTimeout(() => document.getElementById('descripcion').focus(), 50);
+        }
+
+        function abrirModalEditar() {
+            if (!selectedId) {
+                Swal.fire('Atención', 'Seleccione un régimen de la lista para modificar.', 'warning');
+                return;
+            }
+            const item = registros.find(r => (r.COD_REGIMEN || r.cod_regimen) == selectedId);
+            if (!item) return;
+
+            document.getElementById('codRegimen').value = item.COD_REGIMEN || item.cod_regimen;
+            document.getElementById('descripcion').value = item.DESCRIPCION || item.descripcion;
+            document.getElementById('imputaIva').value = item.IMPUTA_IVA || item.imputa_iva || 'S';
+            document.getElementById('imputaIrp').value = item.IMPUTA_IRP || item.imputa_irp || 'N';
+            document.getElementById('estado').value = item.ESTADO || item.estado || 'A';
+            document.getElementById('modalTitle').innerText = 'Modificar Régimen #' + selectedId;
+            document.getElementById('modalOverlay').style.display = 'flex';
+            setTimeout(() => document.getElementById('descripcion').focus(), 50);
+        }
+
+        function cerrarModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+        }
+
+        async function guardarRegistro(e) {
+            e.preventDefault();
+            const desc = document.getElementById('descripcion').value.trim();
+            if (!desc) {
+                Swal.fire('Atención', 'Ingrese la descripción del régimen.', 'warning');
+                return;
+            }
+
+            const payload = {
+                codRegimen: document.getElementById('codRegimen').value,
+                descripcion: desc,
+                imputaIva: document.getElementById('imputaIva').value,
+                imputaIrp: document.getElementById('imputaIrp').value,
+                imputaIre: 'N',
+                estado: document.getElementById('estado').value
+            };
+
+            try {
+                const res = await fetch('/api/regimen/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    cerrarModal();
+                    Swal.fire('¡Éxito!', data.message, 'success');
+                    await cargarTabla();
+                } else {
+                    Swal.fire('Error', data.message || 'No se pudo guardar el régimen.', 'error');
+                }
+            } catch (err) {
+                Swal.fire('Error', 'Ocurrió un error al guardar: ' + err.message, 'error');
+            }
+        }
+
+        async function eliminarRegistro() {
+            if (!selectedId) {
+                Swal.fire('Atención', 'Seleccione un régimen para desactivar.', 'warning');
+                return;
+            }
+
+            const item = registros.find(r => (r.COD_REGIMEN || r.cod_regimen) == selectedId);
+            const desc = item ? (item.DESCRIPCION || item.descripcion) : '';
+
+            const confirm = await Swal.fire({
+                title: '¿Desactivar Régimen?',
+                text: `¿Confirma que desea desactivar el régimen "${desc}"?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Sí, desactivar',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (confirm.isConfirmed) {
+                try {
+                    const res = await fetch('/api/regimen/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ codRegimen: selectedId })
+                    });
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        Swal.fire('Desactivado', data.message, 'success');
+                        await cargarTabla();
+                    } else {
+                        Swal.fire('Error', data.message || 'No se pudo desactivar el régimen.', 'error');
+                    }
+                } catch (err) {
+                    Swal.fire('Error', 'Ocurrió un error al procesar la solicitud: ' + err.message, 'error');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

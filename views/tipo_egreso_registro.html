@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Definición de Tipos de Egreso - Sistema Contable')}">
+</head>
+<style>
+    .swal2-container {
+        z-index: 3000 !important;
+    }
+    .selected-row {
+        background-color: #bbf7d0 !important;
+        border-left: 6px solid #16a34a !important;
+    }
+    .selected-row td {
+        background-color: #bbf7d0 !important;
+        color: #0f172a !important;
+    }
+    tr.selected-row:hover td {
+        background-color: #86efac !important;
+    }
+    @keyframes modalPop {
+        from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+</style>
+<body style="background: var(--bg-color);">
+
+    <!-- Left Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Navbar -->
+        <div th:replace="~{fragments/layout :: navbar('Definición de Tipos de Egreso')}"></div>
+
+        <div class="content-area">
+            
+            <div style="background: white; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 8px 25px rgba(0,0,0,0.06); overflow: hidden; width: 100%;">
+                
+                <!-- Table Header Toolbar -->
+                <div style="padding: 14px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button type="button" class="btn" onclick="abrirModalNuevo()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #1e293b; padding: 7px 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                            <i class="ph ph-plus-circle" style="color: #16a34a; font-size: 1.15rem;"></i> Nuevo Tipo
+                        </button>
+                        <button type="button" class="btn" onclick="abrirModalEditar()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #1e293b; padding: 7px 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                            <i class="ph ph-pencil-simple" style="color: #15803d; font-size: 1.15rem;"></i> Modificar
+                        </button>
+                        <button type="button" class="btn" onclick="eliminarRegistro()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #ef4444; padding: 7px 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                            <i class="ph ph-trash" style="font-size: 1.15rem;"></i> Desactivar
+                        </button>
+                    </div>
+
+                    <div style="position: relative; width: 300px;">
+                        <input type="text" id="searchInput" class="form-control" placeholder="BUSCAR TIPO..." onkeyup="filtrarRegistros()" style="padding-right: 36px; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; border-radius: 8px; border: 1px solid #cbd5e1; background: #fafafa;">
+                        <i class="ph ph-magnifying-glass" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #16a34a;"></i>
+                    </div>
+                </div>
+
+                <!-- Table Content -->
+                <div style="overflow-x: auto;">
+                    <table class="table table-hover align-middle m-0" style="font-size: 0.88rem;">
+                        <thead style="background: #f1f5f9; color: #475569; font-weight: 800; text-transform: uppercase; font-size: 0.76rem; letter-spacing: 0.04em;">
+                            <tr>
+                                <th style="padding: 14px 20px; width: 90px; text-align: center;">Cód.</th>
+                                <th style="padding: 14px 20px;">Descripción de Tipo de Egreso</th>
+                                <th style="padding: 14px 20px; text-align: center; width: 140px;">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaBody">
+                            <tr>
+                                <td colspan="3" class="text-center py-5 text-muted">
+                                    <i class="ph ph-spinner-gap" style="font-size: 1.8rem; animation: spin 1s linear infinite;" display="block"></i>
+                                    <div class="mt-2">Cargando definición de tipos de egreso...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- PERFECT CENTERED FORM MODAL OVERLAY -->
+    <div id="modalOverlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; transition: opacity 0.25s ease;">
+        
+        <div style="background: white; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.35); width: 100%; max-width: 580px; overflow: hidden; animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);">
+            
+            <!-- Modal Header -->
+            <div style="padding: 16px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #16a34a, #15803d); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.15rem;">
+                        <i class="ph ph-hand-coins"></i>
+                    </div>
+                    <h3 id="modalTitle" style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #0f172a;">Nuevo Tipo de Egreso</h3>
+                </div>
+                <button type="button" class="btn-close" onclick="cerrarModal()" style="font-size: 0.9rem; cursor: pointer;"></button>
+            </div>
+
+            <!-- Modal Form -->
+            <form id="formTipoEgreso" onsubmit="guardarRegistro(event)">
+                <input type="hidden" id="codTipo">
+
+                <div style="padding: 24px;">
+                    <div class="mb-3">
+                        <label for="descripcion" style="font-weight: 700; font-size: 0.82rem; color: #334155; margin-bottom: 6px; display: block;">
+                            Descripción de Tipo de Egreso <span style="color: #ef4444;">*</span>
+                        </label>
+                        <input type="text" id="descripcion" class="form-control" placeholder="Ej: GASTOS GENERALES Y OPERATIVOS" required maxlength="150" style="text-transform: uppercase; border-radius: 8px; font-weight: 600; padding: 10px 14px; font-size: 0.9rem; border: 1px solid #cbd5e1;">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="estado" style="font-weight: 700; font-size: 0.82rem; color: #334155; margin-bottom: 6px; display: block;">Estado</label>
+                        <select id="estado" class="form-control" style="border-radius: 8px; font-weight: 600; padding: 10px 14px; font-size: 0.9rem; border: 1px solid #cbd5e1;">
+                            <option value="A" selected>Activo</option>
+                            <option value="I">Inactivo</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn" onclick="cerrarModal()" style="padding: 8px 18px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; font-weight: 700; font-size: 0.85rem; color: #64748b;">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn" style="padding: 8px 22px; border-radius: 8px; background: #16a34a; border: none; font-weight: 700; font-size: 0.85rem; color: white; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(22, 163, 74, 0.3);">
+                        <i class="ph ph-floppy-disk"></i> Guardar
+                    </button>
+                </div>
+            </form>
+
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <div th:replace="~{fragments/layout :: scripts}"></div>
+
+    <script>
+        let registros = [];
+        let selectedId = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            cargarRegistros();
+
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && (e.key === 'f' || e.key === 'F')) {
+                    e.preventDefault();
+                    const s = document.getElementById('searchInput');
+                    if (s) {
+                        s.focus();
+                        s.select();
+                    }
+                }
+            });
+        });
+
+        async function cargarRegistros() {
+            try {
+                const res = await fetch('/api/tipo_egreso/list');
+                registros = await res.json();
+                renderTabla(registros);
+            } catch (e) {
+                console.error('Error cargando tipos de egreso:', e);
+                document.getElementById('tablaBody').innerHTML = 
+                    '<tr><td colspan="3" class="text-center py-4 text-danger font-weight-bold">Error de conexión al cargar registros.</td></tr>';
+            }
+        }
+
+        function renderTabla(list) {
+            const tbody = document.getElementById('tablaBody');
+            tbody.innerHTML = '';
+
+            if (!list || list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center py-5 text-muted" style="font-weight:600;">No hay tipos de egreso registrados.</td></tr>';
+                return;
+            }
+
+            list.forEach(item => {
+                const tr = document.createElement('tr');
+                const id = item.COD_TIPO || item.cod_tipo;
+                tr.dataset.id = id;
+                tr.style.cursor = 'pointer';
+
+                if (selectedId && selectedId == id) {
+                    tr.classList.add('selected-row');
+                }
+
+                tr.onclick = () => {
+                    document.querySelectorAll('#tablaBody tr').forEach(r => r.classList.remove('selected-row'));
+                    tr.classList.add('selected-row');
+                    selectedId = id;
+                };
+
+                tr.ondblclick = () => {
+                    selectedId = id;
+                    abrirModalEditar();
+                };
+
+                const estado = (item.ESTADO || item.estado) === 'A';
+                const estadoBadge = estado 
+                    ? '<span style="background: #dcfce7; color: #15803d; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.75rem; border: 1px solid #bbf7d0;">ACTIVO</span>'
+                    : '<span style="background: #fee2e2; color: #b91c1c; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.75rem; border: 1px solid #fecaca;">INACTIVO</span>';
+
+                tr.innerHTML = `
+                    <td class="text-center" style="font-weight: 800; color: #16a34a; padding: 12px 20px;">#${id}</td>
+                    <td style="font-weight: 700; color: #1e293b; padding: 12px 20px;">${item.DESCRIPCION || item.descripcion}</td>
+                    <td class="text-center" style="padding: 12px 20px;">${estadoBadge}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filtrarRegistros() {
+            const q = document.getElementById('searchInput').value.trim().toUpperCase();
+            if (!q) {
+                renderTabla(registros);
+                return;
+            }
+            const filtered = registros.filter(r => {
+                const desc = String(r.DESCRIPCION || r.descripcion || '').toUpperCase();
+                const id = String(r.COD_TIPO || r.cod_tipo || '');
+                return desc.includes(q) || id.includes(q);
+            });
+            renderTabla(filtered);
+        }
+
+        function abrirModalNuevo() {
+            document.getElementById('formTipoEgreso').reset();
+            document.getElementById('codTipo').value = '';
+            document.getElementById('estado').value = 'A';
+            document.getElementById('modalTitle').innerText = 'Nuevo Tipo de Egreso';
+            document.getElementById('modalOverlay').style.display = 'flex';
+            setTimeout(() => document.getElementById('descripcion').focus(), 100);
+        }
+
+        function abrirModalEditar() {
+            if (!selectedId) {
+                Swal.fire('Atención', 'Seleccione un tipo de egreso de la lista para modificar.', 'warning');
+                return;
+            }
+            const item = registros.find(r => (r.COD_TIPO || r.cod_tipo) == selectedId);
+            if (!item) return;
+
+            document.getElementById('codTipo').value = item.COD_TIPO || item.cod_tipo;
+            document.getElementById('descripcion').value = item.DESCRIPCION || item.descripcion;
+            document.getElementById('estado').value = item.ESTADO || item.estado || 'A';
+
+            document.getElementById('modalTitle').innerText = 'Modificar Tipo de Egreso #' + selectedId;
+            document.getElementById('modalOverlay').style.display = 'flex';
+            setTimeout(() => document.getElementById('descripcion').focus(), 100);
+        }
+
+        function cerrarModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+        }
+
+        async function guardarRegistro(e) {
+            e.preventDefault();
+            const desc = document.getElementById('descripcion').value.trim();
+            if (!desc) {
+                Swal.fire('Atención', 'Ingrese la descripción del tipo de egreso.', 'warning');
+                return;
+            }
+
+            const payload = {
+                codTipo: document.getElementById('codTipo').value,
+                descripcion: desc,
+                estado: document.getElementById('estado').value
+            };
+
+            try {
+                const res = await fetch('/api/tipo_egreso/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    cerrarModal();
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Guardado!',
+                        text: data.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    await cargarRegistros();
+                } else {
+                    Swal.fire('Error', data.message || 'No se pudo guardar el tipo de egreso.', 'error');
+                }
+            } catch (err) {
+                Swal.fire('Error', 'Error de comunicación con el servidor.', 'error');
+            }
+        }
+
+        function eliminarRegistro() {
+            if (!selectedId) {
+                Swal.fire('Atención', 'Seleccione un tipo de egreso para desactivar.', 'warning');
+                return;
+            }
+            const item = registros.find(r => (r.COD_TIPO || r.cod_tipo) == selectedId);
+            const desc = item ? (item.DESCRIPCION || item.descripcion) : '';
+
+            Swal.fire({
+                title: '¿Desactivar Tipo de Egreso?',
+                text: `¿Confirma que desea desactivar el tipo de egreso "${desc}"?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Sí, desactivar',
+                cancelButtonText: 'Cancelar'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        const res = await fetch('/api/tipo_egreso/delete', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ codTipo: selectedId })
+                        });
+                        const data = await res.json();
+                        if (data.status === 'success') {
+                            Swal.fire('Desactivado', data.message, 'success');
+                            await cargarRegistros();
+                        } else {
+                            Swal.fire('Error', data.message || 'No se pudo desactivar el registro.', 'error');
+                        }
+                    } catch (err) {
+                        Swal.fire('Error', 'Error de comunicación con el servidor.', 'error');
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

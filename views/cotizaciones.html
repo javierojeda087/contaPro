@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Cotizaciones de Monedas - Sistema Contable')}">
+</head>
+<style>
+    .swal2-container {
+        z-index: 3000 !important;
+    }
+    .selected-row {
+        background-color: #bbf7d0 !important;
+        border-left: 6px solid #16a34a !important;
+    }
+    .selected-row td {
+        background-color: #bbf7d0 !important;
+        color: #0f172a !important;
+    }
+    tr.selected-row:hover td {
+        background-color: #86efac !important;
+    }
+    @keyframes modalPop {
+        from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .cotiz-input {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 6px 12px;
+        text-align: right;
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #0f172a;
+        background: #ffffff;
+        transition: all 0.15s ease;
+    }
+    .cotiz-input:focus {
+        outline: none;
+        border-color: #16a34a;
+        box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+        background: #f0fdf4;
+    }
+</style>
+<body style="background: var(--bg-color);">
+
+    <!-- Left Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Navbar -->
+        <div th:replace="~{fragments/layout :: navbar('Cotizaciones de Monedas')}"></div>
+
+        <div class="content-area">
+
+            <div style="background: white; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 8px 25px rgba(0,0,0,0.06); overflow: hidden; width: 100%;">
+
+                <!-- Table Header Toolbar (Igual a los demás formularios) -->
+                <div style="padding: 14px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <button type="button" class="btn" onclick="openAgregarCotizacionesModal()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #1e293b; padding: 7px 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                            <i class="ph ph-plus-circle" style="color: #16a34a; font-size: 1.15rem;"></i> Agregar / Editar Cotizaciones
+                        </button>
+
+                        <button type="button" class="btn" onclick="descargarCotizacionesDNIT()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #15803d; padding: 7px 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                            <i class="ph ph-cloud-arrow-down" style="color: #16a34a; font-size: 1.15rem;"></i> Cargar DNIT del Mes
+                        </button>
+
+                        <div style="height: 24px; width: 1px; background: #cbd5e1; margin: 0 4px;"></div>
+
+                        <!-- Filtros rápidos de período y moneda en la barra principal -->
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 0.78rem; font-weight: 800; color: #475569; text-transform: uppercase;">Año:</span>
+                            <select id="mainSelYear" onchange="syncFromMainFilters()" class="form-select form-select-sm" style="width: 92px; font-weight: 700; border-radius: 8px; border-color: #cbd5e1;">
+                                <option value="2026" selected>2026</option>
+                                <option value="2025">2025</option>
+                                <option value="2024">2024</option>
+                            </select>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 0.78rem; font-weight: 800; color: #475569; text-transform: uppercase;">Mes:</span>
+                            <select id="mainSelMonth" onchange="syncFromMainFilters()" class="form-select form-select-sm" style="width: 138px; font-weight: 700; border-radius: 8px; border-color: #cbd5e1;">
+                                <option value="1">ENERO</option>
+                                <option value="2">FEBRERO</option>
+                                <option value="3">MARZO</option>
+                                <option value="4">ABRIL</option>
+                                <option value="5">MAYO</option>
+                                <option value="6">JUNIO</option>
+                                <option value="7">JULIO</option>
+                                <option value="8">AGOSTO</option>
+                                <option value="9">SEPTIEMBRE</option>
+                                <option value="10">OCTUBRE</option>
+                                <option value="11">NOVIEMBRE</option>
+                                <option value="12">DICIEMBRE</option>
+                            </select>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 0.78rem; font-weight: 800; color: #475569; text-transform: uppercase;">Moneda:</span>
+                            <select id="mainSelMoneda" onchange="syncFromMainFilters()" class="form-select form-select-sm" style="width: 155px; font-weight: 700; border-radius: 8px; border-color: #cbd5e1;">
+                                <option value="2" selected>DÓLAR (USD)</option>
+                                <option value="3">REAL (BRL)</option>
+                                <option value="4">EURO (EUR)</option>
+                                <option value="5">PESO ARG. (ARS)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="position: relative; width: 260px;">
+                        <input type="text" id="searchInput" class="form-control" placeholder="BUSCAR FECHA..." onkeyup="renderMainTable()" style="padding-right: 36px; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; border-radius: 8px; border: 1px solid #cbd5e1; background: #fafafa;">
+                        <i class="ph ph-magnifying-glass" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #16a34a;"></i>
+                    </div>
+                </div>
+
+                <!-- Table Content -->
+                <div style="overflow-x: auto;">
+                    <table class="table table-hover align-middle m-0" style="font-size: 0.88rem;">
+                        <thead style="background: #f1f5f9; color: #475569; font-weight: 800; text-transform: uppercase; font-size: 0.76rem; letter-spacing: 0.04em;">
+                            <tr>
+                                <th style="padding: 14px 20px; width: 160px; text-align: center;">Fecha</th>
+                                <th style="padding: 14px 20px;">Moneda</th>
+                                <th style="padding: 14px 20px; text-align: right; width: 200px;">Cotización Compra (Gs.)</th>
+                                <th style="padding: 14px 20px; text-align: right; width: 200px;">Cotización Venta (Gs.)</th>
+                                <th style="padding: 14px 20px; text-align: center; width: 140px;">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mainTableBody">
+                            <tr>
+                                <td colspan="5" class="text-center py-5 text-muted">
+                                    Cargando cotizaciones del mes...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- MODAL MODERNO HOMOGÉNEO CON LOS DEMÁS FORMULARIOS -->
+    <div id="agregarCotizacionesModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; transition: opacity 0.25s ease;">
+
+        <div style="background: white; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.35); width: 100%; max-width: 680px; overflow: hidden; animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);">
+
+            <!-- Modal Header -->
+            <div style="padding: 16px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 34px; height: 34px; border-radius: 8px; background: linear-gradient(135deg, #16a34a, #15803d); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                        <i class="ph ph-currency-circle-dollar"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #0f172a;">Agregar / Editar Cotizaciones Mensuales</h3>
+                        <div style="font-size: 0.76rem; color: #64748b; font-weight: 600;">Carga manual o automática desde DNIT (SET)</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" onclick="closeAgregarCotizacionesModal()" style="font-size: 0.9rem; cursor: pointer;"></button>
+            </div>
+
+            <!-- Controls Header: Año, Mes, Moneda -->
+            <div style="padding: 16px 24px; background: #ffffff; border-bottom: 1px solid #e2e8f0; display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+
+                <div style="flex: 0 0 110px;">
+                    <label class="form-label" style="font-weight: 700; color: #475569; font-size: 0.78rem; margin-bottom: 4px;">Año :</label>
+                    <select id="selYear" onchange="syncFromModalFilters()" class="form-select form-select-sm" style="border-radius: 8px; font-weight: 700; font-size: 0.86rem; border-color: #cbd5e1;">
+                        <option value="2026" selected>2026</option>
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
+                    </select>
+                </div>
+
+                <div style="flex: 1; min-width: 140px;">
+                    <label class="form-label" style="font-weight: 700; color: #475569; font-size: 0.78rem; margin-bottom: 4px;">Mes :</label>
+                    <select id="selMonth" onchange="syncFromModalFilters()" class="form-select form-select-sm" style="border-radius: 8px; font-weight: 700; font-size: 0.86rem; border-color: #cbd5e1;">
+                        <option value="1">ENERO</option>
+                        <option value="2">FEBRERO</option>
+                        <option value="3">MARZO</option>
+                        <option value="4">ABRIL</option>
+                        <option value="5">MAYO</option>
+                        <option value="6">JUNIO</option>
+                        <option value="7">JULIO</option>
+                        <option value="8">AGOSTO</option>
+                        <option value="9">SEPTIEMBRE</option>
+                        <option value="10">OCTUBRE</option>
+                        <option value="11">NOVIEMBRE</option>
+                        <option value="12">DICIEMBRE</option>
+                    </select>
+                </div>
+
+                <div style="flex: 1; min-width: 150px;">
+                    <label class="form-label" style="font-weight: 700; color: #475569; font-size: 0.78rem; margin-bottom: 4px;">Moneda :</label>
+                    <select id="selMoneda" onchange="syncFromModalFilters()" class="form-select form-select-sm" style="border-radius: 8px; font-weight: 700; font-size: 0.86rem; border-color: #cbd5e1;">
+                        <option value="2" selected>DÓLAR (USD)</option>
+                        <option value="3">REAL (BRL)</option>
+                        <option value="4">EURO (EUR)</option>
+                        <option value="5">PESO ARG. (ARS)</option>
+                    </select>
+                </div>
+
+                <button type="button" onclick="descargarCotizacionesDNIT()"
+                        style="background: #f0fdf4; color: #15803d; border: 1px solid #86efac; padding: 6px 14px; border-radius: 8px; font-size: 0.83rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; height: 34px; box-shadow: 0 2px 4px rgba(22, 163, 74, 0.08);">
+                    <i class="ph ph-cloud-arrow-down" style="font-size: 1.05rem;"></i> Cargar DNIT
+                </button>
+            </div>
+
+            <!-- Editable Grid Table -->
+            <div style="padding: 16px 24px; background: #ffffff;">
+                <div style="border: 1px solid #cbd5e1; border-radius: 10px; max-height: 340px; overflow-y: auto; position: relative;">
+                    <table class="table table-sm align-middle m-0" style="width: 100%; font-size: 0.86rem; table-layout: fixed;">
+                        <thead style="position: sticky; top: 0; background: #f1f5f9; z-index: 5; border-bottom: 2px solid #cbd5e1;">
+                            <tr style="color: #475569; text-align: center; font-weight: 800; text-transform: uppercase; font-size: 0.75rem;">
+                                <th style="padding: 10px; border-right: 1px solid #e2e8f0; width: 32%; background: #f1f5f9;">
+                                    Fecha
+                                </th>
+                                <th style="padding: 10px; border-right: 1px solid #e2e8f0; width: 34%; background: #f1f5f9;">
+                                    Compra (Gs.)
+                                </th>
+                                <th style="padding: 10px; width: 34%; background: #f1f5f9;">
+                                    Venta (Gs.)
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="cotizacionesGridBody">
+                            <!-- Rows populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Modal Action Footer -->
+            <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 12px 24px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn" onclick="closeAgregarCotizacionesModal()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #475569; padding: 7px 18px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
+                    <i class="ph ph-x" style="font-size: 1rem;"></i> Cancelar
+                </button>
+
+                <button type="button" class="btn" onclick="guardarCotizacionesGrid()" style="background: linear-gradient(135deg, #16a34a, #15803d); border: none; font-weight: 800; font-size: 0.85rem; color: white; padding: 7px 24px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(22,163,74,0.35);">
+                    <i class="ph ph-check-bold" style="font-size: 1rem;"></i> Guardar Cotizaciones
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div th:replace="~{fragments/layout :: scripts}"></div>
+
+    <script>
+        let currentGridData = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentMonth = new Date().getMonth() + 1;
+            document.getElementById('selMonth').value = currentMonth;
+            document.getElementById('mainSelMonth').value = currentMonth;
+            loadMonthlyGrid();
+        });
+
+        function syncFromMainFilters() {
+            document.getElementById('selYear').value = document.getElementById('mainSelYear').value;
+            document.getElementById('selMonth').value = document.getElementById('mainSelMonth').value;
+            document.getElementById('selMoneda').value = document.getElementById('mainSelMoneda').value;
+            loadMonthlyGrid();
+        }
+
+        function syncFromModalFilters() {
+            document.getElementById('mainSelYear').value = document.getElementById('selYear').value;
+            document.getElementById('mainSelMonth').value = document.getElementById('selMonth').value;
+            document.getElementById('mainSelMoneda').value = document.getElementById('selMoneda').value;
+            loadMonthlyGrid();
+        }
+
+        function openAgregarCotizacionesModal() {
+            document.getElementById('agregarCotizacionesModal').style.display = 'flex';
+            loadMonthlyGrid();
+        }
+
+        function closeAgregarCotizacionesModal() {
+            document.getElementById('agregarCotizacionesModal').style.display = 'none';
+        }
+
+        function loadMonthlyGrid() {
+            const year = document.getElementById('selYear').value;
+            const month = document.getElementById('selMonth').value;
+            const moneda = document.getElementById('selMoneda').value;
+
+            fetch(`/api/cotizaciones/mes?year=${year}&month=${month}&codMoneda=${moneda}`)
+                .then(res => res.json())
+                .then(data => {
+                    currentGridData = Array.isArray(data) ? data : [];
+                    renderGridRows();
+                    renderMainTable();
+                })
+                .catch(err => {
+                    console.error('Error cargando grilla de cotizaciones:', err);
+                });
+        }
+
+        function renderGridRows() {
+            const tbody = document.getElementById('cotizacionesGridBody');
+            let html = '';
+
+            currentGridData.forEach((item, index) => {
+                const valCompra = item.compra !== null ? formatDecimal(item.compra) : '';
+                const valVenta = item.venta !== null ? formatDecimal(item.venta) : '';
+
+                html += `
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 6px 12px; border-right: 1px solid #f1f5f9; text-align: center; color: #0f172a; font-weight: 700;">
+                            ${item.fecha}
+                        </td>
+                        <td style="padding: 5px 10px; border-right: 1px solid #f1f5f9; text-align: right;">
+                            <input type="text" class="cotiz-input" id="compra_${index}" value="${valCompra}"
+                                   placeholder="0,00"
+                                   onchange="updateGridData(${index}, 'compra', this.value)"
+                                   onblur="formatInputDecimal(this)">
+                        </td>
+                        <td style="padding: 5px 10px; text-align: right;">
+                            <input type="text" class="cotiz-input" id="venta_${index}" value="${valVenta}"
+                                   placeholder="0,00"
+                                   onchange="updateGridData(${index}, 'venta', this.value)"
+                                   onblur="formatInputDecimal(this)">
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function renderMainTable() {
+            const tbody = document.getElementById('mainTableBody');
+            const selMonedaEl = document.getElementById('selMoneda');
+            const selMonedaText = selMonedaEl.options[selMonedaEl.selectedIndex].text;
+            const q = (document.getElementById('searchInput')?.value || '').trim().toUpperCase();
+
+            let filledRows = currentGridData.filter(d => d.compra !== null || d.venta !== null);
+            if (q !== '') {
+                filledRows = filledRows.filter(d =>
+                    (d.fecha || '').toUpperCase().includes(q) ||
+                    String(d.compra || '').includes(q) ||
+                    String(d.venta || '').includes(q)
+                );
+            }
+
+            if (filledRows.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            No hay cotizaciones registradas para el período seleccionado. Haga clic en <strong>"Agregar / Editar Cotizaciones"</strong> o <strong>"Cargar DNIT del Mes"</strong>.
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filledRows.map(item => `
+                <tr style="cursor: pointer;" onclick="openAgregarCotizacionesModal()">
+                    <td style="padding: 12px 20px; text-align: center; font-weight: 800; color: #0f172a;">${item.fecha}</td>
+                    <td style="padding: 12px 20px; font-weight: 700; color: #334155;">${selMonedaText}</td>
+                    <td style="padding: 12px 20px; text-align: right; font-weight: 800; color: #16a34a; font-family: monospace; font-size: 0.94rem;">${formatDecimal(item.compra)}</td>
+                    <td style="padding: 12px 20px; text-align: right; font-weight: 800; color: #0284c7; font-family: monospace; font-size: 0.94rem;">${formatDecimal(item.venta)}</td>
+                    <td style="padding: 12px 20px; text-align: center;">
+                        <span style="background: #dcfce7; color: #15803d; padding: 4px 12px; border-radius: 99px; font-weight: 800; font-size: 0.74rem;">VIGENTE</span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updateGridData(index, field, value) {
+            if (currentGridData[index]) {
+                currentGridData[index][field] = value;
+            }
+        }
+
+        function formatDecimal(val) {
+            if (val === null || val === undefined || val === '') return '';
+            let clean = val.toString().replace(/\./g, '').replace(',', '.');
+            if (val.toString().includes('.') && !val.toString().includes(',')) {
+                clean = val.toString();
+            }
+            let num = parseFloat(clean);
+            if (isNaN(num)) return '';
+            return num.toLocaleString('es-PY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function formatInputDecimal(input) {
+            if (input.value.trim() !== '') {
+                input.value = formatDecimal(input.value);
+            }
+        }
+
+        function guardarCotizacionesGrid() {
+            const moneda = document.getElementById('selMoneda').value;
+
+            const payload = {
+                codMoneda: moneda,
+                items: currentGridData
+            };
+
+            fetch('/api/cotizaciones/guardar-lote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    loadMonthlyGrid();
+                    closeAgregarCotizacionesModal();
+                    if (typeof showToast === 'function') {
+                        showToast(res.message || 'Cotizaciones guardadas correctamente.');
+                    }
+                } else {
+                    if (typeof showAlert === 'function') {
+                        showAlert(res.message || 'Error al guardar.', 'error');
+                    } else {
+                        alert(res.message || 'Error al guardar.');
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Error guardando cotizaciones:', err);
+                if (typeof showAlert === 'function') {
+                    showAlert('Error al intentar guardar las cotizaciones.', 'error');
+                }
+            });
+        }
+
+        function descargarCotizacionesDNIT() {
+            const year = document.getElementById('selYear').value;
+            const month = document.getElementById('selMonth').value;
+            const moneda = document.getElementById('selMoneda').value;
+
+            fetch('/api/cotizaciones/cargar-dnit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ year, month, codMoneda: moneda })
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    loadMonthlyGrid();
+                    if (typeof showToast === 'function') {
+                        showToast(res.message || 'Se cargaron las cotizaciones de DNIT disponibles.');
+                    } else if (typeof showAlert === 'function') {
+                        showAlert(res.message || 'Se cargaron las cotizaciones de DNIT disponibles.', 'success');
+                    }
+                } else {
+                    if (typeof showAlert === 'function') {
+                        showAlert(res.message || 'Error al cargar de DNIT.', 'error');
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Error cargando DNIT:', err);
+                if (typeof showAlert === 'function') {
+                    showAlert('Ocurrió un error al consultar las cotizaciones de DNIT.', 'error');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sistema - Registro de Asientos Contables (COASIENT)')}">
+</head>
+<body style="background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    
+    <!-- Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="main-content">
+        <div th:replace="~{fragments/layout :: navbar('Registro de Asientos Contables (COASIENT)')}"></div>
+
+        <div class="content-area" style="padding: 20px;">
+
+            <!-- Header Sub-Bar / Status Info -->
+            <div style="background: #1e293b; color: #f8fafc; padding: 8px 16px; border-radius: 8px 8px 0 0; font-size: 0.85rem; font-weight: 500; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0284c7;">
+                <div>
+                    <i class="ph ph-notebook" style="color: #38bdf8; margin-right: 6px;"></i>
+                    <strong>Asientos Contables</strong> | <span style="color: #94a3b8;">Empresa:</span> <span id="lblEmpresaInfo">1 - CONTRIBUYENTE DEMOSTRATIVO</span> | <span style="color: #94a3b8;">Configuración:</span> IRE-GENERAL / CENTRAL / <span th:text="${currentYear}">2026</span>
+                </div>
+                <div>
+                    <span class="badge bg-primary" style="font-size: 0.75rem; font-weight: 600;">Libro Diario V1.0</span>
+                </div>
+            </div>
+
+            <!-- Toolbar (Matching Exact User Screenshot 1) -->
+            <div style="background: #ffffff; padding: 12px 16px; border: 1px solid #cbd5e1; border-top: none; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                
+                <!-- Action Buttons: Nuevo, Modificar, Eliminar, Imprimir, Importar -->
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <button type="button" class="btn" onclick="openCreateModal()" 
+                            style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                            onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
+                        <i class="ph ph-plus-circle" style="font-size: 1.1rem; color: #0284c7;"></i> Nuevo
+                    </button>
+
+                    <button type="button" class="btn" onclick="openEditModal()" 
+                            style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                            onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
+                        <i class="ph ph-pencil-simple" style="font-size: 1.1rem; color: #d97706;"></i> Modificar
+                    </button>
+
+                    <button type="button" class="btn" onclick="anularSelectedAsiento()" 
+                            style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                            onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
+                        <i class="ph ph-trash" style="font-size: 1.1rem; color: #dc2626;"></i> Anular
+                    </button>
+
+                    <button type="button" class="btn" onclick="imprimirAsientos()" 
+                            style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                            onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
+                        <i class="ph ph-printer" style="font-size: 1.1rem; color: #475569;"></i> Imprimir
+                    </button>
+                </div>
+
+                <!-- Filters & Search (Periodo: Year, Month + Search) -->
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; color: #475569;">
+                        <span>Periodo:</span>
+                        <select id="filterYear" class="form-select form-select-sm" onchange="loadAsientosList()" style="width: 85px; font-size: 0.85rem;">
+                            <option th:value="${currentYear}" th:text="${currentYear}">2026</option>
+                            <option th:value="${currentYear - 1}" th:text="${currentYear - 1}">2025</option>
+                        </select>
+                        <select id="filterMonth" class="form-select form-select-sm" onchange="loadAsientosList()" style="width: 70px; font-size: 0.85rem;">
+                            <option value="0">Todos</option>
+                            <option value="1">01</option>
+                            <option value="2">02</option>
+                            <option value="3">03</option>
+                            <option value="4">04</option>
+                            <option value="5">05</option>
+                            <option value="6">06</option>
+                            <option value="7">07</option>
+                            <option value="8">08</option>
+                            <option value="9">09</option>
+                            <option value="10" selected>10</option>
+                            <option value="11">11</option>
+                            <option value="12">12</option>
+                        </select>
+                    </div>
+
+                    <div style="position: relative; width: 240px;">
+                        <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="BUSCAR" 
+                               oninput="onSearchInput()"
+                               style="border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem; text-transform: uppercase;">
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Asientos Main Table Container -->
+            <div style="background: white; border: 1px solid #cbd5e1; border-top: none; border-radius: 0 0 8px 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); overflow: hidden;">
+                <div style="max-height: calc(100vh - 270px); overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                        <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 10; border-bottom: 2px solid #cbd5e1; color: #334155;">
+                            <tr>
+                                <th style="width: 100px; text-align: center;">N° Asiento</th>
+                                <th style="width: 110px;">Fecha</th>
+                                <th style="width: 140px;">Sucursal</th>
+                                <th style="width: 120px;">Tipo / Origen</th>
+                                <th style="width: 140px;">N° Comprobante</th>
+                                <th>Concepto / Glosa General</th>
+                                <th style="width: 140px; text-align: right;">Total Debe</th>
+                                <th style="width: 140px; text-align: right;">Total Haber</th>
+                                <th style="width: 100px; text-align: center;">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="asientosTbody">
+                            <!-- Injected by JavaScript -->
+                            <tr>
+                                <td colspan="9" class="text-center py-4 text-muted">
+                                    <i class="ph ph-spinner spinner" style="font-size: 1.5rem;"></i> Cargando asientos contables...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- MODAL REGISTRAR / MODIFICAR ASIENTO (ALL IN 1 SINGLE VIEW - NO TABS) -->
+    <div class="modal fade" id="asientoModal" tabindex="-1" aria-labelledby="asientoModalLabel" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content" style="border-radius: 10px; overflow: hidden; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                
+                <!-- Modal Header -->
+                <div class="modal-header" style="background: #0284c7; color: white; padding: 12px 20px;">
+                    <h5 class="modal-title" id="asientoModalLabel" style="font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                        <i class="ph ph-receipt" style="font-size: 1.3rem;"></i> <span id="modalTitleText">Registrar Asiento Contable</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <!-- Modal Body (Header + Single Grid ALL IN ONE) -->
+                <div class="modal-body" style="padding: 20px; background: #f8fafc;">
+                    <form id="asientoForm">
+                        <input type="hidden" id="numAsiento" value="">
+
+                        <!-- SECCIÓN 1: ENCABEZADO DEL ASIENTO -->
+                        <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                            <div style="font-size: 0.85rem; font-weight: 700; color: #0369a1; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                                <i class="ph ph-info"></i> DATOS DEL ENCABEZADO
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label font-bold" style="font-size: 0.8rem; font-weight: 600; color: #475569;">Tipo / Origen:</label>
+                                    <select id="origenComprobante" class="form-select form-select-sm" style="font-weight: 600; color: #1e293b;">
+                                        <option value="MANUAL" selected>ASIENTO MANUAL</option>
+                                        <option value="COMPRA">FACTURA COMPRA</option>
+                                        <option value="VENTA">FACTURA VENTA</option>
+                                        <option value="EGRESO">REGISTRO EGRESO</option>
+                                        <option value="INGRESO">REGISTRO INGRESO</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #475569;">Fecha Asiento:</label>
+                                    <input type="date" id="fechaAsiento" class="form-control form-control-sm" required style="font-weight: 600;">
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #475569;">Sucursal:</label>
+                                    <select id="codSucursal" class="form-select form-select-sm" required style="font-weight: 600;">
+                                        <!-- Loaded dynamically -->
+                                    </select>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #475569;">N° Comprobante Ref:</label>
+                                    <input type="text" id="idComprobante" class="form-control form-control-sm" placeholder="Ej: 001-001-0001234">
+                                </div>
+
+                                <div class="col-md-12">
+                                    <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #475569;">Concepto / Glosa General:</label>
+                                    <input type="text" id="concepto" class="form-control form-control-sm" placeholder="Ej: Registro de pago de servicios públicos del mes" required style="font-weight: 500;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SECCIÓN 2: DETALLE DEL ASIENTO (TODAS LAS CUENTAS EN 1 SOLA VISTA - DEBE Y HABER) -->
+                        <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                                <div style="font-size: 0.85rem; font-weight: 700; color: #0369a1; display: flex; align-items: center; gap: 6px;">
+                                    <i class="ph ph-list-numbers"></i> MOVIMIENTOS CONTABLES (PARTIDA DOBLE)
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="agregarLineaDetalle()" style="font-size: 0.8rem; font-weight: 600; border-radius: 6px;">
+                                    <i class="ph ph-plus"></i> Agregar Línea
+                                </button>
+                            </div>
+
+                            <div class="table-responsive" style="max-height: 320px; overflow-y: auto;">
+                                <table class="table table-bordered table-sm align-middle" style="font-size: 0.83rem; width: 100%;">
+                                    <thead style="background: #f1f5f9; color: #334155; position: sticky; top: 0; z-index: 5;">
+                                        <tr class="text-center">
+                                            <th style="width: 40px;">#</th>
+                                            <th style="width: 200px;">Código Cuenta</th>
+                                            <th>Nombre Cuenta</th>
+                                            <th>Descripción / Glosa Línea</th>
+                                            <th style="width: 140px;">Debe (₲)</th>
+                                            <th style="width: 140px;">Haber (₲)</th>
+                                            <th style="width: 45px;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="detallesTbody">
+                                        <!-- Dynamic detail rows -->
+                                    </tbody>
+                                    <tfoot style="background: #f8fafc; font-weight: 700; font-size: 0.85rem;">
+                                        <tr>
+                                            <td colspan="4" class="text-end py-2">TOTALES:</td>
+                                            <td class="text-end py-2" id="txtTotalDebe" style="color: #0284c7; font-size: 0.95rem;">₲ 0</td>
+                                            <td class="text-end py-2" id="txtTotalHaber" style="color: #0284c7; font-size: 0.95rem;">₲ 0</td>
+                                            <td></td>
+                                        </tr>
+                                        <tr id="balanceStatusRow" style="background: #f0fdf4;">
+                                            <td colspan="4" class="text-end py-2">DIFERENCIA / DESBALANCE:</td>
+                                            <td colspan="2" class="text-center py-2" id="txtDiferencia" style="color: #16a34a; font-weight: 800; font-size: 0.95rem;">
+                                                ₲ 0 (CUADRADO ✅)
+                                            </td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="modal-footer" style="background: #f1f5f9; padding: 12px 20px;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="font-size: 0.85rem; font-weight: 600;">
+                        <i class="ph ph-x"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarAsiento" onclick="guardarAsiento()" style="font-size: 0.85rem; font-weight: 600; min-width: 120px;">
+                        <i class="ph ph-floppy-disk"></i> Guardar
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- SUB-MODAL BUSCADOR DE CUENTAS DEL PLAN DE CUENTAS -->
+    <div class="modal fade" id="cuentaSearchModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 8px;">
+                <div class="modal-header bg-dark text-white py-2">
+                    <h6 class="modal-title" style="font-weight: 700;">
+                        <i class="ph ph-magnifying-glass"></i> Seleccionar Cuenta Contable
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <input type="text" id="cuentaModalSearchInput" class="form-control form-control-sm mb-2" placeholder="Buscar por código o descripción..." oninput="filtrarCuentasModal()">
+                    <div style="max-height: 350px; overflow-y: auto;">
+                        <table class="table table-hover table-sm align-middle" style="font-size: 0.83rem;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 160px;">Código</th>
+                                    <th>Descripción</th>
+                                    <th style="width: 120px; text-align: center;">Tipo</th>
+                                    <th style="width: 80px; text-align: center;">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cuentasModalTbody">
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts Section -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        let asientosData = [];
+        let selectedNumAsiento = null;
+        let catalogoCuentas = [];
+        let activeRowIndexForSearch = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set current date in modal
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('fechaAsiento').value = today;
+
+            loadSucursales();
+            loadCatalogoCuentas();
+            loadAsientosList();
+
+            // Keyboard shortcut CTRL+F for search
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && e.key.toLowerCase() === 'f') {
+                    e.preventDefault();
+                    document.getElementById('searchInput').focus();
+                }
+            });
+        });
+
+        function loadSucursales() {
+            fetch('/api/asientos/sucursales')
+                .then(r => r.json())
+                .then(list => {
+                    const sel = document.getElementById('codSucursal');
+                    sel.innerHTML = '';
+                    if (!list || list.length === 0) {
+                        sel.innerHTML = '<option value="1">CASA MATRIZ</option>';
+                        return;
+                    }
+                    list.forEach(s => {
+                        const opt = document.createElement('option');
+                        opt.value = s.COD_SUCURSAL || s.cod_sucursal;
+                        opt.textContent = (s.DESCRIPCION || s.descripcion || s.COD_SUCURSAL);
+                        sel.appendChild(opt);
+                    });
+                })
+                .catch(() => {
+                    document.getElementById('codSucursal').innerHTML = '<option value="1">CASA MATRIZ</option>';
+                });
+        }
+
+        function loadCatalogoCuentas() {
+            fetch('/api/asientos/buscar-cuentas')
+                .then(r => r.json())
+                .then(data => {
+                    catalogoCuentas = data || [];
+                });
+        }
+
+        function loadAsientosList() {
+            const year = document.getElementById('filterYear').value;
+            const month = document.getElementById('filterMonth').value;
+            const search = document.getElementById('searchInput').value;
+
+            const url = `/api/asientos/list?ejercicio=${year}&mes=${month}&search=${encodeURIComponent(search)}`;
+
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    asientosData = data || [];
+                    renderAsientosTable(asientosData);
+                })
+                .catch(err => {
+                    console.error("Error cargando asientos:", err);
+                    document.getElementById('asientosTbody').innerHTML = `
+                        <tr><td colspan="9" class="text-center py-4 text-danger">
+                            Error al cargar asientos contables.
+                        </td></tr>`;
+                });
+        }
+
+        function renderAsientosTable(list) {
+            const tbody = document.getElementById('asientosTbody');
+            tbody.innerHTML = '';
+
+            if (list.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted" style="font-size: 0.9rem;">
+                            No se encontraron registros coincidentes
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            list.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.style.cursor = 'pointer';
+                if (selectedNumAsiento === item.NUM_ASIENTO) {
+                    tr.style.background = '#e0f2fe';
+                }
+
+                tr.onclick = function() {
+                    selectedNumAsiento = item.NUM_ASIENTO;
+                    document.querySelectorAll('#asientosTbody tr').forEach(r => r.style.background = '');
+                    tr.style.background = '#e0f2fe';
+                };
+
+                tr.ondblclick = function() {
+                    selectedNumAsiento = item.NUM_ASIENTO;
+                    openEditModal();
+                };
+
+                const isAnulado = item.ESTADO === 'I';
+                const statusBadge = isAnulado ? 
+                    '<span class="badge bg-danger" style="font-size: 0.72rem;">ANULADO</span>' : 
+                    '<span class="badge bg-success" style="font-size: 0.72rem;">ACTIVO</span>';
+
+                tr.innerHTML = `
+                    <td class="text-center font-bold" style="font-weight: 700; color: #0284c7;">${item.NUM_ASIENTO}</td>
+                    <td>${item.FEC_ASIENTO_STR || ''}</td>
+                    <td>${item.NOM_SUCURSAL || item.COD_SUCURSAL || 'MATRIZ'}</td>
+                    <td><span class="badge bg-secondary" style="font-size: 0.72rem;">${item.ORIGEN_COMPROBANTE || 'MANUAL'}</span></td>
+                    <td>${item.ID_COMPROBANTE || '-'}</td>
+                    <td style="font-weight: 500;">${item.CONCEPTO || ''}</td>
+                    <td class="text-end font-mono" style="font-weight: 600;">${formatNumber(item.TOTAL_DEBE)}</td>
+                    <td class="text-end font-mono" style="font-weight: 600;">${formatNumber(item.TOTAL_HABER)}</td>
+                    <td class="text-center">${statusBadge}</td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        function onSearchInput() {
+            loadAsientosList();
+        }
+
+        // OPEN CREATION MODAL
+        function openCreateModal() {
+            selectedNumAsiento = null;
+            document.getElementById('numAsiento').value = '';
+            document.getElementById('modalTitleText').innerText = 'Registrar Asiento Contable';
+            document.getElementById('asientoForm').reset();
+            
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('fechaAsiento').value = today;
+            document.getElementById('origenComprobante').value = 'MANUAL';
+
+            // Clear details tbody
+            document.getElementById('detallesTbody').innerHTML = '';
+
+            // Add 2 default rows
+            agregarLineaDetalle();
+            agregarLineaDetalle();
+
+            recalcularTotales();
+
+            const modal = new bootstrap.Modal(document.getElementById('asientoModal'));
+            modal.show();
+        }
+
+        // OPEN EDIT MODAL
+        function openEditModal() {
+            if (!selectedNumAsiento) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Selección Requerida',
+                    text: 'Por favor, seleccione un asiento contable de la lista para modificar.',
+                    confirmButtonColor: '#0284c7'
+                });
+                return;
+            }
+
+            fetch(`/api/asientos/obtener/${selectedNumAsiento}`)
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status !== 'success') {
+                        Swal.fire('Error', res.message, 'error');
+                        return;
+                    }
+
+                    const cab = res.cabecera;
+                    const detList = res.detalles || [];
+
+                    document.getElementById('numAsiento').value = cab.NUM_ASIENTO;
+                    document.getElementById('modalTitleText').innerText = `Modificar Asiento Contable N° ${cab.NUM_ASIENTO}`;
+                    document.getElementById('origenComprobante').value = cab.ORIGEN_COMPROBANTE || 'MANUAL';
+                    document.getElementById('fechaAsiento').value = cab.FEC_ASIENTO;
+                    if (cab.COD_SUCURSAL) document.getElementById('codSucursal').value = cab.COD_SUCURSAL;
+                    document.getElementById('idComprobante').value = cab.ID_COMPROBANTE || '';
+                    document.getElementById('concepto').value = cab.CONCEPTO || '';
+
+                    // Populate Details
+                    const tbody = document.getElementById('detallesTbody');
+                    tbody.innerHTML = '';
+
+                    detList.forEach((d, idx) => {
+                        agregarLineaDetalle(d.COD_CUENTA, d.NOM_CUENTA, d.DESCRIPCION, d.DEBE, d.HABER);
+                    });
+
+                    recalcularTotales();
+
+                    const modal = new bootstrap.Modal(document.getElementById('asientoModal'));
+                    modal.show();
+                });
+        }
+
+        // ADD DETAIL ROW
+        function agregarLineaDetalle(codCuenta = '', nomCuenta = '', descrip = '', debe = 0, haber = 0) {
+            const tbody = document.getElementById('detallesTbody');
+            const rowIdx = tbody.children.length;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="text-center font-bold text-muted row-number" style="font-weight: 600;">${rowIdx + 1}</td>
+                <td>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control form-control-sm input-cod-cuenta" value="${codCuenta}" 
+                               placeholder="Ej: 01.01.01.02" onchange="onCodCuentaChange(this, ${rowIdx})" style="font-weight: 600;">
+                        <button class="btn btn-outline-secondary" type="button" onclick="openCuentaSearchModal(${rowIdx})" title="Buscar Cuenta">
+                            <i class="ph ph-magnifying-glass"></i>
+                        </button>
+                    </div>
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm input-nom-cuenta bg-light" value="${nomCuenta}" readonly style="font-size: 0.8rem;">
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm input-desc-linea" value="${descrip}" placeholder="Glosa de la línea">
+                </td>
+                <td>
+                    <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end input-debe" value="${debe > 0 ? debe : ''}" 
+                           placeholder="0" oninput="onMontoInput(this, 'debe')">
+                </td>
+                <td>
+                    <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end input-haber" value="${haber > 0 ? haber : ''}" 
+                           placeholder="0" oninput="onMontoInput(this, 'haber')">
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm text-danger p-0 border-0" onclick="eliminarLineaDetalle(this)" title="Eliminar Línea">
+                        <i class="ph ph-trash-simple" style="font-size: 1.1rem;"></i>
+                    </button>
+                </td>
+            `;
+
+            tbody.appendChild(tr);
+            updateRowNumbers();
+        }
+
+        function updateRowNumbers() {
+            const rows = document.querySelectorAll('#detallesTbody tr');
+            rows.forEach((r, idx) => {
+                const tdNum = r.querySelector('.row-number');
+                if (tdNum) tdNum.innerText = (idx + 1);
+            });
+        }
+
+        function eliminarLineaDetalle(btn) {
+            const rows = document.querySelectorAll('#detallesTbody tr');
+            if (rows.length <= 2) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Límite Mínimo',
+                    text: 'Un asiento contable requiere al menos 2 líneas.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                return;
+            }
+            btn.closest('tr').remove();
+            updateRowNumbers();
+            recalcularTotales();
+        }
+
+        function onMontoInput(input, type) {
+            const tr = input.closest('tr');
+            if (type === 'debe' && parseFloat(input.value) > 0) {
+                tr.querySelector('.input-haber').value = '';
+            } else if (type === 'haber' && parseFloat(input.value) > 0) {
+                tr.querySelector('.input-debe').value = '';
+            }
+            recalcularTotales();
+        }
+
+        function onCodCuentaChange(input, rowIdx) {
+            const val = input.value.trim();
+            const tr = input.closest('tr');
+            const nomInput = tr.querySelector('.input-nom-cuenta');
+
+            if (!val) {
+                nomInput.value = '';
+                return;
+            }
+
+            const acc = catalogoCuentas.find(c => c.COD_CUENTA === val || c.cod_cuenta === val);
+            if (acc) {
+                nomInput.value = acc.DESCRIPCION || acc.descripcion || '';
+            } else {
+                nomInput.value = 'CUENTA NO ENCONTRADA EN PLAN';
+            }
+        }
+
+        function openCuentaSearchModal(rowIdx) {
+            activeRowIndexForSearch = rowIdx;
+            document.getElementById('cuentaModalSearchInput').value = '';
+            renderCuentasModalList(catalogoCuentas);
+
+            const modal = new bootstrap.Modal(document.getElementById('cuentaSearchModal'));
+            modal.show();
+        }
+
+        function renderCuentasModalList(list) {
+            const tbody = document.getElementById('cuentasModalTbody');
+            tbody.innerHTML = '';
+
+            const imputables = list.filter(c => (c.ASENTABLE || c.asentable) !== 'N');
+
+            imputables.slice(0, 50).forEach(c => {
+                const tr = document.createElement('tr');
+                const cod = c.COD_CUENTA || c.cod_cuenta;
+                const desc = c.DESCRIPCION || c.descripcion;
+                const tipo = c.TIPO_CUENTA || c.tipo_cuenta || 'IMPUTABLE';
+
+                tr.innerHTML = `
+                    <td class="font-mono font-bold" style="color: #0284c7; font-weight: 700;">${cod}</td>
+                    <td>${desc}</td>
+                    <td class="text-center"><span class="badge bg-light text-dark">${tipo}</span></td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-xs btn-primary py-0 px-2" onclick="selectCuentaForActiveRow('${cod}', '${desc.replace(/'/g, "\\'")}')">
+                            <i class="ph ph-check"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filtrarCuentasModal() {
+            const q = document.getElementById('cuentaModalSearchInput').value.trim().toUpperCase();
+            if (!q) {
+                renderCuentasModalList(catalogoCuentas);
+                return;
+            }
+            const filtered = catalogoCuentas.filter(c => {
+                const cod = (c.COD_CUENTA || c.cod_cuenta || '').toUpperCase();
+                const desc = (c.DESCRIPCION || c.descripcion || '').toUpperCase();
+                return cod.includes(q) || desc.includes(q);
+            });
+            renderCuentasModalList(filtered);
+        }
+
+        function selectCuentaForActiveRow(cod, desc) {
+            const rows = document.querySelectorAll('#detallesTbody tr');
+            if (activeRowIndexForSearch !== null && rows[activeRowIndexForSearch]) {
+                const tr = rows[activeRowIndexForSearch];
+                tr.querySelector('.input-cod-cuenta').value = cod;
+                tr.querySelector('.input-nom-cuenta').value = desc;
+            }
+
+            const modalEl = document.getElementById('cuentaSearchModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+
+        function recalcularTotales() {
+            let totalDebe = 0;
+            let totalHaber = 0;
+
+            document.querySelectorAll('#detallesTbody tr').forEach(tr => {
+                const debeVal = parseFloat(tr.querySelector('.input-debe').value) || 0;
+                const haberVal = parseFloat(tr.querySelector('.input-haber').value) || 0;
+                totalDebe += debeVal;
+                totalHaber += haberVal;
+            });
+
+            document.getElementById('txtTotalDebe').innerText = formatCurrency(totalDebe);
+            document.getElementById('txtTotalHaber').innerText = formatCurrency(totalHaber);
+
+            const diff = Math.abs(totalDebe - totalHaber);
+            const statusRow = document.getElementById('balanceStatusRow');
+            const txtDiff = document.getElementById('txtDiferencia');
+            const btnGuardar = document.getElementById('btnGuardarAsiento');
+
+            if (diff === 0 && totalDebe > 0) {
+                statusRow.style.background = '#f0fdf4';
+                txtDiff.style.color = '#16a34a';
+                txtDiff.innerHTML = `₲ 0 (CUADRADO ✅)`;
+                btnGuardar.disabled = false;
+            } else if (totalDebe === 0 && totalHaber === 0) {
+                statusRow.style.background = '#f8fafc';
+                txtDiff.style.color = '#64748b';
+                txtDiff.innerHTML = `₲ 0 (INGRESE VALORES EN DEBE / HABER)`;
+                btnGuardar.disabled = true;
+            } else {
+                statusRow.style.background = '#fef2f2';
+                txtDiff.style.color = '#dc2626';
+                txtDiff.innerHTML = `${formatCurrency(diff)} (DESBALANCEADO ❌)`;
+                btnGuardar.disabled = true;
+            }
+        }
+
+        function guardarAsiento() {
+            const numAsientoVal = document.getElementById('numAsiento').value;
+            const origenVal = document.getElementById('origenComprobante').value;
+            const fechaVal = document.getElementById('fechaAsiento').value;
+            const sucursalVal = document.getElementById('codSucursal').value;
+            const compVal = document.getElementById('idComprobante').value.trim();
+            const conceptoVal = document.getElementById('concepto').value.trim();
+
+            if (!fechaVal) {
+                Swal.fire('Atención', 'Ingrese la fecha del asiento.', 'warning');
+                return;
+            }
+
+            if (!conceptoVal) {
+                Swal.fire('Atención', 'Ingrese el concepto general del asiento.', 'warning');
+                return;
+            }
+
+            const detalles = [];
+            let errorMsg = null;
+
+            document.querySelectorAll('#detallesTbody tr').forEach((tr, idx) => {
+                const codCuenta = tr.querySelector('.input-cod-cuenta').value.trim();
+                const nomCuenta = tr.querySelector('.input-nom-cuenta').value.trim();
+                const descLinea = tr.querySelector('.input-desc-linea').value.trim();
+                const debeVal = parseFloat(tr.querySelector('.input-debe').value) || 0;
+                const haberVal = parseFloat(tr.querySelector('.input-haber').value) || 0;
+
+                if (!codCuenta) {
+                    errorMsg = `La línea #${idx + 1} requiere un código de cuenta contable.`;
+                    return;
+                }
+
+                if (debeVal === 0 && haberVal === 0) {
+                    errorMsg = `La línea #${idx + 1} debe tener un monto en Debe o en Haber.`;
+                    return;
+                }
+
+                detalles.push({
+                    secuencia: idx + 1,
+                    codCuenta: codCuenta,
+                    nomCuenta: nomCuenta,
+                    descripcion: descLinea || conceptoVal,
+                    debe: debeVal,
+                    haber: haberVal
+                });
+            });
+
+            if (errorMsg) {
+                Swal.fire('Atención', errorMsg, 'warning');
+                return;
+            }
+
+            const payload = {
+                numAsiento: numAsientoVal ? parseInt(numAsientoVal) : null,
+                fecha: fechaVal,
+                codSucursal: sucursalVal,
+                origenComprobante: origenVal,
+                idComprobante: compVal,
+                concepto: conceptoVal,
+                detalles: detalles
+            };
+
+            Swal.fire({
+                title: 'Guardando Asiento Contable...',
+                text: 'Por favor espere...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            fetch('/api/asientos/guardar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Éxito',
+                        text: res.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    const modalEl = document.getElementById('asientoModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+
+                    loadAsientosList();
+                } else {
+                    Swal.fire('Error', res.message, 'error');
+                }
+            })
+            .catch(err => {
+                Swal.fire('Error', 'Ocurrió un error al comunicarse con el servidor.', 'error');
+            });
+        }
+
+        function anularSelectedAsiento() {
+            if (!selectedNumAsiento) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Selección Requerida',
+                    text: 'Por favor, seleccione el asiento que desea anular.',
+                    confirmButtonColor: '#0284c7'
+                });
+                return;
+            }
+
+            Swal.fire({
+                title: `¿Anular Asiento N° ${selectedNumAsiento}?`,
+                text: "Esta acción cambiará el estado del asiento a ANULADO.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Sí, Anular',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('/api/asientos/anular', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ numAsiento: selectedNumAsiento })
+                    })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.status === 'success') {
+                            Swal.fire('Anulado', res.message, 'success');
+                            loadAsientosList();
+                        } else {
+                            Swal.fire('Error', res.message, 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function imprimirAsientos() {
+            window.print();
+        }
+
+        function formatNumber(num) {
+            if (num === null || num === undefined) return '0';
+            return new Intl.NumberFormat('es-PY', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(num);
+        }
+
+        function formatCurrency(num) {
+            return '₲ ' + formatNumber(num);
+        }
+    </script>
+</body>
+</html>
