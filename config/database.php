@@ -1,14 +1,17 @@
 <?php
 /**
- * Configuración de Base de Datos MySQL para ContaPro (cPanel + Entorno Local)
+ * Configuración de Base de Datos MySQL para ContaPro
  */
-$isLocalDev = (PHP_SAPI === 'cli-server');
+$localSecretFile = __DIR__ . '/database.local.php';
+if (is_file($localSecretFile)) {
+    return require $localSecretFile;
+}
 
 return [
-    'host'     => getenv('DB_HOST') ?: ($isLocalDev ? '127.0.0.1' : 'localhost'),
+    'host'     => getenv('DB_HOST') ?: '127.0.0.1',
     'port'     => getenv('DB_PORT') ?: '3306',
-    'dbname'   => getenv('DB_DATABASE') ?: ($isLocalDev ? 'contapro' : 'contaprocompy_sistema'),
-    'username' => getenv('DB_USERNAME') ?: ($isLocalDev ? 'root' : 'contaprocompy_admin'),
-    'password' => getenv('DB_PASSWORD') ?: ($isLocalDev ? '' : 'contaproadmin'),
+    'dbname'   => getenv('DB_DATABASE') ?: 'contapro',
+    'username' => getenv('DB_USERNAME') ?: 'root',
+    'password' => getenv('DB_PASSWORD') ?: '',
     'charset'  => 'utf8mb4',
 ];
