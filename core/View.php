@@ -372,10 +372,15 @@ HTML;
 
         $titulo    = htmlspecialchars((string)($plan['titulo_aviso_pago'] ?? 'Aviso de Suscripción'));
         $texto     = htmlspecialchars((string)($plan['texto_aviso_pago'] ?? ''));
-        $planNom   = htmlspecialchars((string)($plan['nombre_plan'] ?? 'Plan'));
-        $vencFmt   = htmlspecialchars((string)($plan['fec_vencimiento_fmt'] ?? ''));
+        $planNom   = (string)($plan['nombre_plan'] ?? 'Plan');
+        $propNom   = (string)($plan['nombre_propietario'] ?? '');
+        $vencFmt   = (string)($plan['fec_vencimiento_fmt'] ?? '');
         $precioGs  = number_format((float)($plan['precio_mensual'] ?? 0), 0, ',', '.');
-        $notaPago  = htmlspecialchars((string)($plan['mensaje_pago'] ?? 'Contacte con Administración de ContaPro para informar su comprobante de pago y renovar su suscripción.'));
+
+        $waText = "¡Hola! Deseo renovar mi suscripción de ContaPro"
+                . ($propNom !== '' ? " (Cuenta: {$propNom})" : "")
+                . " - {$planNom} (Gs. {$precioGs}/mes, vencimiento: {$vencFmt}).";
+        $waUrl  = htmlspecialchars("https://wa.me/595982965515?text=" . rawurlencode($waText));
 
         return <<<HTML
         <div style="width: 100%; max-width: 1200px; background: {$bg}; border: 1px solid {$border}; border-left: 6px solid {$border}; border-radius: 12px; padding: 12px 18px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
@@ -388,20 +393,10 @@ HTML;
                     <div style="font-size: 0.82rem; color: {$textColor}; opacity: 0.92;">{$texto}</div>
                 </div>
             </div>
-            <button type="button" onclick="mostrarInfoPagoSuscripcion()" style="background: {$btnBg}; color: #ffffff; border: none; border-radius: 8px; padding: 8px 14px; font-size: 0.8rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.12);">
-                <i class="ph ph-credit-card" style="font-size: 1rem;"></i> Datos para Renovar
-            </button>
+            <a href="{$waUrl}" target="_blank" rel="noopener" style="background: {$btnBg}; color: #ffffff; text-decoration: none; border: none; border-radius: 8px; padding: 8px 14px; font-size: 0.8rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.12);">
+                <i class="ph ph-whatsapp-logo" style="font-size: 1.05rem;"></i> Contactar para Renovar
+            </a>
         </div>
-        <script>
-        function mostrarInfoPagoSuscripcion() {
-            const msg = "Plan Activo: {$planNom}\\nVencimiento: {$vencFmt}\\nCuota Mensual: Gs. {$precioGs}\\n\\nInstrucciones: {$notaPago}";
-            if (typeof showAlert === 'function') {
-                showAlert(msg, 'warning');
-            } else {
-                alert(msg);
-            }
-        }
-        </script>
 HTML;
     }
 

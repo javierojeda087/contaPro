@@ -1188,7 +1188,7 @@ CREATE TABLE `propietarios` (
 
 LOCK TABLES `propietarios` WRITE;
 /*!40000 ALTER TABLE `propietarios` DISABLE KEYS */;
-INSERT INTO `propietarios` VALUES (1,'JAVIER OJEDA','4193524-5','admin@contapro.com.py','+595',3,30,15,'A','2099-12-31','2026-10-15 21:04:37','Propietario Principal / SuperAdmin',NULL,7,3,NULL),(2,'JUAN PEREZ','8000000-1','juan.perez@ejemplo.com','+595',1,5,2,'I','2026-10-19','2026-10-15 21:04:37','Propietario 2 de demostración (Plan Básico)',NULL,7,3,'Alias SIPAP: 80012345-6 (Banco Itaú) - Enviar comprobante al WhatsApp +595 981 000 000');
+INSERT INTO `propietarios` VALUES (1,'JAVIER OJEDA','4193524-5','admin@contapro.com.py','+595',3,30,15,'A','2099-12-31','2026-10-15 21:04:37','Propietario Principal / SuperAdmin',NULL,7,3,NULL),(2,'JUAN PEREZ','8000000-1','juan.perez@ejemplo.com','+595',1,5,2,'I','2026-10-19','2026-10-15 21:04:37','Propietario 2 de demostración (Plan Básico)',NULL,7,3,'Contactar al WhatsApp +595 982 965 515 para renovar su suscripción.');
 /*!40000 ALTER TABLE `propietarios` ENABLE KEYS */;
 UNLOCK TABLES;
 

@@ -182,8 +182,14 @@ class TenantContext {
             $textoAviso        = "Su suscripción al {$planNombre} venció el {$fecVencFmt} (hace {$diasVencido} días). Por favor registre su pago para reactivar el servicio.";
         }
 
-        if (!empty($row['mensaje_pago']) && $mostrarAviso) {
-            $textoAviso .= ' — ' . trim((string)$row['mensaje_pago']);
+        $msgPago = trim((string)($row['mensaje_pago'] ?? ''));
+        if ($msgPago === '' || stripos($msgPago, 'SIPAP') !== false || stripos($msgPago, '981 000') !== false || stripos($msgPago, 'Ita') !== false) {
+            $msgPago = 'Contactar al WhatsApp +595 982 965 515 para renovar su suscripción.';
+        }
+        $row['mensaje_pago'] = $msgPago;
+
+        if ($mostrarAviso) {
+            $textoAviso .= ' — ' . $msgPago;
         }
 
         $row['fec_vencimiento_fmt']       = $fecVencFmt;

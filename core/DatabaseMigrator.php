@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 3;
+    private const SCHEMA_VERSION = 4;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -72,6 +72,14 @@ class DatabaseMigrator {
                 $applied[] = "propietarios.$col";
             }
         }
+
+        // Limpiar datos de ejemplo antiguos (SIPAP / +595 981 000 000) y actualizar al número oficial +595 982 965 515
+        Database::execute(
+            "UPDATE `propietarios`
+             SET `mensaje_pago` = 'Contactar al WhatsApp +595 982 965 515 para renovar su suscripción.'
+             WHERE `mensaje_pago` LIKE '%SIPAP%' OR `mensaje_pago` LIKE '%981 000%'",
+            true
+        );
 
         // 2b. Asegurar tabla pagos_propietarios (Historial de Pagos y Renovaciones de Suscripción)
         Database::execute("

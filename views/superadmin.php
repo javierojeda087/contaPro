@@ -752,8 +752,8 @@
                         </div>
 
                         <div class="col-md-12">
-                            <label class="form-label fw-bold small">Mensaje / Datos Bancarios para Aviso de Pago (Opcional)</label>
-                            <input type="text" id="propMensajePago" class="form-control" placeholder="Ej: Alias SIPAP: 80012345-6 (Banco Itaú) - Enviar comprobante al WhatsApp 0981...">
+                            <label class="form-label fw-bold small">Mensaje para Aviso de Renovación (Opcional)</label>
+                            <input type="text" id="propMensajePago" class="form-control" placeholder="Ej: Contactar al WhatsApp +595 982 965 515 para renovar su suscripción.">
                         </div>
 
                         <div class="col-12">
