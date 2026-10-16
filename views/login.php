@@ -13,15 +13,16 @@
         :root {
             --primary-color: #16a34a;
             --primary-hover: #15803d;
-            --bg-gradient: radial-gradient(circle at 50% 0%, #f0fdf4 0%, #dcfce7 65%, #bbf7d0 100%);
-            --card-bg: rgba(255, 255, 255, 0.94);
+            --card-bg: rgba(255, 255, 255, 0.90);
             --text-main: #0f172a;
             --text-muted: #64748b;
             --border-color: #cbd5e1;
         }
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
-            background: var(--bg-gradient); 
+            background:
+                radial-gradient(circle at 50% 45%, rgba(240, 253, 244, 0.25) 0%, rgba(16, 185, 129, 0.18) 100%),
+                url('/images/login_bg_futuristic.jpg?v=1') center/cover no-repeat fixed;
             color: var(--text-main); 
             margin: 0; 
             display: flex; 
@@ -33,25 +34,39 @@
             position: relative;
             overflow-x: hidden;
         }
-        .ambient-glow {
-            position: absolute;
-            width: 450px;
-            height: 450px;
-            background: radial-gradient(circle, rgba(22, 163, 74, 0.22) 0%, rgba(255, 255, 255, 0) 70%);
-            border-radius: 50%;
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(16, 185, 129, 0.07) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(16, 185, 129, 0.07) 1px, transparent 1px);
+            background-size: 38px 38px;
+            mask-image: radial-gradient(circle at 50% 50%, rgba(0,0,0,0.65) 10%, transparent 80%);
             pointer-events: none;
             z-index: 0;
         }
-        .glow-1 { top: -100px; left: -100px; }
-        .glow-2 { bottom: -100px; right: -100px; }
+        .ambient-glow {
+            position: absolute;
+            width: 480px;
+            height: 480px;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.28) 0%, rgba(255, 255, 255, 0) 70%);
+            border-radius: 50%;
+            filter: blur(20px);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .glow-1 { top: -120px; left: -100px; }
+        .glow-2 { bottom: -120px; right: -100px; }
         .login-card { 
             position: relative;
             z-index: 1;
             background: var(--card-bg); 
-            backdrop-filter: blur(20px);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
             border-radius: 24px; 
             padding: 2.5rem 2.3rem; 
-            box-shadow: 0 25px 50px -12px rgba(22, 101, 52, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.8); 
+            box-shadow: 0 25px 60px -12px rgba(6, 95, 70, 0.24), 0 0 0 1.5px rgba(255, 255, 255, 0.85), 0 0 35px rgba(16, 185, 129, 0.15); 
             width: 100%; 
             max-width: 460px; 
             text-align: center; 
