@@ -4,11 +4,11 @@
     # Permitir validación automática de certificados SSL en cPanel (AutoSSL / Let's Encrypt)
     RewriteCond %{REQUEST_URI} !^/\.well-known/
 
-    # Forzar HTTPS en producción (ignorar localhost y 127.0.0.1 para desarrollo local)
+    # Redirigir www a no-www y forzar HTTPS en producción (ignorar localhost y 127.0.0.1)
+    RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC,OR]
     RewriteCond %{HTTPS} !=on
-    RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
     RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:[0-9]+)?$ [NC]
-    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+    RewriteRule ^ https://contapro.com.py%{REQUEST_URI} [L,R=301]
 
     # Bloquear acceso directo por navegador a carpetas internas del sistema
     RewriteRule ^(config|core|app|database)/ - [F,L]
