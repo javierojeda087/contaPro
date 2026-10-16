@@ -316,7 +316,7 @@
             font-size: 1.15rem;
         }
 
-        /* Botones flotantes */
+        /* Botón flotante WhatsApp */
         .float-wa {
             position: fixed;
             bottom: 22px;
@@ -331,23 +331,6 @@
             justify-content: center;
             font-size: 1.9rem;
             box-shadow: 0 8px 20px rgba(37, 211, 102, 0.4);
-            text-decoration: none;
-            z-index: 999;
-        }
-        .float-chat {
-            position: fixed;
-            bottom: 22px;
-            left: 22px;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: #16a34a;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            box-shadow: 0 8px 20px rgba(22, 163, 74, 0.35);
             text-decoration: none;
             z-index: 999;
         }
@@ -482,8 +465,7 @@
         </div>
     </footer>
 
-    <a href="/login" class="float-chat" title="Ingresar al Sistema"><i class="ph ph-chats-circle"></i></a>
-    <a href="https://wa.me/595981000000" target="_blank" rel="noopener" class="float-wa" title="Contactar por WhatsApp"><i class="ph ph-whatsapp-logo"></i></a>
+    <a href="https://wa.me/595982965515" target="_blank" rel="noopener" class="float-wa" title="Contactar por WhatsApp"><i class="ph ph-whatsapp-logo"></i></a>
 
 </body>
 </html>
