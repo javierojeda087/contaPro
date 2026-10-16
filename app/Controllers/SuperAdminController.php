@@ -162,11 +162,12 @@ class SuperAdminController {
                     Database::update(
                         "UPDATE usuarios SET clave = ?, estado = 'A', cod_grupo = 'CONTA', es_admin = 'S'
                          WHERE id_propietario = ? AND UPPER(TRIM(cod_usuario)) = ?",
-                        [$adminClave, $idProp, $adminUser]
+                        [AuthController::hashPassword($adminClave), $idProp, $adminUser]
                     );
                 }
             } else {
-                $claveFinal = $adminClave !== '' ? $adminClave : $adminUser . '123';
+                $claveRaw   = $adminClave !== '' ? $adminClave : $adminUser . '123';
+                $claveFinal = AuthController::hashPassword($claveRaw);
                 Database::update(
                     "INSERT INTO usuarios (id_propietario, cod_usuario, clave, estado, cod_grupo, cod_empresa, cod_sucursal, nombre, es_admin, es_superadmin)
                      VALUES (?, ?, ?, 'A', 'CONTA', '1', '01', ?, 'S', 'N')",

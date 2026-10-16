@@ -4,6 +4,10 @@ declare(strict_types=1);
 // 1. Servir archivos estáticos directamente cuando se ejecuta con `php -S`
 if (PHP_SAPI === 'cli-server') {
     $urlPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+    if (preg_match('#^/(config|core|app|database)/|\.(sql|key|p12|env|md|sh|bak|zip|bat|yml|yaml|log)$#i', $urlPath)) {
+        http_response_code(403);
+        exit('403 Forbidden');
+    }
     $staticFile = __DIR__ . $urlPath;
     if ($urlPath !== '/' && is_file($staticFile)) {
         return false;
@@ -13,6 +17,10 @@ if (PHP_SAPI === 'cli-server') {
 // 2. Configuración regional, codificación UTF-8 y seguridad de sesión HTTPS
 mb_internal_encoding('UTF-8');
 date_default_timezone_set('America/Asuncion');
+
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header('Referrer-Policy: strict-origin-when-cross-origin');
 
 $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
     || (($_SERVER['SERVER_PORT'] ?? '') == 443)

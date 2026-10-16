@@ -7,6 +7,139 @@ use Core\View;
 
 class AuthController {
 
+    private const MAX_LOGIN_ATTEMPTS = 5;
+    private const LOCKOUT_SECONDS    = 120;
+    private const ATTEMPT_WINDOW_SEC = 300;
+
+    public static function hashPassword(string $plain): string {
+        return password_hash($plain, PASSWORD_DEFAULT);
+    }
+
+    public static function isPasswordHash(string $stored): bool {
+        return str_starts_with($stored, '$2y$')
+            || str_starts_with($stored, '$2a$')
+            || str_starts_with($stored, '$2b$')
+            || str_starts_with($stored, '$argon2');
+    }
+
+    /**
+     * Verifica contraseña soportando tanto hashes seguros (bcrypt/argon2) como claves legadas en texto plano.
+     * @return array{valid: bool, needsRehash: bool}
+     */
+    public static function verifyPassword(string $plain, string $stored): array {
+        $storedClean = trim(str_replace('"', '', $stored));
+        if ($storedClean === '' || $plain === '') {
+            return ['valid' => false, 'needsRehash' => false];
+        }
+
+        if (self::isPasswordHash($storedClean)) {
+            $ok = password_verify($plain, $storedClean);
+            return [
+                'valid'       => $ok,
+                'needsRehash' => $ok && password_needs_rehash($storedClean, PASSWORD_DEFAULT),
+            ];
+        }
+
+        // Compatibilidad con claves legadas en texto plano y migración transparente a bcrypt
+        $ok = ($storedClean === $plain) || (strcasecmp($storedClean, $plain) === 0);
+        return [
+            'valid'       => $ok,
+            'needsRehash' => $ok,
+        ];
+    }
+
+    private static function getClientIp(): string {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        return preg_replace('/[^0-9a-fA-F:.,]/', '', (string)$ip) ?: '0.0.0.0';
+    }
+
+    private static function getRateLimitFile(): string {
+        $ipHash = hash('sha256', 'contapro_login_' . self::getClientIp());
+        return rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'cp_rl_' . substr($ipHash, 0, 24) . '.json';
+    }
+
+    private static function checkRateLimit(): ?string {
+        $now = time();
+
+        // 1. Verificar por sesión
+        $sessLock = (int)($_SESSION['_login_lock_until'] ?? 0);
+        if ($sessLock > $now) {
+            $wait = $sessLock - $now;
+            return "Demasiados intentos fallidos. Por seguridad, espere {$wait} segundos antes de volver a intentar.";
+        }
+
+        // 2. Verificar por IP
+        $file = self::getRateLimitFile();
+        if (is_file($file)) {
+            $data = json_decode((string)@file_get_contents($file), true);
+            if (is_array($data)) {
+                $lockUntil = (int)($data['lock_until'] ?? 0);
+                if ($lockUntil > $now) {
+                    $wait = $lockUntil - $now;
+                    return "Demasiados intentos fallidos. Por seguridad, espere {$wait} segundos antes de volver a intentar.";
+                }
+            }
+        }
+        return null;
+    }
+
+    private static function recordFailedAttempt(): void {
+        $now = time();
+
+        // Sesión
+        $firstAt = (int)($_SESSION['_login_first_attempt'] ?? 0);
+        $count   = (int)($_SESSION['_login_attempts'] ?? 0);
+        if ($firstAt === 0 || ($now - $firstAt) > self::ATTEMPT_WINDOW_SEC) {
+            $firstAt = $now;
+            $count   = 1;
+        } else {
+            $count++;
+        }
+        $_SESSION['_login_first_attempt'] = $firstAt;
+        $_SESSION['_login_attempts']      = $count;
+        if ($count >= self::MAX_LOGIN_ATTEMPTS) {
+            $_SESSION['_login_lock_until'] = $now + self::LOCKOUT_SECONDS;
+        }
+
+        // Archivo por IP
+        $file = self::getRateLimitFile();
+        $ipFirst = $now;
+        $ipCount = 1;
+        $ipLock  = 0;
+        if (is_file($file)) {
+            $data = json_decode((string)@file_get_contents($file), true);
+            if (is_array($data)) {
+                $prevFirst = (int)($data['first_at'] ?? 0);
+                $prevCount = (int)($data['attempts'] ?? 0);
+                if ($prevFirst > 0 && ($now - $prevFirst) <= self::ATTEMPT_WINDOW_SEC) {
+                    $ipFirst = $prevFirst;
+                    $ipCount = $prevCount + 1;
+                }
+            }
+        }
+        if ($ipCount >= self::MAX_LOGIN_ATTEMPTS) {
+            $ipLock = $now + self::LOCKOUT_SECONDS;
+        }
+        @file_put_contents($file, json_encode([
+            'first_at'   => $ipFirst,
+            'attempts'   => $ipCount,
+            'lock_until' => $ipLock,
+        ]));
+    }
+
+    private static function clearFailedAttempts(): void {
+        unset($_SESSION['_login_first_attempt'], $_SESSION['_login_attempts'], $_SESSION['_login_lock_until']);
+        $file = self::getRateLimitFile();
+        if (is_file($file)) {
+            @unlink($file);
+        }
+    }
+
+    private static function hasPreAuthOrActiveSession(): bool {
+        $u = $_SESSION['_verified_usuario'] ?? $_SESSION['cambioUsuario'] ?? $_SESSION['usuario'] ?? '';
+        return trim((string)$u) !== '';
+    }
+
     public static function landing(): void {
         $planes = Database::queryForList("SELECT * FROM planes WHERE estado = 'A' ORDER BY orden, id_plan");
         View::render('landing', ['planes' => $planes]);
@@ -26,6 +159,10 @@ class AuthController {
     }
 
     public static function verifyCredentials(): array {
+        if ($lockMsg = self::checkRateLimit()) {
+            return ['status' => 'error', 'message' => $lockMsg];
+        }
+
         $username = trim((string)($_POST['username'] ?? ''));
         $password = trim((string)($_POST['password'] ?? ''));
 
@@ -45,18 +182,35 @@ class AuthController {
                 LEFT JOIN propietarios pr ON pr.id_propietario = u.id_propietario
                 LEFT JOIN planes pl ON pl.id_plan = pr.id_plan
                 LEFT JOIN personas p ON p.id_propietario = u.id_propietario AND TRIM(p.cod_persona) = TRIM(u.cod_persona)
-                WHERE UPPER(TRIM(u.cod_usuario)) = ?
+                WHERE UPPER(TRIM(u.cod_usuario)) = ? OR UPPER(TRIM(COALESCE(u.alias, ''))) = ?
                 ORDER BY u.id_propietario ASC
                 LIMIT 1";
 
-        $uInfo = Database::queryForMap($sql, [$cleanUser]);
+        $uInfo = Database::queryForMap($sql, [$cleanUser, $cleanUser]);
         if (!$uInfo) {
+            self::recordFailedAttempt();
             return ['status' => 'error', 'message' => 'Usuario o contraseña incorrectos.'];
         }
 
-        $claveDb = trim(str_replace('"', '', (string)($uInfo['clave'] ?? '')));
-        if ($claveDb === '' || strcasecmp($claveDb, $password) !== 0) {
+        $claveDb = (string)($uInfo['clave'] ?? '');
+        $check   = self::verifyPassword($password, $claveDb);
+        if (!$check['valid']) {
+            self::recordFailedAttempt();
             return ['status' => 'error', 'message' => 'Usuario o contraseña incorrectos.'];
+        }
+
+        $propId     = (int)($uInfo['id_propietario'] ?? 1);
+        $codUserReal = strtoupper(trim((string)($uInfo['cod_usuario'] ?? $cleanUser)));
+
+        // Si la clave aún estaba en texto plano o requiere actualización de algoritmo, migrar a bcrypt automáticamente
+        if ($check['needsRehash']) {
+            try {
+                Database::execute("ALTER TABLE `usuarios` MODIFY COLUMN `clave` VARCHAR(255) DEFAULT NULL", true);
+                Database::update(
+                    "UPDATE usuarios SET clave = ? WHERE id_propietario = ? AND UPPER(TRIM(cod_usuario)) = ?",
+                    [self::hashPassword($password), $propId, $codUserReal]
+                );
+            } catch (\Throwable $ignored) {}
         }
 
         $estado = strtoupper(trim((string)($uInfo['estado'] ?? 'A')));
@@ -64,8 +218,7 @@ class AuthController {
             return ['status' => 'error', 'message' => 'El usuario está inactivo.'];
         }
 
-        $propId = (int)($uInfo['id_propietario'] ?? 1);
-        $esSuper = (strtoupper(trim((string)($uInfo['es_superadmin'] ?? 'N'))) === 'S') || ($propId === 1 && $cleanUser === 'CONTA');
+        $esSuper = (strtoupper(trim((string)($uInfo['es_superadmin'] ?? 'N'))) === 'S') || ($propId === 1 && $codUserReal === 'CONTA');
 
         if (!$esSuper) {
             $subInfo = TenantContext::enrichSubscriptionInfo([
@@ -86,9 +239,14 @@ class AuthController {
             }
         }
 
+        self::clearFailedAttempts();
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            @session_regenerate_id(true);
+        }
+
         $_SESSION['id_propietario']    = $propId;
         $_SESSION['es_superadmin']     = $esSuper ? 'S' : 'N';
-        $_SESSION['_verified_usuario'] = $cleanUser;
+        $_SESSION['_verified_usuario'] = $codUserReal;
 
         $usedContrib = (int)Database::queryForValue("SELECT COUNT(*) FROM empresas WHERE id_propietario = ?", [$propId]);
 
@@ -96,11 +254,11 @@ class AuthController {
         if ($nomPer === '') {
             $nomPer = trim(($uInfo['nombre'] ?? '') . ' ' . ($uInfo['apellido'] ?? ''));
         }
-        if ($nomPer === '') $nomPer = $cleanUser;
+        if ($nomPer === '') $nomPer = $codUserReal;
 
         return [
             'status'               => 'success',
-            'username'             => $cleanUser,
+            'username'             => $codUserReal,
             'idPropietario'        => $propId,
             'nombrePropietario'    => $uInfo['nombre_propietario'] ?? ('PROPIETARIO ' . $propId),
             'nombrePlan'           => $uInfo['nombre_plan'] ?? 'Plan Básico',
@@ -113,6 +271,10 @@ class AuthController {
     }
 
     public static function getEmpresasLogin(): array {
+        if (!self::hasPreAuthOrActiveSession()) {
+            http_response_code(401);
+            return [];
+        }
         $propId = TenantContext::idPropietario();
         $rows = Database::queryForList(
             "SELECT cod_empresa, descripcion, actividad, ruc_empresa
@@ -134,6 +296,10 @@ class AuthController {
     }
 
     public static function getEmpresaDetalles(): array {
+        if (!self::hasPreAuthOrActiveSession()) {
+            http_response_code(401);
+            return ['status' => 'error', 'message' => 'Sesión no autorizada.'];
+        }
         $propId = TenantContext::idPropietario();
         $emp = trim((string)($_GET['codEmpresa'] ?? ''));
 
@@ -200,16 +366,26 @@ class AuthController {
     }
 
     public static function confirmLogin(): array {
-        $cleanUser = strtoupper(trim((string)($_POST['username'] ?? ($_SESSION['_verified_usuario'] ?? ''))));
-        $emp       = trim((string)($_POST['codEmpresa'] ?? ''));
-        $suc       = trim((string)($_POST['codSucursal'] ?? '01'));
-        $ejer      = trim((string)($_POST['codEjercicio'] ?? date('Y')));
-        $fecIni    = trim((string)($_POST['fecInicio'] ?? ''));
-        $fecFin    = trim((string)($_POST['fecFinal'] ?? ''));
-        $act       = trim((string)($_POST['actividad'] ?? ''));
+        // Exigir usuario previamente verificado en sesión (evita bypass de contraseña en Paso 2)
+        $verifiedSessionUser = $_SESSION['_verified_usuario'] ?? $_SESSION['cambioUsuario'] ?? $_SESSION['usuario'] ?? '';
+        $cleanUser = strtoupper(trim((string)$verifiedSessionUser));
+        if ($cleanUser === '') {
+            http_response_code(401);
+            return [
+                'status'  => 'error',
+                'message' => 'Su sesión de verificación expiró. Por favor ingrese usuario y contraseña nuevamente.',
+            ];
+        }
+
+        $emp    = trim((string)($_POST['codEmpresa'] ?? ''));
+        $suc    = trim((string)($_POST['codSucursal'] ?? '01'));
+        $ejer   = trim((string)($_POST['codEjercicio'] ?? date('Y')));
+        $fecIni = trim((string)($_POST['fecInicio'] ?? ''));
+        $fecFin = trim((string)($_POST['fecFinal'] ?? ''));
+        $act    = trim((string)($_POST['actividad'] ?? ''));
 
         $uRow = Database::queryForMap(
-            "SELECT u.id_propietario, u.es_superadmin, u.nombre, u.apellido, p.nombre AS nombre_persona
+            "SELECT u.id_propietario, u.cod_usuario, u.cod_grupo, u.es_superadmin, u.estado, u.nombre, u.apellido, p.nombre AS nombre_persona
              FROM usuarios u
              LEFT JOIN personas p ON p.id_propietario = u.id_propietario AND TRIM(p.cod_persona) = TRIM(u.cod_persona)
              WHERE UPPER(TRIM(u.cod_usuario)) = ?
@@ -217,14 +393,20 @@ class AuthController {
             [$cleanUser]
         );
 
+        if (!$uRow || (strtoupper(trim((string)($uRow['estado'] ?? 'A'))) !== 'A' && strtoupper(trim((string)($uRow['estado'] ?? ''))) !== '')) {
+            http_response_code(401);
+            return ['status' => 'error', 'message' => 'Usuario no válido o inactivo.'];
+        }
+
         $propId = (int)($uRow['id_propietario'] ?? TenantContext::idPropietario());
-        $_SESSION['id_propietario'] = $propId;
-        $_SESSION['es_superadmin']  = strtoupper(trim((string)($uRow['es_superadmin'] ?? 'N')));
 
         $empDesc = $emp;
         if ($emp !== '') {
             $eRow = Database::queryForMap("SELECT descripcion FROM empresas WHERE id_propietario = ? AND cod_empresa = ?", [$propId, $emp]);
-            if ($eRow && !empty($eRow['descripcion'])) {
+            if (!$eRow) {
+                return ['status' => 'error', 'message' => 'El contribuyente seleccionado no pertenece a su cuenta.'];
+            }
+            if (!empty($eRow['descripcion'])) {
                 $empDesc = $eRow['descripcion'];
             }
         } else {
@@ -246,18 +428,25 @@ class AuthController {
         }
         if ($nombrePer === '') $nombrePer = $cleanUser;
 
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            @session_regenerate_id(true);
+        }
+
         unset($_SESSION['cambioUsuario'], $_SESSION['cambioEmpresa'], $_SESSION['cambioSucursal'], $_SESSION['_verified_usuario']);
 
-        $_SESSION['usuario']       = $cleanUser;
-        $_SESSION['empresa']       = $emp;
-        $_SESSION['empresaDesc']   = $empDesc;
-        $_SESSION['ejercicio']     = $ejer ?: date('Y');
-        $_SESSION['fecInicio']     = $fecIni;
-        $_SESSION['fecFinal']      = $fecFin;
-        $_SESSION['sucursal']      = $suc ?: '01';
-        $_SESSION['sucursalDesc']  = $sucDesc ?: '01 - MATRIZ';
-        $_SESSION['actividad']     = $act;
-        $_SESSION['nombrePersona'] = $nombrePer;
+        $_SESSION['id_propietario'] = $propId;
+        $_SESSION['es_superadmin']  = strtoupper(trim((string)($uRow['es_superadmin'] ?? 'N')));
+        $_SESSION['usuario']        = $cleanUser;
+        $_SESSION['grupo']          = strtoupper(trim((string)($uRow['cod_grupo'] ?? 'CONTA'))) ?: 'CONTA';
+        $_SESSION['empresa']        = $emp;
+        $_SESSION['empresaDesc']    = $empDesc;
+        $_SESSION['ejercicio']      = $ejer ?: date('Y');
+        $_SESSION['fecInicio']      = $fecIni;
+        $_SESSION['fecFinal']       = $fecFin;
+        $_SESSION['sucursal']       = $suc ?: '01';
+        $_SESSION['sucursalDesc']   = $sucDesc ?: '01 - MATRIZ';
+        $_SESSION['actividad']      = $act;
+        $_SESSION['nombrePersona']  = $nombrePer;
 
         // Si el propietario aún no tiene contribuyentes, llevarlo directo a crear su primer contribuyente
         $cntEmp = (int)Database::queryForValue("SELECT COUNT(*) FROM empresas WHERE id_propietario = ?", [$propId]);

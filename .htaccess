@@ -24,14 +24,15 @@
     # Garantizar que cualquier recurso se cargue bajo HTTPS y reforzar seguridad
     Header always set Content-Security-Policy "upgrade-insecure-requests"
     Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
 # Impedir listado de directorios en cPanel
 Options -Indexes
 
-# Proteger archivos sensibles (.sql, .env, .md, etc.) compatible con Apache 2.2 y 2.4
-<FilesMatch "\.(sql|key|p12|env|md|sh|bak)$">
+# Proteger archivos sensibles (.sql, .zip, .bat, .env, .md, etc.) compatible con Apache 2.2 y 2.4
+<FilesMatch "\.(sql|key|p12|env|md|sh|bak|zip|bat|yml|yaml|log)$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>

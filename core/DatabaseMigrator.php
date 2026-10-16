@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 2;
+    private const SCHEMA_VERSION = 3;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -93,12 +93,13 @@ class DatabaseMigrator {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ", true);
 
-        // 3. Asegurar columna es_superadmin en usuarios
+        // 3. Asegurar columna es_superadmin y longitud de clave (VARCHAR 255 para hash bcrypt) en usuarios
         if (!self::columnExists('usuarios', 'es_superadmin')) {
             Database::execute("ALTER TABLE `usuarios` ADD COLUMN `es_superadmin` VARCHAR(1) DEFAULT 'N'", true);
             Database::execute("UPDATE `usuarios` SET `es_superadmin` = 'S' WHERE `id_propietario` = 1 AND UPPER(`cod_usuario`) = 'CONTA'", true);
             $applied[] = 'usuarios.es_superadmin';
         }
+        Database::execute("ALTER TABLE `usuarios` MODIFY COLUMN `clave` VARCHAR(255) DEFAULT NULL", true);
 
         // 4. Asegurar columnas extendidas en co_egresos y co_ingresos si faltan
         $extraColsEgresos = [

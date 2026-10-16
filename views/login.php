@@ -360,6 +360,15 @@
         let empresasList = [];
         let currentEmpresaDetails = null;
 
+        function escapeHtml(val) {
+            return String(val ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             const cambioUser = <?= json_encode($cambioUsuario ?? null) ?>;
             if (cambioUser) {
@@ -431,6 +440,10 @@
 
             try {
                 const res = await fetch('/api/login/empresas');
+                if (res.status === 401) {
+                    volverStep1();
+                    return;
+                }
                 empresasList = await res.json();
 
                 const select = document.getElementById('contribuyente');
@@ -453,8 +466,8 @@
 
                 let html = '<option value="">Seleccionar contribuyente...</option>';
                 empresasList.forEach(emp => {
-                    const cod = emp.cod_empresa || emp.codEmpresa || emp.COD_EMPRESA || '';
-                    const desc = emp.descripcion || emp.DESCRIPCION || '';
+                    const cod = escapeHtml(emp.cod_empresa || emp.codEmpresa || emp.COD_EMPRESA || '');
+                    const desc = escapeHtml(emp.descripcion || emp.DESCRIPCION || '');
                     html += `<option value="${cod}">${cod ? cod + ' - ' : ''}${desc}</option>`;
                 });
                 select.innerHTML = html;
@@ -463,10 +476,11 @@
                 if (!targetEmp && empresasList.length > 0) {
                     targetEmp = empresasList[0].cod_empresa || empresasList[0].codEmpresa || empresasList[0].COD_EMPRESA;
                 }
-                if (targetEmp && select.querySelector(`option[value="${targetEmp}"]`)) {
-                    select.value = targetEmp;
+                const hasOpt = Array.from(select.options).some(o => o.value === String(targetEmp));
+                if (targetEmp && hasOpt) {
+                    select.value = String(targetEmp);
                 } else if (empresasList.length > 0) {
-                    select.value = empresasList[0].cod_empresa || empresasList[0].codEmpresa || empresasList[0].COD_EMPRESA;
+                    select.value = String(empresasList[0].cod_empresa || empresasList[0].codEmpresa || empresasList[0].COD_EMPRESA || '');
                 }
 
                 await onContribuyenteChange(defaultSucursal);
@@ -495,7 +509,7 @@
                 const ejercicios = currentEmpresaDetails.ejercicios || [];
                 let ejHtml = '<option value="">Ejercicio</option>';
                 ejercicios.forEach(ej => {
-                    const codEj = ej.codEjercicio || ej.COD_EJERCICIO || ej.cod_ejercicio || '';
+                    const codEj = escapeHtml(ej.codEjercicio || ej.COD_EJERCICIO || ej.cod_ejercicio || '');
                     ejHtml += `<option value="${codEj}">${codEj}</option>`;
                 });
                 ejSelect.innerHTML = ejHtml;
@@ -515,23 +529,25 @@
                 const sucursales = currentEmpresaDetails.sucursales || [];
                 let sucHtml = '<option value="">Sucursal</option>';
                 sucursales.forEach(suc => {
-                    const codSuc = suc.codSucursal || suc.COD_SUCURSAL || suc.cod_sucursal || '';
-                    const descSuc = suc.descripcion || suc.DESCRIPCION || '';
+                    const codSuc = escapeHtml(suc.codSucursal || suc.COD_SUCURSAL || suc.cod_sucursal || '');
+                    const descSuc = escapeHtml(suc.descripcion || suc.DESCRIPCION || '');
                     sucHtml += `<option value="${codSuc}">${codSuc ? codSuc + ' - ' : ''}${descSuc}</option>`;
                 });
                 sucSelect.innerHTML = sucHtml;
 
-                if (preferredSucursal && sucSelect.querySelector(`option[value="${preferredSucursal}"]`)) {
-                    sucSelect.value = preferredSucursal;
+                const hasSuc = preferredSucursal && Array.from(sucSelect.options).some(o => o.value === String(preferredSucursal));
+                if (hasSuc) {
+                    sucSelect.value = String(preferredSucursal);
                 } else if (sucursales.length > 0) {
-                    sucSelect.value = sucursales[0].codSucursal || sucursales[0].COD_SUCURSAL || sucursales[0].cod_sucursal;
+                    sucSelect.value = String(sucursales[0].codSucursal || sucursales[0].COD_SUCURSAL || sucursales[0].cod_sucursal || '');
                 }
 
                 const acts = currentEmpresaDetails.actividades || [];
                 let actHtml = '';
                 if (acts.length) {
                     acts.forEach(a => {
-                        actHtml += `<option value="${a.descripcion}" ${a.porDefecto ? 'selected' : ''}>${a.descripcion}</option>`;
+                        const descAct = escapeHtml(a.descripcion || '');
+                        actHtml += `<option value="${descAct}" ${a.porDefecto ? 'selected' : ''}>${descAct}</option>`;
                     });
                 } else {
                     actHtml = '<option value="">Sin actividades cargadas</option>';

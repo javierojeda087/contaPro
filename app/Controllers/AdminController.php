@@ -616,7 +616,8 @@ class AdminController {
             return;
         }
         $userCodeUp = strtoupper($userCode);
-        $finalClave = $clave !== '' ? $clave : '123456';
+        $rawClave   = $clave !== '' ? $clave : '123456';
+        $finalClave = AuthController::hashPassword($rawClave);
 
         // Verificar que el código de usuario no exista globalmente (para evitar colisión en login)
         $cnt = (int)Database::queryForValue(
@@ -713,7 +714,7 @@ class AdminController {
             if ($clave !== '') {
                 Database::update(
                     "UPDATE usuarios SET clave = ? WHERE id_propietario = ? AND (UPPER(cod_usuario) = ? OR UPPER(alias) = ?)",
-                    [$clave, $idProp, $key, $key]
+                    [AuthController::hashPassword($clave), $idProp, $key, $key]
                 );
             }
 
@@ -878,15 +879,16 @@ class AdminController {
             View::json(['status' => 'error', 'message' => 'Usuario no encontrado.']);
             return;
         }
-        $claveDb = trim(str_replace('"', '', (string)($row['clave'] ?? '')));
-        if (strcasecmp($claveDb, $currentPassword) !== 0) {
+        $claveDb = (string)($row['clave'] ?? '');
+        $check   = AuthController::verifyPassword($currentPassword, $claveDb);
+        if (!$check['valid']) {
             View::json(['status' => 'error', 'message' => 'La contraseña actual es incorrecta.']);
             return;
         }
 
         Database::update(
             "UPDATE usuarios SET clave = ? WHERE id_propietario = ? AND (UPPER(cod_usuario) = ? OR UPPER(alias) = ?)",
-            [$newPassword, $idProp, $userClean, $userClean]
+            [AuthController::hashPassword($newPassword), $idProp, $userClean, $userClean]
         );
         View::json(['status' => 'success', 'message' => 'Contraseña modificada exitosamente.']);
     }
