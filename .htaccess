@@ -1,12 +1,11 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Permitir siempre validación automática de certificados SSL en cPanel (AutoSSL / Let's Encrypt)
-    RewriteRule ^\.well-known/ - [L]
-
-    # Redirigir www y HTTP hacia https://contapro.com.py en producción (ignorar localhost y 127.0.0.1)
+    # Redirigir www y HTTP hacia https://contapro.com.py (excepto validación SSL /.well-known/)
+    RewriteCond %{REQUEST_URI} !^/\.well-known/
     RewriteCond %{HTTP_HOST} ^www\. [NC,OR]
     RewriteCond %{HTTPS} !=on
+    RewriteCond %{REQUEST_URI} !^/\.well-known/
     RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:[0-9]+)?$ [NC]
     RewriteRule ^ https://contapro.com.py%{REQUEST_URI} [L,R=301]
 
