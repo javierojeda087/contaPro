@@ -431,6 +431,9 @@
                 <?php foreach (($planes ?? []) as $idx => $pl):
                     if (($pl['codigo_plan'] ?? '') === 'ILIMITADO') continue;
                     $isPopular = ($pl['codigo_plan'] ?? '') === 'MEDIO';
+                    $precioFmt = number_format((float)($pl['precio_mensual'] ?? 0), 0, ',', '.');
+                    $msgPlan = "¡Hola! Estoy interesado en el " . ($pl['nombre_plan'] ?? 'Plan') . " de ContaPro ({$precioFmt} Gs/mes - hasta " . (int)$pl['max_contribuyentes'] . " contribuyentes y " . (int)$pl['max_usuarios'] . " usuarios). ¿Me podrían brindar más información para habilitar mi cuenta?";
+                    $waPlanUrl = "https://wa.me/595982965515?text=" . rawurlencode($msgPlan);
                 ?>
                 <div class="plan-card <?= $isPopular ? 'popular' : '' ?>">
                     <?php if ($isPopular): ?>
@@ -439,7 +442,7 @@
                     <div class="plan-name"><?= htmlspecialchars($pl['nombre_plan']) ?></div>
                     <div style="font-size: 0.86rem; color: #64748b;"><?= htmlspecialchars($pl['descripcion'] ?? '') ?></div>
                     <div class="plan-price">
-                        <?= number_format((float)($pl['precio_mensual'] ?? 0), 0, ',', '.') ?> Gs <span>/ mes</span>
+                        <?= $precioFmt ?> Gs <span>/ mes</span>
                     </div>
                     <ul class="plan-list">
                         <li><i class="ph ph-check-circle"></i> Hasta <strong><?= (int)$pl['max_contribuyentes'] ?> Contribuyentes / Empresas</strong></li>
@@ -448,7 +451,7 @@
                         <li><i class="ph ph-check-circle"></i> Exportación RG 90 Marangatu y Consulta CDC</li>
                         <li><i class="ph ph-check-circle"></i> Respaldo en la nube y soporte técnico</li>
                     </ul>
-                    <a href="/login" class="btn-hero" style="text-align: center; background: <?= $isPopular ? '#1d8cf8' : '#16a34a' ?>;">
+                    <a href="<?= htmlspecialchars($waPlanUrl) ?>" target="_blank" rel="noopener" class="btn-hero" style="text-align: center; background: <?= $isPopular ? '#1d8cf8' : '#16a34a' ?>;">
                         Comenzar con <?= htmlspecialchars($pl['nombre_plan']) ?>
                     </a>
                 </div>
@@ -464,7 +467,11 @@
         </div>
     </footer>
 
-    <a href="https://wa.me/595982965515" target="_blank" rel="noopener" class="float-wa" title="Contactar por WhatsApp"><i class="ph ph-whatsapp-logo"></i></a>
+    <?php
+        $waDefaultMsg = "¡Hola! Estoy visitando la web de ContaPro y me gustaría recibir más información sobre el Sistema Contable en la Nube y sus planes.";
+        $waDefaultUrl = "https://wa.me/595982965515?text=" . rawurlencode($waDefaultMsg);
+    ?>
+    <a href="<?= htmlspecialchars($waDefaultUrl) ?>" target="_blank" rel="noopener" class="float-wa" title="Contactar por WhatsApp"><i class="ph ph-whatsapp-logo"></i></a>
 
     <script>
         document.querySelectorAll('.nav-menu a').forEach(function (link) {
