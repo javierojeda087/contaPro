@@ -383,7 +383,6 @@
                         <i class="ph ph-calculator" style="font-size: 1.25rem; color: #16a34a;"></i>
                         <div>
                             <div>ContaPro Cloud</div>
-                            <div style="font-size: 0.73rem; color: #64748b; font-weight: 500;">Acceso para Propietarios y Estudios</div>
                         </div>
                     </a>
                 </div>
