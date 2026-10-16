@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/contaprocompy/public_html/
+    - /bin/cp -rf app config core css database images js views index.php .htaccess $DEPLOYPATH
