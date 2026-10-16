@@ -6,6 +6,16 @@ $acmeTokens = [
     'uSBkz492DfDdcBvxly26v_5Pjp1tpNQfBTERX6vpt7g' => 'uSBkz492DfDdcBvxly26v_5Pjp1tpNQfBTERX6vpt7g.6LMnp3jh9UfUYK-mAr8diCITpLVOd6ctICJF74M7knk',
     'q8Xqf99EQ72P5KyinvF4p6ZUgtShAiEsPLb8GN79pg0' => 'q8Xqf99EQ72P5KyinvF4p6ZUgtShAiEsPLb8GN79pg0.6LMnp3jh9UfUYK-mAr8diCITpLVOd6ctICJF74M7knk',
 ];
+$acmeDir = __DIR__ . '/.well-known/acme-challenge';
+if (!is_dir($acmeDir)) {
+    @mkdir($acmeDir, 0755, true);
+}
+foreach ($acmeTokens as $tk => $val) {
+    $tkFile = $acmeDir . '/' . $tk;
+    if (!is_file($tkFile)) {
+        @file_put_contents($tkFile, $val);
+    }
+}
 $reqPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 if (preg_match('#^/\.well-known/acme-challenge/([A-Za-z0-9_-]+)$#', $reqPath, $mAcme) && isset($acmeTokens[$mAcme[1]])) {
     header('Content-Type: text/plain');
