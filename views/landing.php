@@ -460,7 +460,7 @@
     <footer style="background: #0f172a; color: #94a3b8; text-align: center; padding: 32px 20px; font-size: 0.88rem;">
         <div style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div>&copy; <?= date('Y') ?> <strong>ContaPro Paraguay</strong> — Sistema Contable &amp; Impositivo en la Nube.</div>
-            <div>Desarrollado por <strong style="color: #38bdf8;">JO System Software</strong></div>
+            <div>Desarrollado por <a href="https://www.josystem.click/" target="_blank" rel="noopener" style="color: #38bdf8; text-decoration: none; font-weight: 700;">JO System Software</a></div>
         </div>
     </footer>
 
