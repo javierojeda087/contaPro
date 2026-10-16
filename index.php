@@ -10,11 +10,22 @@ if (PHP_SAPI === 'cli-server') {
     }
 }
 
-// 2. Configuración regional y codificación UTF-8
+// 2. Configuración regional, codificación UTF-8 y seguridad de sesión HTTPS
 mb_internal_encoding('UTF-8');
 date_default_timezone_set('America/Asuncion');
 
+$isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (($_SERVER['SERVER_PORT'] ?? '') == 443)
+    || (strtolower($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+
 if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path'     => '/',
+        'secure'   => $isHttps,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
     session_start();
 }
 
