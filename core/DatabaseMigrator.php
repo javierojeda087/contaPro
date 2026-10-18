@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 8;
+    private const SCHEMA_VERSION = 9;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -42,6 +42,14 @@ class DatabaseMigrator {
             Database::execute("ALTER TABLE `planes` ADD COLUMN `precio_anterior` DECIMAL(15,2) DEFAULT 0 AFTER `max_usuarios`", true);
             $applied[] = 'planes.precio_anterior';
         }
+
+        // Aplicar precio anterior 150.000 y precio actual 140.000 al Plan Básico si aún tiene el valor inicial por defecto
+        Database::execute(
+            "UPDATE `planes`
+             SET `precio_anterior` = 150000, `precio_mensual` = 140000
+             WHERE UPPER(TRIM(`codigo_plan`)) = 'BASICO' AND COALESCE(`precio_anterior`, 0) = 0 AND `precio_mensual` = 150000",
+            true
+        );
 
         // 2. Asegurar tabla propietarios
         Database::execute("
