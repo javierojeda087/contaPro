@@ -293,25 +293,8 @@
             letter-spacing: 0.04em;
             box-shadow: 0 4px 12px rgba(29, 140, 248, 0.35);
         }
-        .badge-oferta-top {
-            position: absolute;
-            top: -13px;
-            left: 24px;
-            background: linear-gradient(135deg, #dc2626 0%, #ea580c 100%);
-            color: #fff;
-            font-size: 0.72rem;
-            font-weight: 800;
-            padding: 5px 13px;
-            border-radius: 99px;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
         .plan-name {
-            font-size: 1.35rem;
+            font-size: 1.38rem;
             font-weight: 800;
             color: #0f172a;
             margin-bottom: 6px;
@@ -324,75 +307,92 @@
         }
         .plan-price-box {
             background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 14px;
-            padding: 16px 18px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 18px 20px;
             margin: 16px 0 22px 0;
         }
         .plan-card.has-discount .plan-price-box {
-            background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
-            border-color: #bbf7d0;
+            background: linear-gradient(180deg, #f0fdf4 0%, #f8fafc 100%);
+            border-color: #86efac;
         }
         .plan-old-price-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 8px;
-            margin-bottom: 4px;
+            gap: 10px;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            border-bottom: 1px dashed #cbd5e1;
             flex-wrap: wrap;
         }
         .plan-old-price {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 6px;
+            font-size: 0.92rem;
+            color: #475569;
+            font-weight: 700;
+        }
+        .plan-old-price del {
+            color: #334155;
+            font-size: 1.22rem;
+            font-weight: 800;
+            text-decoration: line-through;
+            text-decoration-thickness: 2px;
+            text-decoration-color: #64748b;
+            letter-spacing: -0.01em;
+        }
+        .plan-discount-pill {
+            background: #16a34a;
+            color: #ffffff;
+            font-size: 0.74rem;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 99px;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 3px 8px rgba(22, 163, 74, 0.22);
+        }
+        .plan-now-label {
+            display: inline-block;
+            font-size: 0.74rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #15803d;
+            margin-bottom: 3px;
+        }
+        .plan-price {
+            font-size: 2.15rem;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.1;
+            margin: 0;
+            letter-spacing: -0.02em;
+        }
+        .plan-card.has-discount .plan-price {
+            color: #15803d;
+        }
+        .plan-price span {
             font-size: 0.92rem;
             color: #64748b;
             font-weight: 600;
-        }
-        .plan-old-price del {
-            color: #94a3b8;
-            text-decoration: line-through;
-            text-decoration-thickness: 2px;
-            text-decoration-color: #ef4444;
-            font-weight: 700;
-            margin-left: 3px;
-        }
-        .plan-discount-pill {
-            background: #dcfce7;
-            color: #15803d;
-            border: 1px solid #86efac;
-            font-size: 0.72rem;
-            font-weight: 800;
-            padding: 2px 9px;
-            border-radius: 99px;
-            white-space: nowrap;
-        }
-        .plan-now-label {
-            display: block;
-            font-size: 0.72rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #16a34a;
-            margin-bottom: 2px;
-        }
-        .plan-price {
-            font-size: 2.05rem;
-            font-weight: 800;
-            color: #15803d;
-            line-height: 1.15;
-            margin: 0;
-        }
-        .plan-price span {
-            font-size: 0.9rem;
-            color: #64748b;
-            font-weight: 600;
+            letter-spacing: normal;
         }
         .plan-savings-note {
-            margin-top: 6px;
-            font-size: 0.78rem;
+            margin-top: 10px;
+            background: #dcfce7;
+            color: #166534;
+            border-radius: 8px;
+            padding: 5px 10px;
+            font-size: 0.8rem;
             font-weight: 700;
-            color: #15803d;
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 4px;
+            gap: 5px;
         }
         .plan-list {
             list-style: none;
@@ -543,9 +543,6 @@
                     $waPlanUrl = "https://wa.me/595982965515?text=" . rawurlencode($msgPlan);
                 ?>
                 <div class="plan-card <?= $isPopular ? 'popular' : '' ?> <?= $tieneDesc ? 'has-discount' : '' ?>">
-                    <?php if ($tieneDesc): ?>
-                        <div class="badge-oferta-top"><i class="ph ph-tag"></i> Oferta -<?= $pctDesc ?>%</div>
-                    <?php endif; ?>
                     <?php if ($isPopular): ?>
                         <div class="badge-popular">Más elegido</div>
                     <?php endif; ?>
@@ -556,17 +553,19 @@
                     <div class="plan-price-box">
                         <?php if ($tieneDesc): ?>
                             <div class="plan-old-price-row">
-                                <span class="plan-old-price">Antes <del><?= $precioAntFmt ?> Gs</del></span>
-                                <span class="plan-discount-pill">-<?= $pctDesc ?>% OFF</span>
+                                <span class="plan-old-price">Antes: <del><?= $precioAntFmt ?> Gs</del></span>
+                                <span class="plan-discount-pill"><i class="ph ph-tag"></i> -<?= $pctDesc ?>% OFF</span>
                             </div>
-                            <span class="plan-now-label">Ahora</span>
+                            <span class="plan-now-label">Ahora por mes</span>
                         <?php endif; ?>
                         <div class="plan-price">
                             <?= $precioFmt ?> Gs <span>/ mes</span>
                         </div>
                         <?php if ($tieneDesc): ?>
-                            <div class="plan-savings-note">
-                                <i class="ph ph-sparkle"></i> Ahorrás <?= $ahorroFmt ?> Gs cada mes
+                            <div>
+                                <span class="plan-savings-note">
+                                    <i class="ph ph-check-circle"></i> Ahorrás <?= $ahorroFmt ?> Gs cada mes
+                                </span>
                             </div>
                         <?php endif; ?>
                     </div>
