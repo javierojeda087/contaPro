@@ -1136,6 +1136,7 @@ CREATE TABLE `planes` (
   `nombre_plan` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `max_contribuyentes` int NOT NULL DEFAULT '5',
   `max_usuarios` int NOT NULL DEFAULT '2',
+  `precio_anterior` decimal(15,2) DEFAULT '0.00',
   `precio_mensual` decimal(15,2) DEFAULT '0.00',
   `descripcion` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `estado` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT 'A',
@@ -1150,7 +1151,7 @@ CREATE TABLE `planes` (
 
 LOCK TABLES `planes` WRITE;
 /*!40000 ALTER TABLE `planes` DISABLE KEYS */;
-INSERT INTO `planes` VALUES (1,'BASICO','Plan Básico',5,2,150000.00,'Ideal para contadores independientes o pequeños negocios (hasta 5 contribuyentes y 2 usuarios)','A',1),(2,'MEDIO','Plan Medio',10,5,250000.00,'Para estudios contables en crecimiento (hasta 10 contribuyentes y 5 usuarios)','A',2),(3,'PRO','Plan Pro',30,15,450000.00,'Para estudios contables consolidados (hasta 30 contribuyentes y 15 usuarios)','A',3),(4,'ILIMITADO','Plan Corporativo / SuperAdmin',9999,999,0.00,'Plan sin restricciones para administración general','A',4);
+INSERT INTO `planes` VALUES (1,'BASICO','Plan Básico',5,2,0.00,150000.00,'Ideal para contadores independientes o pequeños negocios (hasta 5 contribuyentes y 2 usuarios)','A',1),(2,'MEDIO','Plan Medio',10,5,0.00,250000.00,'Para estudios contables en crecimiento (hasta 10 contribuyentes y 5 usuarios)','A',2),(3,'PRO','Plan Pro',30,15,0.00,450000.00,'Para estudios contables consolidados (hasta 30 contribuyentes y 15 usuarios)','A',3),(4,'ILIMITADO','Plan Corporativo / SuperAdmin',9999,999,0.00,0.00,'Plan sin restricciones para administración general','A',4);
 /*!40000 ALTER TABLE `planes` ENABLE KEYS */;
 UNLOCK TABLES;
 

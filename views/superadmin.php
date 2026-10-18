@@ -576,7 +576,8 @@
                                     <th>Nombre del Plan</th>
                                     <th class="text-center">Máx. Contribuyentes</th>
                                     <th class="text-center">Máx. Usuarios</th>
-                                    <th class="text-end">Precio Mensual (Gs)</th>
+                                    <th class="text-end">Precio Anterior</th>
+                                    <th class="text-end">Precio Actual (Gs)</th>
                                     <th>Descripción</th>
                                     <th class="text-end pe-4">Acción</th>
                                 </tr>
@@ -638,7 +639,7 @@
                         </div>
                         <div>
                             <h5 class="modal-title fw-bold m-0 text-dark" id="modalPlanTitle" style="font-size: 1rem;">Configurar Plan Comercial</h5>
-                            <div class="text-muted" style="font-size: 0.75rem;">Defina límites de uso y tarifa mensual</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">Defina límites de uso, precio anterior tachado y tarifa mensual</div>
                         </div>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -662,9 +663,30 @@
                             <label class="form-label fw-bold small text-primary">Máximo de Usuarios</label>
                             <input type="number" id="planMaxUsuarios" class="form-control fw-bold" min="1" value="2">
                         </div>
-                        <div class="col-md-12">
-                            <label class="form-label fw-bold small">Precio Mensual (Gs)</label>
-                            <input type="number" id="planPrecio" class="form-control fw-bold" value="150000">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted" title="Si es mayor al precio actual, se mostrará tachado como 'Antes' en la web">
+                                Precio Anterior / Tachado (Gs)
+                            </label>
+                            <input type="number" id="planPrecioAnterior" class="form-control fw-bold" min="0" step="1000" value="0" placeholder="Ej: 150000" oninput="actualizarPreviewDescuentoPlan()">
+                            <div class="form-text" style="font-size: 0.71rem;">Dejar en 0 si no tiene descuento</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-success">
+                                Precio Actual / Oferta (Gs)
+                            </label>
+                            <input type="number" id="planPrecio" class="form-control fw-bold border-success" min="0" step="1000" value="150000" placeholder="Ej: 140000" oninput="actualizarPreviewDescuentoPlan()">
+                            <div class="form-text" style="font-size: 0.71rem;">Precio mensual final a cobrar</div>
+                        </div>
+                        <div class="col-12" id="planPreviewDescuentoWrap" style="display: none;">
+                            <div style="background: #f0fdf4; border: 1px dashed #86efac; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                                <div class="small">
+                                    <span class="text-muted fw-semibold">Vista previa en Web:</span>
+                                    <span id="planPreviewAntes" style="text-decoration: line-through; color: #94a3b8; font-weight: 700; margin-left: 6px;">Antes 150.000 Gs</span>
+                                    <span class="mx-1">→</span>
+                                    <strong id="planPreviewAhora" style="color: #15803d; font-size: 0.95rem;">Ahora 140.000 Gs / mes</strong>
+                                </div>
+                                <span id="planPreviewBadge" class="sa-pill sa-pill-green" style="font-size: 0.73rem;">¡Ahorro Gs. 10.000!</span>
+                            </div>
                         </div>
                         <div class="col-md-12">
                             <label class="form-label fw-bold small">Descripción</label>
@@ -985,7 +1007,15 @@
 
                 const maxC = Number(p.max_contribuyentes) >= 9999 ? 'Ilimitado' : p.max_contribuyentes;
                 const maxU = Number(p.max_usuarios) >= 999 ? 'Ilimitado' : p.max_usuarios;
+                const precioAnt = Number(p.precio_anterior || 0);
                 const precio = Number(p.precio_mensual || 0);
+                const tieneDescuento = precioAnt > precio && precio > 0;
+                const pctOff = tieneDescuento ? Math.round(((precioAnt - precio) / precioAnt) * 100) : 0;
+
+                const htmlPrecioAnt = tieneDescuento
+                    ? `<span style="text-decoration: line-through; color: #94a3b8; font-weight: 700;">Gs. ${precioAnt.toLocaleString('es-PY')}</span>
+                       <div><span class="sa-pill sa-pill-amber" style="font-size: 0.68rem; padding: 2px 7px;">-${pctOff}% OFF</span></div>`
+                    : `<span class="text-muted small">-</span>`;
 
                 return `
                 <tr>
@@ -1004,7 +1034,10 @@
                             <i class="ph ph-users"></i> ${escHtml(maxU)}
                         </span>
                     </td>
-                    <td class="text-end fw-bold" style="color: #0f172a; font-size: 0.92rem;">
+                    <td class="text-end">
+                        ${htmlPrecioAnt}
+                    </td>
+                    <td class="text-end fw-bold" style="color: ${tieneDescuento ? '#15803d' : '#0f172a'}; font-size: 0.92rem;">
                         ${precio > 0 ? 'Gs. ' + precio.toLocaleString('es-PY') : '<span class="text-muted fw-semibold">Sin cargo</span>'}
                     </td>
                     <td class="text-muted" style="font-size: 0.82rem; max-width: 360px;">${escHtml(p.descripcion || '')}</td>
@@ -1205,14 +1238,33 @@
             `).join('');
         }
 
+        function actualizarPreviewDescuentoPlan() {
+            const ant = Number(document.getElementById('planPrecioAnterior')?.value || 0);
+            const act = Number(document.getElementById('planPrecio')?.value || 0);
+            const wrap = document.getElementById('planPreviewDescuentoWrap');
+            if (!wrap) return;
+            if (ant > act && act > 0) {
+                const ahorro = ant - act;
+                const pct = Math.round((ahorro / ant) * 100);
+                document.getElementById('planPreviewAntes').textContent = `Antes ${ant.toLocaleString('es-PY')} Gs`;
+                document.getElementById('planPreviewAhora').textContent = `Ahora ${act.toLocaleString('es-PY')} Gs / mes`;
+                document.getElementById('planPreviewBadge').textContent = `¡Ahorro Gs. ${ahorro.toLocaleString('es-PY')} (-${pct}%)!`;
+                wrap.style.display = '';
+            } else {
+                wrap.style.display = 'none';
+            }
+        }
+
         function abrirModalPlan() {
             document.getElementById('planId').value = '';
             document.getElementById('planCodigo').value = '';
             document.getElementById('planNombre').value = '';
             document.getElementById('planMaxContrib').value = 5;
             document.getElementById('planMaxUsuarios').value = 2;
+            document.getElementById('planPrecioAnterior').value = 0;
             document.getElementById('planPrecio').value = 150000;
             document.getElementById('planDescripcion').value = '';
+            actualizarPreviewDescuentoPlan();
             modalPlanObj.show();
         }
 
@@ -1224,8 +1276,10 @@
             document.getElementById('planNombre').value = p.nombre_plan || '';
             document.getElementById('planMaxContrib').value = p.max_contribuyentes;
             document.getElementById('planMaxUsuarios').value = p.max_usuarios;
-            document.getElementById('planPrecio').value = p.precio_mensual || 0;
+            document.getElementById('planPrecioAnterior').value = Number(p.precio_anterior || 0);
+            document.getElementById('planPrecio').value = Number(p.precio_mensual || 0);
             document.getElementById('planDescripcion').value = p.descripcion || '';
+            actualizarPreviewDescuentoPlan();
             modalPlanObj.show();
         }
 
@@ -1236,6 +1290,7 @@
                 nombrePlan: document.getElementById('planNombre').value,
                 maxContribuyentes: document.getElementById('planMaxContrib').value,
                 maxUsuarios: document.getElementById('planMaxUsuarios').value,
+                precioAnterior: document.getElementById('planPrecioAnterior').value,
                 precioMensual: document.getElementById('planPrecio').value,
                 descripcion: document.getElementById('planDescripcion').value
             });

@@ -251,51 +251,148 @@
         }
         .planes-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-            gap: 26px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 28px;
+            align-items: stretch;
         }
         .plan-card {
             background: #ffffff;
             border: 1.5px solid #cbd5e1;
-            border-radius: 18px;
+            border-radius: 20px;
             padding: 32px 28px;
             display: flex;
             flex-direction: column;
             position: relative;
-            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.05);
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+        }
+        .plan-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 42px rgba(15, 23, 42, 0.1);
+            border-color: #94a3b8;
         }
         .plan-card.popular {
-            border-color: #1d8cf8;
-            box-shadow: 0 18px 40px rgba(29, 140, 248, 0.15);
+            border: 2px solid #1d8cf8;
+            box-shadow: 0 18px 40px rgba(29, 140, 248, 0.16);
+        }
+        .plan-card.popular:hover {
+            border-color: #0284c7;
+            box-shadow: 0 22px 48px rgba(29, 140, 248, 0.24);
         }
         .badge-popular {
             position: absolute;
-            top: -12px;
+            top: -13px;
             right: 24px;
-            background: #1d8cf8;
+            background: linear-gradient(135deg, #1d8cf8 0%, #0284c7 100%);
             color: #fff;
             font-size: 0.72rem;
             font-weight: 800;
-            padding: 4px 12px;
+            padding: 5px 14px;
             border-radius: 99px;
             text-transform: uppercase;
+            letter-spacing: 0.04em;
+            box-shadow: 0 4px 12px rgba(29, 140, 248, 0.35);
+        }
+        .badge-oferta-top {
+            position: absolute;
+            top: -13px;
+            left: 24px;
+            background: linear-gradient(135deg, #dc2626 0%, #ea580c 100%);
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 800;
+            padding: 5px 13px;
+            border-radius: 99px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
         }
         .plan-name {
-            font-size: 1.3rem;
+            font-size: 1.35rem;
             font-weight: 800;
             color: #0f172a;
             margin-bottom: 6px;
         }
+        .plan-desc {
+            font-size: 0.87rem;
+            color: #64748b;
+            line-height: 1.45;
+            min-height: 40px;
+        }
+        .plan-price-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 16px 18px;
+            margin: 16px 0 22px 0;
+        }
+        .plan-card.has-discount .plan-price-box {
+            background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
+            border-color: #bbf7d0;
+        }
+        .plan-old-price-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 4px;
+            flex-wrap: wrap;
+        }
+        .plan-old-price {
+            font-size: 0.92rem;
+            color: #64748b;
+            font-weight: 600;
+        }
+        .plan-old-price del {
+            color: #94a3b8;
+            text-decoration: line-through;
+            text-decoration-thickness: 2px;
+            text-decoration-color: #ef4444;
+            font-weight: 700;
+            margin-left: 3px;
+        }
+        .plan-discount-pill {
+            background: #dcfce7;
+            color: #15803d;
+            border: 1px solid #86efac;
+            font-size: 0.72rem;
+            font-weight: 800;
+            padding: 2px 9px;
+            border-radius: 99px;
+            white-space: nowrap;
+        }
+        .plan-now-label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #16a34a;
+            margin-bottom: 2px;
+        }
         .plan-price {
-            font-size: 2rem;
+            font-size: 2.05rem;
             font-weight: 800;
             color: #15803d;
-            margin: 12px 0 18px 0;
+            line-height: 1.15;
+            margin: 0;
         }
         .plan-price span {
             font-size: 0.9rem;
             color: #64748b;
-            font-weight: 500;
+            font-weight: 600;
+        }
+        .plan-savings-note {
+            margin-top: 6px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #15803d;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
         .plan-list {
             list-style: none;
@@ -306,14 +403,15 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 11px;
             font-size: 0.92rem;
             color: #334155;
             font-weight: 500;
         }
         .plan-list li i {
             color: #16a34a;
-            font-size: 1.15rem;
+            font-size: 1.18rem;
+            flex-shrink: 0;
         }
 
         /* Botón flotante WhatsApp */
@@ -431,19 +529,48 @@
                 <?php foreach (($planes ?? []) as $idx => $pl):
                     if (($pl['codigo_plan'] ?? '') === 'ILIMITADO') continue;
                     $isPopular = ($pl['codigo_plan'] ?? '') === 'MEDIO';
-                    $precioFmt = number_format((float)($pl['precio_mensual'] ?? 0), 0, ',', '.');
-                    $msgPlan = "¡Hola! Estoy interesado en el " . ($pl['nombre_plan'] ?? 'Plan') . " de ContaPro ({$precioFmt} Gs/mes - hasta " . (int)$pl['max_contribuyentes'] . " contribuyentes y " . (int)$pl['max_usuarios'] . " usuarios). ¿Me podrían brindar más información para habilitar mi cuenta?";
+                    $precioActual = (float)($pl['precio_mensual'] ?? 0);
+                    $precioAnt    = (float)($pl['precio_anterior'] ?? 0);
+                    $tieneDesc    = ($precioAnt > $precioActual && $precioActual > 0);
+                    $ahorroGs     = $tieneDesc ? ($precioAnt - $precioActual) : 0;
+                    $pctDesc      = $tieneDesc ? (int)round(($ahorroGs / $precioAnt) * 100) : 0;
+
+                    $precioFmt    = number_format($precioActual, 0, ',', '.');
+                    $precioAntFmt = number_format($precioAnt, 0, ',', '.');
+                    $ahorroFmt    = number_format($ahorroGs, 0, ',', '.');
+
+                    $msgPlan = "¡Hola! Estoy interesado en el " . ($pl['nombre_plan'] ?? 'Plan') . " de ContaPro (" . ($tieneDesc ? "Oferta {$precioFmt} Gs/mes, antes {$precioAntFmt} Gs" : "{$precioFmt} Gs/mes") . " - hasta " . (int)$pl['max_contribuyentes'] . " contribuyentes y " . (int)$pl['max_usuarios'] . " usuarios). ¿Me podrían brindar más información para habilitar mi cuenta?";
                     $waPlanUrl = "https://wa.me/595982965515?text=" . rawurlencode($msgPlan);
                 ?>
-                <div class="plan-card <?= $isPopular ? 'popular' : '' ?>">
+                <div class="plan-card <?= $isPopular ? 'popular' : '' ?> <?= $tieneDesc ? 'has-discount' : '' ?>">
+                    <?php if ($tieneDesc): ?>
+                        <div class="badge-oferta-top"><i class="ph ph-tag"></i> Oferta -<?= $pctDesc ?>%</div>
+                    <?php endif; ?>
                     <?php if ($isPopular): ?>
                         <div class="badge-popular">Más elegido</div>
                     <?php endif; ?>
+
                     <div class="plan-name"><?= htmlspecialchars($pl['nombre_plan']) ?></div>
-                    <div style="font-size: 0.86rem; color: #64748b;"><?= htmlspecialchars($pl['descripcion'] ?? '') ?></div>
-                    <div class="plan-price">
-                        <?= $precioFmt ?> Gs <span>/ mes</span>
+                    <div class="plan-desc"><?= htmlspecialchars($pl['descripcion'] ?? '') ?></div>
+
+                    <div class="plan-price-box">
+                        <?php if ($tieneDesc): ?>
+                            <div class="plan-old-price-row">
+                                <span class="plan-old-price">Antes <del><?= $precioAntFmt ?> Gs</del></span>
+                                <span class="plan-discount-pill">-<?= $pctDesc ?>% OFF</span>
+                            </div>
+                            <span class="plan-now-label">Ahora</span>
+                        <?php endif; ?>
+                        <div class="plan-price">
+                            <?= $precioFmt ?> Gs <span>/ mes</span>
+                        </div>
+                        <?php if ($tieneDesc): ?>
+                            <div class="plan-savings-note">
+                                <i class="ph ph-sparkle"></i> Ahorrás <?= $ahorroFmt ?> Gs cada mes
+                            </div>
+                        <?php endif; ?>
                     </div>
+
                     <ul class="plan-list">
                         <li><i class="ph ph-check-circle"></i> Hasta <strong><?= (int)$pl['max_contribuyentes'] ?> Contribuyentes / Empresas</strong></li>
                         <li><i class="ph ph-check-circle"></i> Hasta <strong><?= (int)$pl['max_usuarios'] ?> Usuarios</strong> por cuenta</li>

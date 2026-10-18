@@ -77,7 +77,8 @@ class SuperAdminController {
         $nombre     = trim((string)($_POST['nombrePlan'] ?? ''));
         $maxContrib = max(1, (int)($_POST['maxContribuyentes'] ?? 5));
         $maxUsers   = max(1, (int)($_POST['maxUsuarios'] ?? 2));
-        $precio     = (float)($_POST['precioMensual'] ?? 0);
+        $precioAnt  = max(0, (float)($_POST['precioAnterior'] ?? 0));
+        $precio     = max(0, (float)($_POST['precioMensual'] ?? 0));
         $desc       = trim((string)($_POST['descripcion'] ?? ''));
 
         if ($nombre === '') {
@@ -86,16 +87,16 @@ class SuperAdminController {
 
         if ($idPlan > 0) {
             Database::update(
-                "UPDATE planes SET codigo_plan = ?, nombre_plan = ?, max_contribuyentes = ?, max_usuarios = ?, precio_mensual = ?, descripcion = ?
+                "UPDATE planes SET codigo_plan = ?, nombre_plan = ?, max_contribuyentes = ?, max_usuarios = ?, precio_anterior = ?, precio_mensual = ?, descripcion = ?
                  WHERE id_plan = ?",
-                [$codigo, $nombre, $maxContrib, $maxUsers, $precio, $desc, $idPlan]
+                [$codigo, $nombre, $maxContrib, $maxUsers, $precioAnt, $precio, $desc, $idPlan]
             );
             return ['status' => 'success', 'message' => 'Plan actualizado exitosamente.'];
         } else {
             Database::insertGetId(
-                "INSERT INTO planes (codigo_plan, nombre_plan, max_contribuyentes, max_usuarios, precio_mensual, descripcion, estado, orden)
-                 VALUES (?, ?, ?, ?, ?, ?, 'A', 10)",
-                [$codigo, $nombre, $maxContrib, $maxUsers, $precio, $desc]
+                "INSERT INTO planes (codigo_plan, nombre_plan, max_contribuyentes, max_usuarios, precio_anterior, precio_mensual, descripcion, estado, orden)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, 'A', 10)",
+                [$codigo, $nombre, $maxContrib, $maxUsers, $precioAnt, $precio, $desc]
             );
             return ['status' => 'success', 'message' => 'Nuevo plan registrado exitosamente.'];
         }

@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 7;
+    private const SCHEMA_VERSION = 8;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -29,6 +29,7 @@ class DatabaseMigrator {
               `nombre_plan` VARCHAR(100) NOT NULL,
               `max_contribuyentes` INT NOT NULL DEFAULT 5,
               `max_usuarios` INT NOT NULL DEFAULT 2,
+              `precio_anterior` DECIMAL(15,2) DEFAULT 0,
               `precio_mensual` DECIMAL(15,2) DEFAULT 0,
               `descripcion` VARCHAR(255) DEFAULT NULL,
               `estado` VARCHAR(1) DEFAULT 'A',
@@ -36,6 +37,11 @@ class DatabaseMigrator {
               PRIMARY KEY (`id_plan`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ", true);
+
+        if (!self::columnExists('planes', 'precio_anterior')) {
+            Database::execute("ALTER TABLE `planes` ADD COLUMN `precio_anterior` DECIMAL(15,2) DEFAULT 0 AFTER `max_usuarios`", true);
+            $applied[] = 'planes.precio_anterior';
+        }
 
         // 2. Asegurar tabla propietarios
         Database::execute("
