@@ -126,10 +126,24 @@
                 ═══════════════════════════════════════════════════════════ -->
                 <div id="panelPermisos" style="display: none;">
                     <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; background: #ffffff;">
-                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                             <label for="permGrupoSelect" style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">Grupo a configurar:</label>
                             <select id="permGrupoSelect" onchange="renderPermisosTable()" style="border: 1.5px solid #16a34a; border-radius: 8px; padding: 0.5rem 1rem; font-size: 0.92rem; font-weight: 700; color: #0f172a; background: #f0fdf4;">
                             </select>
+
+                            <select id="filterModuloPermSelect" onchange="filtrarPermisosTabla()" style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.48rem 0.85rem; font-size: 0.86rem; font-weight: 600; color: #334155; background: #ffffff;">
+                                <option value="">Todos los módulos</option>
+                                <option value="AD">AD - Administración</option>
+                                <option value="CO">CO - Contabilidad</option>
+                            </select>
+
+                            <!-- Buscador de Pantallas / Formularios -->
+                            <div style="position: relative; width: 320px; max-width: 100%;">
+                                <i class="ph ph-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 1.05rem;"></i>
+                                <input type="text" id="searchPermisoInput" oninput="filtrarPermisosTabla()" placeholder="Buscar pantalla (ej: Clasificación de Gastos)..." style="padding-left: 36px; padding-right: 30px; border-radius: 8px; border: 1px solid #cbd5e1; width: 100%; font-size: 0.86rem; height: 37px;" autocomplete="off">
+                                <i class="ph ph-x" id="clearPermisoSearchBtn" onclick="limpiarBusquedaPermisos()" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; cursor: pointer; display: none;" title="Limpiar búsqueda"></i>
+                            </div>
+
                             <button type="button" onclick="marcarTodosPermisos(true)" style="border: 1px solid #cbd5e1; background: #ffffff; color: #334155; padding: 0.45rem 0.85rem; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer;">
                                 Marcar Todo
                             </button>
@@ -155,6 +169,7 @@
                                     <th style="padding: 0.8rem 1rem; text-align: center;">Insertar</th>
                                     <th style="padding: 0.8rem 1rem; text-align: center;">Actualizar</th>
                                     <th style="padding: 0.8rem 1rem; text-align: center;">Borrar</th>
+                                    <th style="padding: 0.8rem 1rem; text-align: center;">Acción Rápida</th>
                                 </tr>
                             </thead>
                             <tbody id="permisosTableBody">
@@ -399,6 +414,10 @@
             }
         }
 
+        function normalizarTexto(str) {
+            return (str || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+        }
+
         function renderPermisosTable() {
             const tbody = document.getElementById('permisosTableBody');
             const codGrupo = (document.getElementById('permGrupoSelect').value || 'CONTA').toUpperCase();
@@ -426,8 +445,10 @@
                     ? `<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:5px;font-weight:700;font-size:0.75rem;">AD - Administración</span>`
                     : `<span style="background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:5px;font-weight:700;font-size:0.75rem;">CO - Contabilidad</span>`;
 
+                const searchKey = normalizarTexto(`${nomForma} ${titulo} ${codModulo === 'AD' ? 'ADMINISTRACION' : 'CONTABILIDAD'}`);
+
                 html += `
-                    <tr class="perm-row" data-forma="${nomForma}" data-modulo="${codModulo}" data-titulo="${titulo.replace(/"/g, '&quot;')}" style="border-bottom: 1px solid #f1f5f9; ${isOnlyConadm ? 'background:#f0fdf4;' : ''}">
+                    <tr class="perm-row" data-forma="${nomForma}" data-modulo="${codModulo}" data-titulo="${titulo.replace(/"/g, '&quot;')}" data-search="${searchKey.replace(/"/g, '&quot;')}" style="border-bottom: 1px solid #f1f5f9; ${isOnlyConadm ? 'background:#f0fdf4;' : ''}">
                         <td style="padding: 0.7rem 1.25rem;">${modBadge}</td>
                         <td style="padding: 0.7rem 1.25rem; font-family: monospace; font-weight: 700; color: #334155;">${nomForma}</td>
                         <td style="padding: 0.7rem 1.25rem; font-weight: 600; color: #0f172a;">
@@ -449,15 +470,64 @@
                         <td style="padding: 0.7rem 1rem; text-align: center;">
                             <input type="checkbox" class="chk-borrar" ${borrar ? 'checked' : ''} ${isOnlyConadm ? 'disabled' : ''} style="width:17px;height:17px;accent-color:#16a34a;cursor:pointer;">
                         </td>
+                        <td style="padding: 0.7rem 1rem; text-align: center; white-space: nowrap;">
+                            ${isOnlyConadm
+                                ? `<span style="font-size:0.75rem;color:#16a34a;font-weight:700;"><i class="ph ph-lock-key"></i> Fijo</span>`
+                                : `<button type="button" onclick="setFilaPermiso('${nomForma}', false)" title="Quitar todos los accesos de esta pantalla" style="border:1px solid #fecaca;background:#fef2f2;color:#dc2626;padding:3px 8px;border-radius:6px;font-size:0.75rem;font-weight:700;cursor:pointer;margin-right:4px;">
+                                       Quitar
+                                   </button>
+                                   <button type="button" onclick="setFilaPermiso('${nomForma}', true)" title="Habilitar todos los accesos de esta pantalla" style="border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;padding:3px 8px;border-radius:6px;font-size:0.75rem;font-weight:700;cursor:pointer;">
+                                       Dar todo
+                                   </button>`
+                            }
+                        </td>
                     </tr>
                 `;
             });
 
             tbody.innerHTML = html;
+            filtrarPermisosTabla();
+        }
+
+        function filtrarPermisosTabla() {
+            const input = document.getElementById('searchPermisoInput');
+            const clearBtn = document.getElementById('clearPermisoSearchBtn');
+            const modFilter = (document.getElementById('filterModuloPermSelect').value || '').toUpperCase();
+            const term = normalizarTexto(input ? input.value : '');
+
+            if (clearBtn) {
+                clearBtn.style.display = (input && input.value.trim() !== '') ? 'block' : 'none';
+            }
+
+            document.querySelectorAll('.perm-row').forEach(row => {
+                const rowMod = (row.getAttribute('data-modulo') || '').toUpperCase();
+                const rowSearch = row.getAttribute('data-search') || '';
+                const matchMod = !modFilter || rowMod === modFilter;
+                const matchTerm = !term || rowSearch.includes(term);
+                row.style.display = (matchMod && matchTerm) ? '' : 'none';
+            });
+        }
+
+        function limpiarBusquedaPermisos() {
+            const input = document.getElementById('searchPermisoInput');
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+            filtrarPermisosTabla();
+        }
+
+        function setFilaPermiso(nomForma, estado) {
+            const row = document.querySelector(`.perm-row[data-forma="${nomForma}"]`);
+            if (!row || nomForma === 'BSGRPUSU') return;
+            row.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+                if (!chk.disabled) chk.checked = estado;
+            });
         }
 
         function marcarTodosPermisos(estado) {
             document.querySelectorAll('.perm-row').forEach(row => {
+                if (row.style.display === 'none') return; // Solo aplica a las filas visibles según el filtro actual
                 const forma = row.getAttribute('data-forma');
                 if (forma === 'BSGRPUSU') return;
                 row.querySelectorAll('input[type="checkbox"]').forEach(chk => {
