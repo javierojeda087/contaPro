@@ -10,7 +10,7 @@ class MenuService {
     private static array $FORMAS_EXCLUIDAS = [
         'PVFACTUR', 'COFACTUR', 'CMORDCOM', 'CMCORDCO', 'CMCONDIC', 'STTRASLA', 'STINVENT',
         'CCRECIBO', 'CCCOBROS', 'CCCOBROA', 'CCCAJASV', 'CCHABCAJ', 'CCCUENTA', 'CCDEPOSI',
-        'CCEXTRAC', 'CCLSTREC', 'CCRENDIC', 'CPPAGOSP', 'CPPAGOSA', 'BSGRPUSU',
+        'CCEXTRAC', 'CCLSTREC', 'CCRENDIC', 'CPPAGOSP', 'CPPAGOSA',
         'BSTIPCOM', 'BSSERCOM', 'BSGRUPOS', 'BSEMPRES'
     ];
 
@@ -25,6 +25,10 @@ class MenuService {
 
         $propId = TenantContext::idPropietario();
         $cleanUser = strtoupper(trim($usuario));
+        $userGrupo = strtoupper(trim((string)(Database::queryForValue(
+            "SELECT COALESCE(NULLIF(TRIM(cod_grupo), ''), 'CONTA') FROM usuarios WHERE id_propietario = ? AND UPPER(TRIM(cod_usuario)) = ? LIMIT 1",
+            [$propId, $cleanUser]
+        ) ?? TenantContext::grupo())));
 
         $sql = "SELECT m.cod_modulo,
                        m.descripcion AS modulo_desc,
@@ -68,11 +72,14 @@ class MenuService {
                               ON f.id_propietario = m.id_propietario
                              AND UPPER(TRIM(a.nom_forma)) = UPPER(TRIM(f.nom_forma))
                             WHERE m.id_propietario = 1
-                              AND UPPER(TRIM(a.cod_grupo)) = 'CONTA'
+                              AND UPPER(TRIM(a.cod_grupo)) = ?
                               AND (a.mostrar_en_menu IS NULL OR UPPER(TRIM(a.mostrar_en_menu)) IN ('S','1','A'))
                               AND (m.activo IS NULL OR UPPER(TRIM(m.activo)) IN ('S','1','A'))
                             ORDER BY m.orden_menu, f.orden_en_menu, a.item_menu";
-            $rows = Database::queryForList($sqlFallback);
+            $rows = Database::queryForList($sqlFallback, [$userGrupo]);
+            if (empty($rows)) {
+                $rows = Database::queryForList($sqlFallback, ['CONTA']);
+            }
         }
 
         $modulosMap = [];
@@ -83,6 +90,10 @@ class MenuService {
 
             $nomForma = strtoupper(trim((string)($row['nom_forma'] ?? '')));
             if ($nomForma === '' || in_array($nomForma, self::$FORMAS_EXCLUIDAS, true)) {
+                continue;
+            }
+            // Solo el grupo CONADM tiene acceso al formulario Accesos Grupos (BSGRPUSU)
+            if ($nomForma === 'BSGRPUSU' && $userGrupo !== 'CONADM') {
                 continue;
             }
 
@@ -125,6 +136,37 @@ class MenuService {
                 default:
                     $modulosMap[$codModulo]['definiciones'][] = $acceso;
                     break;
+            }
+        }
+
+        // Asegurar acceso a Accesos Grupos (BSGRPUSU) exclusivamente si el usuario pertenece al grupo CONADM
+        if ($userGrupo === 'CONADM') {
+            if (!isset($modulosMap['AD'])) {
+                $modulosMap['AD'] = [
+                    'codModulo'    => 'AD',
+                    'descripcion'  => 'ADMINISTRACION',
+                    'nombreImagen' => 'ph-buildings',
+                    'definiciones' => [],
+                    'movimientos'  => [],
+                    'consultas'    => [],
+                    'reportes'     => [],
+                ];
+            }
+            $hasBsgrpusu = false;
+            foreach ($modulosMap['AD']['definiciones'] as $defItem) {
+                if (($defItem['nomForma'] ?? '') === 'BSGRPUSU') {
+                    $hasBsgrpusu = true;
+                    break;
+                }
+            }
+            if (!$hasBsgrpusu) {
+                $modulosMap['AD']['definiciones'][] = [
+                    'nomForma' => 'BSGRPUSU',
+                    'itemMenu' => 'Accesos Grupos',
+                    'tipo'     => 'D',
+                    'titulo'   => 'Accesos Grupos',
+                    'route'    => 'accesos_grupos',
+                ];
             }
         }
 

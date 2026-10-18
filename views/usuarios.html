@@ -658,8 +658,11 @@
                 document.getElementById('origCodUsuario').value = '';
                 clearPersonaSelection();
                 
-                // Por defecto grupo = CONTA
-                document.getElementById('codGrupo').value = 'CONTA';
+                // Regla: Todos los usuarios al crear pertenecen al grupo CONTA
+                const selGrupo = document.getElementById('codGrupo');
+                selGrupo.value = 'CONTA';
+                selGrupo.disabled = true;
+                selGrupo.style.backgroundColor = '#f1f5f9';
 
                 // Clave requerida al crear
                 document.getElementById('clave').required = true;
@@ -711,8 +714,12 @@
                 document.getElementById('origCodUsuario').value = u.codUsuario || u.alias;
 
                 // Cargar datos básicos de usuario
+                const codeUp = (u.codUsuario || u.alias || '').toUpperCase();
                 document.getElementById('alias').value = u.alias || u.codUsuario || '';
-                document.getElementById('codGrupo').value = u.codGrupo || 'CONTA';
+                const selGrupo = document.getElementById('codGrupo');
+                selGrupo.value = codeUp === 'CONTA' ? 'CONADM' : (u.codGrupo || 'CONTA');
+                selGrupo.disabled = true;
+                selGrupo.style.backgroundColor = '#f1f5f9';
                 document.getElementById('esAdmin').checked = (u.esAdmin === 'S' || u.esAdmin === 'true');
 
                 // Clave opcional al editar

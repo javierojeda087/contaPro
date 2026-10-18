@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 5;
+    private const SCHEMA_VERSION = 6;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -182,10 +182,64 @@ class DatabaseMigrator {
             true
         );
 
+        // Registrar formulario BSGRPUSU (Accesos Grupos) en formas y dar acceso EXCLUSIVAMENTE a CONADM
+        Database::execute(
+            "INSERT INTO `formas` (`id_propietario`, `cod_modulo`, `nom_forma`, `titulo`, `mostrar_en_menu`, `tipo`, `orden_en_menu`)
+             SELECT DISTINCT p.id_prop, 'AD', 'BSGRPUSU', 'Accesos Grupos', 'S', 'D', 2
+             FROM (
+                 SELECT `id_propietario` AS id_prop FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop FROM `formas`
+                 UNION
+                 SELECT 1 AS id_prop
+             ) p
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM `formas` f
+                 WHERE f.`id_propietario` = p.id_prop AND UPPER(TRIM(f.`nom_forma`)) = 'BSGRPUSU'
+             )",
+            true
+        );
+
+        Database::execute(
+            "INSERT INTO `accesos_grupos` (
+                 `id_propietario`, `cod_grupo`, `cod_modulo`, `nom_forma`,
+                 `puede_insertar`, `puede_borrar`, `puede_actualizar`, `puede_consultar`,
+                 `item_menu`, `mostrar_en_menu`
+             )
+             SELECT DISTINCT p.id_prop, 'CONADM', 'AD', 'BSGRPUSU', 'S', 'S', 'S', 'S', 'Accesos Grupos', 'S'
+             FROM (
+                 SELECT `id_propietario` AS id_prop FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop FROM `grupos_usuarios`
+                 UNION
+                 SELECT 1 AS id_prop
+             ) p
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM `accesos_grupos` x
+                 WHERE x.`id_propietario` = p.id_prop
+                   AND UPPER(TRIM(x.`cod_grupo`)) = 'CONADM'
+                   AND UPPER(TRIM(x.`nom_forma`)) = 'BSGRPUSU'
+             )",
+            true
+        );
+
+        // Asegurar que ningún otro grupo distinto de CONADM tenga BSGRPUSU en accesos_grupos
+        Database::execute(
+            "DELETE FROM `accesos_grupos` WHERE UPPER(TRIM(`nom_forma`)) = 'BSGRPUSU' AND UPPER(TRIM(`cod_grupo`)) <> 'CONADM'",
+            true
+        );
+
         Database::execute(
             "UPDATE `usuarios`
              SET `cod_grupo` = 'CONADM'
              WHERE UPPER(TRIM(`cod_usuario`)) = 'CONTA' AND (UPPER(TRIM(COALESCE(`cod_grupo`, ''))) <> 'CONADM')",
+            true
+        );
+
+        Database::execute(
+            "UPDATE `usuarios`
+             SET `cod_grupo` = 'CONTA'
+             WHERE UPPER(TRIM(`cod_usuario`)) <> 'CONTA' AND (`cod_grupo` IS NULL OR TRIM(`cod_grupo`) = '')",
             true
         );
 

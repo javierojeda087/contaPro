@@ -50,6 +50,31 @@ class AdminController {
         return str_contains($r, '-') ? trim(explode('-', $r)[0]) : $r;
     }
 
+    private static function isConadm(): bool {
+        if (!TenantContext::check()) return false;
+        $user = strtoupper(trim(TenantContext::usuario()));
+        if ($user === 'CONTA') return true;
+        $propId = TenantContext::idPropietario();
+        $dbGrupo = strtoupper(trim((string)(Database::queryForValue(
+            "SELECT cod_grupo FROM usuarios WHERE id_propietario = ? AND UPPER(TRIM(cod_usuario)) = ? LIMIT 1",
+            [$propId, $user]
+        ) ?? TenantContext::grupo())));
+        return $dbGrupo === 'CONADM';
+    }
+
+    private static function requireConadm(bool $json = true): bool {
+        if (!self::requireAuth($json)) return false;
+        if (!self::isConadm()) {
+            if ($json) {
+                View::json(['status' => 'error', 'message' => 'Acceso restringido exclusivamente al grupo CONADM.'], 403);
+            } else {
+                header('Location: /menu');
+            }
+            return false;
+        }
+        return true;
+    }
+
     // =========================================================================
     // VISTAS HTML (Módulo AD)
     // =========================================================================
@@ -57,6 +82,10 @@ class AdminController {
     public static function pageEmpresas(): void       { self::renderFormPage('empresas'); }
     public static function pageActividades(): void    { self::renderFormPage('co_actividades'); }
     public static function pageUsuarios(): void       { self::renderFormPage('usuarios'); }
+    public static function pageAccesosGrupos(): void  {
+        if (!self::requireConadm(false)) return;
+        self::renderFormPage('accesos_grupos');
+    }
     public static function pageCambiarClave(): void   { self::renderFormPage('cambiar_clave'); }
     public static function pageBackup(): void         { self::renderFormPage('backup'); }
 
@@ -605,7 +634,6 @@ class AdminController {
         $fecNacimiento = trim((string)($in['fecNacimiento'] ?? ''));
         $clave         = trim((string)($in['clave'] ?? ''));
         $codPersona    = trim((string)($in['codPersona'] ?? ''));
-        $codGrupo      = strtoupper(trim((string)($in['codGrupo'] ?? 'CONTA'))) ?: 'CONTA';
         $codEmpresa    = trim((string)($in['codEmpresa'] ?? TenantContext::empresa())) ?: '1';
         $codSucursal   = trim((string)($in['codSucursal'] ?? '1')) ?: '1';
         $estado        = strtoupper(trim((string)($in['estado'] ?? 'A'))) ?: 'A';
@@ -616,6 +644,8 @@ class AdminController {
             return;
         }
         $userCodeUp = strtoupper($userCode);
+        // Regla: todos los usuarios al crear pertenecen al grupo CONTA (excepto el usuario CONTA que pertenece a CONADM)
+        $codGrupo   = ($userCodeUp === 'CONTA') ? 'CONADM' : 'CONTA';
         $rawClave   = $clave !== '' ? $clave : '123456';
         $finalClave = AuthController::hashPassword($rawClave);
 
@@ -659,7 +689,7 @@ class AdminController {
                 ]
             );
 
-            View::json(['status' => 'success', 'message' => 'Usuario guardado exitosamente.']);
+            View::json(['status' => 'success', 'message' => 'Usuario guardado exitosamente en el grupo CONTA.']);
         } catch (\Throwable $e) {
             View::json(['status' => 'error', 'message' => 'Error al insertar usuario: ' . $e->getMessage()]);
         }
@@ -683,6 +713,9 @@ class AdminController {
         $clave         = trim((string)($in['clave'] ?? ''));
         $codPersona    = trim((string)($in['codPersona'] ?? ''));
         $codGrupo      = strtoupper(trim((string)($in['codGrupo'] ?? 'CONTA'))) ?: 'CONTA';
+        if ($key === 'CONTA' || strtoupper($alias) === 'CONTA') {
+            $codGrupo = 'CONADM';
+        }
         $codEmpresa    = trim((string)($in['codEmpresa'] ?? TenantContext::empresa())) ?: '1';
         $codSucursal   = trim((string)($in['codSucursal'] ?? '1')) ?: '1';
         $estado        = strtoupper(trim((string)($in['estado'] ?? 'A'))) ?: 'A';
@@ -954,6 +987,320 @@ class AdminController {
     }
 
     // =========================================================================
+    // API ACCESOS GRUPOS (/api/accesos-grupos/*) - EXCLUSIVO GRUPO CONADM
+    // =========================================================================
+    public static function apiAccesosGruposData(): void {
+        if (!self::requireConadm()) return;
+
+        try {
+            // 1. Todos los usuarios creados en el sistema
+            $usuarios = Database::queryForList(
+                "SELECT u.id_propietario AS idPropietario,
+                        COALESCE(pr.nombre_propietario, CONCAT('PROPIETARIO #', u.id_propietario)) AS nombrePropietario,
+                        u.cod_usuario AS codUsuario,
+                        COALESCE(u.alias, u.cod_usuario) AS alias,
+                        COALESCE(p.nombre, NULLIF(TRIM(CONCAT_WS(' ', u.nombre, u.apellido)), ''), u.cod_usuario) AS nombrePersona,
+                        COALESCE(u.ci, p.ci, '') AS ci,
+                        COALESCE(u.e_mail, p.email, '') AS email,
+                        COALESCE(u.telefono, p.telefono, '') AS telefono,
+                        CASE
+                            WHEN UPPER(TRIM(u.cod_usuario)) = 'CONTA' THEN 'CONADM'
+                            ELSE COALESCE(NULLIF(UPPER(TRIM(u.cod_grupo)), ''), 'CONTA')
+                        END AS codGrupo,
+                        COALESCE(g.descripcion, u.cod_grupo, 'GRUPO CONTABILIDAD') AS descGrupo,
+                        COALESCE(u.estado, 'A') AS estado,
+                        COALESCE(u.es_admin, 'N') AS esAdmin,
+                        COALESCE(u.es_superadmin, 'N') AS esSuperAdmin
+                 FROM usuarios u
+                 LEFT JOIN propietarios pr ON pr.id_propietario = u.id_propietario
+                 LEFT JOIN personas p ON p.id_propietario = u.id_propietario AND p.cod_persona = u.cod_persona
+                 LEFT JOIN grupos_usuarios g ON g.id_propietario = u.id_propietario AND UPPER(TRIM(g.cod_grupo)) = UPPER(TRIM(u.cod_grupo))
+                 ORDER BY u.id_propietario ASC, u.cod_usuario ASC"
+            );
+
+            // 2. Grupos disponibles (plantilla Propietario 1)
+            $grupos = Database::queryForList(
+                "SELECT UPPER(TRIM(cod_grupo)) AS codGrupo,
+                        MAX(descripcion) AS descripcion,
+                        MAX(COALESCE(ind_clave_sin_caducidad, 'N')) AS indClaveSinCaducidad
+                 FROM grupos_usuarios
+                 WHERE cod_grupo IS NOT NULL AND TRIM(cod_grupo) <> ''
+                 GROUP BY UPPER(TRIM(cod_grupo))
+                 ORDER BY CASE
+                     WHEN UPPER(TRIM(cod_grupo)) = 'CONADM' THEN 1
+                     WHEN UPPER(TRIM(cod_grupo)) = 'CONTA' THEN 2
+                     ELSE 3
+                 END, UPPER(TRIM(cod_grupo))"
+            );
+
+            // 3. Catálogo de pantallas/formas activas
+            $formas = Database::queryForList(
+                "SELECT UPPER(TRIM(f.cod_modulo)) AS codModulo,
+                        UPPER(TRIM(f.nom_forma)) AS nomForma,
+                        COALESCE(MAX(f.titulo), MAX(f.nom_forma)) AS titulo,
+                        COALESCE(MAX(f.tipo), 'D') AS tipo,
+                        COALESCE(MAX(f.orden_en_menu), 99) AS ordenMenu
+                 FROM formas f
+                 WHERE f.id_propietario = 1
+                   AND f.nom_forma IS NOT NULL AND TRIM(f.nom_forma) <> ''
+                 GROUP BY UPPER(TRIM(f.cod_modulo)), UPPER(TRIM(f.nom_forma))
+                 ORDER BY CASE WHEN UPPER(TRIM(f.cod_modulo)) = 'AD' THEN 1 ELSE 2 END, ordenMenu, titulo"
+            );
+
+            // 4. Permisos actuales por grupo en accesos_grupos (plantilla Propietario 1)
+            $accesos = Database::queryForList(
+                "SELECT UPPER(TRIM(cod_grupo)) AS codGrupo,
+                        UPPER(TRIM(cod_modulo)) AS codModulo,
+                        UPPER(TRIM(nom_forma)) AS nomForma,
+                        COALESCE(puede_insertar, 'S') AS puedeInsertar,
+                        COALESCE(puede_borrar, 'S') AS puedeBorrar,
+                        COALESCE(puede_actualizar, 'S') AS puedeActualizar,
+                        COALESCE(puede_consultar, 'S') AS puedeConsultar,
+                        COALESCE(item_menu, nom_forma) AS itemMenu,
+                        COALESCE(mostrar_en_menu, 'S') AS mostrarEnMenu
+                 FROM accesos_grupos
+                 WHERE id_propietario = 1"
+            );
+
+            View::json([
+                'status'   => 'success',
+                'usuarios' => $usuarios,
+                'grupos'   => $grupos,
+                'formas'   => $formas,
+                'accesos'  => $accesos,
+            ]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al obtener datos de Accesos Grupos: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiAccesosGruposAsignarUsuario(): void {
+        if (!self::requireConadm()) return;
+        $in = self::getInput();
+
+        $idProp     = (int)($in['idPropietario'] ?? TenantContext::idPropietario());
+        $codUsuario = strtoupper(trim((string)($in['codUsuario'] ?? '')));
+        $codGrupo   = strtoupper(trim((string)($in['codGrupo'] ?? 'CONTA')));
+
+        if ($codUsuario === '' || $codGrupo === '') {
+            View::json(['status' => 'error', 'message' => 'Debe indicar el usuario y el grupo.']);
+            return;
+        }
+
+        // Regla: El usuario CONTA debe pertenecer siempre al grupo CONADM
+        if ($codUsuario === 'CONTA' && $codGrupo !== 'CONADM') {
+            View::json([
+                'status'  => 'error',
+                'message' => 'El usuario CONTA debe pertenecer obligatoriamente al grupo CONADM.',
+            ]);
+            return;
+        }
+
+        try {
+            // Asegurar que el grupo exista para ese propietario en grupos_usuarios y accesos_grupos
+            $existeGrp = (int)Database::queryForValue(
+                "SELECT COUNT(*) FROM grupos_usuarios WHERE id_propietario = ? AND UPPER(TRIM(cod_grupo)) = ?",
+                [$idProp, $codGrupo]
+            );
+            if ($existeGrp === 0) {
+                $descGrp = (string)(Database::queryForValue(
+                    "SELECT descripcion FROM grupos_usuarios WHERE UPPER(TRIM(cod_grupo)) = ? LIMIT 1",
+                    [$codGrupo]
+                ) ?? $codGrupo);
+                Database::update(
+                    "INSERT INTO grupos_usuarios (id_propietario, cod_grupo, descripcion, ind_clave_sin_caducidad) VALUES (?, ?, ?, 'S')",
+                    [$idProp, $codGrupo, $descGrp]
+                );
+            }
+
+            if ($idProp !== 1) {
+                Database::update(
+                    "INSERT INTO accesos_grupos (
+                         id_propietario, cod_grupo, cod_modulo, nom_forma,
+                         puede_insertar, puede_borrar, puede_actualizar, puede_consultar,
+                         item_menu, mostrar_en_menu
+                     )
+                     SELECT ?, a.cod_grupo, a.cod_modulo, a.nom_forma,
+                            a.puede_insertar, a.puede_borrar, a.puede_actualizar, a.puede_consultar,
+                            a.item_menu, a.mostrar_en_menu
+                     FROM accesos_grupos a
+                     WHERE a.id_propietario = 1
+                       AND UPPER(TRIM(a.cod_grupo)) = ?
+                       AND NOT EXISTS (
+                           SELECT 1 FROM accesos_grupos x
+                           WHERE x.id_propietario = ?
+                             AND UPPER(TRIM(x.cod_grupo)) = ?
+                             AND UPPER(TRIM(x.nom_forma)) = UPPER(TRIM(a.nom_forma))
+                       )",
+                    [$idProp, $codGrupo, $idProp, $codGrupo]
+                );
+            }
+
+            Database::update(
+                "UPDATE usuarios SET cod_grupo = ? WHERE id_propietario = ? AND (UPPER(TRIM(cod_usuario)) = ? OR UPPER(TRIM(alias)) = ?)",
+                [$codGrupo, $idProp, $codUsuario, $codUsuario]
+            );
+
+            if ($idProp === TenantContext::idPropietario() && strtoupper(TenantContext::usuario()) === $codUsuario) {
+                $_SESSION['grupo'] = $codGrupo;
+            }
+
+            View::json([
+                'status'  => 'success',
+                'message' => "El usuario {$codUsuario} fue asignado al grupo {$codGrupo} correctamente.",
+            ]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al actualizar grupo del usuario: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiAccesosGruposGuardarPermisos(): void {
+        if (!self::requireConadm()) return;
+        $in = self::getInput();
+
+        $codGrupo = strtoupper(trim((string)($in['codGrupo'] ?? '')));
+        $permisos = $in['permisos'] ?? [];
+        if (is_string($permisos)) {
+            $permisos = json_decode($permisos, true) ?: [];
+        }
+
+        if ($codGrupo === '' || !is_array($permisos)) {
+            View::json(['status' => 'error', 'message' => 'Datos de permisos inválidos.']);
+            return;
+        }
+
+        try {
+            // Obtener todos los propietarios para sincronizar la plantilla de accesos del grupo
+            $propRows = Database::queryForList(
+                "SELECT DISTINCT id_prop FROM (
+                     SELECT id_propietario AS id_prop FROM propietarios
+                     UNION
+                     SELECT id_propietario AS id_prop FROM grupos_usuarios
+                     UNION
+                     SELECT 1 AS id_prop
+                 ) t"
+            );
+
+            Database::update("DELETE FROM accesos_grupos WHERE UPPER(TRIM(cod_grupo)) = ?", [$codGrupo]);
+
+            foreach ($permisos as $p) {
+                $nomForma  = strtoupper(trim((string)($p['nomForma'] ?? '')));
+                $codModulo = strtoupper(trim((string)($p['codModulo'] ?? 'CO')));
+                $itemMenu  = trim((string)($p['itemMenu'] ?? $nomForma));
+                if ($nomForma === '') continue;
+
+                // Regla estricta: solo CONADM puede tener acceso a BSGRPUSU (Accesos Grupos)
+                if ($nomForma === 'BSGRPUSU' && $codGrupo !== 'CONADM') {
+                    continue;
+                }
+
+                $mostrar    = (!empty($p['mostrarEnMenu']) && $p['mostrarEnMenu'] !== 'N' && $p['mostrarEnMenu'] !== false) ? 'S' : 'N';
+                $insertar   = (!empty($p['puedeInsertar']) && $p['puedeInsertar'] !== 'N' && $p['puedeInsertar'] !== false) ? 'S' : 'N';
+                $actualizar = (!empty($p['puedeActualizar']) && $p['puedeActualizar'] !== 'N' && $p['puedeActualizar'] !== false) ? 'S' : 'N';
+                $borrar     = (!empty($p['puedeBorrar']) && $p['puedeBorrar'] !== 'N' && $p['puedeBorrar'] !== false) ? 'S' : 'N';
+                $consultar  = (!empty($p['puedeConsultar']) && $p['puedeConsultar'] !== 'N' && $p['puedeConsultar'] !== false) ? 'S' : 'N';
+
+                if ($mostrar === 'N' && $insertar === 'N' && $actualizar === 'N' && $borrar === 'N' && $consultar === 'N') {
+                    continue;
+                }
+
+                foreach ($propRows as $pr) {
+                    $pid = (int)($pr['id_prop'] ?? 1);
+                    Database::update(
+                        "INSERT INTO accesos_grupos (
+                             id_propietario, cod_grupo, cod_modulo, nom_forma,
+                             puede_insertar, puede_borrar, puede_actualizar, puede_consultar,
+                             item_menu, mostrar_en_menu
+                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        [$pid, $codGrupo, $codModulo, $nomForma, $insertar, $borrar, $actualizar, $consultar, $itemMenu, $mostrar]
+                    );
+                }
+            }
+
+            // Si es CONADM, garantizar que siempre mantenga acceso a BSGRPUSU
+            if ($codGrupo === 'CONADM') {
+                foreach ($propRows as $pr) {
+                    $pid = (int)($pr['id_prop'] ?? 1);
+                    $has = (int)Database::queryForValue(
+                        "SELECT COUNT(*) FROM accesos_grupos WHERE id_propietario = ? AND UPPER(TRIM(cod_grupo)) = 'CONADM' AND UPPER(TRIM(nom_forma)) = 'BSGRPUSU'",
+                        [$pid]
+                    );
+                    if ($has === 0) {
+                        Database::update(
+                            "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
+                             VALUES (?, 'CONADM', 'AD', 'BSGRPUSU', 'S', 'S', 'S', 'S', 'Accesos Grupos', 'S')",
+                            [$pid]
+                        );
+                    }
+                }
+            }
+
+            View::json([
+                'status'  => 'success',
+                'message' => "Permisos del grupo {$codGrupo} actualizados correctamente.",
+            ]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al guardar permisos: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiAccesosGruposGuardarGrupo(): void {
+        if (!self::requireConadm()) return;
+        $in = self::getInput();
+
+        $codGrupo    = substr(strtoupper(preg_replace('/[^A-Z0-9_]/i', '', trim((string)($in['codGrupo'] ?? '')))), 0, 6);
+        $descripcion = strtoupper(trim((string)($in['descripcion'] ?? '')));
+
+        if ($codGrupo === '' || $descripcion === '') {
+            View::json(['status' => 'error', 'message' => 'Código de grupo (máx. 6 caracteres) y descripción son obligatorios.']);
+            return;
+        }
+
+        try {
+            $propRows = Database::queryForList(
+                "SELECT DISTINCT id_prop FROM (
+                     SELECT id_propietario AS id_prop FROM propietarios
+                     UNION
+                     SELECT id_propietario AS id_prop FROM grupos_usuarios
+                     UNION
+                     SELECT 1 AS id_prop
+                 ) t"
+            );
+
+            foreach ($propRows as $pr) {
+                $pid = (int)($pr['id_prop'] ?? 1);
+                $cnt = (int)Database::queryForValue(
+                    "SELECT COUNT(*) FROM grupos_usuarios WHERE id_propietario = ? AND UPPER(TRIM(cod_grupo)) = ?",
+                    [$pid, $codGrupo]
+                );
+                if ($cnt > 0) {
+                    Database::update(
+                        "UPDATE grupos_usuarios SET descripcion = ? WHERE id_propietario = ? AND UPPER(TRIM(cod_grupo)) = ?",
+                        [$descripcion, $pid, $codGrupo]
+                    );
+                } else {
+                    Database::update(
+                        "INSERT INTO grupos_usuarios (id_propietario, cod_grupo, descripcion, ind_clave_sin_caducidad) VALUES (?, ?, ?, 'S')",
+                        [$pid, $codGrupo, $descripcion]
+                    );
+                    // Copiar accesos base desde CONTA (sin BSGRPUSU)
+                    Database::execute(
+                        "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
+                         SELECT id_propietario, '$codGrupo', cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu
+                         FROM accesos_grupos
+                         WHERE id_propietario = $pid AND UPPER(TRIM(cod_grupo)) = 'CONTA' AND UPPER(TRIM(nom_forma)) <> 'BSGRPUSU'",
+                        true
+                    );
+                }
+            }
+
+            View::json(['status' => 'success', 'message' => "Grupo {$codGrupo} ({$descripcion}) guardado correctamente."]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al guardar grupo: ' . $e->getMessage()]);
+        }
+    }
+
+    // =========================================================================
     // API GLOBAL SEARCH (/api/global/search)
     // =========================================================================
     public static function apiGlobalSearch(): void {
@@ -964,12 +1311,14 @@ class AdminController {
             return;
         }
         $pat = '%' . $q . '%';
+        $extraFilter = self::isConadm() ? "" : " AND UPPER(TRIM(f.nom_forma)) <> 'BSGRPUSU' ";
         $sql = "SELECT DISTINCT f.nom_forma AS nomForma,
                        COALESCE(f.titulo, a.item_menu, f.nom_forma) AS titulo,
                        f.cod_modulo AS codModulo
                 FROM formas f
                 LEFT JOIN accesos_grupos a ON UPPER(TRIM(a.nom_forma)) = UPPER(TRIM(f.nom_forma)) AND a.id_propietario = 1
                 WHERE f.id_propietario = 1
+                  {$extraFilter}
                   AND (UPPER(f.nom_forma) LIKE ? OR UPPER(COALESCE(f.titulo, '')) LIKE ? OR UPPER(COALESCE(a.item_menu, '')) LIKE ?)
                 ORDER BY f.nom_forma
                 LIMIT 10";

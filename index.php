@@ -257,6 +257,9 @@ if (preg_match('#^/app/([^/]+)$#', $uri, $m)) {
         'CO_ACTIVIDADES'        => [AdminController::class, 'pageActividades'],
         'BSUSUARI'              => [AdminController::class, 'pageUsuarios'],
         'USUARIOS'              => [AdminController::class, 'pageUsuarios'],
+        'BSGRPUSU'              => [AdminController::class, 'pageAccesosGrupos'],
+        'ACCESOS_GRUPOS'        => [AdminController::class, 'pageAccesosGrupos'],
+        'ACCESOS-GRUPOS'        => [AdminController::class, 'pageAccesosGrupos'],
         'CAMCLAVE'              => [AdminController::class, 'pageCambiarClave'],
         'CAMBIAR-CLAVE'         => [AdminController::class, 'pageCambiarClave'],
         'CAMBIAR_CLAVE'         => [AdminController::class, 'pageCambiarClave'],
@@ -407,6 +410,12 @@ $exactApiRoutes = [
     '/api/usuarios/sucursales'          => [AdminController::class, 'apiUsuariosSucursales'],
     '/api/usuarios/grupos'              => [AdminController::class, 'apiUsuariosGrupos'],
     '/api/usuarios/change-password'     => [AdminController::class, 'apiUsuariosChangePassword'],
+
+    // Accesos Grupos (Exclusivo CONADM)
+    '/api/accesos-grupos/data'              => [AdminController::class, 'apiAccesosGruposData'],
+    '/api/accesos-grupos/asignar-usuario'   => [AdminController::class, 'apiAccesosGruposAsignarUsuario'],
+    '/api/accesos-grupos/guardar-permisos'  => [AdminController::class, 'apiAccesosGruposGuardarPermisos'],
+    '/api/accesos-grupos/guardar-grupo'     => [AdminController::class, 'apiAccesosGruposGuardarGrupo'],
 
     // Backup
     '/api/backup/generar'               => [AdminController::class, 'apiBackupGenerar'],
