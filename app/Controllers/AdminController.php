@@ -872,7 +872,10 @@ class AdminController {
         if (!self::requireAuth()) return;
         $idProp = TenantContext::idPropietario();
         $rows = Database::queryForList(
-            "SELECT cod_grupo AS codGrupo, descripcion FROM grupos_usuarios WHERE id_propietario = ? ORDER BY cod_grupo",
+            "SELECT cod_grupo AS codGrupo, descripcion
+             FROM grupos_usuarios
+             WHERE id_propietario = ? AND UPPER(TRIM(cod_grupo)) IN ('CONTA', 'CONADM')
+             ORDER BY cod_grupo",
             [$idProp]
         );
         if (empty($rows)) {
@@ -1005,7 +1008,8 @@ class AdminController {
                         COALESCE(u.telefono, p.telefono, '') AS telefono,
                         CASE
                             WHEN UPPER(TRIM(u.cod_usuario)) = 'CONTA' THEN 'CONADM'
-                            ELSE COALESCE(NULLIF(UPPER(TRIM(u.cod_grupo)), ''), 'CONTA')
+                            WHEN UPPER(TRIM(COALESCE(u.cod_grupo, ''))) = 'CONADM' THEN 'CONADM'
+                            ELSE 'CONTA'
                         END AS codGrupo,
                         COALESCE(g.descripcion, u.cod_grupo, 'GRUPO CONTABILIDAD') AS descGrupo,
                         COALESCE(u.estado, 'A') AS estado,
@@ -1018,13 +1022,13 @@ class AdminController {
                  ORDER BY u.id_propietario ASC, u.cod_usuario ASC"
             );
 
-            // 2. Grupos disponibles (plantilla Propietario 1)
+            // 2. Grupos activos (exclusivamente CONTA y CONADM)
             $grupos = Database::queryForList(
                 "SELECT UPPER(TRIM(cod_grupo)) AS codGrupo,
                         MAX(descripcion) AS descripcion,
                         MAX(COALESCE(ind_clave_sin_caducidad, 'N')) AS indClaveSinCaducidad
                  FROM grupos_usuarios
-                 WHERE cod_grupo IS NOT NULL AND TRIM(cod_grupo) <> ''
+                 WHERE UPPER(TRIM(COALESCE(cod_grupo, ''))) IN ('CONTA', 'CONADM')
                  GROUP BY UPPER(TRIM(cod_grupo))
                  ORDER BY CASE
                      WHEN UPPER(TRIM(cod_grupo)) = 'CONADM' THEN 1

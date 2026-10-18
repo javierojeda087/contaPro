@@ -83,11 +83,8 @@
                         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                             <label for="filterGrupoSelect" style="font-size: 0.85rem; font-weight: 600; color: #475569;">Filtrar por Grupo:</label>
                             <select id="filterGrupoSelect" onchange="renderUsuariosTable()" style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.45rem 0.85rem; font-size: 0.88rem; background: #ffffff; font-weight: 600; color: #0f172a;">
-                                <option value="">Todos los grupos</option>
+                                <option value="">Todos los grupos (CONTA / CONADM)</option>
                             </select>
-                            <button type="button" onclick="openNuevoGrupoModal()" style="border: 1px solid #cbd5e1; background: #ffffff; color: #0f172a; padding: 0.45rem 0.9rem; border-radius: 8px; font-size: 0.84rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                                <i class="ph ph-plus-circle" style="color: #16a34a;"></i> Nuevo Grupo
-                            </button>
                         </div>
 
                         <div style="position: relative; width: 340px; max-width: 100%;">
@@ -234,17 +231,12 @@
                 }
 
                 allUsuarios = data.usuarios || [];
-                allGrupos = data.grupos || [];
                 allFormas = data.formas || [];
                 allAccesos = data.accesos || [];
-
-                // Asegurar que CONADM y CONTA estén en la lista de grupos
-                if (!allGrupos.some(g => g.codGrupo === 'CONADM')) {
-                    allGrupos.unshift({ codGrupo: 'CONADM', descripcion: 'ADMINISTRADOR CONTABLE' });
-                }
-                if (!allGrupos.some(g => g.codGrupo === 'CONTA')) {
-                    allGrupos.push({ codGrupo: 'CONTA', descripcion: 'GRUPO CONTABILIDAD' });
-                }
+                allGrupos = [
+                    { codGrupo: 'CONADM', descripcion: 'ADMINISTRADOR CONTABLE' },
+                    { codGrupo: 'CONTA',  descripcion: 'GRUPO CONTABILIDAD' }
+                ];
 
                 updateKpis();
                 populateGroupSelects();

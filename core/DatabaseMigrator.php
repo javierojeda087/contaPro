@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 6;
+    private const SCHEMA_VERSION = 7;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -144,7 +144,7 @@ class DatabaseMigrator {
             }
         }
 
-        // 5. Asegurar grupo CONADM en grupos_usuarios, sus permisos en accesos_grupos y asignar el usuario CONTA a CONADM
+        // 5. Asegurar que solo existan los grupos activos CONTA y CONADM
         Database::execute(
             "INSERT INTO `grupos_usuarios` (`id_propietario`, `cod_grupo`, `descripcion`, `ind_clave_sin_caducidad`)
              SELECT DISTINCT p.id_prop, 'CONADM', 'ADMINISTRADOR CONTABLE', 'S'
@@ -159,6 +159,16 @@ class DatabaseMigrator {
                  SELECT 1 FROM `grupos_usuarios` g
                  WHERE g.`id_propietario` = p.id_prop AND UPPER(TRIM(g.`cod_grupo`)) = 'CONADM'
              )",
+            true
+        );
+
+        Database::execute(
+            "DELETE FROM `grupos_usuarios` WHERE UPPER(TRIM(COALESCE(`cod_grupo`, ''))) NOT IN ('CONTA', 'CONADM')",
+            true
+        );
+
+        Database::execute(
+            "DELETE FROM `accesos_grupos` WHERE UPPER(TRIM(COALESCE(`cod_grupo`, ''))) NOT IN ('CONTA', 'CONADM')",
             true
         );
 
@@ -239,7 +249,7 @@ class DatabaseMigrator {
         Database::execute(
             "UPDATE `usuarios`
              SET `cod_grupo` = 'CONTA'
-             WHERE UPPER(TRIM(`cod_usuario`)) <> 'CONTA' AND (`cod_grupo` IS NULL OR TRIM(`cod_grupo`) = '')",
+             WHERE UPPER(TRIM(`cod_usuario`)) <> 'CONTA' AND UPPER(TRIM(COALESCE(`cod_grupo`, ''))) NOT IN ('CONTA', 'CONADM')",
             true
         );
 
