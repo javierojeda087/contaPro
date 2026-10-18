@@ -843,7 +843,10 @@ class AdminController {
             [$idProp]
         );
         if (empty($rows)) {
-            $rows = [['codGrupo' => 'CONTA', 'descripcion' => 'GRUPO CONTABILIDAD']];
+            $rows = [
+                ['codGrupo' => 'CONADM', 'descripcion' => 'ADMINISTRADOR CONTABLE'],
+                ['codGrupo' => 'CONTA',  'descripcion' => 'GRUPO CONTABILIDAD'],
+            ];
         }
         View::json($rows);
     }

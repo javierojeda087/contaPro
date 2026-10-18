@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 4;
+    private const SCHEMA_VERSION = 5;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -142,6 +142,55 @@ class DatabaseMigrator {
                 Database::execute("ALTER TABLE `co_ingresos` ADD COLUMN `$col` $def", true);
                 $applied[] = "co_ingresos.$col";
             }
+        }
+
+        // 5. Asegurar grupo CONADM en grupos_usuarios, sus permisos en accesos_grupos y asignar el usuario CONTA a CONADM
+        Database::execute(
+            "INSERT INTO `grupos_usuarios` (`id_propietario`, `cod_grupo`, `descripcion`, `ind_clave_sin_caducidad`)
+             SELECT DISTINCT p.id_prop, 'CONADM', 'ADMINISTRADOR CONTABLE', 'S'
+             FROM (
+                 SELECT `id_propietario` AS id_prop FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop FROM `grupos_usuarios`
+                 UNION
+                 SELECT 1 AS id_prop
+             ) p
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM `grupos_usuarios` g
+                 WHERE g.`id_propietario` = p.id_prop AND UPPER(TRIM(g.`cod_grupo`)) = 'CONADM'
+             )",
+            true
+        );
+
+        Database::execute(
+            "INSERT INTO `accesos_grupos` (
+                 `id_propietario`, `cod_grupo`, `cod_modulo`, `nom_forma`,
+                 `puede_insertar`, `puede_borrar`, `puede_actualizar`, `puede_consultar`,
+                 `item_menu`, `mostrar_en_menu`
+             )
+             SELECT a.`id_propietario`, 'CONADM', a.`cod_modulo`, a.`nom_forma`,
+                    a.`puede_insertar`, a.`puede_borrar`, a.`puede_actualizar`, a.`puede_consultar`,
+                    a.`item_menu`, a.`mostrar_en_menu`
+             FROM `accesos_grupos` a
+             WHERE UPPER(TRIM(a.`cod_grupo`)) = 'CONTA'
+               AND NOT EXISTS (
+                   SELECT 1 FROM `accesos_grupos` x
+                   WHERE x.`id_propietario` = a.`id_propietario`
+                     AND UPPER(TRIM(x.`cod_grupo`)) = 'CONADM'
+                     AND UPPER(TRIM(x.`nom_forma`)) = UPPER(TRIM(a.`nom_forma`))
+               )",
+            true
+        );
+
+        Database::execute(
+            "UPDATE `usuarios`
+             SET `cod_grupo` = 'CONADM'
+             WHERE UPPER(TRIM(`cod_usuario`)) = 'CONTA' AND (UPPER(TRIM(COALESCE(`cod_grupo`, ''))) <> 'CONADM')",
+            true
+        );
+
+        if (strtoupper(trim((string)($_SESSION['usuario'] ?? ''))) === 'CONTA') {
+            $_SESSION['grupo'] = 'CONADM';
         }
 
         return $applied;
