@@ -7,61 +7,88 @@ use Core\TenantContext;
 class BackupService {
 
     /**
-     * Obtiene la lista de propietarios con su cantidad de contribuyentes y usuarios
-     * para poblar el selector de alcance del backup.
+     * Obtiene la lista de propietarios y contribuyentes para poblar el buscador de alcance del backup.
      */
     public static function getOpcionesPropietarios(): array {
         $propIdActual = TenantContext::idPropietario();
         $isSuper      = TenantContext::esSuperAdmin() || $propIdActual === 1;
 
-        $sql = "SELECT pr.id_propietario AS idPropietario,
-                       pr.nombre_propietario AS nombrePropietario,
-                       COALESCE(pr.ruc, '') AS ruc,
-                       (SELECT COUNT(*) FROM empresas e WHERE e.id_propietario = pr.id_propietario) AS totalContribuyentes,
-                       (SELECT COUNT(*) FROM usuarios u WHERE u.id_propietario = pr.id_propietario) AS totalUsuarios
-                FROM propietarios pr "
-             . ($isSuper ? "" : "WHERE pr.id_propietario = " . (int)$propIdActual . " ")
-             . "ORDER BY pr.id_propietario ASC";
+        $sqlProps = "SELECT pr.id_propietario AS idPropietario,
+                            COALESCE(NULLIF(TRIM(pr.nombre_propietario), ''), CONCAT('PROPIETARIO #', pr.id_propietario)) AS nombrePropietario,
+                            COALESCE(NULLIF(TRIM(pr.nombre_propietario), ''), CONCAT('PROPIETARIO #', pr.id_propietario)) AS nombre,
+                            COALESCE(pr.ruc, '') AS ruc,
+                            (SELECT COUNT(*) FROM empresas e WHERE e.id_propietario = pr.id_propietario) AS totalContribuyentes,
+                            (SELECT COUNT(*) FROM usuarios u WHERE u.id_propietario = pr.id_propietario) AS totalUsuarios
+                     FROM propietarios pr "
+                  . ($isSuper ? "" : "WHERE pr.id_propietario = " . (int)$propIdActual . " ")
+                  . "ORDER BY pr.id_propietario ASC";
 
-        $propietarios = Database::queryForList($sql);
+        $propietarios = Database::queryForList($sqlProps);
+
+        $sqlEmps = "SELECT e.id_propietario AS idPropietario,
+                           COALESCE(NULLIF(TRIM(pr.nombre_propietario), ''), CONCAT('PROPIETARIO #', e.id_propietario)) AS nombrePropietario,
+                           e.cod_empresa AS codEmpresa,
+                           COALESCE(NULLIF(TRIM(e.descripcion), ''), CONCAT('CONTRIBUYENTE #', e.cod_empresa)) AS descripcion,
+                           COALESCE(e.ruc_empresa, '') AS rucEmpresa
+                    FROM empresas e
+                    LEFT JOIN propietarios pr ON pr.id_propietario = e.id_propietario "
+                 . ($isSuper ? "" : "WHERE e.id_propietario = " . (int)$propIdActual . " ")
+                 . "ORDER BY e.id_propietario ASC, CAST(e.cod_empresa AS UNSIGNED) ASC, e.cod_empresa ASC";
+
+        $contribuyentes = Database::queryForList($sqlEmps);
 
         return [
             'esSuperAdmin'        => $isSuper,
             'idPropietarioActual' => $propIdActual,
             'propietarios'        => $propietarios,
+            'contribuyentes'      => $contribuyentes,
         ];
     }
 
     /**
      * Genera el respaldo SQL de todas las tablas del proyecto:
-     * - Si $idPropietarioTarget es 'ALL' (y es SuperAdmin): exporta TODOS los propietarios y TODOS sus contribuyentes.
-     * - Si $idPropietarioTarget es un ID de propietario (ej: '1', '2'): exporta TODO ese propietario y TODOS sus contribuyentes.
+     * - 'ALL'                   : Exporta TODOS los propietarios y TODOS los contribuyentes.
+     * - 'PROP:{id}' o '{id}'    : Exporta TODO el propietario #{id} y TODOS sus contribuyentes.
+     * - 'EMP:{idProp}:{codEmp}' : Exporta el contribuyente #{codEmp} del propietario #{idProp}.
      *
-     * @param string|null $idPropietarioTarget 'ALL' para todos los propietarios, o el ID del propietario (ej: '1')
-     * @param string|null $customDir           Ruta de carpeta adicional opcional en el servidor/PC local
+     * @param string|null $targetScope 'ALL', 'PROP:1', '1', o 'EMP:1:2'
+     * @param string|null $customDir   Ruta de carpeta adicional opcional en el servidor/PC local
      */
-    public static function generateBackup(?string $idPropietarioTarget = 'ALL', ?string $customDir = null): array {
+    public static function generateBackup(?string $targetScope = 'ALL', ?string $customDir = null): array {
         $startTime    = microtime(true);
         $propIdActual = TenantContext::idPropietario();
         $isSuper      = TenantContext::esSuperAdmin() || $propIdActual === 1;
         $timestamp    = date('Ymd_His');
 
-        $targetClean = strtoupper(trim((string)$idPropietarioTarget));
-        $targetClean = str_replace('PROP:', '', $targetClean);
+        $targetClean = strtoupper(trim((string)$targetScope));
 
-        // Determinar si es backup global (Todos los propietarios) o de un propietario específico
-        if (!$isSuper) {
-            $filtrarPorPropietario = true;
-            $targetPropId          = $propIdActual;
+        $filtrarPorPropietario   = false;
+        $filtrarPorContribuyente = false;
+        $targetPropId            = $propIdActual;
+        $targetCodEmpresa        = '';
+
+        if (str_starts_with($targetClean, 'EMP:')) {
+            $parts = explode(':', $targetClean, 3);
+            $reqProp = (int)($parts[1] ?? $propIdActual);
+            $reqEmp  = trim((string)($parts[2] ?? ''));
+            $targetPropId            = $isSuper ? max(1, $reqProp) : $propIdActual;
+            $targetCodEmpresa        = $reqEmp;
+            $filtrarPorPropietario   = true;
+            $filtrarPorContribuyente = ($targetCodEmpresa !== '');
+        } elseif (!$isSuper) {
+            $filtrarPorPropietario   = true;
+            $targetPropId            = $propIdActual;
         } elseif ($targetClean === '' || $targetClean === 'ALL' || $targetClean === 'TODOS') {
-            $filtrarPorPropietario = false;
-            $targetPropId          = 0;
+            $filtrarPorPropietario   = false;
+            $targetPropId            = 0;
         } else {
-            $filtrarPorPropietario = true;
-            $targetPropId          = max(1, (int)$targetClean);
+            $propNumber = str_replace('PROP:', '', $targetClean);
+            $filtrarPorPropietario   = true;
+            $targetPropId            = max(1, (int)$propNumber);
         }
 
         $nombrePropietario   = 'TODOS LOS PROPIETARIOS Y TODOS LOS CONTRIBUYENTES';
+        $nombreContribuyente = '';
         $totalContribuyentes = 0;
 
         if ($filtrarPorPropietario) {
@@ -69,11 +96,21 @@ class BackupService {
                 "SELECT nombre_propietario, ruc FROM propietarios WHERE id_propietario = ? LIMIT 1",
                 [$targetPropId]
             );
-            $nombrePropietario = (string)($propRow['nombre_propietario'] ?? ("PROPIETARIO #" . $targetPropId));
-            $totalContribuyentes = (int)Database::queryForValue(
-                "SELECT COUNT(*) FROM empresas WHERE id_propietario = ?",
-                [$targetPropId]
-            );
+            $nombrePropietario = trim((string)($propRow['nombre_propietario'] ?? '')) ?: ("PROPIETARIO #" . $targetPropId);
+
+            if ($filtrarPorContribuyente) {
+                $empRow = Database::queryForMap(
+                    "SELECT descripcion, ruc_empresa FROM empresas WHERE id_propietario = ? AND cod_empresa = ? LIMIT 1",
+                    [$targetPropId, $targetCodEmpresa]
+                );
+                $nombreContribuyente = trim((string)($empRow['descripcion'] ?? '')) ?: ("CONTRIBUYENTE #" . $targetCodEmpresa);
+                $totalContribuyentes = 1;
+            } else {
+                $totalContribuyentes = (int)Database::queryForValue(
+                    "SELECT COUNT(*) FROM empresas WHERE id_propietario = ?",
+                    [$targetPropId]
+                );
+            }
         } else {
             $totalContribuyentes = (int)Database::queryForValue("SELECT COUNT(*) FROM empresas");
         }
@@ -86,7 +123,11 @@ class BackupService {
         // Mantener hasta 15 respaldos recientes en el servidor
         self::pruneOldBackups($backupDir, 15);
 
-        if ($filtrarPorPropietario) {
+        if ($filtrarPorContribuyente) {
+            $slugEmp = preg_replace('/[^A-Z0-9]+/', '_', strtoupper($nombreContribuyente));
+            $slugEmp = trim(substr($slugEmp, 0, 24), '_') ?: ('EMP' . $targetCodEmpresa);
+            $fileName = sprintf('backup_contapro_prop%d_emp%s_%s_%s.sql', $targetPropId, $targetCodEmpresa, $slugEmp, $timestamp);
+        } elseif ($filtrarPorPropietario) {
             $slugProp = preg_replace('/[^A-Z0-9]+/', '_', strtoupper($nombrePropietario));
             $slugProp = trim(substr($slugProp, 0, 26), '_') ?: ('PROP' . $targetPropId);
             $fileName = sprintf('backup_contapro_prop%d_%s_%s.sql', $targetPropId, $slugProp, $timestamp);
@@ -119,7 +160,10 @@ class BackupService {
         $fp = fopen($filePath, 'w');
         fwrite($fp, "-- =============================================================================\n");
         fwrite($fp, "-- COPIA DE SEGURIDAD OFICIAL - CONTAPRO CLOUD (MYSQL / MARIADB)\n");
-        if ($filtrarPorPropietario) {
+        if ($filtrarPorContribuyente) {
+            fwrite($fp, "-- Alcance        : POR CONTRIBUYENTE (Propietario #{$targetPropId} - Contribuyente #{$targetCodEmpresa} {$nombreContribuyente})\n");
+            fwrite($fp, "-- Contribuyentes : 1 contribuyente incluido\n");
+        } elseif ($filtrarPorPropietario) {
             fwrite($fp, "-- Alcance        : POR PROPIETARIO (Propietario #{$targetPropId} - {$nombrePropietario})\n");
             fwrite($fp, "-- Contribuyentes : {$totalContribuyentes} contribuyente(s) incluido(s)\n");
         } else {
@@ -148,21 +192,29 @@ class BackupService {
                 fwrite($fp, $createSql . ";\n\n");
             }
 
-            // Verificar si la tabla tiene la columna id_propietario
+            // Verificar si la tabla tiene las columnas id_propietario y cod_empresa
             $hasProp = false;
+            $hasEmp  = false;
             try {
-                $cols = Database::queryForList("SHOW COLUMNS FROM `{$tb}` LIKE 'id_propietario'");
-                $hasProp = !empty($cols);
+                $colsProp = Database::queryForList("SHOW COLUMNS FROM `{$tb}` LIKE 'id_propietario'");
+                $hasProp  = !empty($colsProp);
+                $colsEmp  = Database::queryForList("SHOW COLUMNS FROM `{$tb}` LIKE 'cod_empresa'");
+                $hasEmp   = !empty($colsEmp);
             } catch (\Throwable $ignored) {}
 
-            $whereSql = '';
-            $params   = [];
+            $whereClauses = [];
+            $params       = [];
 
             if ($filtrarPorPropietario && $hasProp) {
-                $whereSql = " WHERE `id_propietario` = ?";
-                $params[] = $targetPropId;
+                $whereClauses[] = "`id_propietario` = ?";
+                $params[]       = $targetPropId;
+            }
+            if ($filtrarPorContribuyente && $hasEmp) {
+                $whereClauses[] = "`cod_empresa` = ?";
+                $params[]       = $targetCodEmpresa;
             }
 
+            $whereSql = !empty($whereClauses) ? (' WHERE ' . implode(' AND ', $whereClauses)) : '';
             $rows = Database::queryForList("SELECT * FROM `{$tb}`{$whereSql}", $params);
             $filasTabla = count($rows);
 
@@ -236,9 +288,11 @@ class BackupService {
             'contribuyentesCount' => $totalContribuyentes,
             'durationSeconds'     => $duration,
             'timestamp'           => $timestamp,
-            'alcance'             => $filtrarPorPropietario ? 'PROPIETARIO' : 'TODOS_PROPIETARIOS',
+            'alcance'             => $filtrarPorContribuyente ? 'CONTRIBUYENTE' : ($filtrarPorPropietario ? 'PROPIETARIO' : 'TODOS_PROPIETARIOS'),
             'idPropietario'       => $filtrarPorPropietario ? $targetPropId : 'ALL',
             'nombrePropietario'   => $nombrePropietario,
+            'codEmpresa'          => $targetCodEmpresa,
+            'nombreContribuyente' => $nombreContribuyente,
         ];
     }
 
@@ -260,6 +314,8 @@ class BackupService {
                 $mtime = filemtime($f);
                 if (str_contains($name, '_TODOS_PROPIETARIOS_')) {
                     $tipo = 'Todos los Propietarios y Contribuyentes';
+                } elseif (preg_match('/_prop(\d+)_emp([A-Za-z0-9]+)_/', $name, $m)) {
+                    $tipo = 'Contribuyente #' . $m[2] . ' (Propietario #' . $m[1] . ')';
                 } elseif (preg_match('/_prop(\d+)_/', $name, $m)) {
                     $tipo = 'Propietario #' . $m[1] . ' y sus Contribuyentes';
                 } else {
