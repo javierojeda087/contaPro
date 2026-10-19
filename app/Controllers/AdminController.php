@@ -1012,8 +1012,12 @@ class AdminController {
     // =========================================================================
     public static function apiBackupGenerar(): void {
         if (!self::requireAuth()) return;
+        $in = self::getInput();
+        $codEmpresa     = trim((string)($in['codEmpresa'] ?? 'ALL'));
+        $carpetaDestino = trim((string)($in['carpetaDestino'] ?? ''));
+
         try {
-            $res = BackupService::generateBackup();
+            $res = BackupService::generateBackup($codEmpresa, $carpetaDestino);
             View::json([
                 'status'  => 'success',
                 'message' => 'Copia de seguridad generada con éxito.',

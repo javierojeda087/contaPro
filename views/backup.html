@@ -15,37 +15,81 @@
         <!-- Dynamic Content -->
         <div class="content-area">
             
-            <!-- Banner / Header Principal -->
-            <div style="background: white; border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border: 1px solid rgba(203, 213, 225, 0.6); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <div style="background: linear-gradient(135deg, #16a34a, #15803d); color: white; width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.75rem; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);">
-                        <i class="ph ph-database"></i>
+            <!-- Panel Principal de Configuración y Generación de Backup -->
+            <div style="background: white; border-radius: 14px; padding: 1.5rem 2rem; margin-bottom: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border: 1px solid rgba(203, 213, 225, 0.7);">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding-bottom: 1.25rem; border-bottom: 1px solid #f1f5f9;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="background: linear-gradient(135deg, #16a34a, #15803d); color: white; width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.75rem; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);">
+                            <i class="ph ph-database"></i>
+                        </div>
+                        <div>
+                            <h2 style="margin: 0; font-size: 1.32rem; color: #0f172a; font-weight: 800;">Respaldo de Base de Datos</h2>
+                            <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.88rem;">
+                                Genere copias de seguridad completas de <strong>todas las tablas del proyecto</strong> o filtradas <strong>por contribuyente</strong>, y elija la carpeta donde guardar el archivo <code>.sql</code>.
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h2 style="margin: 0; font-size: 1.35rem; color: #0f172a; font-weight: 700;">Respaldo de Base de Datos</h2>
-                        <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9rem;">Genere copias de seguridad completas (DDL, Datos, Vistas y Funciones PL/SQL) o descargue respaldos anteriores.</p>
-                    </div>
+
+                    <button class="btn btn-primary" onclick="generarBackup()" id="btnGenerarMain" style="padding: 0.78rem 1.65rem; font-size: 0.98rem; border-radius: 10px; font-weight: 700; background: linear-gradient(135deg, #16a34a, #15803d); border: none; color: #fff; cursor: pointer; box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35); display: flex; align-items: center; gap: 8px;">
+                        <i class="ph ph-hard-drives" style="font-size: 1.3rem;"></i>
+                        <span>Generar Backup Ahora</span>
+                    </button>
                 </div>
 
-                <button class="btn btn-primary" onclick="generarBackup()" id="btnGenerarMain" style="padding: 0.75rem 1.6rem; font-size: 1rem; border-radius: 10px; font-weight: 700; box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35); display: flex; align-items: center; gap: 8px;">
-                    <i class="ph ph-hard-drives" style="font-size: 1.3rem;"></i>
-                    <span>Generar Backup Ahora</span>
-                </button>
+                <!-- Controles: Selección de Contribuyente y Selección de Carpeta Destino -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 1.25rem; margin-top: 1.25rem; align-items: end;">
+                    
+                    <!-- 1. Opción: Backup Completo o Por Contribuyente -->
+                    <div>
+                        <label for="selectContribuyenteBackup" style="display: flex; align-items: center; gap: 6px; font-size: 0.84rem; font-weight: 700; color: #1e293b; margin-bottom: 6px;">
+                            <i class="ph ph-buildings" style="color: #16a34a; font-size: 1.05rem;"></i>
+                            Alcance del Respaldo (Completo o por Contribuyente):
+                        </label>
+                        <select id="selectContribuyenteBackup" style="width: 100%; height: 42px; padding: 0 12px; border: 1.5px solid #cbd5e1; border-radius: 9px; font-size: 0.9rem; font-weight: 700; color: #0f172a; background: #f8fafc;">
+                            <option value="ALL">📦 TODAS LAS TABLAS Y TODOS LOS CONTRIBUYENTES (Completo)</option>
+                        </select>
+                    </div>
+
+                    <!-- 2. Opción: Seleccionar Carpeta donde se desea guardar la copia -->
+                    <div>
+                        <label style="display: flex; align-items: center; justify-content: space-between; font-size: 0.84rem; font-weight: 700; color: #1e293b; margin-bottom: 6px;">
+                            <span style="display: flex; align-items: center; gap: 6px;">
+                                <i class="ph ph-folder-open" style="color: #0284c7; font-size: 1.05rem;"></i>
+                                Carpeta donde guardar la copia (.SQL):
+                            </span>
+                            <span id="badgeCarpetaEstado" style="font-size: 0.74rem; color: #0369a1; font-weight: 700;">Se abrirá selector al guardar</span>
+                        </label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="inputCarpetaDestino" placeholder="Haga clic en 'Elegir Carpeta...' o escriba una ruta local (ej: C:\Backups)"
+                                   style="flex: 1; height: 42px; padding: 0 12px; border: 1.5px solid #cbd5e1; border-radius: 9px; font-size: 0.86rem; font-weight: 600; color: #0f172a; background: #ffffff;">
+                            <button type="button" onclick="seleccionarCarpetaPC()" style="height: 42px; padding: 0 14px; border-radius: 9px; border: 1.5px solid #0284c7; background: #f0f9ff; color: #0369a1; font-weight: 700; font-size: 0.84rem; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap;">
+                                <i class="ph ph-folder-notch-open" style="font-size: 1.1rem;"></i> Elegir Carpeta...
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
             </div>
 
-            <!-- Stats & Info Grid -->
+            <!-- Tarjeta del Último Respaldo Generado -->
             <div id="latestBackupCard" style="display: none; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 1.25rem 1.75rem; margin-bottom: 1.5rem; animation: fadeIn 0.3s ease-out;">
                 <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <i class="ph ph-check-circle" style="font-size: 2rem; color: #15803d;"></i>
                         <div>
                             <h4 style="margin: 0; font-size: 1.05rem; color: #166534; font-weight: 700;">¡Último Respaldo Generado Con Éxito!</h4>
-                            <span id="latestBackupInfo" style="font-size: 0.88rem; color: #0c4a6e;">-</span>
+                            <div id="latestBackupInfo" style="font-size: 0.86rem; color: #0c4a6e; margin-top: 2px;">-</div>
+                            <div id="latestBackupFolderInfo" style="font-size: 0.8rem; color: #15803d; font-weight: 700; margin-top: 3px;"></div>
                         </div>
                     </div>
-                    <a id="btnDownloadLatest" href="#" class="btn" style="background: #15803d; color: white; border-radius: 8px; font-weight: 600; text-decoration: none; padding: 0.55rem 1.25rem; display: flex; align-items: center; gap: 6px;">
-                        <i class="ph ph-download-simple"></i> Descargar Archivo .SQL
-                    </a>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" id="btnSaveAsLatest" class="btn" style="background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: 700; padding: 0.55rem 1.15rem; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                            <i class="ph ph-folder-open"></i> Guardar en Carpeta...
+                        </button>
+                        <a id="btnDownloadLatest" href="#" class="btn" style="background: #15803d; color: white; border-radius: 8px; font-weight: 600; text-decoration: none; padding: 0.55rem 1.15rem; display: flex; align-items: center; gap: 6px;">
+                            <i class="ph ph-download-simple"></i> Descargar Directo
+                        </a>
+                    </div>
                 </div>
             </div>
 
@@ -56,7 +100,7 @@
                         <i class="ph ph-clock-counter-clockwise" style="color: #16a34a;"></i> Archivos de Copias de Seguridad
                     </h3>
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <button class="btn" onclick="cargarHistorial()" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; padding: 0.45rem 0.9rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                        <button class="btn" onclick="cargarHistorial()" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; padding: 0.45rem 0.9rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;">
                             <i class="ph ph-arrows-clockwise"></i> Actualizar
                         </button>
                     </div>
@@ -67,6 +111,7 @@
                         <thead>
                             <tr style="background: #f8fafc; text-align: left;">
                                 <th style="padding: 12px 16px; font-size: 0.78rem; font-weight: 700; color: #475569; text-transform: uppercase;">Archivo SQL</th>
+                                <th style="padding: 12px 16px; font-size: 0.78rem; font-weight: 700; color: #475569; text-transform: uppercase;">Alcance / Tipo</th>
                                 <th style="padding: 12px 16px; font-size: 0.78rem; font-weight: 700; color: #475569; text-transform: uppercase;">Fecha y Hora</th>
                                 <th style="padding: 12px 16px; font-size: 0.78rem; font-weight: 700; color: #475569; text-transform: uppercase;">Tamaño</th>
                                 <th style="padding: 12px 16px; font-size: 0.78rem; font-weight: 700; color: #475569; text-transform: uppercase; text-align: center;">Acciones</th>
@@ -74,7 +119,7 @@
                         </thead>
                         <tbody id="tableBody">
                             <tr>
-                                <td colspan="4" style="text-align: center; padding: 2rem;">
+                                <td colspan="5" style="text-align: center; padding: 2rem;">
                                     <i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite; font-size: 2rem; color: var(--primary-color);"></i>
                                     <p style="color: var(--text-muted); margin-top: 10px;">Cargando historial de respaldos...</p>
                                 </td>
@@ -90,9 +135,9 @@
                     <i class="ph ph-info" style="color: #16a34a;"></i> Información de Seguridad y Restauración
                 </h5>
                 <ul style="margin: 0; padding-left: 1.25rem; line-height: 1.6;">
-                    <li>Los archivos `.sql` contienen las sentencias DDL (tablas, secuencias, funciones, vistas) y todas las consultas <code>INSERT</code> con <code>COMMIT</code> de la base de datos Oracle.</li>
-                    <li>Las copias de seguridad se almacenan automáticamente en la carpeta <code>/backups</code> del servidor.</li>
-                    <li>Para restaurar un backup en la base de datos, puede ejecutar el archivo SQL directamente desde <strong>Oracle SQL Developer</strong>, <strong>SQL*Plus</strong> o la herramienta <strong>Command Prompt</strong> del sistema.</li>
+                    <li>Los archivos <code>.sql</code> incluyen la estructura completa (<code>CREATE TABLE IF NOT EXISTS</code>) de <strong>todas las tablas del proyecto</strong> y los registros <code>REPLACE INTO</code> listos para restaurar en MySQL / MariaDB.</li>
+                    <li>Puede generar un <strong>Respaldo Completo</strong> de todas las empresas/contribuyentes o elegir un <strong>Contribuyente específico</strong> en el selector superior.</li>
+                    <li>Con el botón <strong>Elegir Carpeta...</strong> o <strong>Guardar en Carpeta...</strong> puede seleccionar directamente el directorio de su computadora donde desea almacenar el respaldo.</li>
                 </ul>
             </div>
         </div>
@@ -103,7 +148,7 @@
         <i class="ph ph-spinner-gap" style="font-size: 3.5rem; animation: spin 1s linear infinite; color: #38bdf8;"></i>
         <div style="text-align: center;">
             <h3 style="margin: 0 0 6px 0; font-size: 1.3rem; font-weight: 700;">Generando Copia de Seguridad...</h3>
-            <p style="margin: 0; color: #94a3b8; font-size: 0.95rem;">Extrayendo esquema DDL, funciones y registros de tablas... Por favor espere.</p>
+            <p style="margin: 0; color: #94a3b8; font-size: 0.95rem;">Exportando todas las tablas y registros seleccionados... Por favor espere.</p>
         </div>
     </div>
 
@@ -119,9 +164,117 @@
     </style>
 
     <script>
+        let directoryHandleSeleccionado = null;
+
         document.addEventListener('DOMContentLoaded', function() {
+            cargarContribuyentesSelect();
             cargarHistorial();
         });
+
+        async function cargarContribuyentesSelect() {
+            const sel = document.getElementById('selectContribuyenteBackup');
+            if (!sel) return;
+            try {
+                const res = await fetch('/api/contribuyentes/list');
+                const list = await res.json();
+                sel.innerHTML = `<option value="ALL">📦 TODAS LAS TABLAS Y TODOS LOS CONTRIBUYENTES (Completo)</option>`;
+                if (Array.isArray(list)) {
+                    list.forEach(emp => {
+                        const cod = emp.codEmpresa || emp.cod_empresa || '';
+                        const nom = emp.razonSocial || emp.descripcion || ('Contribuyente #' + cod);
+                        const ruc = emp.ruc || emp.ruc_empresa || '';
+                        if (!cod) return;
+                        const opt = document.createElement('option');
+                        opt.value = cod;
+                        opt.textContent = `🏢 Por Contribuyente: [${cod}] ${nom}${ruc ? ' (RUC: ' + ruc + ')' : ''}`;
+                        sel.appendChild(opt);
+                    });
+                }
+            } catch (e) {
+                console.warn('No se pudieron cargar los contribuyentes para el filtro de backup:', e);
+            }
+        }
+
+        async function seleccionarCarpetaPC() {
+            if ('showDirectoryPicker' in window) {
+                try {
+                    const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                    directoryHandleSeleccionado = dirHandle;
+                    const input = document.getElementById('inputCarpetaDestino');
+                    if (input) {
+                        input.value = `📁 Carpeta seleccionada: ${dirHandle.name}`;
+                    }
+                    const badge = document.getElementById('badgeCarpetaEstado');
+                    if (badge) {
+                        badge.textContent = `Guardado automático en "${dirHandle.name}"`;
+                        badge.style.color = '#15803d';
+                    }
+                } catch (err) {
+                    if (err && err.name !== 'AbortError') {
+                        console.warn('Error seleccionando carpeta:', err);
+                    }
+                }
+            } else {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Seleccionar Carpeta',
+                    text: 'Al finalizar la generación del backup se abrirá la ventana para elegir la carpeta donde guardar el archivo .SQL, o puede escribir una ruta local en el campo de texto.'
+                });
+            }
+        }
+
+        async function guardarArchivoEnCarpetaElegida(fileName, preguntarSiNoHayCarpeta = true) {
+            try {
+                const response = await fetch(`/api/backup/download/${encodeURIComponent(fileName)}`);
+                if (!response.ok) throw new Error('No se pudo descargar el respaldo desde el servidor.');
+                const blob = await response.blob();
+
+                // 1. Si ya eligió una carpeta con showDirectoryPicker, guardar directamente dentro de esa carpeta
+                if (directoryHandleSeleccionado) {
+                    const fileHandle = await directoryHandleSeleccionado.getFileHandle(fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    return { saved: true, location: `Carpeta "${directoryHandleSeleccionado.name}" (${fileName})` };
+                }
+
+                // 2. Si el navegador soporta showSaveFilePicker, abrir el diálogo nativo para elegir carpeta y nombre de archivo
+                if (preguntarSiNoHayCarpeta && 'showSaveFilePicker' in window) {
+                    const saveHandle = await window.showSaveFilePicker({
+                        suggestedName: fileName,
+                        types: [{
+                            description: 'Archivo de Respaldo SQL (.sql)',
+                            accept: { 'application/sql': ['.sql'], 'text/plain': ['.sql'] }
+                        }]
+                    });
+                    const writable = await saveHandle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    return { saved: true, location: saveHandle.name };
+                }
+
+                // 3. Fallback: descarga estándar del navegador
+                if (preguntarSiNoHayCarpeta) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                    return { saved: true, location: 'Carpeta de Descargas' };
+                }
+
+                return { saved: false };
+            } catch (err) {
+                if (err && err.name === 'AbortError') {
+                    return { saved: false, aborted: true };
+                }
+                console.error('Error guardando en carpeta:', err);
+                throw err;
+            }
+        }
 
         async function cargarHistorial() {
             const tbody = document.getElementById('tableBody');
@@ -132,7 +285,7 @@
                 if (!list || list.length === 0) {
                     tbody.innerHTML = `
                         <tr>
-                            <td colspan="4" style="text-align: center; padding: 2.5rem; color: #94a3b8;">
+                            <td colspan="5" style="text-align: center; padding: 2.5rem; color: #94a3b8;">
                                 <i class="ph ph-folder-open" style="font-size: 2.5rem; margin-bottom: 8px;"></i>
                                 <p style="margin: 0; font-size: 0.95rem;">No hay respaldos generados actualmente.</p>
                             </td>
@@ -143,11 +296,19 @@
 
                 let html = '';
                 list.forEach(item => {
+                    const isPorContrib = (item.tipo || '').toLowerCase().includes('contribuyente') || item.fileName.includes('_emp');
+                    const badgeTipo = isPorContrib
+                        ? `<span style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;padding:3px 9px;border-radius:999px;font-size:0.75rem;font-weight:700;">Por Contribuyente</span>`
+                        : `<span style="background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;padding:3px 9px;border-radius:999px;font-size:0.75rem;font-weight:700;">Completo (Todas las tablas)</span>`;
+
                     html += `
                         <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-                            <td style="padding: 12px 16px; font-weight: 600; color: #0f172a; font-family: monospace; font-size: 0.92rem;">
+                            <td style="padding: 12px 16px; font-weight: 600; color: #0f172a; font-family: monospace; font-size: 0.88rem;">
                                 <i class="ph ph-file-sql" style="color: #16a34a; font-size: 1.2rem; vertical-align: middle; margin-right: 6px;"></i>
                                 ${item.fileName}
+                            </td>
+                            <td style="padding: 12px 16px;">
+                                ${badgeTipo}
                             </td>
                             <td style="padding: 12px 16px; color: #475569; font-size: 0.88rem;">
                                 ${item.lastModifiedFormatted}
@@ -156,11 +317,14 @@
                                 ${item.fileSizeFormatted}
                             </td>
                             <td style="padding: 12px 16px; text-align: center;">
-                                <div style="display: flex; justify-content: center; gap: 8px;">
-                                    <a href="/api/backup/download/${item.fileName}" class="btn" style="background: #dcfce7; color: #15803d; padding: 5px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px;" title="Descargar archivo .sql">
+                                <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
+                                    <button type="button" onclick="guardarArchivoEnCarpetaElegida('${item.fileName}', true)" class="btn" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 5px 11px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px;" title="Elegir carpeta donde guardar este respaldo">
+                                        <i class="ph ph-folder-open"></i> Guardar en Carpeta...
+                                    </button>
+                                    <a href="/api/backup/download/${encodeURIComponent(item.fileName)}" class="btn" style="background: #dcfce7; color: #15803d; padding: 5px 11px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px;" title="Descargar archivo .sql">
                                         <i class="ph ph-download-simple"></i> Descargar
                                     </a>
-                                    <button onclick="eliminarBackup('${item.fileName}')" class="btn" style="background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; padding: 5px 10px; border-radius: 6px; font-size: 0.82rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;" title="Eliminar respaldo">
+                                    <button onclick="eliminarBackup('${item.fileName}')" class="btn" style="background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; padding: 5px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;" title="Eliminar respaldo">
                                         <i class="ph ph-trash"></i> Eliminar
                                     </button>
                                 </div>
@@ -174,7 +338,7 @@
                 console.error("Error al cargar historial:", err);
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="4" style="text-align: center; padding: 2rem; color: #ef4444;">
+                        <td colspan="5" style="text-align: center; padding: 2rem; color: #ef4444;">
                             <i class="ph ph-warning-circle" style="font-size: 2rem;"></i>
                             <p style="margin-top: 6px;">Error al conectar con el servidor para obtener los respaldos.</p>
                         </td>
@@ -186,51 +350,87 @@
         async function generarBackup() {
             const btn = document.getElementById('btnGenerarMain');
             const overlay = document.getElementById('loadingOverlay');
+            const codEmpresa = document.getElementById('selectContribuyenteBackup')?.value || 'ALL';
+            const rawCarpeta = document.getElementById('inputCarpetaDestino')?.value || '';
+            const carpetaLocalServidor = rawCarpeta.startsWith('📁') ? '' : rawCarpeta.trim();
 
             btn.disabled = true;
             overlay.style.display = 'flex';
 
             try {
                 const res = await fetch('/api/backup/generar', {
-                    method: 'POST'
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        codEmpresa: codEmpresa,
+                        carpetaDestino: carpetaLocalServidor
+                    })
                 });
                 const data = await res.json();
 
                 if (data.status === 'success') {
                     const info = data.data;
-                    
+                    overlay.style.display = 'none';
+
+                    // Si el usuario ya había seleccionado una carpeta con el selector del navegador, guardar automáticamente allí
+                    let guardadoInfo = null;
+                    if (directoryHandleSeleccionado) {
+                        try {
+                            guardadoInfo = await guardarArchivoEnCarpetaElegida(info.fileName, false);
+                        } catch (e) {
+                            console.warn('No se pudo guardar automáticamente en la carpeta elegida:', e);
+                        }
+                    }
+
                     // Mostrar card del último backup
                     const card = document.getElementById('latestBackupCard');
                     const infoTxt = document.getElementById('latestBackupInfo');
+                    const folderTxt = document.getElementById('latestBackupFolderInfo');
                     const btnDl = document.getElementById('btnDownloadLatest');
+                    const btnSaveAs = document.getElementById('btnSaveAsLatest');
 
-                    infoTxt.innerText = `Archivo: ${info.fileName} | Tablas: ${info.tablesCount} | Registros: ${info.recordsCount} | Tamaño: ${info.fileSizeFormatted} (${info.durationSeconds}s)`;
-                    btnDl.href = `/api/backup/download/${info.fileName}`;
+                    const alcanceDesc = info.alcance === 'CONTRIBUYENTE'
+                        ? `Contribuyente #${info.codEmpresa} (${info.nombreContribuyente})`
+                        : 'Completo (Todas las tablas y contribuyentes)';
+
+                    infoTxt.innerText = `Archivo: ${info.fileName} | Alcance: ${alcanceDesc} | Tablas: ${info.tablesCount} | Registros: ${info.recordsCount} | Tamaño: ${info.fileSizeFormatted}`;
+                    if (info.savedCustomPath) {
+                        folderTxt.innerText = `✔ Guardado en ruta indicada: ${info.savedCustomPath}`;
+                    } else if (guardadoInfo && guardadoInfo.saved) {
+                        folderTxt.innerText = `✔ Guardado automáticamente en: ${guardadoInfo.location}`;
+                    } else {
+                        folderTxt.innerText = '';
+                    }
+
+                    btnDl.href = `/api/backup/download/${encodeURIComponent(info.fileName)}`;
+                    btnSaveAs.onclick = () => guardarArchivoEnCarpetaElegida(info.fileName, true);
                     card.style.display = 'block';
+
+                    cargarHistorial();
 
                     Swal.fire({
                         icon: 'success',
                         title: '¡Copia de Seguridad Generada!',
                         html: `
-                            <div style="text-align: left; font-size: 0.9rem; line-height: 1.6; margin-top: 10px;">
+                            <div style="text-align: left; font-size: 0.9rem; line-height: 1.65; margin-top: 10px;">
                                 <p><strong>Archivo:</strong> <code>${info.fileName}</code></p>
-                                <p><strong>Tablas Exportadas:</strong> ${info.tablesCount}</p>
+                                <p><strong>Alcance:</strong> ${alcanceDesc}</p>
+                                <p><strong>Tablas del Proyecto Exportadas:</strong> ${info.tablesCount}</p>
                                 <p><strong>Registros Exportados:</strong> ${info.recordsCount}</p>
                                 <p><strong>Tamaño del Archivo:</strong> ${info.fileSizeFormatted}</p>
-                                <p><strong>Tiempo de Ejecución:</strong> ${info.durationSeconds} segundos</p>
+                                ${info.savedCustomPath ? `<p style="color:#15803d;font-weight:700;">✔ Copiado en: <code>${info.savedCustomPath}</code></p>` : ''}
+                                ${(guardadoInfo && guardadoInfo.saved) ? `<p style="color:#15803d;font-weight:700;">✔ Guardado en: <code>${guardadoInfo.location}</code></p>` : ''}
                             </div>
                         `,
-                        confirmButtonText: '<i class="ph ph-download-simple"></i> Descargar SQL Ahora',
+                        confirmButtonText: '<i class="ph ph-folder-open"></i> Elegir Carpeta y Guardar SQL',
                         showCancelButton: true,
                         cancelButtonText: 'Cerrar',
                         confirmButtonColor: '#16a34a'
-                    }).then((result) => {
+                    }).then(async (result) => {
                         if (result.isConfirmed) {
-                            window.location.href = `/api/backup/download/${info.fileName}`;
+                            await guardarArchivoEnCarpetaElegida(info.fileName, true);
                         }
                     });
-
-                    cargarHistorial();
                 } else {
                     Swal.fire({
                         icon: 'error',
