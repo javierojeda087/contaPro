@@ -419,6 +419,7 @@ $exactApiRoutes = [
     '/api/accesos-grupos/eliminar-grupo'    => [AdminController::class, 'apiAccesosGruposEliminarGrupo'],
 
     // Backup
+    '/api/backup/opciones'              => [AdminController::class, 'apiBackupOpciones'],
     '/api/backup/generar'               => [AdminController::class, 'apiBackupGenerar'],
     '/api/backup/list'                  => [AdminController::class, 'apiBackupList'],
     '/api/backup/eliminar'              => [AdminController::class, 'apiBackupEliminar'],

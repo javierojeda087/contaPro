@@ -25,7 +25,7 @@
                         <div>
                             <h2 style="margin: 0; font-size: 1.32rem; color: #0f172a; font-weight: 800;">Respaldo de Base de Datos</h2>
                             <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.88rem;">
-                                Genere copias de seguridad completas de <strong>todas las tablas del proyecto</strong> o filtradas <strong>por contribuyente</strong>, y elija la carpeta donde guardar el archivo <code>.sql</code>.
+                                Genere copias de seguridad de <strong>todas las tablas del proyecto</strong>: lleve <strong>todos los propietarios y todos los contribuyentes</strong>, o seleccione un <strong>Propietario específico con todos sus contribuyentes</strong>, y elija la carpeta donde guardar el archivo <code>.sql</code>.
                             </p>
                         </div>
                     </div>
@@ -36,17 +36,20 @@
                     </button>
                 </div>
 
-                <!-- Controles: Selección de Contribuyente y Selección de Carpeta Destino -->
+                <!-- Controles: Selección por Propietario (o Todos) y Selección de Carpeta Destino -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 1.25rem; margin-top: 1.25rem; align-items: end;">
                     
-                    <!-- 1. Opción: Backup Completo o Por Contribuyente -->
+                    <!-- 1. Opción: Todos los Propietarios o Por Propietario (con todos sus contribuyentes) -->
                     <div>
-                        <label for="selectContribuyenteBackup" style="display: flex; align-items: center; gap: 6px; font-size: 0.84rem; font-weight: 700; color: #1e293b; margin-bottom: 6px;">
-                            <i class="ph ph-buildings" style="color: #16a34a; font-size: 1.05rem;"></i>
-                            Alcance del Respaldo (Completo o por Contribuyente):
+                        <label for="selectPropietarioBackup" style="display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 0.84rem; font-weight: 700; color: #1e293b; margin-bottom: 6px;">
+                            <span style="display: flex; align-items: center; gap: 6px;">
+                                <i class="ph ph-users-three" style="color: #16a34a; font-size: 1.05rem;"></i>
+                                Alcance del Respaldo (Todos los Propietarios o Por Propietario):
+                            </span>
+                            <span id="badgeResumenAlcance" style="font-size: 0.74rem; color: #15803d; font-weight: 700;">Incluye todas las tablas</span>
                         </label>
-                        <select id="selectContribuyenteBackup" style="width: 100%; height: 42px; padding: 0 12px; border: 1.5px solid #cbd5e1; border-radius: 9px; font-size: 0.9rem; font-weight: 700; color: #0f172a; background: #f8fafc;">
-                            <option value="ALL">📦 TODAS LAS TABLAS Y TODOS LOS CONTRIBUYENTES (Completo)</option>
+                        <select id="selectPropietarioBackup" onchange="actualizarResumenAlcance()" style="width: 100%; height: 42px; padding: 0 12px; border: 1.5px solid #cbd5e1; border-radius: 9px; font-size: 0.9rem; font-weight: 700; color: #0f172a; background: #f8fafc;">
+                            <option value="ALL">🌐 TODOS LOS PROPIETARIOS Y TODOS LOS CONTRIBUYENTES (Completo)</option>
                         </select>
                     </div>
 
@@ -111,7 +114,7 @@
                         <thead>
                             <tr style="background: #f8fafc; text-align: left;">
                                 <th style="padding: 12px 16px; font-size: 0.78rem; font-weight: 700; color: #475569; text-transform: uppercase;">Archivo SQL</th>
-                                <th style="padding: 12px 16px; font-size: 0.78rem; font-weight: 700; color: #475569; text-transform: uppercase;">Alcance / Tipo</th>
+                                <th style="padding: 12px 16px; font-size: 0.78rem; font-weight: 700; color: #475569; text-transform: uppercase;">Alcance / Propietario</th>
                                 <th style="padding: 12px 16px; font-size: 0.78rem; font-weight: 700; color: #475569; text-transform: uppercase;">Fecha y Hora</th>
                                 <th style="padding: 12px 16px; font-size: 0.78rem; font-weight: 700; color: #475569; text-transform: uppercase;">Tamaño</th>
                                 <th style="padding: 12px 16px; font-size: 0.78rem; font-weight: 700; color: #475569; text-transform: uppercase; text-align: center;">Acciones</th>
@@ -135,8 +138,8 @@
                     <i class="ph ph-info" style="color: #16a34a;"></i> Información de Seguridad y Restauración
                 </h5>
                 <ul style="margin: 0; padding-left: 1.25rem; line-height: 1.6;">
-                    <li>Los archivos <code>.sql</code> incluyen la estructura completa (<code>CREATE TABLE IF NOT EXISTS</code>) de <strong>todas las tablas del proyecto</strong> y los registros <code>REPLACE INTO</code> listos para restaurar en MySQL / MariaDB.</li>
-                    <li>Puede generar un <strong>Respaldo Completo</strong> de todas las empresas/contribuyentes o elegir un <strong>Contribuyente específico</strong> en el selector superior.</li>
+                    <li>Los archivos <code>.sql</code> incluyen la estructura completa (<code>CREATE TABLE IF NOT EXISTS</code>) de <strong>todas las 34 tablas del proyecto</strong> y los registros <code>REPLACE INTO</code> listos para restaurar en MySQL / MariaDB.</li>
+                    <li>Puede generar un <strong>Respaldo Total (Todos los Propietarios y Todos los Contribuyentes)</strong> o elegir un <strong>Propietario específico</strong> (por ejemplo, Propietario #1 y todos sus contribuyentes, usuarios, libros y asientos).</li>
                     <li>Con el botón <strong>Elegir Carpeta...</strong> o <strong>Guardar en Carpeta...</strong> puede seleccionar directamente el directorio de su computadora donde desea almacenar el respaldo.</li>
                 </ul>
             </div>
@@ -148,7 +151,7 @@
         <i class="ph ph-spinner-gap" style="font-size: 3.5rem; animation: spin 1s linear infinite; color: #38bdf8;"></i>
         <div style="text-align: center;">
             <h3 style="margin: 0 0 6px 0; font-size: 1.3rem; font-weight: 700;">Generando Copia de Seguridad...</h3>
-            <p style="margin: 0; color: #94a3b8; font-size: 0.95rem;">Exportando todas las tablas y registros seleccionados... Por favor espere.</p>
+            <p style="margin: 0; color: #94a3b8; font-size: 0.95rem;">Exportando todas las tablas, propietarios y contribuyentes seleccionados... Por favor espere.</p>
         </div>
     </div>
 
@@ -165,33 +168,66 @@
 
     <script>
         let directoryHandleSeleccionado = null;
+        let listaPropietariosOpciones = [];
 
         document.addEventListener('DOMContentLoaded', function() {
-            cargarContribuyentesSelect();
+            cargarPropietariosSelect();
             cargarHistorial();
         });
 
-        async function cargarContribuyentesSelect() {
-            const sel = document.getElementById('selectContribuyenteBackup');
+        async function cargarPropietariosSelect() {
+            const sel = document.getElementById('selectPropietarioBackup');
             if (!sel) return;
             try {
-                const res = await fetch('/api/contribuyentes/list');
-                const list = await res.json();
-                sel.innerHTML = `<option value="ALL">📦 TODAS LAS TABLAS Y TODOS LOS CONTRIBUYENTES (Completo)</option>`;
-                if (Array.isArray(list)) {
-                    list.forEach(emp => {
-                        const cod = emp.codEmpresa || emp.cod_empresa || '';
-                        const nom = emp.razonSocial || emp.descripcion || ('Contribuyente #' + cod);
-                        const ruc = emp.ruc || emp.ruc_empresa || '';
-                        if (!cod) return;
-                        const opt = document.createElement('option');
-                        opt.value = cod;
-                        opt.textContent = `🏢 Por Contribuyente: [${cod}] ${nom}${ruc ? ' (RUC: ' + ruc + ')' : ''}`;
-                        sel.appendChild(opt);
-                    });
+                const res = await fetch('/api/backup/opciones');
+                const json = await res.json();
+                const payload = json.data || {};
+                const props = Array.isArray(payload.propietarios) ? payload.propietarios : [];
+                listaPropietariosOpciones = props;
+
+                let totalEmpGlobal = 0;
+                props.forEach(p => { totalEmpGlobal += Number(p.totalContribuyentes || 0); });
+
+                sel.innerHTML = '';
+                if (payload.esSuperAdmin !== false) {
+                    const optAll = document.createElement('option');
+                    optAll.value = 'ALL';
+                    optAll.textContent = `🌐 TODOS LOS PROPIETARIOS (${props.length}) Y TODOS LOS CONTRIBUYENTES (${totalEmpGlobal}) — Base Completa`;
+                    sel.appendChild(optAll);
                 }
+
+                props.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = String(p.idPropietario);
+                    const cantEmp = Number(p.totalContribuyentes || 0);
+                    const cantUsr = Number(p.totalUsuarios || 0);
+                    const rucTxt = p.ruc ? ` | RUC: ${p.ruc}` : '';
+                    opt.textContent = `👤 Propietario #${p.idPropietario} — ${p.nombre}${rucTxt} (${cantEmp} contribuyente${cantEmp === 1 ? '' : 's'} / ${cantUsr} usuario${cantUsr === 1 ? '' : 's'})`;
+                    sel.appendChild(opt);
+                });
+
+                actualizarResumenAlcance();
             } catch (e) {
-                console.warn('No se pudieron cargar los contribuyentes para el filtro de backup:', e);
+                console.warn('No se pudieron cargar las opciones de propietarios para el backup:', e);
+            }
+        }
+
+        function actualizarResumenAlcance() {
+            const sel = document.getElementById('selectPropietarioBackup');
+            const badge = document.getElementById('badgeResumenAlcance');
+            if (!sel || !badge) return;
+            const val = sel.value;
+            if (val === 'ALL') {
+                let totalEmp = 0;
+                listaPropietariosOpciones.forEach(p => { totalEmp += Number(p.totalContribuyentes || 0); });
+                badge.textContent = `Lleva ${listaPropietariosOpciones.length} propietario(s) y ${totalEmp} contribuyente(s)`;
+                badge.style.color = '#15803d';
+            } else {
+                const found = listaPropietariosOpciones.find(p => String(p.idPropietario) === String(val));
+                if (found) {
+                    badge.textContent = `Lleva Propietario #${found.idPropietario} y sus ${found.totalContribuyentes} contribuyente(s)`;
+                    badge.style.color = '#0369a1';
+                }
             }
         }
 
@@ -296,10 +332,10 @@
 
                 let html = '';
                 list.forEach(item => {
-                    const isPorContrib = (item.tipo || '').toLowerCase().includes('contribuyente') || item.fileName.includes('_emp');
-                    const badgeTipo = isPorContrib
-                        ? `<span style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;padding:3px 9px;border-radius:999px;font-size:0.75rem;font-weight:700;">Por Contribuyente</span>`
-                        : `<span style="background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;padding:3px 9px;border-radius:999px;font-size:0.75rem;font-weight:700;">Completo (Todas las tablas)</span>`;
+                    const isPorProp = (item.tipo || '').toLowerCase().includes('propietario') && !item.fileName.includes('TODOS_PROPIETARIOS');
+                    const badgeTipo = isPorProp
+                        ? `<span style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;padding:3px 9px;border-radius:999px;font-size:0.75rem;font-weight:700;">👤 ${item.tipo || 'Por Propietario y sus Contribuyentes'}</span>`
+                        : `<span style="background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;padding:3px 9px;border-radius:999px;font-size:0.75rem;font-weight:700;">🌐 ${item.tipo || 'Todos los Propietarios y Contribuyentes'}</span>`;
 
                     html += `
                         <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
@@ -350,7 +386,7 @@
         async function generarBackup() {
             const btn = document.getElementById('btnGenerarMain');
             const overlay = document.getElementById('loadingOverlay');
-            const codEmpresa = document.getElementById('selectContribuyenteBackup')?.value || 'ALL';
+            const idPropietario = document.getElementById('selectPropietarioBackup')?.value || 'ALL';
             const rawCarpeta = document.getElementById('inputCarpetaDestino')?.value || '';
             const carpetaLocalServidor = rawCarpeta.startsWith('📁') ? '' : rawCarpeta.trim();
 
@@ -362,7 +398,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        codEmpresa: codEmpresa,
+                        idPropietario: idPropietario,
                         carpetaDestino: carpetaLocalServidor
                     })
                 });
@@ -389,9 +425,9 @@
                     const btnDl = document.getElementById('btnDownloadLatest');
                     const btnSaveAs = document.getElementById('btnSaveAsLatest');
 
-                    const alcanceDesc = info.alcance === 'CONTRIBUYENTE'
-                        ? `Contribuyente #${info.codEmpresa} (${info.nombreContribuyente})`
-                        : 'Completo (Todas las tablas y contribuyentes)';
+                    const alcanceDesc = info.alcance === 'PROPIETARIO'
+                        ? `Propietario #${info.idPropietario} (${info.nombrePropietario}) y sus ${info.contribuyentesCount ?? 0} contribuyente(s)`
+                        : `TODOS LOS PROPIETARIOS Y TODOS LOS CONTRIBUYENTES (${info.contribuyentesCount ?? 0} contribuyente(s))`;
 
                     infoTxt.innerText = `Archivo: ${info.fileName} | Alcance: ${alcanceDesc} | Tablas: ${info.tablesCount} | Registros: ${info.recordsCount} | Tamaño: ${info.fileSizeFormatted}`;
                     if (info.savedCustomPath) {
