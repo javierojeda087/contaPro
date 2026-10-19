@@ -490,14 +490,14 @@
     <section id="soluciones" class="section">
         <div class="section-title">
             <h2>Todo lo que tu Estudio Contable necesita en la Nube</h2>
-            <p>Multi-Propietario y Multi-Contribuyente con cumplimiento 100% de normativas DNIT / SET Paraguay</p>
+            <p>Gestión de múltiples contribuyentes y empresas con cumplimiento 100% de normativas DNIT Paraguay</p>
         </div>
 
         <div class="features-grid">
             <div class="feature-card">
                 <div class="feature-icon"><i class="ph ph-qr-code"></i></div>
                 <h3>Integración CDC SIFEN y DNIT</h3>
-                <p>Verificación automática de comprobantes electrónicos por CDC en la SET y autocompletado de RUC/Razón Social en línea.</p>
+                <p>Verificación automática de comprobantes electrónicos por CDC y autocompletado de RUC/Razón Social en línea.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="ph ph-file-zip"></i></div>
@@ -505,14 +505,14 @@
                 <p>Generación directa del archivo ZIP reglamentario de Compras y Ventas listo para subir al Sistema Marangatu.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon"><i class="ph ph-Notebook"></i></div>
-                <h3>Formulario 120 (IVA V3) y Libros</h3>
-                <p>Cálculo automático del Formulario 120 Versión 3, Libro Compras, Libro Ventas, Libro Diario y Libro Mayor.</p>
+                <div class="feature-icon"><i class="ph ph-notebook"></i></div>
+                <h3>Formulario 120 y Libros</h3>
+                <p>Cálculo automático del Formulario 120, Libro Compras, Libro Ventas, Libro Diario y Libro Mayor.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon"><i class="ph ph-users-three"></i></div>
-                <h3>Arquitectura Multi-Propietario</h3>
-                <p>Cada contador o empresa propietaria gestiona únicamente sus propios contribuyentes, asientos y usuarios con total privacidad.</p>
+                <div class="feature-icon"><i class="ph ph-buildings"></i></div>
+                <h3>Múltiples Contribuyentes y Empresas</h3>
+                <p>Gestiona varios contribuyentes y empresas desde un solo lugar, manteniendo sus libros, asientos y movimientos organizados de forma independiente.</p>
             </div>
         </div>
     </section>
