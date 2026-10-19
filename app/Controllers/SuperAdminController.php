@@ -31,9 +31,24 @@ class SuperAdminController {
         self::checkAccess();
 
         $planes = Database::queryForList("SELECT * FROM planes ORDER BY orden, id_plan");
+        $grupos = Database::queryForList(
+            "SELECT UPPER(TRIM(cod_grupo)) AS cod_grupo, MAX(descripcion) AS descripcion
+             FROM grupos_usuarios
+             WHERE cod_grupo IS NOT NULL AND TRIM(cod_grupo) <> ''
+             GROUP BY UPPER(TRIM(cod_grupo))
+             ORDER BY CASE
+                 WHEN UPPER(TRIM(cod_grupo)) = 'CONTA'  THEN 1
+                 WHEN UPPER(TRIM(cod_grupo)) = 'CONTAM' THEN 2
+                 WHEN UPPER(TRIM(cod_grupo)) = 'CONTAP' THEN 3
+                 WHEN UPPER(TRIM(cod_grupo)) = 'CONADM' THEN 4
+                 ELSE 5
+             END, UPPER(TRIM(cod_grupo))"
+        );
+
         $propsRaw = Database::queryForList(
             "SELECT p.*,
                     COALESCE(pl.nombre_plan, 'Plan Básico') AS nombre_plan,
+                    COALESCE(pl.cod_grupo, 'CONTA') AS cod_grupo_plan,
                     COALESCE(pl.precio_mensual, 0) AS precio_mensual,
                     (SELECT COUNT(*) FROM empresas e WHERE e.id_propietario = p.id_propietario) AS usados_contribuyentes,
                     (SELECT COUNT(*) FROM usuarios u WHERE u.id_propietario = p.id_propietario) AS usados_usuarios,
@@ -64,6 +79,7 @@ class SuperAdminController {
         return [
             'status'       => 'success',
             'planes'       => $planes,
+            'grupos'       => $grupos,
             'propietarios' => $props,
             'pagos'        => $pagos,
         ];
@@ -75,6 +91,7 @@ class SuperAdminController {
         $idPlan     = (int)($_POST['idPlan'] ?? 0);
         $codigo     = strtoupper(trim((string)($_POST['codigoPlan'] ?? 'PLAN')));
         $nombre     = trim((string)($_POST['nombrePlan'] ?? ''));
+        $codGrupo   = substr(strtoupper(preg_replace('/[^A-Z0-9_]/i', '', trim((string)($_POST['codGrupo'] ?? '')))), 0, 10);
         $maxContrib = max(1, (int)($_POST['maxContribuyentes'] ?? 5));
         $maxUsers   = max(1, (int)($_POST['maxUsuarios'] ?? 2));
         $precioAnt  = max(0, (float)($_POST['precioAnterior'] ?? 0));
@@ -85,20 +102,73 @@ class SuperAdminController {
             return ['status' => 'error', 'message' => 'Ingrese el nombre del plan.'];
         }
 
+        if ($codGrupo === '') {
+            $codGrupo = TenantContext::obtenerGrupoPorPlan(null, $codigo);
+        }
+
+        // Asegurar que el grupo exista en grupos_usuarios y accesos_grupos
+        $descGrupo = 'GRUPO CONTABILIDAD (' . strtoupper($nombre) . ')';
+        Database::execute(
+            "INSERT INTO `grupos_usuarios` (`id_propietario`, `cod_grupo`, `descripcion`, `ind_clave_sin_caducidad`)
+             SELECT DISTINCT p.id_prop, '$codGrupo', '$descGrupo', 'S'
+             FROM (
+                 SELECT `id_propietario` AS id_prop FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop FROM `grupos_usuarios`
+                 UNION
+                 SELECT 1 AS id_prop
+             ) p
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM `grupos_usuarios` g
+                 WHERE g.`id_propietario` = p.id_prop AND UPPER(TRIM(g.`cod_grupo`)) = '$codGrupo'
+             )",
+            true
+        );
+
+        Database::execute(
+            "INSERT INTO `accesos_grupos` (
+                 `id_propietario`, `cod_grupo`, `cod_modulo`, `nom_forma`,
+                 `puede_insertar`, `puede_borrar`, `puede_actualizar`, `puede_consultar`,
+                 `item_menu`, `mostrar_en_menu`
+             )
+             SELECT a.`id_propietario`, '$codGrupo', a.`cod_modulo`, a.`nom_forma`,
+                    a.`puede_insertar`, a.`puede_borrar`, a.`puede_actualizar`, a.`puede_consultar`,
+                    a.`item_menu`, a.`mostrar_en_menu`
+             FROM `accesos_grupos` a
+             WHERE UPPER(TRIM(a.`cod_grupo`)) = 'CONTA'
+               AND UPPER(TRIM(a.`nom_forma`)) <> 'BSGRPUSU'
+               AND NOT EXISTS (
+                   SELECT 1 FROM `accesos_grupos` x
+                   WHERE x.`id_propietario` = a.`id_propietario`
+                     AND UPPER(TRIM(x.`cod_grupo`)) = '$codGrupo'
+               )",
+            true
+        );
+
         if ($idPlan > 0) {
             Database::update(
-                "UPDATE planes SET codigo_plan = ?, nombre_plan = ?, max_contribuyentes = ?, max_usuarios = ?, precio_anterior = ?, precio_mensual = ?, descripcion = ?
+                "UPDATE planes SET codigo_plan = ?, nombre_plan = ?, cod_grupo = ?, max_contribuyentes = ?, max_usuarios = ?, precio_anterior = ?, precio_mensual = ?, descripcion = ?
                  WHERE id_plan = ?",
-                [$codigo, $nombre, $maxContrib, $maxUsers, $precioAnt, $precio, $desc, $idPlan]
+                [$codigo, $nombre, $codGrupo, $maxContrib, $maxUsers, $precioAnt, $precio, $desc, $idPlan]
             );
-            return ['status' => 'success', 'message' => 'Plan actualizado exitosamente.'];
+            // Sincronizar usuarios de los propietarios que tienen este plan asignado (excepto CONTA/CONADM)
+            Database::execute(
+                "UPDATE usuarios u
+                 JOIN propietarios pr ON pr.id_propietario = u.id_propietario
+                 SET u.cod_grupo = '$codGrupo'
+                 WHERE pr.id_plan = $idPlan
+                   AND UPPER(TRIM(u.cod_usuario)) <> 'CONTA'
+                   AND UPPER(TRIM(COALESCE(u.cod_grupo, ''))) <> 'CONADM'",
+                true
+            );
+            return ['status' => 'success', 'message' => "Plan actualizado exitosamente (Grupo asignado: {$codGrupo})."];
         } else {
             Database::insertGetId(
-                "INSERT INTO planes (codigo_plan, nombre_plan, max_contribuyentes, max_usuarios, precio_anterior, precio_mensual, descripcion, estado, orden)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, 'A', 10)",
-                [$codigo, $nombre, $maxContrib, $maxUsers, $precioAnt, $precio, $desc]
+                "INSERT INTO planes (codigo_plan, nombre_plan, cod_grupo, max_contribuyentes, max_usuarios, precio_anterior, precio_mensual, descripcion, estado, orden)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'A', 10)",
+                [$codigo, $nombre, $codGrupo, $maxContrib, $maxUsers, $precioAnt, $precio, $desc]
             );
-            return ['status' => 'success', 'message' => 'Nuevo plan registrado exitosamente.'];
+            return ['status' => 'success', 'message' => "Nuevo plan registrado exitosamente (Grupo asignado: {$codGrupo})."];
         }
     }
 
@@ -125,6 +195,8 @@ class SuperAdminController {
             return ['status' => 'error', 'message' => 'El nombre del propietario es obligatorio.'];
         }
 
+        $grupoPlan = TenantContext::obtenerGrupoPorPlan($idPlan);
+
         if ($idProp > 0) {
             Database::update(
                 "UPDATE propietarios SET nombre_propietario = ?, ruc = ?, email = ?, telefono = ?,
@@ -149,11 +221,18 @@ class SuperAdminController {
             );
         }
 
-        // Aprovisionar catálogos base (módulos, formas, permisos del grupo CONTA, monedas) para este propietario
+        // Aprovisionar catálogos base (módulos, formas, permisos de grupos, monedas) para este propietario
         TenantContext::provisionNewTenant($idProp);
+
+        // Sincronizar el grupo de todos los usuarios de este propietario según el plan asignado (excepto CONTA principal)
+        Database::update(
+            "UPDATE usuarios SET cod_grupo = ? WHERE id_propietario = ? AND UPPER(TRIM(cod_usuario)) <> 'CONTA'",
+            [$grupoPlan, $idProp]
+        );
 
         // Crear o actualizar usuario administrador del propietario si se indicó
         if ($adminUser !== '') {
+            $grupoUsuarioAdmin = ($adminUser === 'CONTA') ? 'CONADM' : $grupoPlan;
             $uExist = Database::queryForMap(
                 "SELECT cod_usuario FROM usuarios WHERE id_propietario = ? AND UPPER(TRIM(cod_usuario)) = ?",
                 [$idProp, $adminUser]
@@ -161,9 +240,14 @@ class SuperAdminController {
             if ($uExist) {
                 if ($adminClave !== '') {
                     Database::update(
-                        "UPDATE usuarios SET clave = ?, estado = 'A', cod_grupo = 'CONTA', es_admin = 'S'
+                        "UPDATE usuarios SET clave = ?, estado = 'A', cod_grupo = ?, es_admin = 'S'
                          WHERE id_propietario = ? AND UPPER(TRIM(cod_usuario)) = ?",
-                        [AuthController::hashPassword($adminClave), $idProp, $adminUser]
+                        [AuthController::hashPassword($adminClave), $grupoUsuarioAdmin, $idProp, $adminUser]
+                    );
+                } else {
+                    Database::update(
+                        "UPDATE usuarios SET cod_grupo = ? WHERE id_propietario = ? AND UPPER(TRIM(cod_usuario)) = ?",
+                        [$grupoUsuarioAdmin, $idProp, $adminUser]
                     );
                 }
             } else {
@@ -171,15 +255,15 @@ class SuperAdminController {
                 $claveFinal = AuthController::hashPassword($claveRaw);
                 Database::update(
                     "INSERT INTO usuarios (id_propietario, cod_usuario, clave, estado, cod_grupo, cod_empresa, cod_sucursal, nombre, es_admin, es_superadmin)
-                     VALUES (?, ?, ?, 'A', 'CONTA', '1', '01', ?, 'S', 'N')",
-                    [$idProp, $adminUser, $claveFinal, $nombre]
+                     VALUES (?, ?, ?, 'A', ?, '1', '01', ?, 'S', 'N')",
+                    [$idProp, $adminUser, $claveFinal, $grupoUsuarioAdmin, $nombre]
                 );
             }
         }
 
         return [
             'status'  => 'success',
-            'message' => 'Propietario #' . $idProp . ' (' . $nombre . ') guardado y aprovisionado correctamente.'
+            'message' => 'Propietario #' . $idProp . ' (' . $nombre . ') guardado y asignado al grupo ' . $grupoPlan . '.'
         ];
     }
 

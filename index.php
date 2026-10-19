@@ -416,6 +416,7 @@ $exactApiRoutes = [
     '/api/accesos-grupos/asignar-usuario'   => [AdminController::class, 'apiAccesosGruposAsignarUsuario'],
     '/api/accesos-grupos/guardar-permisos'  => [AdminController::class, 'apiAccesosGruposGuardarPermisos'],
     '/api/accesos-grupos/guardar-grupo'     => [AdminController::class, 'apiAccesosGruposGuardarGrupo'],
+    '/api/accesos-grupos/eliminar-grupo'    => [AdminController::class, 'apiAccesosGruposEliminarGrupo'],
 
     // Backup
     '/api/backup/generar'               => [AdminController::class, 'apiBackupGenerar'],

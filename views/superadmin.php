@@ -574,6 +574,7 @@
                                     <th class="ps-4">ID</th>
                                     <th>Código</th>
                                     <th>Nombre del Plan</th>
+                                    <th class="text-center">Grupo Usuarios</th>
                                     <th class="text-center">Máx. Contribuyentes</th>
                                     <th class="text-center">Máx. Usuarios</th>
                                     <th class="text-end">Precio Anterior</th>
@@ -639,7 +640,7 @@
                         </div>
                         <div>
                             <h5 class="modal-title fw-bold m-0 text-dark" id="modalPlanTitle" style="font-size: 1rem;">Configurar Plan Comercial</h5>
-                            <div class="text-muted" style="font-size: 0.75rem;">Defina límites de uso, precio anterior tachado y tarifa mensual</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">Defina límites de uso, grupo de usuarios asignado y tarifa mensual</div>
                         </div>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -647,13 +648,23 @@
                 <div class="modal-body" style="padding: 22px 24px;">
                     <input type="hidden" id="planId">
                     <div class="row g-3">
-                        <div class="col-md-5">
+                        <div class="col-md-4">
                             <label class="form-label fw-bold small">Código Plan</label>
                             <input type="text" id="planCodigo" class="form-control text-uppercase fw-bold" placeholder="BASICO">
                         </div>
-                        <div class="col-md-7">
+                        <div class="col-md-4">
                             <label class="form-label fw-bold small">Nombre del Plan</label>
                             <input type="text" id="planNombre" class="form-control fw-bold" placeholder="Plan Básico">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small" style="color: #0284c7;" title="Grupo al que pertenecerán los usuarios de propietarios con este plan">Grupo Usuarios</label>
+                            <input type="text" id="planCodGrupo" list="datalistGruposPlan" class="form-control text-uppercase fw-bold border-primary" maxlength="10" placeholder="CONTA">
+                            <datalist id="datalistGruposPlan">
+                                <option value="CONTA">CONTA - Plan Básico</option>
+                                <option value="CONTAM">CONTAM - Plan Medio</option>
+                                <option value="CONTAP">CONTAP - Plan Pro</option>
+                                <option value="CONADM">CONADM - Administrador</option>
+                            </datalist>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold small text-success">Máximo de Contribuyentes</label>
@@ -743,6 +754,9 @@
                         <div class="col-md-4">
                             <label class="form-label fw-bold small">Plan Comercial</label>
                             <select id="propIdPlan" class="form-select fw-bold" onchange="onSelectPlanProp()"></select>
+                            <div class="mt-1 small" style="font-size: 0.75rem; color: #0369a1;">
+                                <i class="ph ph-shield-check"></i> Grupo asignado: <strong id="propGrupoPlanBadge">CONTA</strong>
+                            </div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold small text-success">Tope Contribuyentes</label>
@@ -780,9 +794,12 @@
 
                         <div class="col-12">
                             <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 14px 16px; margin-top: 4px;">
-                                <div class="fw-bold text-success small mb-2 d-flex align-items-center gap-1">
-                                    <i class="ph ph-key" style="font-size: 1rem;"></i>
-                                    <span>Credenciales del Usuario Administrador (Obligatorio al crear, opcional para resetear clave)</span>
+                                <div class="fw-bold text-success small mb-2 d-flex align-items-center justify-content-between flex-wrap gap-1">
+                                    <div class="d-flex align-items-center gap-1">
+                                        <i class="ph ph-key" style="font-size: 1rem;"></i>
+                                        <span>Credenciales del Usuario Administrador (Obligatorio al crear, opcional para resetear clave)</span>
+                                    </div>
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle" id="propUserGrupoHint">Se creará en el grupo CONTA</span>
                                 </div>
                                 <div class="row g-3">
                                     <div class="col-md-6">
@@ -881,6 +898,7 @@
         let listaPlanes = [];
         let listaPropietarios = [];
         let listaPagos = [];
+        let listaGrupos = [];
         let modalPlanObj, modalPropObj, modalRenovarObj;
 
         function escHtml(str) {
@@ -922,6 +940,12 @@
             listaPlanes = data.planes || [];
             listaPropietarios = data.propietarios || [];
             listaPagos = data.pagos || [];
+            listaGrupos = data.grupos || [];
+
+            const dl = document.getElementById('datalistGruposPlan');
+            if (dl && listaGrupos.length > 0) {
+                dl.innerHTML = listaGrupos.map(g => `<option value="${escHtml(g.cod_grupo)}">${escHtml(g.cod_grupo)} - ${escHtml(g.descripcion || '')}</option>`).join('');
+            }
 
             document.getElementById('tabCountProp').textContent = listaPropietarios.length;
             document.getElementById('tabCountPlanes').textContent = listaPlanes.length;
@@ -1000,6 +1024,7 @@
             const tb = document.getElementById('tablaPlanesBody');
             tb.innerHTML = listaPlanes.map(p => {
                 const cod = String(p.codigo_plan || '').toUpperCase();
+                const codGrp = String(p.cod_grupo || (cod === 'MEDIO' ? 'CONTAM' : (cod === 'PRO' ? 'CONTAP' : (cod === 'ILIMITADO' ? 'CONADM' : 'CONTA')))).toUpperCase();
                 let pillClass = 'sa-pill-slate';
                 if (cod === 'MEDIO') pillClass = 'sa-pill-blue';
                 else if (cod === 'PRO') pillClass = 'sa-pill-green';
@@ -1023,6 +1048,11 @@
                     <td><span class="sa-pill ${pillClass}">${escHtml(cod)}</span></td>
                     <td>
                         <div class="fw-bold text-dark" style="font-size: 0.9rem;">${escHtml(p.nombre_plan)}</div>
+                    </td>
+                    <td class="text-center">
+                        <span class="sa-pill sa-pill-purple">
+                            <i class="ph ph-shield-check"></i> ${escHtml(codGrp)}
+                        </span>
                     </td>
                     <td class="text-center">
                         <span class="sa-pill sa-pill-green">
@@ -1050,7 +1080,10 @@
             }).join('');
 
             const sel = document.getElementById('propIdPlan');
-            sel.innerHTML = listaPlanes.map(p => `<option value="${p.id_plan}">${escHtml(p.nombre_plan)} (${p.max_contribuyentes} Contrib. / ${p.max_usuarios} Usu. - Gs. ${Number(p.precio_mensual||0).toLocaleString('es-PY')})</option>`).join('');
+            sel.innerHTML = listaPlanes.map(p => {
+                const grp = String(p.cod_grupo || 'CONTA').toUpperCase();
+                return `<option value="${p.id_plan}">${escHtml(p.nombre_plan)} [Grupo: ${escHtml(grp)}] (${p.max_contribuyentes} Contrib. / ${p.max_usuarios} Usu.)</option>`;
+            }).join('');
         }
 
         function formatBadgeSuscripcion(pr) {
@@ -1127,6 +1160,7 @@
                 const isActivo = pr.estado === 'A';
                 const initials = escHtml(getInitials(pr.nombre_propietario));
                 const planName = escHtml(pr.nombre_plan || 'Plan Básico');
+                const codGrpPlan = escHtml(pr.cod_grupo_plan || 'CONTA');
                 const isProPlan = planName.toUpperCase().includes('PRO') || planName.toUpperCase().includes('CORPORATIVO');
 
                 const btnToggle = Number(pr.id_propietario) === 1 ? '' : `
@@ -1159,7 +1193,10 @@
                         </div>
                     </td>
                     <td>
-                        <span class="sa-pill ${isProPlan ? 'sa-pill-blue' : 'sa-pill-slate'}">${planName}</span>
+                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                            <span class="sa-pill ${isProPlan ? 'sa-pill-blue' : 'sa-pill-slate'}">${planName}</span>
+                            <span class="sa-pill sa-pill-purple" title="Grupo asignado según el plan">${codGrpPlan}</span>
+                        </div>
                         <div class="small text-muted fw-semibold mt-1" style="font-size: 0.76rem;">
                             Gs. ${Number(pr.precio_mensual || 0).toLocaleString('es-PY')}/mes
                         </div>
@@ -1259,6 +1296,7 @@
             document.getElementById('planId').value = '';
             document.getElementById('planCodigo').value = '';
             document.getElementById('planNombre').value = '';
+            document.getElementById('planCodGrupo').value = 'CONTA';
             document.getElementById('planMaxContrib').value = 5;
             document.getElementById('planMaxUsuarios').value = 2;
             document.getElementById('planPrecioAnterior').value = 0;
@@ -1271,9 +1309,12 @@
         function editarPlan(id) {
             const p = listaPlanes.find(x => Number(x.id_plan) === Number(id));
             if (!p) return;
+            const cod = String(p.codigo_plan || '').toUpperCase();
+            const defaultGrp = cod === 'MEDIO' ? 'CONTAM' : (cod === 'PRO' ? 'CONTAP' : (cod === 'ILIMITADO' ? 'CONADM' : 'CONTA'));
             document.getElementById('planId').value = p.id_plan;
             document.getElementById('planCodigo').value = p.codigo_plan || '';
             document.getElementById('planNombre').value = p.nombre_plan || '';
+            document.getElementById('planCodGrupo').value = p.cod_grupo || defaultGrp;
             document.getElementById('planMaxContrib').value = p.max_contribuyentes;
             document.getElementById('planMaxUsuarios').value = p.max_usuarios;
             document.getElementById('planPrecioAnterior').value = Number(p.precio_anterior || 0);
@@ -1288,6 +1329,7 @@
                 idPlan: document.getElementById('planId').value,
                 codigoPlan: document.getElementById('planCodigo').value,
                 nombrePlan: document.getElementById('planNombre').value,
+                codGrupo: document.getElementById('planCodGrupo').value,
                 maxContribuyentes: document.getElementById('planMaxContrib').value,
                 maxUsuarios: document.getElementById('planMaxUsuarios').value,
                 precioAnterior: document.getElementById('planPrecioAnterior').value,
@@ -1311,6 +1353,12 @@
             if (p) {
                 document.getElementById('propMaxContrib').value = p.max_contribuyentes;
                 document.getElementById('propMaxUsuarios').value = p.max_usuarios;
+                const cod = String(p.codigo_plan || '').toUpperCase();
+                const grp = String(p.cod_grupo || (cod === 'MEDIO' ? 'CONTAM' : (cod === 'PRO' ? 'CONTAP' : (cod === 'ILIMITADO' ? 'CONADM' : 'CONTA')))).toUpperCase();
+                const badge = document.getElementById('propGrupoPlanBadge');
+                if (badge) badge.textContent = grp;
+                const hint = document.getElementById('propUserGrupoHint');
+                if (hint) hint.textContent = `Usuarios asignados al grupo ${grp}`;
             }
         }
 
@@ -1343,6 +1391,7 @@
             document.getElementById('propEmail').value = pr.email || '';
             document.getElementById('propTelefono').value = pr.telefono || '';
             document.getElementById('propIdPlan').value = pr.id_plan || 1;
+            onSelectPlanProp();
             document.getElementById('propMaxContrib').value = pr.max_contribuyentes;
             document.getElementById('propMaxUsuarios').value = pr.max_usuarios;
             document.getElementById('propFecVenc').value = pr.fec_vencimiento ? pr.fec_vencimiento.slice(0, 10) : '';

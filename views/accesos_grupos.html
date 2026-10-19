@@ -8,50 +8,57 @@
     <div th:replace="~{fragments/layout :: sidebar}"></div>
 
     <main class="main-content">
-        <div th:replace="~{fragments/layout :: navbar('Accesos Grupos')}"></div>
+        <div th:replace="~{fragments/layout :: navbar('Accesos y Grupos de Usuarios')}"></div>
 
         <div class="content-area" style="padding: 1.5rem;">
 
             <!-- Resumen Superior -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
                 <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
                     <div style="width: 44px; height: 44px; border-radius: 10px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
                         <i class="ph ph-users-three"></i>
                     </div>
                     <div>
-                        <div style="font-size: 0.78rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Usuarios Creados</div>
+                        <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Usuarios Creados</div>
                         <div id="kpiTotalUsuarios" style="font-size: 1.45rem; font-weight: 800; color: #0f172a;">0</div>
                     </div>
                 </div>
 
                 <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
-                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #dcfce7; color: #16a34a; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
-                        <i class="ph ph-shield-star"></i>
+                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #f3e8ff; color: #7c3aed; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+                        <i class="ph ph-folders"></i>
                     </div>
                     <div>
-                        <div style="font-size: 0.78rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Grupo CONADM</div>
-                        <div id="kpiUsuariosConadm" style="font-size: 1.45rem; font-weight: 800; color: #166534;">0</div>
+                        <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Grupos de Usuarios</div>
+                        <div id="kpiTotalGrupos" style="font-size: 1.45rem; font-weight: 800; color: #6d28d9;">0</div>
                     </div>
                 </div>
 
                 <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
-                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #f1f5f9; color: #334155; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
-                        <i class="ph ph-user-list"></i>
+                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #f1f5f9; color: #0f172a; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+                        <i class="ph ph-stack"></i>
                     </div>
                     <div>
-                        <div style="font-size: 0.78rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Grupo CONTA</div>
-                        <div id="kpiUsuariosConta" style="font-size: 1.45rem; font-weight: 800; color: #0f172a;">0</div>
+                        <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Grupos por Plan</div>
+                        <div id="kpiResumenPlanes" style="font-size: 0.82rem; font-weight: 700; color: #0f172a; margin-top: 2px;">
+                            CONTA • CONTAM • CONTAP
+                        </div>
                     </div>
                 </div>
 
-                <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 14px; box-shadow: 0 2px 6px rgba(22,163,74,0.06);">
-                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #16a34a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
-                        <i class="ph ph-lock-key"></i>
+                <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 10px; box-shadow: 0 2px 6px rgba(22,163,74,0.06);">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 42px; height: 42px; border-radius: 10px; background: #16a34a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 1.35rem;">
+                            <i class="ph ph-plus-circle"></i>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.74rem; color: #15803d; font-weight: 700; text-transform: uppercase;">Gestión de Grupos</div>
+                            <div style="font-size: 0.88rem; font-weight: 700; color: #0f172a;">Crear / Editar Grupo</div>
+                        </div>
                     </div>
-                    <div>
-                        <div style="font-size: 0.75rem; color: #15803d; font-weight: 700; text-transform: uppercase;">Acceso Exclusivo</div>
-                        <div style="font-size: 0.92rem; font-weight: 700; color: #0f172a;">Solo CONADM (CONTA)</div>
-                    </div>
+                    <button type="button" onclick="openGrupoModal()" style="background: #16a34a; border: none; color: #ffffff; padding: 0.5rem 0.95rem; border-radius: 8px; font-weight: 700; font-size: 0.82rem; cursor: pointer; white-space: nowrap;">
+                        + Nuevo Grupo
+                    </button>
                 </div>
             </div>
 
@@ -61,35 +68,130 @@
                 <!-- Navegación de Pestañas -->
                 <div style="padding: 0.85rem 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button type="button" id="tabBtnUsuarios" onclick="switchTab('usuarios')" style="padding: 0.55rem 1.15rem; border-radius: 8px; border: 1px solid #16a34a; background: #16a34a; color: #ffffff; font-weight: 600; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; gap: 7px;">
-                            <i class="ph ph-users"></i> Usuarios Creados y Asignación de Grupo
+                        <button type="button" id="tabBtnGrupos" onclick="switchTab('grupos')" style="padding: 0.55rem 1.15rem; border-radius: 8px; border: 1px solid #16a34a; background: #16a34a; color: #ffffff; font-weight: 600; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; gap: 7px;">
+                            <i class="ph ph-folders"></i> Grupos de Usuarios y Planes
+                        </button>
+                        <button type="button" id="tabBtnUsuarios" onclick="switchTab('usuarios')" style="padding: 0.55rem 1.15rem; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 600; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; gap: 7px;">
+                            <i class="ph ph-users"></i> Usuarios Creados y Asignación
                         </button>
                         <button type="button" id="tabBtnPermisos" onclick="switchTab('permisos')" style="padding: 0.55rem 1.15rem; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 600; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; gap: 7px;">
                             <i class="ph ph-sliders-horizontal"></i> Permisos de Pantallas por Grupo
                         </button>
                     </div>
 
-                    <div style="font-size: 0.82rem; color: #475569; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 6px 12px; border-radius: 8px;">
+                    <div style="font-size: 0.8rem; color: #334155; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 6px 12px; border-radius: 8px;">
                         <i class="ph ph-info" style="color: #16a34a;"></i>
-                        Todo nuevo usuario creado ingresa en <strong>CONTA</strong>. El usuario <strong>CONTA</strong> pertenece siempre a <strong>CONADM</strong>.
+                        Plan Básico → <strong>CONTA</strong> | Plan Medio → <strong>CONTAM</strong> | Plan Pro → <strong>CONTAP</strong> | Admin → <strong>CONADM</strong>
                     </div>
                 </div>
 
                 <!-- ═══════════════════════════════════════════════════════════
-                     TAB 1: TODOS LOS USUARIOS CREADOS Y SU GRUPO
+                     TAB 1: CREACIÓN Y GESTIÓN DE GRUPOS DE USUARIOS Y PLANES
                 ═══════════════════════════════════════════════════════════ -->
-                <div id="panelUsuarios">
+                <div id="panelGrupos">
+                    <!-- Formulario integrado para crear / editar grupo de usuarios -->
+                    <div style="padding: 1.25rem 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 1.15rem 1.35rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.9rem; flex-wrap: wrap; gap: 8px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #dcfce7; color: #15803d; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                                        <i class="ph ph-folder-plus"></i>
+                                    </div>
+                                    <div>
+                                        <h4 id="formGrupoTitle" style="margin: 0; font-size: 0.96rem; font-weight: 800; color: #0f172a;">Formulario de Creación / Edición de Grupo de Usuarios</h4>
+                                        <p style="margin: 0; font-size: 0.78rem; color: #64748b;">Cree grupos de usuarios y vincúlelos con el Plan Comercial correspondiente</p>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="limpiarFormularioGrupo()" style="border: 1px solid #cbd5e1; background: #f8fafc; color: #475569; padding: 4px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer;">
+                                    Limpiar formulario
+                                </button>
+                            </div>
+
+                            <form id="formCrearGrupo" onsubmit="guardarGrupoDesdeForm(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.9rem; align-items: end;">
+                                <div>
+                                    <label style="display: block; font-size: 0.78rem; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                                        Código de Grupo <span style="color: #dc2626;">*</span>
+                                    </label>
+                                    <input type="text" id="inputCodGrupo" maxlength="10" required placeholder="Ej: CONTA, CONTAM, CONTAP"
+                                           style="width: 100%; height: 38px; padding: 0 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-weight: 800; text-transform: uppercase; font-size: 0.88rem; color: #0f172a;">
+                                </div>
+
+                                <div style="grid-column: span 2; min-width: 240px;">
+                                    <label style="display: block; font-size: 0.78rem; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                                        Descripción del Grupo <span style="color: #dc2626;">*</span>
+                                    </label>
+                                    <input type="text" id="inputDescGrupo" maxlength="60" required placeholder="Ej: GRUPO CONTABILIDAD (PLAN MEDIO)"
+                                           style="width: 100%; height: 38px; padding: 0 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-weight: 600; text-transform: uppercase; font-size: 0.88rem; color: #0f172a;">
+                                </div>
+
+                                <div>
+                                    <label style="display: block; font-size: 0.78rem; font-weight: 700; color: #0369a1; margin-bottom: 4px;">
+                                        Vincular a Plan Comercial
+                                    </label>
+                                    <select id="inputPlanGrupo" style="width: 100%; height: 38px; padding: 0 10px; border: 1.5px solid #bae6fd; border-radius: 8px; font-weight: 700; font-size: 0.85rem; color: #0f172a; background: #f0f9ff;">
+                                        <option value="0">-- Sin cambio / No vincular --</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style="display: block; font-size: 0.78rem; font-weight: 700; color: #475569; margin-bottom: 4px;">
+                                        Copiar permisos base de
+                                    </label>
+                                    <select id="inputClonarGrupo" style="width: 100%; height: 38px; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 600; font-size: 0.85rem; color: #334155; background: #ffffff;">
+                                        <option value="CONTA">CONTA (Base Estándar)</option>
+                                        <option value="CONTAM">CONTAM (Plan Medio)</option>
+                                        <option value="CONTAP">CONTAP (Plan Pro)</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <button type="submit" id="btnSubmitGrupo" style="width: 100%; height: 38px; background: #16a34a; border: none; color: #ffffff; border-radius: 8px; font-weight: 700; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 6px rgba(22,163,74,0.25);">
+                                        <i class="ph ph-floppy-disk"></i> Guardar Grupo
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Grupos de Usuarios -->
+                    <div class="table-container" style="overflow-x: auto;">
+                        <table class="data-grid" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569; font-weight: 600; text-transform: uppercase; font-size: 0.77rem; letter-spacing: 0.04em;">
+                                    <th style="padding: 0.85rem 1.25rem;">Código Grupo</th>
+                                    <th style="padding: 0.85rem 1.25rem;">Descripción del Grupo</th>
+                                    <th style="padding: 0.85rem 1.25rem;">Plan Comercial Asociado</th>
+                                    <th style="padding: 0.85rem 1.25rem; text-align: center;">Usuarios en el Grupo</th>
+                                    <th style="padding: 0.85rem 1.25rem; text-align: center;">Pantallas Habilitadas</th>
+                                    <th style="padding: 0.85rem 1.25rem; text-align: right;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="gruposTableBody">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; padding: 2.5rem; color: #64748b;">
+                                        Cargando grupos de usuarios...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ═══════════════════════════════════════════════════════════
+                     TAB 2: TODOS LOS USUARIOS CREADOS Y SU GRUPO
+                ═══════════════════════════════════════════════════════════ -->
+                <div id="panelUsuarios" style="display: none;">
                     <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
                         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                             <label for="filterGrupoSelect" style="font-size: 0.85rem; font-weight: 600; color: #475569;">Filtrar por Grupo:</label>
                             <select id="filterGrupoSelect" onchange="renderUsuariosTable()" style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.45rem 0.85rem; font-size: 0.88rem; background: #ffffff; font-weight: 600; color: #0f172a;">
-                                <option value="">Todos los grupos (CONTA / CONADM)</option>
+                                <option value="">Todos los grupos</option>
                             </select>
                         </div>
 
                         <div style="position: relative; width: 340px; max-width: 100%;">
                             <i class="ph ph-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 1.1rem;"></i>
-                            <input type="text" id="searchUsuarioInput" oninput="renderUsuariosTable()" placeholder="Buscar usuario, nombre, propietario, grupo..." style="padding-left: 38px; padding-right: 14px; border-radius: 8px; border: 1px solid #cbd5e1; width: 100%; font-size: 0.88rem; height: 38px;" autocomplete="off">
+                            <input type="text" id="searchUsuarioInput" oninput="renderUsuariosTable()" placeholder="Buscar usuario, nombre, propietario, plan, grupo..." style="padding-left: 38px; padding-right: 14px; border-radius: 8px; border: 1px solid #cbd5e1; width: 100%; font-size: 0.88rem; height: 38px;" autocomplete="off">
                         </div>
                     </div>
 
@@ -99,10 +201,10 @@
                                 <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569; font-weight: 600; text-transform: uppercase; font-size: 0.77rem; letter-spacing: 0.04em;">
                                     <th style="padding: 0.85rem 1.25rem;">Cód. Usuario</th>
                                     <th style="padding: 0.85rem 1.25rem;">Nombre / Persona</th>
-                                    <th style="padding: 0.85rem 1.25rem;">Propietario</th>
+                                    <th style="padding: 0.85rem 1.25rem;">Propietario y Plan</th>
                                     <th style="padding: 0.85rem 1.25rem; text-align: center;">Estado</th>
                                     <th style="padding: 0.85rem 1.25rem;">Grupo Actual</th>
-                                    <th style="padding: 0.85rem 1.25rem;">Asignar Grupo</th>
+                                    <th style="padding: 0.85rem 1.25rem;">Cambiar / Asignar Grupo</th>
                                     <th style="padding: 0.85rem 1.25rem; text-align: center;">Acción</th>
                                 </tr>
                             </thead>
@@ -119,7 +221,7 @@
                 </div>
 
                 <!-- ═══════════════════════════════════════════════════════════
-                     TAB 2: PERMISOS DE MENÚ / FORMULARIOS POR GRUPO
+                     TAB 3: PERMISOS DE MENÚ / FORMULARIOS POR GRUPO
                 ═══════════════════════════════════════════════════════════ -->
                 <div id="panelPermisos" style="display: none;">
                     <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; background: #ffffff;">
@@ -188,6 +290,7 @@
     <script>
         let allUsuarios = [];
         let allGrupos = [];
+        let allPlanes = [];
         let allFormas = [];
         let allAccesos = [];
 
@@ -196,27 +299,19 @@
         });
 
         function switchTab(tab) {
-            const isUsuarios = tab === 'usuarios';
-            document.getElementById('panelUsuarios').style.display = isUsuarios ? 'block' : 'none';
-            document.getElementById('panelPermisos').style.display = isUsuarios ? 'none' : 'block';
-
-            const btnU = document.getElementById('tabBtnUsuarios');
-            const btnP = document.getElementById('tabBtnPermisos');
-
-            if (isUsuarios) {
-                btnU.style.background = '#16a34a';
-                btnU.style.color = '#ffffff';
-                btnU.style.borderColor = '#16a34a';
-                btnP.style.background = '#ffffff';
-                btnP.style.color = '#334155';
-                btnP.style.borderColor = '#cbd5e1';
-            } else {
-                btnP.style.background = '#16a34a';
-                btnP.style.color = '#ffffff';
-                btnP.style.borderColor = '#16a34a';
-                btnU.style.background = '#ffffff';
-                btnU.style.color = '#334155';
-                btnU.style.borderColor = '#cbd5e1';
+            const tabs = ['grupos', 'usuarios', 'permisos'];
+            tabs.forEach(t => {
+                const panel = document.getElementById('panel' + t.charAt(0).toUpperCase() + t.slice(1));
+                const btn = document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
+                const active = (t === tab);
+                if (panel) panel.style.display = active ? 'block' : 'none';
+                if (btn) {
+                    btn.style.background = active ? '#16a34a' : '#ffffff';
+                    btn.style.color = active ? '#ffffff' : '#334155';
+                    btn.style.borderColor = active ? '#16a34a' : '#cbd5e1';
+                }
+            });
+            if (tab === 'permisos') {
                 renderPermisosTable();
             }
         }
@@ -231,15 +326,23 @@
                 }
 
                 allUsuarios = data.usuarios || [];
+                allGrupos = data.grupos || [];
+                allPlanes = data.planes || [];
                 allFormas = data.formas || [];
                 allAccesos = data.accesos || [];
-                allGrupos = [
-                    { codGrupo: 'CONADM', descripcion: 'ADMINISTRADOR CONTABLE' },
-                    { codGrupo: 'CONTA',  descripcion: 'GRUPO CONTABILIDAD' }
-                ];
+
+                if (allGrupos.length === 0) {
+                    allGrupos = [
+                        { codGrupo: 'CONADM', descripcion: 'ADMINISTRADOR CONTABLE', planesTexto: 'Plan Ilimitado', totalUsuarios: 1, totalPantallas: 0 },
+                        { codGrupo: 'CONTA',  descripcion: 'GRUPO CONTABILIDAD (PLAN BASICO)', planesTexto: 'Plan Básico', totalUsuarios: 0, totalPantallas: 0 },
+                        { codGrupo: 'CONTAM', descripcion: 'GRUPO CONTABILIDAD (PLAN MEDIO)', planesTexto: 'Plan Medio', totalUsuarios: 0, totalPantallas: 0 },
+                        { codGrupo: 'CONTAP', descripcion: 'GRUPO CONTABILIDAD (PLAN PRO)', planesTexto: 'Plan Pro', totalUsuarios: 0, totalPantallas: 0 }
+                    ];
+                }
 
                 updateKpis();
                 populateGroupSelects();
+                renderGruposTable();
                 renderUsuariosTable();
                 renderPermisosTable();
             } catch (err) {
@@ -250,8 +353,13 @@
 
         function updateKpis() {
             document.getElementById('kpiTotalUsuarios').textContent = allUsuarios.length;
-            document.getElementById('kpiUsuariosConadm').textContent = allUsuarios.filter(u => (u.codGrupo || '').toUpperCase() === 'CONADM').length;
-            document.getElementById('kpiUsuariosConta').textContent = allUsuarios.filter(u => (u.codGrupo || 'CONTA').toUpperCase() === 'CONTA').length;
+            document.getElementById('kpiTotalGrupos').textContent = allGrupos.length;
+
+            const cntConta = allUsuarios.filter(u => (u.codGrupo || '').toUpperCase() === 'CONTA').length;
+            const cntContam = allUsuarios.filter(u => (u.codGrupo || '').toUpperCase() === 'CONTAM').length;
+            const cntContap = allUsuarios.filter(u => (u.codGrupo || '').toUpperCase() === 'CONTAP').length;
+            document.getElementById('kpiResumenPlanes').innerHTML =
+                `CONTA: <strong>${cntConta}</strong> • CONTAM: <strong>${cntContam}</strong> • CONTAP: <strong>${cntContap}</strong>`;
         }
 
         function populateGroupSelects() {
@@ -262,6 +370,10 @@
             const permSel = document.getElementById('permGrupoSelect');
             const currentPerm = permSel.value || 'CONTA';
             permSel.innerHTML = '';
+
+            const clonarSel = document.getElementById('inputClonarGrupo');
+            const currentClonar = clonarSel ? (clonarSel.value || 'CONTA') : 'CONTA';
+            if (clonarSel) clonarSel.innerHTML = '';
 
             allGrupos.forEach(g => {
                 const code = (g.codGrupo || '').trim().toUpperCase();
@@ -277,9 +389,210 @@
                 optP.textContent = `${code} - ${desc}`;
                 if (code === currentPerm) optP.selected = true;
                 permSel.appendChild(optP);
+
+                if (clonarSel) {
+                    const optC = document.createElement('option');
+                    optC.value = code;
+                    optC.textContent = `${code} - ${desc}`;
+                    if (code === currentClonar) optC.selected = true;
+                    clonarSel.appendChild(optC);
+                }
             });
 
             filterSel.value = currentFilter;
+
+            const planSel = document.getElementById('inputPlanGrupo');
+            if (planSel) {
+                planSel.innerHTML = '<option value="0">-- Sin cambio / No vincular --</option>';
+                allPlanes.forEach(pl => {
+                    const optPl = document.createElement('option');
+                    optPl.value = pl.idPlan;
+                    optPl.textContent = `${pl.nombrePlan} (${pl.codigoPlan}) [Actual: ${pl.codGrupo}]`;
+                    planSel.appendChild(optPl);
+                });
+            }
+        }
+
+        function getBadgeColorForGroup(code) {
+            const c = (code || '').toUpperCase();
+            if (c === 'CONADM') return 'background:#dcfce7;color:#166534;border:1px solid #86efac;';
+            if (c === 'CONTA')  return 'background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;';
+            if (c === 'CONTAM') return 'background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc;';
+            if (c === 'CONTAP') return 'background:#f3e8ff;color:#6d28d9;border:1px solid #d8b4fe;';
+            return 'background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;';
+        }
+
+        function renderGruposTable() {
+            const tbody = document.getElementById('gruposTableBody');
+            if (!tbody) return;
+
+            let html = '';
+            allGrupos.forEach(g => {
+                const code = (g.codGrupo || '').trim().toUpperCase();
+                const desc = (g.descripcion || code).trim();
+                const planesTxt = g.planesTexto || '';
+                const idPlanVinc = Number(g.idPlanVinculado || 0);
+                const totalUsers = Number(g.totalUsuarios || 0);
+                const totalPantallas = Number(g.totalPantallas || 0);
+                const isCore = ['CONADM', 'CONTA', 'CONTAM', 'CONTAP'].includes(code);
+                const badgeStyle = getBadgeColorForGroup(code);
+
+                const planBadge = planesTxt
+                    ? `<span style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;padding:4px 10px;border-radius:999px;font-size:0.78rem;font-weight:700;">
+                           <i class="ph ph-stack"></i> ${planesTxt}
+                       </span>`
+                    : `<span style="color:#94a3b8;font-size:0.8rem;">Sin plan directo</span>`;
+
+                html += `
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 0.9rem 1.25rem;">
+                            <span style="${badgeStyle} padding: 5px 12px; border-radius: 7px; font-size: 0.84rem; font-weight: 800; letter-spacing: 0.03em;">
+                                ${code}
+                            </span>
+                        </td>
+                        <td style="padding: 0.9rem 1.25rem; font-weight: 700; color: #0f172a;">
+                            ${desc}
+                        </td>
+                        <td style="padding: 0.9rem 1.25rem;">
+                            ${planBadge}
+                        </td>
+                        <td style="padding: 0.9rem 1.25rem; text-align: center;">
+                            <span style="background:#f1f5f9;color:#0f172a;padding:4px 10px;border-radius:999px;font-size:0.8rem;font-weight:800;">
+                                ${totalUsers} usuario(s)
+                            </span>
+                        </td>
+                        <td style="padding: 0.9rem 1.25rem; text-align: center;">
+                            <span style="background:#eff6ff;color:#1d4ed8;padding:4px 10px;border-radius:999px;font-size:0.8rem;font-weight:700;">
+                                ${totalPantallas} pantalla(s)
+                            </span>
+                        </td>
+                        <td style="padding: 0.9rem 1.25rem; text-align: right; white-space: nowrap;">
+                            <button type="button" onclick="irAPermisosDeGrupo('${code}')" title="Configurar qué pantallas puede ver este grupo" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;padding:5px 10px;border-radius:7px;font-size:0.78rem;font-weight:700;cursor:pointer;margin-right:4px;">
+                                <i class="ph ph-sliders-horizontal"></i> Permisos
+                            </button>
+                            <button type="button" onclick="cargarGrupoEnFormulario('${code.replace(/'/g, "\\'")}', '${desc.replace(/'/g, "\\'")}', ${idPlanVinc})" title="Editar descripción o vinculación con Plan" style="background:#ffffff;border:1px solid #cbd5e1;color:#334155;padding:5px 10px;border-radius:7px;font-size:0.78rem;font-weight:700;cursor:pointer;margin-right:4px;">
+                                <i class="ph ph-pencil-simple"></i> Editar
+                            </button>
+                            ${!isCore && totalUsers === 0
+                                ? `<button type="button" onclick="eliminarGrupo('${code.replace(/'/g, "\\'")}')" title="Eliminar grupo" style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:5px 9px;border-radius:7px;font-size:0.78rem;font-weight:700;cursor:pointer;">
+                                       <i class="ph ph-trash"></i>
+                                   </button>`
+                                : ''
+                            }
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function cargarGrupoEnFormulario(cod, desc, idPlan) {
+            switchTab('grupos');
+            const inputCod = document.getElementById('inputCodGrupo');
+            const inputDesc = document.getElementById('inputDescGrupo');
+            const inputPlan = document.getElementById('inputPlanGrupo');
+            inputCod.value = cod;
+            inputDesc.value = desc;
+            if (inputPlan) inputPlan.value = String(idPlan || 0);
+            document.getElementById('formGrupoTitle').textContent = `Editando Grupo: ${cod}`;
+            inputDesc.focus();
+        }
+
+        function limpiarFormularioGrupo() {
+            document.getElementById('inputCodGrupo').value = '';
+            document.getElementById('inputDescGrupo').value = '';
+            document.getElementById('inputPlanGrupo').value = '0';
+            document.getElementById('formGrupoTitle').textContent = 'Formulario de Creación / Edición de Grupo de Usuarios';
+            document.getElementById('inputCodGrupo').focus();
+        }
+
+        function openGrupoModal() {
+            switchTab('grupos');
+            limpiarFormularioGrupo();
+        }
+
+        function irAPermisosDeGrupo(codGrupo) {
+            const permSel = document.getElementById('permGrupoSelect');
+            if (permSel) permSel.value = codGrupo;
+            switchTab('permisos');
+        }
+
+        async function guardarGrupoDesdeForm(e) {
+            e.preventDefault();
+            const cod = document.getElementById('inputCodGrupo').value.trim().toUpperCase();
+            const desc = document.getElementById('inputDescGrupo').value.trim().toUpperCase();
+            const idPlan = Number(document.getElementById('inputPlanGrupo').value || 0);
+            const clonarDesde = document.getElementById('inputClonarGrupo').value || 'CONTA';
+
+            if (!cod || !desc) {
+                Swal.fire('Atención', 'Complete el código y la descripción del grupo.', 'warning');
+                return;
+            }
+
+            const btn = document.getElementById('btnSubmitGrupo');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/accesos-grupos/guardar-grupo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        codGrupo: cod,
+                        descripcion: desc,
+                        idPlan: idPlan,
+                        clonarDesde: clonarDesde
+                    })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Grupo Guardado!',
+                        text: data.message,
+                        timer: 1700,
+                        showConfirmButton: false
+                    });
+                    limpiarFormularioGrupo();
+                    await loadAccesosGruposData();
+                } else {
+                    Swal.fire('Error', data.message || 'No se pudo guardar el grupo.', 'error');
+                }
+            } catch (err) {
+                Swal.fire('Error', 'Error de comunicación con el servidor.', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function eliminarGrupo(codGrupo) {
+            const conf = await Swal.fire({
+                title: `¿Eliminar el grupo ${codGrupo}?`,
+                text: 'Se eliminarán también sus permisos asociados.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            });
+            if (!conf.isConfirmed) return;
+
+            try {
+                const res = await fetch('/api/accesos-grupos/eliminar-grupo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ codGrupo })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    Swal.fire('Eliminado', data.message, 'success');
+                    await loadAccesosGruposData();
+                } else {
+                    Swal.fire('Atención', data.message || 'No se pudo eliminar.', 'warning');
+                }
+            } catch (err) {
+                Swal.fire('Error', 'No se pudo eliminar el grupo.', 'error');
+            }
         }
 
         function renderUsuariosTable() {
@@ -291,7 +604,7 @@
                 const uGrupo = (u.codGrupo || 'CONTA').toUpperCase();
                 if (filterGrupo && uGrupo !== filterGrupo) return false;
                 if (!term) return true;
-                const haystack = `${u.codUsuario} ${u.alias} ${u.nombrePersona} ${u.nombrePropietario} ${uGrupo} ${u.ci}`.toUpperCase();
+                const haystack = `${u.codUsuario} ${u.alias} ${u.nombrePersona} ${u.nombrePropietario} ${u.nombrePlan || ''} ${uGrupo} ${u.ci}`.toUpperCase();
                 return haystack.includes(term);
             });
 
@@ -312,7 +625,9 @@
                 const idProp = u.idPropietario || 1;
                 const nombre = u.nombrePersona || cod;
                 const propNombre = u.nombrePropietario || ('PROPIETARIO #' + idProp);
-                const grupoActual = cod === 'CONTA' ? 'CONADM' : ((u.codGrupo || 'CONTA').trim().toUpperCase());
+                const planNombre = u.nombrePlan || 'Plan Básico';
+                const codGrupoPlan = (u.codGrupoPlan || 'CONTA').toUpperCase();
+                const grupoActual = cod === 'CONTA' ? 'CONADM' : ((u.codGrupo || codGrupoPlan).trim().toUpperCase());
                 const isContaMain = (cod === 'CONTA');
                 const isActivo = (u.estado || 'A').toUpperCase() === 'A';
 
@@ -320,9 +635,7 @@
                     ? `<span style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:999px;font-size:0.76rem;font-weight:700;">Activo</span>`
                     : `<span style="background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:999px;font-size:0.76rem;font-weight:700;">Inactivo</span>`;
 
-                const grupoBadgeStyle = grupoActual === 'CONADM'
-                    ? 'background:#dcfce7;color:#166534;border:1px solid #86efac;'
-                    : 'background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;';
+                const grupoBadgeStyle = getBadgeColorForGroup(grupoActual);
 
                 let optionsHtml = '';
                 allGrupos.forEach(g => {
@@ -345,7 +658,10 @@
                             ${u.ci ? `<div style="font-size:0.76rem;color:#64748b;">C.I./Doc: ${u.ci}</div>` : ''}
                         </td>
                         <td style="padding: 0.85rem 1.25rem; color: #475569; font-size: 0.85rem;">
-                            <span style="font-weight:700;color:#0f172a;">#${idProp}</span> — ${propNombre}
+                            <div><span style="font-weight:700;color:#0f172a;">#${idProp}</span> — ${propNombre}</div>
+                            <div style="font-size:0.75rem;color:#0369a1;font-weight:700;margin-top:2px;">
+                                ${planNombre} (Grupo del Plan: ${codGrupoPlan})
+                            </div>
                         </td>
                         <td style="padding: 0.85rem 1.25rem; text-align: center;">${estadoBadge}</td>
                         <td style="padding: 0.85rem 1.25rem;">
@@ -354,7 +670,7 @@
                             </span>
                         </td>
                         <td style="padding: 0.85rem 1.25rem;">
-                            <select id="${selectId}" ${isContaMain ? 'disabled' : ''} style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.45rem 0.75rem; font-size: 0.85rem; font-weight: 600; width: 100%; max-width: 270px; background: ${isContaMain ? '#f1f5f9' : '#ffffff'};">
+                            <select id="${selectId}" ${isContaMain ? 'disabled' : ''} style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.45rem 0.75rem; font-size: 0.85rem; font-weight: 600; width: 100%; max-width: 280px; background: ${isContaMain ? '#f1f5f9' : '#ffffff'};">
                                 ${optionsHtml}
                             </select>
                         </td>
@@ -519,7 +835,7 @@
 
         function marcarTodosPermisos(estado) {
             document.querySelectorAll('.perm-row').forEach(row => {
-                if (row.style.display === 'none') return; // Solo aplica a las filas visibles según el filtro actual
+                if (row.style.display === 'none') return;
                 const forma = row.getAttribute('data-forma');
                 if (forma === 'BSGRPUSU') return;
                 row.querySelectorAll('input[type="checkbox"]').forEach(chk => {
@@ -569,53 +885,6 @@
                 Swal.fire('Error', 'Error de conexión al guardar permisos.', 'error');
             } finally {
                 btn.disabled = false;
-            }
-        }
-
-        async function openNuevoGrupoModal() {
-            const { value: formValues } = await Swal.fire({
-                title: 'Crear o Actualizar Grupo',
-                html: `
-                    <div style="text-align:left;display:flex;flex-direction:column;gap:12px;">
-                        <div>
-                            <label style="font-size:0.85rem;font-weight:700;color:#334155;">Código de Grupo (máx. 6 letras):</label>
-                            <input id="swalCodGrupo" class="swal2-input" maxlength="6" placeholder="Ej: CONADM" style="margin:6px 0 0 0;width:100%;text-transform:uppercase;font-weight:700;">
-                        </div>
-                        <div>
-                            <label style="font-size:0.85rem;font-weight:700;color:#334155;">Descripción del Grupo:</label>
-                            <input id="swalDescGrupo" class="swal2-input" maxlength="40" placeholder="Ej: ADMINISTRADOR CONTABLE" style="margin:6px 0 0 0;width:100%;text-transform:uppercase;">
-                        </div>
-                    </div>
-                `,
-                focusConfirm: false,
-                showCancelButton: true,
-                confirmButtonText: 'Guardar Grupo',
-                cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#16a34a',
-                preConfirm: () => {
-                    const cod = document.getElementById('swalCodGrupo').value.trim().toUpperCase();
-                    const desc = document.getElementById('swalDescGrupo').value.trim().toUpperCase();
-                    if (!cod || !desc) {
-                        Swal.showValidationMessage('Ingrese tanto el código como la descripción del grupo');
-                        return false;
-                    }
-                    return { codGrupo: cod, descripcion: desc };
-                }
-            });
-
-            if (formValues) {
-                const res = await fetch('/api/accesos-grupos/guardar-grupo', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formValues)
-                });
-                const data = await res.json();
-                if (data.status === 'success') {
-                    Swal.fire('¡Éxito!', data.message, 'success');
-                    await loadAccesosGruposData();
-                } else {
-                    Swal.fire('Error', data.message || 'No se pudo guardar el grupo.', 'error');
-                }
             }
         }
     </script>

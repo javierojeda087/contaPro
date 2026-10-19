@@ -644,8 +644,19 @@ class AdminController {
             return;
         }
         $userCodeUp = strtoupper($userCode);
-        // Regla: todos los usuarios al crear pertenecen al grupo CONTA (excepto el usuario CONTA que pertenece a CONADM)
-        $codGrupo   = ($userCodeUp === 'CONTA') ? 'CONADM' : 'CONTA';
+        // Regla: Al crear un nuevo usuario, pertenece al grupo correspondiente al Plan del Propietario
+        // (Plan Básico -> CONTA, Plan Medio -> CONTAM, Plan Pro -> CONTAP), excepto el usuario CONTA que pertenece a CONADM.
+        $grupoPorPlan = TenantContext::obtenerGrupoPorPropietario($idProp);
+        if ($grupoPorPlan === 'CONADM' && $userCodeUp !== 'CONTA') {
+            // Si el propietario #1 (SuperAdmin) crea un usuario secundario o si envía un grupo explícito válido
+            $reqGrupo = strtoupper(trim((string)($in['codGrupo'] ?? '')));
+            $codGrupo = ($reqGrupo !== '' && $reqGrupo !== 'CONADM') ? $reqGrupo : 'CONTA';
+        } else {
+            $codGrupo = $grupoPorPlan ?: 'CONTA';
+        }
+        if ($userCodeUp === 'CONTA') {
+            $codGrupo = 'CONADM';
+        }
         $rawClave   = $clave !== '' ? $clave : '123456';
         $finalClave = AuthController::hashPassword($rawClave);
 
@@ -670,6 +681,44 @@ class AdminController {
         }
 
         try {
+            // Asegurar que el grupo exista para este propietario en grupos_usuarios y accesos_grupos
+            $existeGrp = (int)Database::queryForValue(
+                "SELECT COUNT(*) FROM grupos_usuarios WHERE id_propietario = ? AND UPPER(TRIM(cod_grupo)) = ?",
+                [$idProp, $codGrupo]
+            );
+            if ($existeGrp === 0) {
+                $descGrp = (string)(Database::queryForValue(
+                    "SELECT descripcion FROM grupos_usuarios WHERE UPPER(TRIM(cod_grupo)) = ? LIMIT 1",
+                    [$codGrupo]
+                ) ?? "GRUPO {$codGrupo}");
+                Database::update(
+                    "INSERT INTO grupos_usuarios (id_propietario, cod_grupo, descripcion, ind_clave_sin_caducidad) VALUES (?, ?, ?, 'S')",
+                    [$idProp, $codGrupo, $descGrp]
+                );
+            }
+            if ($idProp !== 1) {
+                Database::update(
+                    "INSERT INTO accesos_grupos (
+                         id_propietario, cod_grupo, cod_modulo, nom_forma,
+                         puede_insertar, puede_borrar, puede_actualizar, puede_consultar,
+                         item_menu, mostrar_en_menu
+                     )
+                     SELECT ?, a.cod_grupo, a.cod_modulo, a.nom_forma,
+                            a.puede_insertar, a.puede_borrar, a.puede_actualizar, a.puede_consultar,
+                            a.item_menu, a.mostrar_en_menu
+                     FROM accesos_grupos a
+                     WHERE a.id_propietario = 1
+                       AND UPPER(TRIM(a.cod_grupo)) = ?
+                       AND NOT EXISTS (
+                           SELECT 1 FROM accesos_grupos x
+                           WHERE x.id_propietario = ?
+                             AND UPPER(TRIM(x.cod_grupo)) = ?
+                             AND UPPER(TRIM(x.nom_forma)) = UPPER(TRIM(a.nom_forma))
+                       )",
+                    [$idProp, $codGrupo, $idProp, $codGrupo]
+                );
+            }
+
             $fullNom = trim($nombre . ' ' . $apellido);
             $assignedPersona = $codPersona !== '' ? $codPersona : PersonaService::syncPersonaData(null, $fullNom ?: $userCodeUp, $ci, 'CI', null, $telefono, $email);
 
@@ -689,7 +738,7 @@ class AdminController {
                 ]
             );
 
-            View::json(['status' => 'success', 'message' => 'Usuario guardado exitosamente en el grupo CONTA.']);
+            View::json(['status' => 'success', 'message' => "Usuario guardado exitosamente en el grupo {$codGrupo} ({$plan['nombre_plan']})."]);
         } catch (\Throwable $e) {
             View::json(['status' => 'error', 'message' => 'Error al insertar usuario: ' . $e->getMessage()]);
         }
@@ -712,9 +761,16 @@ class AdminController {
         $fecNacimiento = trim((string)($in['fecNacimiento'] ?? ''));
         $clave         = trim((string)($in['clave'] ?? ''));
         $codPersona    = trim((string)($in['codPersona'] ?? ''));
-        $codGrupo      = strtoupper(trim((string)($in['codGrupo'] ?? 'CONTA'))) ?: 'CONTA';
+        $grupoDefecto  = TenantContext::obtenerGrupoPorPropietario($idProp);
+        if ($grupoDefecto === 'CONADM' && $key !== 'CONTA') {
+            $grupoDefecto = 'CONTA';
+        }
+        $codGrupo      = strtoupper(trim((string)($in['codGrupo'] ?? $grupoDefecto))) ?: $grupoDefecto;
         if ($key === 'CONTA' || strtoupper($alias) === 'CONTA') {
             $codGrupo = 'CONADM';
+        } elseif (!self::isConadm()) {
+            // Si quien edita no es CONADM, mantiene el grupo del plan del propietario
+            $codGrupo = $grupoDefecto;
         }
         $codEmpresa    = trim((string)($in['codEmpresa'] ?? TenantContext::empresa())) ?: '1';
         $codSucursal   = trim((string)($in['codSucursal'] ?? '1')) ?: '1';
@@ -871,19 +927,38 @@ class AdminController {
     public static function apiUsuariosGrupos(): void {
         if (!self::requireAuth()) return;
         $idProp = TenantContext::idPropietario();
+        $grupoPlan = TenantContext::obtenerGrupoPorPropietario($idProp);
+        if ($grupoPlan === 'CONADM') {
+            $grupoPlan = 'CONTA';
+        }
         $rows = Database::queryForList(
-            "SELECT cod_grupo AS codGrupo, descripcion
+            "SELECT UPPER(TRIM(cod_grupo)) AS codGrupo, MAX(descripcion) AS descripcion
              FROM grupos_usuarios
-             WHERE id_propietario = ? AND UPPER(TRIM(cod_grupo)) IN ('CONTA', 'CONADM')
-             ORDER BY cod_grupo",
-            [$idProp]
+             WHERE id_propietario IN (?, 1)
+             GROUP BY UPPER(TRIM(cod_grupo))
+             ORDER BY CASE
+                 WHEN UPPER(TRIM(cod_grupo)) = ? THEN 0
+                 WHEN UPPER(TRIM(cod_grupo)) = 'CONTA' THEN 1
+                 WHEN UPPER(TRIM(cod_grupo)) = 'CONTAM' THEN 2
+                 WHEN UPPER(TRIM(cod_grupo)) = 'CONTAP' THEN 3
+                 WHEN UPPER(TRIM(cod_grupo)) = 'CONADM' THEN 4
+                 ELSE 5
+             END, UPPER(TRIM(cod_grupo))",
+            [$idProp, $grupoPlan]
         );
         if (empty($rows)) {
             $rows = [
+                ['codGrupo' => 'CONTA',  'descripcion' => 'GRUPO CONTABILIDAD (PLAN BASICO)'],
+                ['codGrupo' => 'CONTAM', 'descripcion' => 'GRUPO CONTABILIDAD (PLAN MEDIO)'],
+                ['codGrupo' => 'CONTAP', 'descripcion' => 'GRUPO CONTABILIDAD (PLAN PRO)'],
                 ['codGrupo' => 'CONADM', 'descripcion' => 'ADMINISTRADOR CONTABLE'],
-                ['codGrupo' => 'CONTA',  'descripcion' => 'GRUPO CONTABILIDAD'],
             ];
         }
+        foreach ($rows as &$r) {
+            $r['esGrupoPlan'] = (strtoupper((string)$r['codGrupo']) === $grupoPlan);
+            $r['grupoPorDefecto'] = $grupoPlan;
+        }
+        unset($r);
         View::json($rows);
     }
 
@@ -996,10 +1071,13 @@ class AdminController {
         if (!self::requireConadm()) return;
 
         try {
-            // 1. Todos los usuarios creados en el sistema
+            // 1. Todos los usuarios creados en el sistema con su grupo real y plan del propietario
             $usuarios = Database::queryForList(
                 "SELECT u.id_propietario AS idPropietario,
                         COALESCE(pr.nombre_propietario, CONCAT('PROPIETARIO #', u.id_propietario)) AS nombrePropietario,
+                        COALESCE(pl.nombre_plan, 'Plan Básico') AS nombrePlan,
+                        COALESCE(pl.codigo_plan, 'BASICO') AS codigoPlan,
+                        COALESCE(NULLIF(TRIM(pl.cod_grupo), ''), 'CONTA') AS codGrupoPlan,
                         u.cod_usuario AS codUsuario,
                         COALESCE(u.alias, u.cod_usuario) AS alias,
                         COALESCE(p.nombre, NULLIF(TRIM(CONCAT_WS(' ', u.nombre, u.apellido)), ''), u.cod_usuario) AS nombrePersona,
@@ -1008,8 +1086,8 @@ class AdminController {
                         COALESCE(u.telefono, p.telefono, '') AS telefono,
                         CASE
                             WHEN UPPER(TRIM(u.cod_usuario)) = 'CONTA' THEN 'CONADM'
-                            WHEN UPPER(TRIM(COALESCE(u.cod_grupo, ''))) = 'CONADM' THEN 'CONADM'
-                            ELSE 'CONTA'
+                            WHEN NULLIF(UPPER(TRIM(COALESCE(u.cod_grupo, ''))), '') IS NOT NULL THEN UPPER(TRIM(u.cod_grupo))
+                            ELSE COALESCE(NULLIF(UPPER(TRIM(pl.cod_grupo)), ''), 'CONTA')
                         END AS codGrupo,
                         COALESCE(g.descripcion, u.cod_grupo, 'GRUPO CONTABILIDAD') AS descGrupo,
                         COALESCE(u.estado, 'A') AS estado,
@@ -1017,27 +1095,58 @@ class AdminController {
                         COALESCE(u.es_superadmin, 'N') AS esSuperAdmin
                  FROM usuarios u
                  LEFT JOIN propietarios pr ON pr.id_propietario = u.id_propietario
+                 LEFT JOIN planes pl ON pl.id_plan = pr.id_plan
                  LEFT JOIN personas p ON p.id_propietario = u.id_propietario AND p.cod_persona = u.cod_persona
                  LEFT JOIN grupos_usuarios g ON g.id_propietario = u.id_propietario AND UPPER(TRIM(g.cod_grupo)) = UPPER(TRIM(u.cod_grupo))
                  ORDER BY u.id_propietario ASC, u.cod_usuario ASC"
             );
 
-            // 2. Grupos activos (exclusivamente CONTA y CONADM)
-            $grupos = Database::queryForList(
-                "SELECT UPPER(TRIM(cod_grupo)) AS codGrupo,
-                        MAX(descripcion) AS descripcion,
-                        MAX(COALESCE(ind_clave_sin_caducidad, 'N')) AS indClaveSinCaducidad
-                 FROM grupos_usuarios
-                 WHERE UPPER(TRIM(COALESCE(cod_grupo, ''))) IN ('CONTA', 'CONADM')
-                 GROUP BY UPPER(TRIM(cod_grupo))
-                 ORDER BY CASE
-                     WHEN UPPER(TRIM(cod_grupo)) = 'CONADM' THEN 1
-                     WHEN UPPER(TRIM(cod_grupo)) = 'CONTA' THEN 2
-                     ELSE 3
-                 END, UPPER(TRIM(cod_grupo))"
+            // 2. Planes disponibles
+            $planes = Database::queryForList(
+                "SELECT id_plan AS idPlan,
+                        codigo_plan AS codigoPlan,
+                        nombre_plan AS nombrePlan,
+                        UPPER(TRIM(COALESCE(cod_grupo, 'CONTA'))) AS codGrupo
+                 FROM planes
+                 ORDER BY id_plan ASC"
             );
 
-            // 3. Catálogo de pantallas/formas activas
+            // 3. Todos los grupos de usuarios registrados
+            $grupos = Database::queryForList(
+                "SELECT UPPER(TRIM(g.cod_grupo)) AS codGrupo,
+                        MAX(g.descripcion) AS descripcion,
+                        MAX(COALESCE(g.ind_clave_sin_caducidad, 'S')) AS indClaveSinCaducidad,
+                        (SELECT COUNT(*) FROM usuarios u WHERE UPPER(TRIM(COALESCE(u.cod_grupo, 'CONTA'))) = UPPER(TRIM(g.cod_grupo))) AS totalUsuarios,
+                        (SELECT COUNT(DISTINCT a.nom_forma) FROM accesos_grupos a WHERE a.id_propietario = 1 AND UPPER(TRIM(a.cod_grupo)) = UPPER(TRIM(g.cod_grupo)) AND a.mostrar_en_menu = 'S') AS totalPantallas
+                 FROM grupos_usuarios g
+                 WHERE g.cod_grupo IS NOT NULL AND TRIM(g.cod_grupo) <> ''
+                 GROUP BY UPPER(TRIM(g.cod_grupo))
+                 ORDER BY CASE
+                     WHEN UPPER(TRIM(g.cod_grupo)) = 'CONADM' THEN 1
+                     WHEN UPPER(TRIM(g.cod_grupo)) = 'CONTA' THEN 2
+                     WHEN UPPER(TRIM(g.cod_grupo)) = 'CONTAM' THEN 3
+                     WHEN UPPER(TRIM(g.cod_grupo)) = 'CONTAP' THEN 4
+                     ELSE 5
+                 END, UPPER(TRIM(g.cod_grupo))"
+            );
+
+            // Asociar qué plan(es) utilizan cada grupo
+            foreach ($grupos as &$grp) {
+                $cg = strtoupper((string)$grp['codGrupo']);
+                $planesVinculados = [];
+                $idsPlanes = [];
+                foreach ($planes as $pl) {
+                    if (strtoupper((string)$pl['codGrupo']) === $cg) {
+                        $planesVinculados[] = $pl['nombrePlan'] . ' (' . $pl['codigoPlan'] . ')';
+                        $idsPlanes[] = (int)$pl['idPlan'];
+                    }
+                }
+                $grp['planesTexto'] = implode(', ', $planesVinculados);
+                $grp['idPlanVinculado'] = $idsPlanes[0] ?? 0;
+            }
+            unset($grp);
+
+            // 4. Catálogo de pantallas/formas activas
             $formas = Database::queryForList(
                 "SELECT UPPER(TRIM(f.cod_modulo)) AS codModulo,
                         UPPER(TRIM(f.nom_forma)) AS nomForma,
@@ -1051,7 +1160,7 @@ class AdminController {
                  ORDER BY CASE WHEN UPPER(TRIM(f.cod_modulo)) = 'AD' THEN 1 ELSE 2 END, ordenMenu, titulo"
             );
 
-            // 4. Permisos actuales por grupo en accesos_grupos (plantilla Propietario 1)
+            // 5. Permisos actuales por grupo en accesos_grupos (plantilla Propietario 1)
             $accesos = Database::queryForList(
                 "SELECT UPPER(TRIM(cod_grupo)) AS codGrupo,
                         UPPER(TRIM(cod_modulo)) AS codModulo,
@@ -1070,6 +1179,7 @@ class AdminController {
                 'status'   => 'success',
                 'usuarios' => $usuarios,
                 'grupos'   => $grupos,
+                'planes'   => $planes,
                 'formas'   => $formas,
                 'accesos'  => $accesos,
             ]);
@@ -1252,11 +1362,13 @@ class AdminController {
         if (!self::requireConadm()) return;
         $in = self::getInput();
 
-        $codGrupo    = substr(strtoupper(preg_replace('/[^A-Z0-9_]/i', '', trim((string)($in['codGrupo'] ?? '')))), 0, 6);
-        $descripcion = strtoupper(trim((string)($in['descripcion'] ?? '')));
+        $codGrupo         = substr(strtoupper(preg_replace('/[^A-Z0-9_]/i', '', trim((string)($in['codGrupo'] ?? '')))), 0, 10);
+        $descripcion      = strtoupper(trim((string)($in['descripcion'] ?? '')));
+        $idPlanVinculado  = (int)($in['idPlan'] ?? 0);
+        $clonarDesdeGrupo = substr(strtoupper(preg_replace('/[^A-Z0-9_]/i', '', trim((string)($in['clonarDesde'] ?? 'CONTA')))), 0, 10) ?: 'CONTA';
 
         if ($codGrupo === '' || $descripcion === '') {
-            View::json(['status' => 'error', 'message' => 'Código de grupo (máx. 6 caracteres) y descripción son obligatorios.']);
+            View::json(['status' => 'error', 'message' => 'Código de grupo (máx. 10 caracteres) y descripción son obligatorios.']);
             return;
         }
 
@@ -1287,13 +1399,34 @@ class AdminController {
                         "INSERT INTO grupos_usuarios (id_propietario, cod_grupo, descripcion, ind_clave_sin_caducidad) VALUES (?, ?, ?, 'S')",
                         [$pid, $codGrupo, $descripcion]
                     );
-                    // Copiar accesos base desde CONTA (sin BSGRPUSU)
-                    Database::execute(
+                    // Copiar accesos base desde el grupo plantilla elegido (sin BSGRPUSU salvo que sea CONADM)
+                    Database::update(
                         "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
-                         SELECT id_propietario, '$codGrupo', cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu
+                         SELECT ?, ?, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu
                          FROM accesos_grupos
-                         WHERE id_propietario = $pid AND UPPER(TRIM(cod_grupo)) = 'CONTA' AND UPPER(TRIM(nom_forma)) <> 'BSGRPUSU'",
-                        true
+                         WHERE id_propietario = 1
+                           AND UPPER(TRIM(cod_grupo)) = ?
+                           AND UPPER(TRIM(nom_forma)) <> 'BSGRPUSU'",
+                        [$pid, $codGrupo, $clonarDesdeGrupo]
+                    );
+                }
+            }
+
+            // Si se indicó vincular este grupo a un Plan Comercial, actualizar la tabla planes y sincronizar los usuarios de ese plan
+            if ($idPlanVinculado > 0) {
+                Database::update(
+                    "UPDATE planes SET cod_grupo = ? WHERE id_plan = ?",
+                    [$codGrupo, $idPlanVinculado]
+                );
+                if ($codGrupo !== 'CONADM') {
+                    Database::update(
+                        "UPDATE usuarios u
+                         INNER JOIN propietarios pr ON pr.id_propietario = u.id_propietario
+                         SET u.cod_grupo = ?
+                         WHERE pr.id_plan = ?
+                           AND UPPER(TRIM(u.cod_usuario)) <> 'CONTA'
+                           AND UPPER(TRIM(COALESCE(u.cod_grupo, ''))) <> 'CONADM'",
+                        [$codGrupo, $idPlanVinculado]
                     );
                 }
             }
@@ -1301,6 +1434,40 @@ class AdminController {
             View::json(['status' => 'success', 'message' => "Grupo {$codGrupo} ({$descripcion}) guardado correctamente."]);
         } catch (\Throwable $e) {
             View::json(['status' => 'error', 'message' => 'Error al guardar grupo: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiAccesosGruposEliminarGrupo(): void {
+        if (!self::requireConadm()) return;
+        $in = self::getInput();
+        $codGrupo = strtoupper(trim((string)($in['codGrupo'] ?? '')));
+
+        if ($codGrupo === '') {
+            View::json(['status' => 'error', 'message' => 'Debe especificar el código del grupo.']);
+            return;
+        }
+
+        if (in_array($codGrupo, ['CONADM', 'CONTA', 'CONTAM', 'CONTAP'], true)) {
+            View::json(['status' => 'error', 'message' => "El grupo base {$codGrupo} forma parte de los planes principales del sistema y no puede eliminarse."]);
+            return;
+        }
+
+        $enUsoUsuarios = (int)Database::queryForValue(
+            "SELECT COUNT(*) FROM usuarios WHERE UPPER(TRIM(cod_grupo)) = ?",
+            [$codGrupo]
+        );
+        if ($enUsoUsuarios > 0) {
+            View::json(['status' => 'error', 'message' => "No se puede eliminar el grupo {$codGrupo} porque tiene {$enUsoUsuarios} usuario(s) asignado(s)."]);
+            return;
+        }
+
+        try {
+            Database::update("UPDATE planes SET cod_grupo = 'CONTA' WHERE UPPER(TRIM(cod_grupo)) = ?", [$codGrupo]);
+            Database::update("DELETE FROM accesos_grupos WHERE UPPER(TRIM(cod_grupo)) = ?", [$codGrupo]);
+            Database::update("DELETE FROM grupos_usuarios WHERE UPPER(TRIM(cod_grupo)) = ?", [$codGrupo]);
+            View::json(['status' => 'success', 'message' => "Grupo {$codGrupo} eliminado correctamente."]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al eliminar grupo: ' . $e->getMessage()]);
         }
     }
 

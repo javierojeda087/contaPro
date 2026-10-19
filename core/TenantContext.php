@@ -51,6 +51,55 @@ class TenantContext {
     }
 
     /**
+     * Determina el grupo de usuarios asociado a un plan (BASICO -> CONTA, MEDIO -> CONTAM, PRO -> CONTAP, etc.)
+     */
+    public static function obtenerGrupoPorPlan(?int $idPlan = null, ?string $codigoPlan = null): string {
+        if ($idPlan !== null && $idPlan > 0) {
+            try {
+                $pl = Database::queryForMap("SELECT codigo_plan, cod_grupo FROM planes WHERE id_plan = ? LIMIT 1", [$idPlan]);
+                if ($pl) {
+                    $g = strtoupper(trim((string)($pl['cod_grupo'] ?? '')));
+                    if ($g !== '') {
+                        return $g;
+                    }
+                    $codigoPlan = (string)($pl['codigo_plan'] ?? '');
+                }
+            } catch (\Throwable $ignored) {}
+        }
+
+        $cod = strtoupper(trim((string)$codigoPlan));
+        if ($cod === 'MEDIO' || str_contains($cod, 'MEDIO')) return 'CONTAM';
+        if ($cod === 'PRO' || str_contains($cod, 'PRO'))     return 'CONTAP';
+        if ($cod === 'ILIMITADO')                            return 'CONADM';
+        return 'CONTA';
+    }
+
+    /**
+     * Obtiene el grupo de usuarios que le corresponde a un propietario según su plan asignado
+     */
+    public static function obtenerGrupoPorPropietario(?int $idProp = null): string {
+        $propId = $idProp ?? self::idPropietario();
+        try {
+            $row = Database::queryForMap(
+                "SELECT p.id_plan, pl.codigo_plan, pl.cod_grupo
+                 FROM propietarios p
+                 LEFT JOIN planes pl ON pl.id_plan = p.id_plan
+                 WHERE p.id_propietario = ?
+                 LIMIT 1",
+                [$propId]
+            );
+            if ($row) {
+                $g = strtoupper(trim((string)($row['cod_grupo'] ?? '')));
+                if ($g !== '') {
+                    return $g;
+                }
+                return self::obtenerGrupoPorPlan((int)($row['id_plan'] ?? 1), (string)($row['codigo_plan'] ?? 'BASICO'));
+            }
+        } catch (\Throwable $ignored) {}
+        return 'CONTA';
+    }
+
+    /**
      * Obtiene la información del propietario actual, su plan, uso de contribuyentes/usuarios y estado de suscripción
      */
     public static function getPlanSummary(?int $idProp = null): array {
@@ -61,6 +110,7 @@ class TenantContext {
                     p.fec_ultimo_pago, p.dias_aviso, p.dias_gracia, p.mensaje_pago,
                     COALESCE(pl.nombre_plan, 'Plan Básico') AS nombre_plan,
                     COALESCE(pl.codigo_plan, 'BASICO') AS codigo_plan,
+                    COALESCE(pl.cod_grupo, 'CONTA') AS cod_grupo_plan,
                     COALESCE(pl.precio_mensual, 0) AS precio_mensual
              FROM propietarios p
              LEFT JOIN planes pl ON p.id_plan = pl.id_plan
@@ -75,6 +125,7 @@ class TenantContext {
                 'id_plan'            => 1,
                 'nombre_plan'        => 'Plan Básico',
                 'codigo_plan'        => 'BASICO',
+                'cod_grupo_plan'     => 'CONTA',
                 'precio_mensual'     => 150000,
                 'max_contribuyentes' => 5,
                 'max_usuarios'       => 2,

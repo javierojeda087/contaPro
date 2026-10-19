@@ -289,6 +289,7 @@
         // ── Global State ──────────────────────────────────────────────────────
         let allUsers = [];
         let allGrupos = [];
+        let defaultGrupoPlan = 'CONTA';
         let selectedUserCode = null;
         let pSearchTimeout = null;
 
@@ -329,30 +330,33 @@
                 const data = await res.json();
                 if (Array.isArray(data) && data.length > 0) {
                     allGrupos = data;
+                    if (data[0] && data[0].grupoPorDefecto) {
+                        defaultGrupoPlan = String(data[0].grupoPorDefecto).trim().toUpperCase();
+                    }
                     const select = document.getElementById('codGrupo');
                     select.innerHTML = '';
                     
-                    let contaFound = false;
+                    let defFound = false;
                     data.forEach(g => {
-                        const code = (g.codGrupo || g.COD_GRUPO || '').trim();
+                        const code = (g.codGrupo || g.COD_GRUPO || '').trim().toUpperCase();
                         const desc = (g.descripcion || g.DESCRIPCION || code).trim();
                         const opt = document.createElement('option');
                         opt.value = code;
                         opt.textContent = `${code} - ${desc}`;
-                        if (code.toUpperCase() === 'CONTA') {
+                        if (code === defaultGrupoPlan) {
                             opt.selected = true;
-                            contaFound = true;
+                            defFound = true;
                         }
                         select.appendChild(opt);
                     });
 
-                    // Si no estaba en la BD, asegurarse de incluir CONTA por defecto
-                    if (!contaFound) {
-                        const optConta = document.createElement('option');
-                        optConta.value = 'CONTA';
-                        optConta.textContent = 'CONTA - GRUPO CONTABILIDAD';
-                        optConta.selected = true;
-                        select.prepend(optConta);
+                    // Si no estaba en la lista, asegurarse de incluir el grupo del plan por defecto
+                    if (!defFound) {
+                        const optDef = document.createElement('option');
+                        optDef.value = defaultGrupoPlan;
+                        optDef.textContent = `${defaultGrupoPlan} - GRUPO DEL PLAN`;
+                        optDef.selected = true;
+                        select.prepend(optDef);
                     }
                 }
             } catch (err) {
@@ -655,9 +659,9 @@
                 document.getElementById('origCodUsuario').value = '';
                 clearPersonaSelection();
                 
-                // Regla: Todos los usuarios al crear pertenecen al grupo CONTA
+                // Regla: Al crear un nuevo usuario pertenece automáticamente al grupo del plan del propietario
                 const selGrupo = document.getElementById('codGrupo');
-                selGrupo.value = 'CONTA';
+                selGrupo.value = defaultGrupoPlan || 'CONTA';
                 selGrupo.disabled = true;
                 selGrupo.style.backgroundColor = '#f1f5f9';
 
@@ -714,7 +718,7 @@
                 const codeUp = (u.codUsuario || u.alias || '').toUpperCase();
                 document.getElementById('alias').value = u.alias || u.codUsuario || '';
                 const selGrupo = document.getElementById('codGrupo');
-                selGrupo.value = codeUp === 'CONTA' ? 'CONADM' : (u.codGrupo || 'CONTA');
+                selGrupo.value = codeUp === 'CONTA' ? 'CONADM' : (u.codGrupo || defaultGrupoPlan || 'CONTA');
                 selGrupo.disabled = true;
                 selGrupo.style.backgroundColor = '#f1f5f9';
                 document.getElementById('esAdmin').checked = (u.esAdmin === 'S' || u.esAdmin === 'true');

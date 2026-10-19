@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 9;
+    private const SCHEMA_VERSION = 10;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -27,6 +27,7 @@ class DatabaseMigrator {
               `id_plan` INT NOT NULL AUTO_INCREMENT,
               `codigo_plan` VARCHAR(30) NOT NULL,
               `nombre_plan` VARCHAR(100) NOT NULL,
+              `cod_grupo` VARCHAR(10) DEFAULT 'CONTA',
               `max_contribuyentes` INT NOT NULL DEFAULT 5,
               `max_usuarios` INT NOT NULL DEFAULT 2,
               `precio_anterior` DECIMAL(15,2) DEFAULT 0,
@@ -42,6 +43,21 @@ class DatabaseMigrator {
             Database::execute("ALTER TABLE `planes` ADD COLUMN `precio_anterior` DECIMAL(15,2) DEFAULT 0 AFTER `max_usuarios`", true);
             $applied[] = 'planes.precio_anterior';
         }
+
+        if (!self::columnExists('planes', 'cod_grupo')) {
+            Database::execute("ALTER TABLE `planes` ADD COLUMN `cod_grupo` VARCHAR(10) DEFAULT 'CONTA' AFTER `nombre_plan`", true);
+            Database::execute("UPDATE `planes` SET `cod_grupo` = 'CONTA'  WHERE UPPER(TRIM(`codigo_plan`)) = 'BASICO'", true);
+            Database::execute("UPDATE `planes` SET `cod_grupo` = 'CONTAM' WHERE UPPER(TRIM(`codigo_plan`)) = 'MEDIO'", true);
+            Database::execute("UPDATE `planes` SET `cod_grupo` = 'CONTAP' WHERE UPPER(TRIM(`codigo_plan`)) = 'PRO'", true);
+            Database::execute("UPDATE `planes` SET `cod_grupo` = 'CONADM' WHERE UPPER(TRIM(`codigo_plan`)) = 'ILIMITADO'", true);
+            $applied[] = 'planes.cod_grupo';
+        }
+
+        // Asegurar mapeo por defecto de grupos por plan si están vacíos
+        Database::execute("UPDATE `planes` SET `cod_grupo` = 'CONTA'  WHERE UPPER(TRIM(`codigo_plan`)) = 'BASICO' AND (COALESCE(TRIM(`cod_grupo`), '') = '')", true);
+        Database::execute("UPDATE `planes` SET `cod_grupo` = 'CONTAM' WHERE UPPER(TRIM(`codigo_plan`)) = 'MEDIO'  AND (COALESCE(TRIM(`cod_grupo`), '') IN ('', 'CONTA'))", true);
+        Database::execute("UPDATE `planes` SET `cod_grupo` = 'CONTAP' WHERE UPPER(TRIM(`codigo_plan`)) = 'PRO'    AND (COALESCE(TRIM(`cod_grupo`), '') IN ('', 'CONTA'))", true);
+        Database::execute("UPDATE `planes` SET `cod_grupo` = 'CONADM' WHERE UPPER(TRIM(`codigo_plan`)) = 'ILIMITADO' AND (COALESCE(TRIM(`cod_grupo`), '') IN ('', 'CONTA'))", true);
 
         // Aplicar precio anterior 150.000 y precio actual 140.000 al Plan Básico si aún tiene el valor inicial por defecto
         Database::execute(
@@ -122,6 +138,9 @@ class DatabaseMigrator {
             $applied[] = 'usuarios.es_superadmin';
         }
         Database::execute("ALTER TABLE `usuarios` MODIFY COLUMN `clave` VARCHAR(255) DEFAULT NULL", true);
+        Database::execute("ALTER TABLE `usuarios` MODIFY COLUMN `cod_grupo` VARCHAR(10) DEFAULT NULL", true);
+        Database::execute("ALTER TABLE `grupos_usuarios` MODIFY COLUMN `cod_grupo` VARCHAR(10) DEFAULT NULL", true);
+        Database::execute("ALTER TABLE `accesos_grupos` MODIFY COLUMN `cod_grupo` VARCHAR(10) DEFAULT NULL", true);
 
         // 4. Asegurar columnas extendidas en co_egresos y co_ingresos si faltan
         $extraColsEgresos = [
@@ -158,53 +177,64 @@ class DatabaseMigrator {
             }
         }
 
-        // 5. Asegurar que solo existan los grupos activos CONTA y CONADM
+        // 5. Asegurar los grupos por plan: CONADM, CONTA (Plan Básico), CONTAM (Plan Medio), CONTAP (Plan Pro)
+        $gruposBase = [
+            'CONADM' => 'ADMINISTRADOR CONTABLE',
+            'CONTA'  => 'GRUPO CONTABILIDAD (PLAN BASICO)',
+            'CONTAM' => 'GRUPO CONTABILIDAD (PLAN MEDIO)',
+            'CONTAP' => 'GRUPO CONTABILIDAD (PLAN PRO)',
+        ];
+        foreach ($gruposBase as $gCod => $gDesc) {
+            Database::execute(
+                "INSERT INTO `grupos_usuarios` (`id_propietario`, `cod_grupo`, `descripcion`, `ind_clave_sin_caducidad`)
+                 SELECT DISTINCT p.id_prop, '$gCod', '$gDesc', 'S'
+                 FROM (
+                     SELECT `id_propietario` AS id_prop FROM `propietarios`
+                     UNION
+                     SELECT `id_propietario` AS id_prop FROM `grupos_usuarios`
+                     UNION
+                     SELECT 1 AS id_prop
+                 ) p
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM `grupos_usuarios` g
+                     WHERE g.`id_propietario` = p.id_prop AND UPPER(TRIM(g.`cod_grupo`)) = '$gCod'
+                 )",
+                true
+            );
+        }
+
+        // Limpiar únicamente grupos semilla antiguos obsoletos (DEV, MANT, SOP, TEST), preservando los grupos creados
         Database::execute(
-            "INSERT INTO `grupos_usuarios` (`id_propietario`, `cod_grupo`, `descripcion`, `ind_clave_sin_caducidad`)
-             SELECT DISTINCT p.id_prop, 'CONADM', 'ADMINISTRADOR CONTABLE', 'S'
-             FROM (
-                 SELECT `id_propietario` AS id_prop FROM `propietarios`
-                 UNION
-                 SELECT `id_propietario` AS id_prop FROM `grupos_usuarios`
-                 UNION
-                 SELECT 1 AS id_prop
-             ) p
-             WHERE NOT EXISTS (
-                 SELECT 1 FROM `grupos_usuarios` g
-                 WHERE g.`id_propietario` = p.id_prop AND UPPER(TRIM(g.`cod_grupo`)) = 'CONADM'
-             )",
+            "DELETE FROM `grupos_usuarios` WHERE UPPER(TRIM(COALESCE(`cod_grupo`, ''))) IN ('DEV', 'MANT', 'SOP', 'TEST', '')",
             true
         );
 
         Database::execute(
-            "DELETE FROM `grupos_usuarios` WHERE UPPER(TRIM(COALESCE(`cod_grupo`, ''))) NOT IN ('CONTA', 'CONADM')",
+            "DELETE FROM `accesos_grupos` WHERE UPPER(TRIM(COALESCE(`cod_grupo`, ''))) IN ('DEV', 'MANT', 'SOP', 'TEST', '')",
             true
         );
 
-        Database::execute(
-            "DELETE FROM `accesos_grupos` WHERE UPPER(TRIM(COALESCE(`cod_grupo`, ''))) NOT IN ('CONTA', 'CONADM')",
-            true
-        );
-
-        Database::execute(
-            "INSERT INTO `accesos_grupos` (
-                 `id_propietario`, `cod_grupo`, `cod_modulo`, `nom_forma`,
-                 `puede_insertar`, `puede_borrar`, `puede_actualizar`, `puede_consultar`,
-                 `item_menu`, `mostrar_en_menu`
-             )
-             SELECT a.`id_propietario`, 'CONADM', a.`cod_modulo`, a.`nom_forma`,
-                    a.`puede_insertar`, a.`puede_borrar`, a.`puede_actualizar`, a.`puede_consultar`,
-                    a.`item_menu`, a.`mostrar_en_menu`
-             FROM `accesos_grupos` a
-             WHERE UPPER(TRIM(a.`cod_grupo`)) = 'CONTA'
-               AND NOT EXISTS (
-                   SELECT 1 FROM `accesos_grupos` x
-                   WHERE x.`id_propietario` = a.`id_propietario`
-                     AND UPPER(TRIM(x.`cod_grupo`)) = 'CONADM'
-                     AND UPPER(TRIM(x.`nom_forma`)) = UPPER(TRIM(a.`nom_forma`))
-               )",
-            true
-        );
+        // Copiar accesos base desde CONTA hacia CONADM, CONTAM y CONTAP si aún no tienen filas en accesos_grupos
+        foreach (['CONADM', 'CONTAM', 'CONTAP'] as $targetGrp) {
+            Database::execute(
+                "INSERT INTO `accesos_grupos` (
+                     `id_propietario`, `cod_grupo`, `cod_modulo`, `nom_forma`,
+                     `puede_insertar`, `puede_borrar`, `puede_actualizar`, `puede_consultar`,
+                     `item_menu`, `mostrar_en_menu`
+                 )
+                 SELECT a.`id_propietario`, '$targetGrp', a.`cod_modulo`, a.`nom_forma`,
+                        a.`puede_insertar`, a.`puede_borrar`, a.`puede_actualizar`, a.`puede_consultar`,
+                        a.`item_menu`, a.`mostrar_en_menu`
+                 FROM `accesos_grupos` a
+                 WHERE UPPER(TRIM(a.`cod_grupo`)) = 'CONTA'
+                   AND NOT EXISTS (
+                       SELECT 1 FROM `accesos_grupos` x
+                       WHERE x.`id_propietario` = a.`id_propietario`
+                         AND UPPER(TRIM(x.`cod_grupo`)) = '$targetGrp'
+                   )",
+                true
+            );
+        }
 
         // Registrar formulario BSGRPUSU (Accesos Grupos) en formas y dar acceso EXCLUSIVAMENTE a CONADM
         Database::execute(
@@ -253,6 +283,7 @@ class DatabaseMigrator {
             true
         );
 
+        // El usuario CONTA debe pertenecer siempre a CONADM
         Database::execute(
             "UPDATE `usuarios`
              SET `cod_grupo` = 'CONADM'
@@ -260,10 +291,14 @@ class DatabaseMigrator {
             true
         );
 
+        // Asegurar que los usuarios de propietarios que no estén en un grupo válido tomen el grupo del plan de su propietario
         Database::execute(
-            "UPDATE `usuarios`
-             SET `cod_grupo` = 'CONTA'
-             WHERE UPPER(TRIM(`cod_usuario`)) <> 'CONTA' AND UPPER(TRIM(COALESCE(`cod_grupo`, ''))) NOT IN ('CONTA', 'CONADM')",
+            "UPDATE `usuarios` u
+             LEFT JOIN `propietarios` pr ON pr.`id_propietario` = u.`id_propietario`
+             LEFT JOIN `planes` pl ON pl.`id_plan` = pr.`id_plan`
+             SET u.`cod_grupo` = COALESCE(NULLIF(TRIM(pl.`cod_grupo`), ''), 'CONTA')
+             WHERE UPPER(TRIM(u.`cod_usuario`)) <> 'CONTA'
+               AND UPPER(TRIM(COALESCE(u.`cod_grupo`, ''))) IN ('', 'DEV', 'MANT', 'SOP', 'TEST')",
             true
         );
 

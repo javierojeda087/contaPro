@@ -885,7 +885,7 @@ DROP TABLE IF EXISTS `grupos_usuarios`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `grupos_usuarios` (
   `id_propietario` int NOT NULL DEFAULT '1',
-  `cod_grupo` varchar(6) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `cod_grupo` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `descripcion` varchar(40) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `ind_clave_sin_caducidad` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   KEY `idx_grupos_usuarios_prop` (`id_propietario`)
@@ -898,7 +898,7 @@ CREATE TABLE `grupos_usuarios` (
 
 LOCK TABLES `grupos_usuarios` WRITE;
 /*!40000 ALTER TABLE `grupos_usuarios` DISABLE KEYS */;
-INSERT INTO `grupos_usuarios` VALUES (1,'CONADM','ADMINISTRADOR CONTABLE','S'),(2,'CONADM','ADMINISTRADOR CONTABLE','S'),(1,'CONTA','GRUPO CONTABILIDAD',NULL),(2,'CONTA','GRUPO CONTABILIDAD',NULL);
+INSERT INTO `grupos_usuarios` VALUES (1,'CONADM','ADMINISTRADOR CONTABLE','S'),(2,'CONADM','ADMINISTRADOR CONTABLE','S'),(1,'CONTA','GRUPO CONTABILIDAD (PLAN BASICO)','S'),(2,'CONTA','GRUPO CONTABILIDAD (PLAN BASICO)','S'),(1,'CONTAM','GRUPO CONTABILIDAD (PLAN MEDIO)','S'),(2,'CONTAM','GRUPO CONTABILIDAD (PLAN MEDIO)','S'),(1,'CONTAP','GRUPO CONTABILIDAD (PLAN PRO)','S'),(2,'CONTAP','GRUPO CONTABILIDAD (PLAN PRO)','S');
 /*!40000 ALTER TABLE `grupos_usuarios` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1134,6 +1134,7 @@ CREATE TABLE `planes` (
   `id_plan` int NOT NULL AUTO_INCREMENT,
   `codigo_plan` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
   `nombre_plan` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cod_grupo` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT 'CONTA',
   `max_contribuyentes` int NOT NULL DEFAULT '5',
   `max_usuarios` int NOT NULL DEFAULT '2',
   `precio_anterior` decimal(15,2) DEFAULT '0.00',
@@ -1151,7 +1152,7 @@ CREATE TABLE `planes` (
 
 LOCK TABLES `planes` WRITE;
 /*!40000 ALTER TABLE `planes` DISABLE KEYS */;
-INSERT INTO `planes` VALUES (1,'BASICO','Plan Básico',5,2,150000.00,140000.00,'Ideal para contadores independientes o pequeños negocios (hasta 5 contribuyentes y 2 usuarios)','A',1),(2,'MEDIO','Plan Medio',10,5,0.00,250000.00,'Para estudios contables en crecimiento (hasta 10 contribuyentes y 5 usuarios)','A',2),(3,'PRO','Plan Pro',30,15,0.00,450000.00,'Para estudios contables consolidados (hasta 30 contribuyentes y 15 usuarios)','A',3),(4,'ILIMITADO','Plan Corporativo / SuperAdmin',9999,999,0.00,0.00,'Plan sin restricciones para administración general','A',4);
+INSERT INTO `planes` VALUES (1,'BASICO','Plan Básico','CONTA',5,2,150000.00,140000.00,'Ideal para contadores independientes o pequeños negocios (hasta 5 contribuyentes y 2 usuarios)','A',1),(2,'MEDIO','Plan Medio','CONTAM',10,5,0.00,250000.00,'Para estudios contables en crecimiento (hasta 10 contribuyentes y 5 usuarios)','A',2),(3,'PRO','Plan Pro','CONTAP',30,15,0.00,450000.00,'Para estudios contables consolidados (hasta 30 contribuyentes y 15 usuarios)','A',3),(4,'ILIMITADO','Plan Corporativo / SuperAdmin','CONADM',9999,999,0.00,0.00,'Plan sin restricciones para administración general','A',4);
 /*!40000 ALTER TABLE `planes` ENABLE KEYS */;
 UNLOCK TABLES;
 
