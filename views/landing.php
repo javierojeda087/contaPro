@@ -76,19 +76,19 @@
             border-bottom-color: #1d8cf8;
         }
 
-        /* Botón Ingresar con desplegable */
+        /* Botón Ingresar */
         .ingresar-wrapper {
             position: relative;
         }
         .btn-ingresar {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             padding: 9px 22px;
-            border: 1.5px solid #94a3b8;
+            border: 1.5px solid #16a34a;
             border-radius: 6px;
             background: #ffffff;
-            color: #475569;
+            color: #15803d;
             font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
@@ -96,42 +96,9 @@
             transition: all 0.2s;
         }
         .btn-ingresar:hover {
-            border-color: #16a34a;
-            color: #15803d;
-            background: #f0fdf4;
-        }
-        .ingresar-dropdown {
-            display: none;
-            position: absolute;
-            right: 0;
-            top: calc(100% + 8px);
-            background: #ffffff;
-            border-radius: 10px;
-            box-shadow: 0 15px 35px rgba(15, 23, 42, 0.16);
-            border: 1px solid #e2e8f0;
-            width: 240px;
-            overflow: hidden;
-            z-index: 2000;
-        }
-        .ingresar-wrapper:hover .ingresar-dropdown,
-        .ingresar-dropdown.show {
-            display: block;
-        }
-        .ingresar-dropdown a {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 13px 16px;
-            text-decoration: none;
-            color: #1e293b;
-            font-size: 0.9rem;
-            font-weight: 600;
-            border-bottom: 1px solid #f1f5f9;
-            transition: background 0.15s;
-        }
-        .ingresar-dropdown a:hover {
-            background: #f0fdf4;
-            color: #15803d;
+            border-color: #15803d;
+            color: #ffffff;
+            background: #16a34a;
         }
 
         /* Hero Section (Estilo Ábaco) */
@@ -455,17 +422,9 @@
 
             <div class="ingresar-wrapper">
                 <a href="/login" class="btn-ingresar">
+                    <i class="ph ph-sign-in" style="font-size: 1.15rem;"></i>
                     <span>Ingresar</span>
-                    <i class="ph ph-caret-down"></i>
                 </a>
-                <div class="ingresar-dropdown">
-                    <a href="/login">
-                        <i class="ph ph-calculator" style="font-size: 1.25rem; color: #16a34a;"></i>
-                        <div>
-                            <div>ContaPro Cloud</div>
-                        </div>
-                    </a>
-                </div>
             </div>
         </div>
     </header>
