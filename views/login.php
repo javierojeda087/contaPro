@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script>window.CTX = '';</script>
     <title>ContaPro - Acceso al Sistema</title>
-    <link rel="icon" type="image/png" href="/images/logo_contapro.png" />
+    <link rel="icon" type="image/png" href="/images/favicon_cp.png?v=2" />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

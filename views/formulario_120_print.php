@@ -7,6 +7,7 @@ $fmt = fn($k) => number_format((float)($f[$k] ?? 0), 0, ',', '.');
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/images/favicon_cp.png?v=2" />
     <title>Formulario 120 - Impuesto al Valor Agregado (Versión 3) | ContaPro</title>
     <style>
         body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #000; background: #fff; margin: 0; padding: 15px; }

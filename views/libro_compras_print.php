@@ -8,6 +8,7 @@ $fmt = fn($n) => number_format((float)($n ?? 0), 0, ',', '.');
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/images/favicon_cp.png?v=2" />
     <title>LIBRO COMPRAS | ContaPro</title>
     <style>
         @page { size: A4 landscape; margin: 8mm; }
