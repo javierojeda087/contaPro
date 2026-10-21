@@ -2,4 +2,4 @@
 deployment:
   tasks:
     - export DEPLOYPATH=/home/contaprocompy/public_html/
-    - /bin/cp -rf app core css database images js views index.php .htaccess $DEPLOYPATH
+    - /bin/cp -rf app core css database images js views index.php .htaccess .user.ini $DEPLOYPATH

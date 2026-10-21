@@ -31,8 +31,8 @@
 # Impedir listado de directorios en cPanel
 Options -Indexes
 
-# Proteger archivos sensibles (.sql, .zip, .bat, .env, .md, etc.) compatible con Apache 2.2 y 2.4
-<FilesMatch "\.(sql|key|p12|env|md|sh|bak|zip|bat|yml|yaml|log)$">
+# Proteger archivos sensibles (.sql, .zip, .bat, .env, .md, .ini, etc.) compatible con Apache 2.2 y 2.4
+<FilesMatch "(\.(sql|key|p12|env|md|sh|bak|zip|bat|yml|yaml|log|ini)|^\.user\.ini|php\.ini)$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>
@@ -41,4 +41,18 @@ Options -Indexes
         Deny from all
     </IfModule>
 </FilesMatch>
+
+# Mitigación de emergencia contra PHP2Shell (CVE-2026-109618 / CVE-2026-109619) para mod_php / lsapi
+<IfModule mod_php.c>
+    php_flag session.upload_progress.enabled Off
+    php_value post_max_size 16M
+    php_value upload_max_filesize 16M
+    php_value memory_limit 256M
+</IfModule>
+<IfModule lsapi_module>
+    php_flag session.upload_progress.enabled Off
+    php_value post_max_size 16M
+    php_value upload_max_filesize 16M
+    php_value memory_limit 256M
+</IfModule>
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 // 1. Servir archivos estáticos directamente cuando se ejecuta con `php -S`
 if (PHP_SAPI === 'cli-server') {
     $urlPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-    if (preg_match('#^/(config|core|app|database)/|\.(sql|key|p12|env|md|sh|bak|zip|bat|yml|yaml|log)$#i', $urlPath)) {
+    if (preg_match('#^/(config|core|app|database)/|\.(sql|key|p12|env|md|sh|bak|zip|bat|yml|yaml|log|ini)$#i', $urlPath)) {
         http_response_code(403);
         exit('403 Forbidden');
     }
