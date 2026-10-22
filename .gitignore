@@ -2,3 +2,5 @@
 ContaPro_cPanel_Deploy.zip
 *.bak
 *.log
+sifen-api/target/
+
