@@ -98,15 +98,24 @@ class MovimientosContablesController {
         if (!self::requireAuth(false)) return;
         $idProp = TenantContext::idPropietario();
         $emp = TenantContext::empresa();
-        $contribuyenteNombre = TenantContext::nomEmpresa();
+        $contribuyenteNombre = trim((string)(Database::queryForValue(
+            "SELECT descripcion FROM empresas WHERE id_propietario = ? AND cod_empresa = ? LIMIT 1",
+            [$idProp, $emp]
+        ) ?? ''));
         if ($contribuyenteNombre === '') {
-            $contribuyenteNombre = (string)(Database::queryForValue(
-                "SELECT descripcion FROM empresas WHERE id_propietario = ? AND cod_empresa = ? LIMIT 1",
-                [$idProp, $emp]
-            ) ?? '');
+            $contribuyenteNombre = TenantContext::nomEmpresa();
+        }
+        if ($contribuyenteNombre !== '') {
+            try {
+                Database::update(
+                    "UPDATE co_egresos SET comprador = ? WHERE id_propietario = ? AND cod_empresa = ? AND (comprador IS NULL OR TRIM(comprador) = '' OR comprador LIKE '%[[$%')",
+                    [$contribuyenteNombre, $idProp, $emp]
+                );
+            } catch (\Throwable $ignored) {}
         }
         self::renderFormPage('egresos_registro', [
             'contribuyenteNombre' => $contribuyenteNombre,
+            'empresaDesc'         => $contribuyenteNombre,
         ]);
     }
 
@@ -274,7 +283,19 @@ class MovimientosContablesController {
                     WHERE id_propietario = ? AND id_egreso = ? AND cod_empresa = ? LIMIT 1";
             $list = Database::queryForListUpper($sql, [$idProp, (int)$id, $empresa]);
             if (!empty($list)) {
-                View::json(['status' => 'success', 'data' => $list[0]]);
+                $row = $list[0];
+                $nomEmp = trim((string)(Database::queryForValue(
+                    "SELECT descripcion FROM empresas WHERE id_propietario = ? AND cod_empresa = ? LIMIT 1",
+                    [$idProp, $empresa]
+                ) ?? ''));
+                if ($nomEmp === '') {
+                    $nomEmp = TenantContext::nomEmpresa();
+                }
+                if ($nomEmp !== '') {
+                    $row['COMPRADOR'] = $nomEmp;
+                    $row['CONTRIBUYENTE_NOMBRE'] = $nomEmp;
+                }
+                View::json(['status' => 'success', 'data' => $row]);
             } else {
                 View::json(['status' => 'error', 'message' => 'Egreso no encontrado.']);
             }
@@ -318,13 +339,13 @@ class MovimientosContablesController {
             }
 
             $comprador = trim((string)($payload['comprador'] ?? ''));
-            if ($comprador === '') {
-                $comprador = TenantContext::nomEmpresa();
-                if ($comprador === '') {
-                    $comprador = (string)(Database::queryForValue(
-                        "SELECT descripcion FROM empresas WHERE id_propietario = ? AND cod_empresa = ? LIMIT 1",
-                        [$idProp, $empresa]
-                    ) ?? '');
+            if ($comprador === '' || str_contains($comprador, '[[${') || str_contains(strtoupper($comprador), 'CONTRIBUYENTENOMBRE')) {
+                $comprador = (string)(Database::queryForValue(
+                    "SELECT descripcion FROM empresas WHERE id_propietario = ? AND cod_empresa = ? LIMIT 1",
+                    [$idProp, $empresa]
+                ) ?? '');
+                if (trim($comprador) === '') {
+                    $comprador = TenantContext::nomEmpresa();
                 }
             }
 

@@ -446,7 +446,7 @@
             selectAnio.innerHTML = html;
 
             // Seleccionar año actual o de la sesión si existe
-            const ejSession = '[[${session.ejercicio}]]';
+            const ejSession = /*[[${session.ejercicio}]]*/ '';
             if (ejSession && ejSession !== '' && selectAnio.querySelector(`option[value="${ejSession}"]`)) {
                 selectAnio.value = ejSession;
             } else {

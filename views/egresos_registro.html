@@ -517,8 +517,19 @@
     <!-- Layout Scripts -->
     <div th:replace="~{fragments/layout :: scripts}"></div>
 
-    <script>
-        const CONTRIBUYENTE_NOMBRE = '[[${contribuyenteNombre != null ? contribuyenteNombre : (empresaDesc != null ? empresaDesc : session.empresaDesc)}]]';
+    <script th:inline="javascript">
+        const _rawContribuyenteNombre = /*[[${contribuyenteNombre != null ? contribuyenteNombre : (empresaDesc != null ? empresaDesc : session.empresaDesc)}]]*/ '';
+        const CONTRIBUYENTE_NOMBRE = (_rawContribuyenteNombre && !String(_rawContribuyenteNombre).includes('[[${')) ? _rawContribuyenteNombre : '';
+
+        function obtenerNombreContribuyente() {
+            if (CONTRIBUYENTE_NOMBRE) return CONTRIBUYENTE_NOMBRE;
+            const compInput = document.getElementById('comprador');
+            if (compInput) {
+                const attrVal = compInput.getAttribute('value') || compInput.defaultValue || '';
+                if (attrVal && !attrVal.includes('[[${')) return attrVal;
+            }
+            return '';
+        }
         let listEgresosData = [];
         let selectedIdEgreso = null;
         let currentSortColumn = null;
@@ -579,9 +590,14 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            if (CONTRIBUYENTE_NOMBRE) {
-                const compEl = document.getElementById('comprador');
-                if (compEl) compEl.value = CONTRIBUYENTE_NOMBRE;
+            const compEl = document.getElementById('comprador');
+            if (compEl) {
+                const nomContrib = obtenerNombreContribuyente();
+                if (nomContrib) {
+                    compEl.value = nomContrib;
+                } else if (compEl.value && compEl.value.includes('[[${')) {
+                    compEl.value = '';
+                }
             }
             onTipoTimbChange();
             inicializarFiltroPeriodo();
@@ -616,7 +632,7 @@
             }
             selectAnio.innerHTML = html;
 
-            const ejSession = '[[${session.ejercicio}]]';
+            const ejSession = /*[[${session.ejercicio}]]*/ '';
             if (ejSession && ejSession !== '' && selectAnio.querySelector(`option[value="${ejSession}"]`)) {
                 selectAnio.value = ejSession;
             } else {
@@ -1071,6 +1087,7 @@
             document.getElementById('formEgreso').reset();
             document.getElementById('idEgreso').value = '';
             document.getElementById('codProveedor').value = '';
+            document.getElementById('comprador').value = obtenerNombreContribuyente();
             document.getElementById('regimen').value = '1';
             document.getElementById('tipTimb').value = 'Pre-impreso';
             onTipoTimbChange();
@@ -1165,7 +1182,8 @@
 
                         document.getElementById('serie').value = item.SERIE || item.serie || '';
                         document.getElementById('fecEgreso').value = item.FEC_EGRESO || item.fec_egreso || '';
-                        document.getElementById('comprador').value = CONTRIBUYENTE_NOMBRE || item.COMPRADOR || item.comprador || '';
+                        const rawComp = item.CONTRIBUYENTE_NOMBRE || obtenerNombreContribuyente() || item.COMPRADOR || item.comprador || '';
+                        document.getElementById('comprador').value = (rawComp && !String(rawComp).includes('[[${')) ? rawComp : obtenerNombreContribuyente();
                         document.getElementById('rucProveedor').value = item.RUC_PROVEEDOR || item.ruc_proveedor || '';
                         document.getElementById('nomProveedor').value = item.NOM_PROVEEDOR || item.nom_proveedor || '';
                         document.getElementById('codProveedor').value = item.COD_PROVEEDOR || item.cod_proveedor || '';
@@ -1666,7 +1684,7 @@
             document.getElementById('modalTitle').innerText = 'Registrar egreso';
 
             // Comprador asignado permanentemente a la persona contribuyente
-            document.getElementById('comprador').value = CONTRIBUYENTE_NOMBRE || '';
+            document.getElementById('comprador').value = obtenerNombreContribuyente();
 
             // Limpiar comprobante y proveedor
             document.getElementById('cdc').value = '';

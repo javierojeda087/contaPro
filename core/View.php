@@ -121,6 +121,26 @@ class View {
             $html
         );
 
+        // Reemplazar '[[${var}]]' o "[[${var}]]" directos en bloques JS
+        $html = preg_replace_callback(
+            '/([\'"])\\[\\[\\$\\{([^}]+)\\}\\]\\]\1/m',
+            function ($m) use ($model) {
+                $val = (string)self::evalExpr(trim($m[2]), $model);
+                return json_encode($val, JSON_UNESCAPED_UNICODE);
+            },
+            $html
+        );
+
+        // Reemplazar [[${var}]] restantes en el HTML
+        $html = preg_replace_callback(
+            '/\\[\\[\\$\\{([^}]+)\\}\\]\\]/m',
+            function ($m) use ($model) {
+                $val = (string)self::evalExpr(trim($m[1]), $model);
+                return htmlspecialchars($val, ENT_QUOTES, 'UTF-8');
+            },
+            $html
+        );
+
         // Reemplazar th:value="${...}", th:min="${...}", th:max="${...}"
         foreach (['value', 'min', 'max'] as $attr) {
             $html = preg_replace_callback(
@@ -404,9 +424,10 @@ HTML;
         if ($expr === 'currentYear') return (int)date('Y');
         if ($expr === 'currentYear - 1') return (int)date('Y') - 1;
         if ($expr === 'session.empresaDesc') return $_SESSION['empresaDesc'] ?? ($_SESSION['empresa'] ?? '');
+        if ($expr === 'session.ejercicio') return $_SESSION['ejercicio'] ?? date('Y');
         if (str_contains($expr, 'session.usuario')) return $_SESSION['usuario'] ?? 'USUARIO';
         if (str_contains($expr, 'contribuyenteNombre')) {
-            return $model['contribuyenteNombre'] ?? ($model['empresaDesc'] ?? ($_SESSION['empresaDesc'] ?? ''));
+            return $model['contribuyenteNombre'] ?? ($model['nomEmpresa'] ?? ($model['empresaDesc'] ?? ($_SESSION['empresaDesc'] ?? '')));
         }
         if ($expr === 'empresa.rucNum + \'-\' + empresa.rucDv') {
             $emp = $model['empresa'] ?? [];
