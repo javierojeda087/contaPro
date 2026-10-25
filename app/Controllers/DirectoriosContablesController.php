@@ -202,17 +202,41 @@ class DirectoriosContablesController {
             return;
         }
         $rucBase = str_contains($ruc, '-') ? trim(explode('-', $ruc)[0]) : $ruc;
+        $rucBase = preg_replace('/[^0-9]/', '', $rucBase);
         if (strlen($rucBase) < 3) {
             View::json(['status' => 'NOT_FOUND']);
             return;
         }
 
-        $ctx = stream_context_create([
-            'http' => ['timeout' => 4, 'ignore_errors' => true],
-            'ssl'  => ['verify_peer' => false, 'verify_peer_name' => false],
-        ]);
-        $raw = @file_get_contents('https://turuc.com.py/api/contribuyente?ruc=' . urlencode($rucBase), false, $ctx);
-        if ($raw !== false) {
+        $url = 'https://turuc.com.py/api/contribuyente?ruc=' . urlencode($rucBase);
+        $raw = false;
+        if (function_exists('curl_init')) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 6,
+                CURLOPT_CONNECTTIMEOUT => 4,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+                CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ContaPro/1.0',
+            ]);
+            $raw = curl_exec($ch);
+            curl_close($ch);
+        }
+        if ($raw === false || $raw === '') {
+            $ctx = stream_context_create([
+                'http' => [
+                    'timeout'       => 5,
+                    'ignore_errors' => true,
+                    'header'        => "Accept: application/json\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) ContaPro/1.0\r\n",
+                ],
+                'ssl' => ['verify_peer' => false, 'verify_peer_name' => false],
+            ]);
+            $raw = @file_get_contents($url, false, $ctx);
+        }
+        if (is_string($raw) && $raw !== '') {
             $json = json_decode($raw, true);
             if (!empty($json['data'])) {
                 View::json(['status' => 'SUCCESS', 'data' => $json['data']]);
@@ -272,17 +296,19 @@ class DirectoriosContablesController {
         $codPersona = 0;
 
         if ($ruc !== '') {
-            $found = Database::queryForValue(
-                "SELECT p.cod_persona FROM personas p
-                 WHERE p.id_propietario = ?
-                   AND (p.ruc = ? OR p.cod_persona = ? OR EXISTS (
-                       SELECT 1 FROM ident_personas i
-                       WHERE i.id_propietario = p.id_propietario AND i.cod_persona = p.cod_persona AND i.numero = ?
-                   ))
-                 LIMIT 1",
-                [$idProp, $ruc, $ruc, $ruc]
-            );
-            if ($found) $codPersona = (int)$found;
+            try {
+                $found = Database::queryForValue(
+                    "SELECT p.cod_persona FROM personas p
+                     WHERE p.id_propietario = ?
+                       AND (p.cod_persona = ? OR EXISTS (
+                           SELECT 1 FROM ident_personas i
+                           WHERE i.id_propietario = p.id_propietario AND TRIM(i.cod_persona) = TRIM(p.cod_persona) AND TRIM(i.numero) = ?
+                       ))
+                     LIMIT 1",
+                    [$idProp, $ruc, $ruc]
+                );
+                if ($found) $codPersona = (int)$found;
+            } catch (\Throwable $ignored) {}
         }
         self::apiPersonasAsientosPredefinidos((string)$codPersona);
     }
@@ -356,65 +382,66 @@ class DirectoriosContablesController {
             View::json(['status' => 'NOT_FOUND_LOCAL']);
             return;
         }
-        $rucClean = $ruc;
-        $rucNoDash = str_replace(['-', ' '], '', $rucClean);
 
-        // 1. Buscar en co_clientes
-        $cli = Database::queryForMap(
-            "SELECT cod_cliente, cod_persona, nombre, ruc, COALESCE(tipo_documento, 'RUC') AS tipo_documento, direccion, telefono, email
-             FROM co_clientes
-             WHERE id_propietario = ? AND cod_empresa = ?
-               AND (UPPER(TRIM(ruc)) = UPPER(?) OR UPPER(REPLACE(ruc, '-', '')) = UPPER(?))
-               AND (cod_cliente <> ? OR ? = '')
-             LIMIT 1",
-            [$idProp, $empresa, $rucClean, $rucNoDash, $codCliente, $codCliente]
-        );
-        if ($cli) {
-            View::json([
-                'status'        => 'CLIENTE_EXISTE',
-                'codCliente'    => (string)$cli['cod_cliente'],
-                'codPersona'    => $cli['cod_persona'] !== null ? (string)$cli['cod_persona'] : null,
-                'nombre'        => $cli['nombre'],
-                'ruc'           => $cli['ruc'],
-                'tipoDocumento' => $cli['tipo_documento'],
-                'direccion'     => $cli['direccion'],
-                'telefono'      => $cli['telefono'],
-                'email'         => $cli['email'],
-            ]);
-            return;
-        }
+        try {
+            $rucClean = $ruc;
+            $rucNoDash = str_replace(['-', ' '], '', $rucClean);
 
-        // 2. Buscar en personas / ident_personas
-        $pers = Database::queryForMap(
-            "SELECT p.cod_persona, p.nombre, COALESCE(p.direc_electronica, p.email) AS direc_electronica,
-                    COALESCE(p.telefono, (SELECT num_telefono FROM telef_personas tp WHERE tp.id_propietario = p.id_propietario AND tp.cod_persona = p.cod_persona LIMIT 1)) AS telefono,
-                    COALESCE(p.direccion, (SELECT detalle FROM direc_personas dp WHERE dp.id_propietario = p.id_propietario AND dp.cod_persona = p.cod_persona LIMIT 1)) AS direccion,
-                    COALESCE(p.ruc, (SELECT numero FROM ident_personas ip WHERE ip.id_propietario = p.id_propietario AND ip.cod_persona = p.cod_persona LIMIT 1)) AS ruc_ident
-             FROM personas p
-             WHERE p.id_propietario = ?
-               AND (UPPER(TRIM(COALESCE(p.ruc, ''))) = UPPER(?)
-                    OR UPPER(REPLACE(COALESCE(p.ruc, ''), '-', '')) = UPPER(?)
-                    OR EXISTS (
-                        SELECT 1 FROM ident_personas i
-                        WHERE i.id_propietario = p.id_propietario AND i.cod_persona = p.cod_persona
-                          AND (UPPER(TRIM(i.numero)) = UPPER(?) OR UPPER(REPLACE(i.numero, '-', '')) = UPPER(?))
-                    ))
-             LIMIT 1",
-            [$idProp, $rucClean, $rucNoDash, $rucClean, $rucNoDash]
-        );
-        if ($pers) {
-            View::json([
-                'status'        => 'PERSONA_EXISTE',
-                'codPersona'    => (string)$pers['cod_persona'],
-                'nombre'        => $pers['nombre'],
-                'ruc'           => $pers['ruc_ident'] ?: $rucClean,
-                'tipoDocumento' => 'RUC',
-                'direccion'     => $pers['direccion'],
-                'telefono'      => $pers['telefono'],
-                'email'         => $pers['direc_electronica'],
-            ]);
-            return;
-        }
+            // 1. Buscar en co_clientes
+            $cli = Database::queryForMap(
+                "SELECT cod_cliente, cod_persona, nombre, ruc, COALESCE(tipo_documento, 'RUC') AS tipo_documento, direccion, telefono, email
+                 FROM co_clientes
+                 WHERE id_propietario = ? AND cod_empresa = ?
+                   AND (UPPER(TRIM(ruc)) = UPPER(?) OR UPPER(REPLACE(ruc, '-', '')) = UPPER(?))
+                   AND (cod_cliente <> ? OR ? = '')
+                 LIMIT 1",
+                [$idProp, $empresa, $rucClean, $rucNoDash, $codCliente, $codCliente]
+            );
+            if ($cli) {
+                View::json([
+                    'status'        => 'CLIENTE_EXISTE',
+                    'codCliente'    => (string)$cli['cod_cliente'],
+                    'codPersona'    => $cli['cod_persona'] !== null ? (string)$cli['cod_persona'] : null,
+                    'nombre'        => $cli['nombre'],
+                    'ruc'           => $cli['ruc'],
+                    'tipoDocumento' => $cli['tipo_documento'],
+                    'direccion'     => $cli['direccion'],
+                    'telefono'      => $cli['telefono'],
+                    'email'         => $cli['email'],
+                ]);
+                return;
+            }
+
+            // 2. Buscar en personas / ident_personas
+            $pers = Database::queryForMap(
+                "SELECT p.cod_persona, p.nombre, p.direc_electronica,
+                        (SELECT num_telefono FROM telef_personas tp WHERE tp.id_propietario = p.id_propietario AND TRIM(tp.cod_persona) = TRIM(p.cod_persona) LIMIT 1) AS telefono,
+                        (SELECT detalle FROM direc_personas dp WHERE dp.id_propietario = p.id_propietario AND TRIM(dp.cod_persona) = TRIM(p.cod_persona) LIMIT 1) AS direccion,
+                        (SELECT numero FROM ident_personas ip WHERE ip.id_propietario = p.id_propietario AND TRIM(ip.cod_persona) = TRIM(p.cod_persona) LIMIT 1) AS ruc_ident
+                 FROM personas p
+                 WHERE p.id_propietario = ?
+                   AND EXISTS (
+                       SELECT 1 FROM ident_personas i
+                       WHERE i.id_propietario = p.id_propietario AND TRIM(i.cod_persona) = TRIM(p.cod_persona)
+                         AND (UPPER(TRIM(i.numero)) = UPPER(?) OR UPPER(REPLACE(i.numero, '-', '')) = UPPER(?))
+                   )
+                 LIMIT 1",
+                [$idProp, $rucClean, $rucNoDash]
+            );
+            if ($pers) {
+                View::json([
+                    'status'        => 'PERSONA_EXISTE',
+                    'codPersona'    => (string)$pers['cod_persona'],
+                    'nombre'        => $pers['nombre'],
+                    'ruc'           => $pers['ruc_ident'] ?: $rucClean,
+                    'tipoDocumento' => 'RUC',
+                    'direccion'     => $pers['direccion'],
+                    'telefono'      => $pers['telefono'],
+                    'email'         => $pers['direc_electronica'],
+                ]);
+                return;
+            }
+        } catch (\Throwable $ignored) {}
 
         View::json(['status' => 'NOT_FOUND_LOCAL']);
     }
@@ -563,68 +590,80 @@ class DirectoriosContablesController {
             return;
         }
 
-        $rucClean = $ruc;
-        $rucNoDash = str_replace(['-', ' '], '', $rucClean);
-        $rucBase = str_contains($rucClean, '-') ? trim(explode('-', $rucClean)[0]) : $rucClean;
-        $rucPattern = strlen($rucBase) >= 3 ? $rucBase . '-%' : $rucClean;
+        try {
+            $rucClean = $ruc;
+            $rucNoDash = str_replace(['-', ' '], '', $rucClean);
+            $rucBase = str_contains($rucClean, '-') ? trim(explode('-', $rucClean)[0]) : $rucClean;
+            $rucPattern = strlen($rucBase) >= 3 ? $rucBase . '-%' : $rucClean;
 
-        $existingCli = Database::queryForMap(
-            "SELECT cod_cliente, cod_persona, nombre, ruc FROM co_clientes
-             WHERE id_propietario = ? AND cod_empresa = ? AND ruc IS NOT NULL
-               AND (UPPER(TRIM(ruc)) = UPPER(?) OR UPPER(REPLACE(ruc, '-', '')) = UPPER(?) OR UPPER(TRIM(ruc)) = UPPER(?) OR UPPER(TRIM(ruc)) LIKE UPPER(?))
-             LIMIT 1",
-            [$idProp, $empresa, $rucClean, $rucNoDash, $rucBase, $rucPattern]
-        );
-        if ($existingCli) {
+            $existingCli = Database::queryForMap(
+                "SELECT cod_cliente, cod_persona, nombre, ruc FROM co_clientes
+                 WHERE id_propietario = ? AND cod_empresa = ? AND ruc IS NOT NULL
+                   AND (UPPER(TRIM(ruc)) = UPPER(?) OR UPPER(REPLACE(ruc, '-', '')) = UPPER(?) OR UPPER(TRIM(ruc)) = UPPER(?) OR UPPER(TRIM(ruc)) LIKE UPPER(?))
+                 LIMIT 1",
+                [$idProp, $empresa, $rucClean, $rucNoDash, $rucBase, $rucPattern]
+            );
+            if ($existingCli) {
+                View::json([
+                    'status'     => 'CLIENTE_EXISTE',
+                    'codCliente' => (string)$existingCli['cod_cliente'],
+                    'codPersona' => $existingCli['cod_persona'] !== null ? (string)$existingCli['cod_persona'] : null,
+                    'nombre'     => $existingCli['nombre'],
+                    'ruc'        => $existingCli['ruc'],
+                    'message'    => 'El cliente ya existe en la base de datos.',
+                ]);
+                return;
+            }
+
+            $pers = Database::queryForMap(
+                "SELECT p.cod_persona, p.nombre, p.direc_electronica AS email,
+                        (SELECT detalle FROM direc_personas dp WHERE dp.id_propietario = p.id_propietario AND TRIM(dp.cod_persona) = TRIM(p.cod_persona) LIMIT 1) AS direccion,
+                        (SELECT num_telefono FROM telef_personas tp WHERE tp.id_propietario = p.id_propietario AND TRIM(tp.cod_persona) = TRIM(p.cod_persona) LIMIT 1) AS telefono
+                 FROM personas p
+                 WHERE p.id_propietario = ?
+                   AND EXISTS (
+                       SELECT 1 FROM ident_personas i
+                       WHERE i.id_propietario = p.id_propietario AND TRIM(i.cod_persona) = TRIM(p.cod_persona)
+                         AND (UPPER(TRIM(i.numero)) = UPPER(?) OR UPPER(TRIM(i.numero)) LIKE UPPER(?) OR UPPER(REPLACE(i.numero, '-', '')) = UPPER(?))
+                   )
+                 LIMIT 1",
+                [$idProp, $rucClean, $rucPattern, $rucNoDash]
+            );
+
+            $codPersonaFound = $pers ? (string)$pers['cod_persona'] : null;
+            $nombreFinal = $nombre !== '' ? strtoupper($nombre) : ($pers ? (string)$pers['nombre'] : '');
+            if ($nombreFinal === '') {
+                View::json(['status' => 'NOT_FOUND_LOCAL', 'message' => 'RUC no encontrado en la BD local.']);
+                return;
+            }
+
+            $codPersona = PersonaService::syncPersonaData($codPersonaFound, $nombreFinal, $rucClean, 'RUC', $pers['direccion'] ?? null, $pers['telefono'] ?? null, $pers['email'] ?? null);
+            $nextId = (int)Database::queryForValue(
+                "SELECT COALESCE(MAX(CAST(cod_cliente AS UNSIGNED)), 0) + 1 FROM co_clientes WHERE id_propietario = ? AND CAST(cod_cliente AS UNSIGNED) < 3000",
+                [$idProp]
+            );
+            $codCliente = (string)max(1, $nextId);
+
+            Database::update(
+                "INSERT INTO co_clientes (id_propietario, cod_cliente, cod_empresa, cod_persona, nombre, ruc, tipo_documento, direccion, telefono, email, estado, usuario_reg, fec_reg)
+                 VALUES (?, ?, ?, ?, ?, ?, 'RUC', ?, ?, ?, 'A', ?, NOW())",
+                [$idProp, $codCliente, $empresa, $codPersona, strtoupper($nombreFinal), $rucClean, $pers['direccion'] ?? null, $pers['telefono'] ?? null, $pers['email'] ?? null, $usuario]
+            );
+
             View::json([
-                'status'     => 'CLIENTE_EXISTE',
-                'codCliente' => (string)$existingCli['cod_cliente'],
-                'codPersona' => $existingCli['cod_persona'] !== null ? (string)$existingCli['cod_persona'] : null,
-                'nombre'     => $existingCli['nombre'],
-                'ruc'        => $existingCli['ruc'],
-                'message'    => 'El cliente ya existe en la base de datos.',
+                'status'     => 'CREADO',
+                'codCliente' => $codCliente,
+                'codPersona' => $codPersona,
+                'nombre'     => strtoupper($nombreFinal),
+                'ruc'        => $rucClean,
+                'message'    => "Registrado exitosamente como Persona y Cliente #{$codCliente}",
             ]);
-            return;
+        } catch (\Throwable $e) {
+            View::json([
+                'status'  => 'NOT_FOUND_LOCAL',
+                'message' => 'No se pudo verificar en BD local: ' . $e->getMessage(),
+            ]);
         }
-
-        $pers = Database::queryForMap(
-            "SELECT p.cod_persona, p.nombre, COALESCE(p.direc_electronica, p.email) AS email, p.direccion, p.telefono
-             FROM personas p
-             WHERE p.id_propietario = ?
-               AND (UPPER(TRIM(COALESCE(p.ruc, ''))) = UPPER(?) OR UPPER(TRIM(COALESCE(p.ruc, ''))) LIKE UPPER(?)
-                    OR EXISTS (SELECT 1 FROM ident_personas i WHERE i.id_propietario = p.id_propietario AND i.cod_persona = p.cod_persona AND (UPPER(TRIM(i.numero)) = UPPER(?) OR UPPER(TRIM(i.numero)) LIKE UPPER(?))))
-             LIMIT 1",
-            [$idProp, $rucClean, $rucPattern, $rucClean, $rucPattern]
-        );
-
-        $codPersonaFound = $pers ? (string)$pers['cod_persona'] : null;
-        $nombreFinal = $nombre !== '' ? strtoupper($nombre) : ($pers ? (string)$pers['nombre'] : '');
-        if ($nombreFinal === '') {
-            View::json(['status' => 'NOT_FOUND_LOCAL', 'message' => 'RUC no encontrado en la BD local.']);
-            return;
-        }
-
-        $codPersona = PersonaService::syncPersonaData($codPersonaFound, $nombreFinal, $rucClean, 'RUC', $pers['direccion'] ?? null, $pers['telefono'] ?? null, $pers['email'] ?? null);
-        $nextId = (int)Database::queryForValue(
-            "SELECT COALESCE(MAX(CAST(cod_cliente AS UNSIGNED)), 0) + 1 FROM co_clientes WHERE id_propietario = ? AND CAST(cod_cliente AS UNSIGNED) < 3000",
-            [$idProp]
-        );
-        $codCliente = (string)max(1, $nextId);
-
-        Database::update(
-            "INSERT INTO co_clientes (id_propietario, cod_cliente, cod_empresa, cod_persona, nombre, ruc, tipo_documento, direccion, telefono, email, estado, usuario_reg)
-             VALUES (?, ?, ?, ?, ?, ?, 'RUC', ?, ?, ?, 'A', ?)",
-            [$idProp, $codCliente, $empresa, $codPersona, strtoupper($nombreFinal), $rucClean, $pers['direccion'] ?? null, $pers['telefono'] ?? null, $pers['email'] ?? null, $usuario]
-        );
-
-        View::json([
-            'status'     => 'CREADO',
-            'codCliente' => $codCliente,
-            'codPersona' => $codPersona,
-            'nombre'     => strtoupper($nombreFinal),
-            'ruc'        => $rucClean,
-            'message'    => "Registrado exitosamente como Persona y Cliente #{$codCliente}",
-        ]);
     }
 
     // =========================================================================
@@ -670,71 +709,83 @@ class DirectoriosContablesController {
             return;
         }
 
-        $rucClean = $ruc;
-        $rucNoDash = str_replace(['-', ' '], '', $rucClean);
-        $rucBase = str_contains($rucClean, '-') ? trim(explode('-', $rucClean)[0]) : $rucClean;
-        $rucPattern = strlen($rucBase) >= 3 ? $rucBase . '-%' : $rucClean;
+        try {
+            $rucClean = $ruc;
+            $rucNoDash = str_replace(['-', ' '], '', $rucClean);
+            $rucBase = str_contains($rucClean, '-') ? trim(explode('-', $rucClean)[0]) : $rucClean;
+            $rucPattern = strlen($rucBase) >= 3 ? $rucBase . '-%' : $rucClean;
 
-        $prov = Database::queryForMap(
-            "SELECT cod_proveedor, cod_persona, nombre, ruc, COALESCE(tipo_documento, 'RUC') AS tipo_documento, direccion, telefono, email
-             FROM co_proveedores
-             WHERE id_propietario = ? AND cod_empresa = ?
-               AND (UPPER(TRIM(cod_proveedor)) = UPPER(?) OR UPPER(TRIM(ruc)) = UPPER(?) OR UPPER(REPLACE(ruc, '-', '')) = UPPER(?) OR UPPER(TRIM(ruc)) = UPPER(?) OR UPPER(TRIM(ruc)) LIKE UPPER(?))
-             LIMIT 1",
-            [$idProp, $empresa, $rucClean, $rucClean, $rucNoDash, $rucBase, $rucPattern]
-        );
-        if ($prov) {
+            $prov = Database::queryForMap(
+                "SELECT cod_proveedor, cod_persona, nombre, ruc, COALESCE(tipo_documento, 'RUC') AS tipo_documento, direccion, telefono, email
+                 FROM co_proveedores
+                 WHERE id_propietario = ? AND cod_empresa = ?
+                   AND (UPPER(TRIM(cod_proveedor)) = UPPER(?) OR UPPER(TRIM(ruc)) = UPPER(?) OR UPPER(REPLACE(ruc, '-', '')) = UPPER(?) OR UPPER(TRIM(ruc)) = UPPER(?) OR UPPER(TRIM(ruc)) LIKE UPPER(?))
+                 LIMIT 1",
+                [$idProp, $empresa, $rucClean, $rucClean, $rucNoDash, $rucBase, $rucPattern]
+            );
+            if ($prov) {
+                View::json([
+                    'status'        => 'PROVEEDOR_EXISTE',
+                    'codProveedor'  => (string)$prov['cod_proveedor'],
+                    'codPersona'    => $prov['cod_persona'] !== null ? (string)$prov['cod_persona'] : null,
+                    'nombre'        => $prov['nombre'],
+                    'ruc'           => $prov['ruc'],
+                    'tipoDocumento' => $prov['tipo_documento'],
+                    'direccion'     => $prov['direccion'],
+                    'telefono'      => $prov['telefono'],
+                    'email'         => $prov['email'],
+                ]);
+                return;
+            }
+
+            $pers = Database::queryForMap(
+                "SELECT p.cod_persona, p.nombre, p.direc_electronica AS email,
+                        (SELECT detalle FROM direc_personas dp WHERE dp.id_propietario = p.id_propietario AND TRIM(dp.cod_persona) = TRIM(p.cod_persona) LIMIT 1) AS direccion,
+                        (SELECT num_telefono FROM telef_personas tp WHERE tp.id_propietario = p.id_propietario AND TRIM(tp.cod_persona) = TRIM(p.cod_persona) LIMIT 1) AS telefono
+                 FROM personas p
+                 WHERE p.id_propietario = ?
+                   AND EXISTS (
+                       SELECT 1 FROM ident_personas i
+                       WHERE i.id_propietario = p.id_propietario AND TRIM(i.cod_persona) = TRIM(p.cod_persona)
+                         AND (UPPER(TRIM(i.numero)) = UPPER(?) OR UPPER(TRIM(i.numero)) LIKE UPPER(?) OR UPPER(REPLACE(i.numero, '-', '')) = UPPER(?))
+                   )
+                 LIMIT 1",
+                [$idProp, $rucClean, $rucPattern, $rucNoDash]
+            );
+
+            $codPersonaFound = $pers ? (string)$pers['cod_persona'] : null;
+            $nombreFinal = $nombreInput !== '' ? strtoupper($nombreInput) : ($pers ? (string)$pers['nombre'] : '');
+            if ($nombreFinal === '') {
+                View::json(['status' => 'NOT_FOUND_LOCAL']);
+                return;
+            }
+
+            $codPersona = PersonaService::syncPersonaData($codPersonaFound, $nombreFinal, $rucClean, 'RUC', $pers['direccion'] ?? null, $pers['telefono'] ?? null, $pers['email'] ?? null);
+            $nextId = (int)Database::queryForValue(
+                "SELECT COALESCE(MAX(CAST(cod_proveedor AS UNSIGNED)), 0) + 1 FROM co_proveedores WHERE id_propietario = ? AND CAST(cod_proveedor AS UNSIGNED) < 3000",
+                [$idProp]
+            );
+            $codProveedor = (string)max(1, $nextId);
+
+            Database::update(
+                "INSERT INTO co_proveedores (id_propietario, cod_proveedor, cod_empresa, cod_persona, nombre, ruc, tipo_documento, direccion, telefono, email, estado, usuario_reg, fec_reg)
+                 VALUES (?, ?, ?, ?, ?, ?, 'RUC', ?, ?, ?, 'A', ?, NOW())",
+                [$idProp, $codProveedor, $empresa, $codPersona, strtoupper($nombreFinal), $rucClean, $pers['direccion'] ?? null, $pers['telefono'] ?? null, $pers['email'] ?? null, $usuario]
+            );
+
             View::json([
-                'status'        => 'PROVEEDOR_EXISTE',
-                'codProveedor'  => (string)$prov['cod_proveedor'],
-                'codPersona'    => $prov['cod_persona'] !== null ? (string)$prov['cod_persona'] : null,
-                'nombre'        => $prov['nombre'],
-                'ruc'           => $prov['ruc'],
-                'tipoDocumento' => $prov['tipo_documento'],
-                'direccion'     => $prov['direccion'],
-                'telefono'      => $prov['telefono'],
-                'email'         => $prov['email'],
+                'status'       => 'CREADO',
+                'codProveedor' => $codProveedor,
+                'codPersona'   => $codPersona,
+                'nombre'       => strtoupper($nombreFinal),
+                'ruc'          => $rucClean,
             ]);
-            return;
+        } catch (\Throwable $e) {
+            View::json([
+                'status'  => 'NOT_FOUND_LOCAL',
+                'message' => 'No se pudo verificar en BD local: ' . $e->getMessage(),
+            ]);
         }
-
-        $pers = Database::queryForMap(
-            "SELECT p.cod_persona, p.nombre, COALESCE(p.direc_electronica, p.email) AS email, p.direccion, p.telefono
-             FROM personas p
-             WHERE p.id_propietario = ?
-               AND (UPPER(TRIM(COALESCE(p.ruc, ''))) = UPPER(?) OR UPPER(TRIM(COALESCE(p.ruc, ''))) LIKE UPPER(?)
-                    OR EXISTS (SELECT 1 FROM ident_personas i WHERE i.id_propietario = p.id_propietario AND i.cod_persona = p.cod_persona AND (UPPER(TRIM(i.numero)) = UPPER(?) OR UPPER(TRIM(i.numero)) LIKE UPPER(?))))
-             LIMIT 1",
-            [$idProp, $rucClean, $rucPattern, $rucClean, $rucPattern]
-        );
-
-        $codPersonaFound = $pers ? (string)$pers['cod_persona'] : null;
-        $nombreFinal = $nombreInput !== '' ? strtoupper($nombreInput) : ($pers ? (string)$pers['nombre'] : '');
-        if ($nombreFinal === '') {
-            View::json(['status' => 'NOT_FOUND_LOCAL']);
-            return;
-        }
-
-        $codPersona = PersonaService::syncPersonaData($codPersonaFound, $nombreFinal, $rucClean, 'RUC', $pers['direccion'] ?? null, $pers['telefono'] ?? null, $pers['email'] ?? null);
-        $nextId = (int)Database::queryForValue(
-            "SELECT COALESCE(MAX(CAST(cod_proveedor AS UNSIGNED)), 0) + 1 FROM co_proveedores WHERE id_propietario = ? AND CAST(cod_proveedor AS UNSIGNED) < 3000",
-            [$idProp]
-        );
-        $codProveedor = (string)max(1, $nextId);
-
-        Database::update(
-            "INSERT INTO co_proveedores (id_propietario, cod_proveedor, cod_empresa, cod_persona, nombre, ruc, tipo_documento, direccion, telefono, email, estado, usuario_reg)
-             VALUES (?, ?, ?, ?, ?, ?, 'RUC', ?, ?, ?, 'A', ?)",
-            [$idProp, $codProveedor, $empresa, $codPersona, strtoupper($nombreFinal), $rucClean, $pers['direccion'] ?? null, $pers['telefono'] ?? null, $pers['email'] ?? null, $usuario]
-        );
-
-        View::json([
-            'status'       => 'CREADO',
-            'codProveedor' => $codProveedor,
-            'codPersona'   => $codPersona,
-            'nombre'       => strtoupper($nombreFinal),
-            'ruc'          => $rucClean,
-        ]);
     }
 
     public static function apiCoProveedoresSave(): void {

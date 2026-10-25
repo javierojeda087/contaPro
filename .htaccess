@@ -10,7 +10,7 @@
     RewriteRule ^ https://contapro.com.py%{REQUEST_URI} [L,R=301]
 
     # Bloquear acceso directo por navegador a carpetas internas del sistema
-    RewriteRule ^(config|core|app|database)/ - [F,L]
+    RewriteRule ^(config|core|app/(Controllers|Models|Services|Helpers)|database)/ - [F,L]
 
     # Permitir acceso directo a archivos y carpetas estáticas existentes (css, js, images, .well-known)
     RewriteCond %{REQUEST_FILENAME} !-f

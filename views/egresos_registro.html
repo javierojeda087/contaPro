@@ -1426,19 +1426,49 @@
             }
         }
 
-        function verificarCDC() {
-            const cdc = document.getElementById('cdc').value;
+        function verificarCDC(rawInputOverride = null) {
+            const cdc = (rawInputOverride || document.getElementById('cdc').value || '').trim();
             if (!cdc) {
                 Swal.fire('Atención', 'Ingrese el Código CDC de 44 dígitos.', 'warning');
                 return;
             }
-            fetch('/api/egresos/verificar-cdc?cdc=' + encodeURIComponent(cdc))
+            fetch('/api/sifen/consultar-cdc', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cdc: cdc })
+            })
                 .then(res => res.json())
-                .then(data => {
-                    if (data.valid) {
-                        Swal.fire('CDC Válido', data.message, 'success');
+                .then(async data => {
+                    if (data.valido) {
+                        if (data.cdc) document.getElementById('cdc').value = data.cdc;
+                        if (data.establecimiento) document.getElementById('facEst').value = data.establecimiento;
+                        if (data.puntoExpedicion) document.getElementById('facPto').value = data.puntoExpedicion;
+                        if (data.numeroDocumento) document.getElementById('facNro').value = data.numeroDocumento;
+                        if (data.fechaFactura) document.getElementById('fecEgreso').value = data.fechaFactura;
+                        if (data.nroTimbrado) document.getElementById('nroTimbrado').value = data.nroTimbrado;
+                        if (data.grav10 && parseFloat(data.grav10) > 0) {
+                            document.getElementById('grav10').value = formatMiles(data.grav10);
+                        }
+                        if (data.grav5 && parseFloat(data.grav5) > 0) {
+                            document.getElementById('grav5').value = formatMiles(data.grav5);
+                        }
+                        if (data.exentas && parseFloat(data.exentas) > 0) {
+                            document.getElementById('exentas').value = formatMiles(data.exentas);
+                        }
+                        recalcularTotales();
+                        if (data.ruc) {
+                            document.getElementById('rucProveedor').value = data.ruc;
+                            if (data.nombre) document.getElementById('nomProveedor').value = data.nombre;
+                            await verificarYCrearProveedorEgreso(false);
+                        }
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'CDC SIFEN Decodificado y Verificado',
+                            html: `<b>Emisor:</b> ${data.nombre || '-'} (${data.ruc || '-'})<br><b>Comprobante:</b> ${data.tipoDoc || 'Factura'} N° ${data.nroFactura || '-'}<br><b>Fecha:</b> ${data.fechaFactura || '-'}<br><b>Estado:</b> ${data.estadoSifen || 'Válido'}`,
+                            confirmButtonColor: '#16a34a'
+                        });
                     } else {
-                        Swal.fire('CDC Inválido', data.message, 'error');
+                        Swal.fire('CDC Inválido', data.message || 'El CDC ingresado no es válido.', 'error');
                     }
                 })
                 .catch(err => {
@@ -1457,18 +1487,19 @@
         }
 
         function procesarQR() {
-            const url = document.getElementById('qrText').value;
-            if (url && url.includes('cdc=')) {
-                const match = url.match(/cdc=([0-9]{44})/);
-                if (match && match[1]) {
-                    document.getElementById('cdc').value = match[1];
-                    cerrarQRModal();
-                    Swal.fire('¡Éxito!', 'CDC extraído del código QR correctamente.', 'success');
-                    verificarCDC();
-                    return;
-                }
+            const url = (document.getElementById('qrText').value || '').trim();
+            if (!url) {
+                Swal.fire('Atención', 'Pegue la URL del QR o el CDC de 44 dígitos.', 'warning');
+                return;
             }
-            Swal.fire('Atención', 'No se encontró un CDC válido en la cadena ingresada.', 'warning');
+            const match = url.match(/([0-9]{44})/);
+            if (match && match[1]) {
+                document.getElementById('cdc').value = match[1];
+                cerrarQRModal();
+                verificarCDC(url);
+                return;
+            }
+            Swal.fire('Atención', 'No se encontró un CDC válido de 44 dígitos en la cadena ingresada.', 'warning');
         }
 
         async function verificarYCrearProveedorEgreso(esBusquedaManual = false) {
@@ -1480,12 +1511,16 @@
 
             try {
                 // 1. Verificar si ya existe en co_proveedores o ident_personas/personas
-                const res1 = await fetch('/api/co_proveedores/auto-registrar-ruc', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ruc: rucVal, nombre: '' })
-                });
-                const data1 = await res1.json();
+                let data1 = {};
+                try {
+                    const res1 = await fetch('/api/co_proveedores/auto-registrar-ruc', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ruc: rucVal, nombre: '' })
+                    });
+                    const txt1 = await res1.text();
+                    data1 = txt1 ? JSON.parse(txt1) : {};
+                } catch (ignored) {}
 
                 if (data1.status === 'PROVEEDOR_EXISTE') {
                     document.getElementById('rucProveedor').value = data1.ruc || rucVal;
@@ -1515,7 +1550,8 @@
                 try {
                     const resDnit = await fetch(`/api/dnit/consultar-ruc?ruc=${encodeURIComponent(rucBase)}`);
                     if (resDnit.ok) {
-                        const jsonProxy = await resDnit.json();
+                        const txtDnit = await resDnit.text();
+                        const jsonProxy = txtDnit ? JSON.parse(txtDnit) : {};
                         if (jsonProxy.status === 'SUCCESS' && jsonProxy.data) {
                             dataDnit = { data: jsonProxy.data };
                         }
@@ -1535,25 +1571,30 @@
                     await cargarAsientosPredefinidosProveedor();
 
                     // 3. Crear automáticamente como Persona y Proveedor en la BD
-                    const resCreate = await fetch('/api/co_proveedores/auto-registrar-ruc', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ruc: rucToUse, nombre: nomDnit })
-                    });
-                    const dataCreate = await resCreate.json();
-
-                    if (dataCreate.status === 'CREADO') {
-                        document.getElementById('codProveedor').value = dataCreate.codProveedor || '';
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡Nuevo Proveedor Creado!',
-                            html: `RUC verificado en la DNIT (turuc.com.py).<br>Se creó la persona e insertó en <b>ident_personas</b> y <b>Proveedor #${dataCreate.codProveedor || ''}</b>:<br><b>${nomDnit}</b>`,
-                            confirmButtonColor: '#16a34a'
+                    try {
+                        const resCreate = await fetch('/api/co_proveedores/auto-registrar-ruc', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ ruc: rucToUse, nombre: nomDnit })
                         });
-                    } else if (dataCreate.status === 'PROVEEDOR_EXISTE') {
-                        document.getElementById('codProveedor').value = dataCreate.codProveedor || '';
-                        document.getElementById('rucProveedor').value = dataCreate.ruc || rucToUse;
-                        document.getElementById('nomProveedor').value = dataCreate.nombre || nomDnit;
+                        const txtCreate = await resCreate.text();
+                        const dataCreate = txtCreate ? JSON.parse(txtCreate) : {};
+
+                        if (dataCreate.status === 'CREADO') {
+                            document.getElementById('codProveedor').value = dataCreate.codProveedor || '';
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Nuevo Proveedor Creado!',
+                                html: `RUC verificado en la DNIT (turuc.com.py).<br>Se creó la persona e insertó en <b>ident_personas</b> y <b>Proveedor #${dataCreate.codProveedor || ''}</b>:<br><b>${nomDnit}</b>`,
+                                confirmButtonColor: '#16a34a'
+                            });
+                        } else if (dataCreate.status === 'PROVEEDOR_EXISTE') {
+                            document.getElementById('codProveedor').value = dataCreate.codProveedor || '';
+                            document.getElementById('rucProveedor').value = dataCreate.ruc || rucToUse;
+                            document.getElementById('nomProveedor').value = dataCreate.nombre || nomDnit;
+                        }
+                    } catch (createErr) {
+                        console.warn('Advertencia al auto-registrar proveedor en BD local:', createErr);
                     }
                 } else {
                     document.getElementById('nomProveedor').value = '';

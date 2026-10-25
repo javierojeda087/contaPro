@@ -96,8 +96,24 @@ class PersonaService {
             );
         }
 
-        // 4. Sincronizar ident_personas
+        // Actualizar columnas directas en personas si existen en el esquema
+        try {
+            Database::update(
+                "UPDATE personas
+                 SET ruc = COALESCE(NULLIF(?, ''), ruc),
+                     direccion = COALESCE(NULLIF(?, ''), direccion),
+                     telefono = COALESCE(NULLIF(?, ''), telefono),
+                     email = COALESCE(NULLIF(?, ''), email),
+                     tipo_documento = COALESCE(NULLIF(?, ''), tipo_documento),
+                     estado = COALESCE(estado, 'A')
+                 WHERE id_propietario = ? AND TRIM(cod_persona) = ?",
+                [$doc, $dir, $tel, $mail, $codIdent, $propId, $finalCodPersona]
+            );
+        } catch (\Throwable $ignored) {}
+
+        // 4. Sincronizar ident_personas (cod_ident es VARCHAR(5), y la tabla usa observacion)
         if ($doc !== '') {
+            $codIdentShort = ($codIdent === 'CEDULA' || $codIdent === 'CI') ? 'CI' : substr($codIdent, 0, 5);
             $cntIdent = (int)Database::queryForValue(
                 "SELECT COUNT(*) FROM ident_personas WHERE id_propietario = ? AND TRIM(cod_persona) = ?",
                 [$propId, $finalCodPersona]
@@ -105,13 +121,13 @@ class PersonaService {
             if ($cntIdent > 0) {
                 Database::update(
                     "UPDATE ident_personas SET numero = ?, cod_ident = ? WHERE id_propietario = ? AND TRIM(cod_persona) = ?",
-                    [$doc, $codIdent, $propId, $finalCodPersona]
+                    [$doc, $codIdentShort, $propId, $finalCodPersona]
                 );
             } else {
                 Database::update(
-                    "INSERT INTO ident_personas (id_propietario, cod_persona, cod_ident, numero, por_defecto)
-                     VALUES (?, ?, ?, ?, 'S')",
-                    [$propId, $finalCodPersona, $codIdent, $doc]
+                    "INSERT INTO ident_personas (id_propietario, cod_persona, cod_ident, numero, observacion)
+                     VALUES (?, ?, ?, ?, 'Registro')",
+                    [$propId, $finalCodPersona, $codIdentShort, $doc]
                 );
             }
         }
@@ -206,19 +222,37 @@ class PersonaService {
         // 2. Consultar API externa turuc.com.py
         $dvCalc = self::calcularDvParaguay($baseDigits);
         $url = "https://turuc.com.py/api/contribuyente?ruc=" . urlencode($baseDigits);
-        $ctx = stream_context_create([
-            'http' => [
-                'method'  => 'GET',
-                'timeout' => 4,
-                'header'  => "Accept: application/json\r\nUser-Agent: ContaPro/1.0\r\n"
-            ],
-            'ssl' => [
-                'verify_peer'      => false,
-                'verify_peer_name' => false
-            ]
-        ]);
-        $raw = @file_get_contents($url, false, $ctx);
-        if ($raw) {
+        $raw = false;
+        if (function_exists('curl_init')) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 6,
+                CURLOPT_CONNECTTIMEOUT => 4,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+                CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ContaPro/1.0',
+            ]);
+            $raw = curl_exec($ch);
+            curl_close($ch);
+        }
+        if ($raw === false || $raw === '') {
+            $ctx = stream_context_create([
+                'http' => [
+                    'method'  => 'GET',
+                    'timeout' => 5,
+                    'header'  => "Accept: application/json\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) ContaPro/1.0\r\n"
+                ],
+                'ssl' => [
+                    'verify_peer'      => false,
+                    'verify_peer_name' => false
+                ]
+            ]);
+            $raw = @file_get_contents($url, false, $ctx);
+        }
+        if (is_string($raw) && $raw !== '') {
             $json = json_decode($raw, true);
             $data = $json['data'] ?? $json;
             $razon = $data['razonSocial'] ?? $data['nombre'] ?? null;

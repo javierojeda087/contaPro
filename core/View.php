@@ -6,8 +6,13 @@ use App\Services\MenuService;
 class View {
 
     public static function json(mixed $data, int $statusCode = 200): void {
-        http_response_code($statusCode);
-        header('Content-Type: application/json; charset=UTF-8');
+        while (ob_get_level() > 0) {
+            @ob_end_clean();
+        }
+        if (!headers_sent()) {
+            http_response_code($statusCode);
+            header('Content-Type: application/json; charset=UTF-8');
+        }
         echo json_encode($data, JSON_UNESCAPED_UNICODE);
     }
 

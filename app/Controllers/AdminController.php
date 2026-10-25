@@ -100,6 +100,13 @@ class AdminController {
         try {
             $sql = "SELECT e.cod_empresa, e.descripcion, e.ruc_empresa, e.direccion, e.actividad,
                            e.retiene_iva, e.ind_facturacion_electronica, e.localidad, e.departamento,
+                           COALESCE(e.sifen_ambiente, 'TEST') AS sifen_ambiente,
+                           COALESCE(e.sifen_id_csc, '0001') AS sifen_id_csc,
+                           COALESCE(e.sifen_csc, '') AS sifen_csc,
+                           COALESCE(e.sifen_certificado_nombre, '') AS sifen_certificado_nombre,
+                           COALESCE(e.sifen_certificado_pass, '') AS sifen_certificado_pass,
+                           COALESCE(e.sifen_api_url, '') AS sifen_api_url,
+                           CASE WHEN e.sifen_certificado_b64 IS NOT NULL AND LENGTH(e.sifen_certificado_b64) > 20 THEN 'S' ELSE 'N' END AS tiene_certificado,
                            (SELECT MAX(t.num_telefono)
                             FROM telef_personas t
                             JOIN ident_personas i ON i.id_propietario = t.id_propietario AND i.cod_persona = t.cod_persona
@@ -225,6 +232,16 @@ class AdminController {
         $telefono          = trim((string)($payload['telefono'] ?? ''));
         $codPersonaPayload = trim((string)($payload['codPersona'] ?? ''));
 
+        // Configuración SIFEN por contribuyente
+        $sifenAmbiente   = strtoupper(trim((string)($payload['sifenAmbiente'] ?? 'TEST')));
+        if (!in_array($sifenAmbiente, ['TEST', 'PROD'], true)) $sifenAmbiente = 'TEST';
+        $sifenIdCsc      = trim((string)($payload['sifenIdCsc'] ?? '0001')) ?: '0001';
+        $sifenCsc        = trim((string)($payload['sifenCsc'] ?? ''));
+        $sifenCertB64    = isset($payload['sifenCertificadoB64']) ? trim((string)$payload['sifenCertificadoB64']) : null;
+        $sifenCertNombre = isset($payload['sifenCertificadoNombre']) ? trim((string)$payload['sifenCertificadoNombre']) : null;
+        $sifenCertPass   = isset($payload['sifenCertificadoPass']) ? trim((string)$payload['sifenCertificadoPass']) : null;
+        $sifenApiUrl     = isset($payload['sifenApiUrl']) ? trim((string)$payload['sifenApiUrl']) : null;
+
         if ($descripcion === '') {
             View::json(['status' => 'error', 'message' => 'La Razón Social o Nombre del Contribuyente es obligatorio.']);
             return;
@@ -278,9 +295,16 @@ class AdminController {
                 Database::update(
                     "INSERT INTO empresas (
                         id_propietario, cod_empresa, descripcion, ruc_empresa, direccion,
-                        actividad, localidad, departamento, retiene_iva, ind_facturacion_electronica
-                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    [$idProp, $codEmpresa, $descripcion, $rucEmpresa, $direccion, $actividad, $localidad, $departamento, $retieneIva, $indFactElectronica]
+                        actividad, localidad, departamento, retiene_iva, ind_facturacion_electronica,
+                        sifen_ambiente, sifen_id_csc, sifen_csc, sifen_certificado_b64,
+                        sifen_certificado_nombre, sifen_certificado_pass, sifen_api_url
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    [
+                        $idProp, $codEmpresa, $descripcion, $rucEmpresa, $direccion,
+                        $actividad, $localidad, $departamento, $retieneIva, $indFactElectronica,
+                        $sifenAmbiente, $sifenIdCsc, $sifenCsc, $sifenCertB64 ?: null,
+                        $sifenCertNombre ?: null, $sifenCertPass ?: null, $sifenApiUrl ?: null
+                    ]
                 );
 
                 // Crear sucursal 1 por defecto y ejercicio actual si no existen
@@ -323,10 +347,31 @@ class AdminController {
                 Database::update(
                     "UPDATE empresas SET
                         descripcion = ?, ruc_empresa = ?, direccion = ?, actividad = ?,
-                        localidad = ?, departamento = ?, retiene_iva = ?, ind_facturacion_electronica = ?
+                        localidad = ?, departamento = ?, retiene_iva = ?, ind_facturacion_electronica = ?,
+                        sifen_ambiente = ?, sifen_id_csc = ?, sifen_csc = ?,
+                        sifen_certificado_pass = ?, sifen_api_url = ?
                      WHERE id_propietario = ? AND cod_empresa = ?",
-                    [$descripcion, $rucEmpresa, $direccion, $actividad, $localidad, $departamento, $retieneIva, $indFactElectronica, $idProp, $codEmpresa]
+                    [
+                        $descripcion, $rucEmpresa, $direccion, $actividad,
+                        $localidad, $departamento, $retieneIva, $indFactElectronica,
+                        $sifenAmbiente, $sifenIdCsc, $sifenCsc,
+                        $sifenCertPass, $sifenApiUrl,
+                        $idProp, $codEmpresa
+                    ]
                 );
+                if ($sifenCertB64 !== null && $sifenCertB64 !== '') {
+                    Database::update(
+                        "UPDATE empresas SET sifen_certificado_b64 = ?, sifen_certificado_nombre = ?
+                         WHERE id_propietario = ? AND cod_empresa = ?",
+                        [$sifenCertB64, $sifenCertNombre ?: 'certificado.p12', $idProp, $codEmpresa]
+                    );
+                } elseif (!empty($payload['limpiarCertificado'])) {
+                    Database::update(
+                        "UPDATE empresas SET sifen_certificado_b64 = NULL, sifen_certificado_nombre = NULL
+                         WHERE id_propietario = ? AND cod_empresa = ?",
+                        [$idProp, $codEmpresa]
+                    );
+                }
                 if (TenantContext::empresa() === $codEmpresa) {
                     $_SESSION['nomEmpresa'] = $descripcion;
                 }

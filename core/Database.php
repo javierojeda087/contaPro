@@ -6,8 +6,12 @@ use PDOException;
 
 class Database {
     private static ?PDO $pdo = null;
+    private static ?PDOException $connError = null;
 
     public static function getConnection(): PDO {
+        if (self::$connError !== null) {
+            throw self::$connError;
+        }
         if (self::$pdo === null) {
             $cfg = require __DIR__ . '/../config/database.php';
             $dsn = sprintf(
@@ -17,11 +21,17 @@ class Database {
                 $cfg['dbname'],
                 $cfg['charset']
             );
-            self::$pdo = new PDO($dsn, $cfg['username'], $cfg['password'], [
-                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES   => false,
-            ]);
+            try {
+                self::$pdo = new PDO($dsn, $cfg['username'], $cfg['password'], [
+                    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES   => false,
+                    PDO::ATTR_TIMEOUT            => 3,
+                ]);
+            } catch (PDOException $e) {
+                self::$connError = $e;
+                throw $e;
+            }
         }
         return self::$pdo;
     }

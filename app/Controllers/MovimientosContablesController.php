@@ -132,42 +132,287 @@ class MovimientosContablesController {
     }
 
     // =========================================================================
-    // API SIFEN CDC (/api/sifen/consultar-cdc, /api/egresos/verificar-cdc, /api/ingresos/verificar-cdc)
+    // API SIFEN (Facturación Electrónica DNIT v150 - Microservicio Java / Nativo)
     // =========================================================================
+    private static function getEmpresaSifenConfig(int $idProp, string $codEmpresa): array {
+        $emp = Database::queryForMap(
+            "SELECT cod_empresa, descripcion, ruc_empresa, direccion, actividad, localidad, departamento,
+                    ind_facturacion_electronica,
+                    COALESCE(sifen_ambiente, 'TEST') AS sifen_ambiente,
+                    COALESCE(sifen_id_csc, '0001') AS sifen_id_csc,
+                    COALESCE(sifen_csc, '') AS sifen_csc,
+                    sifen_certificado_b64, sifen_certificado_nombre, sifen_certificado_pass, sifen_api_url
+             FROM empresas
+             WHERE id_propietario = ? AND cod_empresa = ? LIMIT 1",
+            [$idProp, $codEmpresa]
+        );
+        return $emp ?: [];
+    }
+
+    public static function apiSifenHealth(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $in = self::getInput();
+        $customUrl = trim((string)($in['apiUrl'] ?? $_GET['apiUrl'] ?? ''));
+        if ($customUrl === '' && $empresa !== '') {
+            $empCfg = self::getEmpresaSifenConfig($idProp, $empresa);
+            $customUrl = trim((string)($empCfg['sifen_api_url'] ?? ''));
+        }
+        View::json(SifenClientService::healthCheck($customUrl ?: null));
+    }
+
     public static function apiSifenConsultarCdc(): void {
         if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
         $in = self::getInput();
         $cdc = trim((string)($in['cdc'] ?? $_GET['cdc'] ?? ''));
-        View::json(SifenClientService::consultarCdc($cdc));
+        $empCfg = $empresa !== '' ? self::getEmpresaSifenConfig($idProp, $empresa) : null;
+        View::json(SifenClientService::consultarCdc($cdc, $empCfg));
     }
 
     public static function apiVerificarCdc(): void {
         if (!self::requireAuth()) return;
-        $cdc = preg_replace('/\s+/', '', (string)($_GET['cdc'] ?? ''));
-        if (strlen($cdc) !== 44) {
-            View::json(['valid' => false, 'message' => 'El CDC debe contener exactamente 44 dígitos.']);
-            return;
-        }
-        if (!ctype_digit($cdc)) {
-            View::json(['valid' => false, 'message' => 'El CDC solo debe contener números.']);
-            return;
-        }
-        $dvIngresado = (int)$cdc[43];
-        $baseCdc = substr($cdc, 0, 43);
-        $dvCalculado = self::calcularDvModulo11($baseCdc);
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $raw = trim((string)($_GET['cdc'] ?? ''));
+        $empCfg = $empresa !== '' ? self::getEmpresaSifenConfig($idProp, $empresa) : null;
+        $info = SifenClientService::consultarCdc($raw, $empCfg);
 
-        if ($dvIngresado === $dvCalculado) {
+        if (!empty($info['valido'])) {
             View::json([
                 'valid'       => true,
                 'message'     => 'CDC Válido. Estructura y Dígito Verificador (Mód. 11 SIFEN) verificados correctamente.',
-                'dvCalculado' => $dvCalculado,
+                'dvCalculado' => $info['dvCalculado'] ?? null,
+                'data'        => $info,
             ]);
         } else {
             View::json([
                 'valid'   => false,
-                'message' => "CDC Inválido. El dígito verificador ingresado ({$dvIngresado}) no coincide con el esperado ({$dvCalculado}).",
+                'message' => $info['message'] ?? 'CDC Inválido.',
+                'data'    => $info,
             ]);
         }
+    }
+
+    public static function emitirSifenParaIngreso(int $idProp, string $codEmpresa, int $idIngreso): array {
+        $ing = Database::queryForMap(
+            "SELECT * FROM co_ingresos WHERE id_propietario = ? AND cod_empresa = ? AND id_ingreso = ? LIMIT 1",
+            [$idProp, $codEmpresa, $idIngreso]
+        );
+        if (!$ing) {
+            return ['status' => 'error', 'message' => 'Comprobante de ingreso no encontrado.'];
+        }
+
+        $empCfg = self::getEmpresaSifenConfig($idProp, $codEmpresa);
+        $timbRow = null;
+        if (!empty($ing['nro_timbrado'])) {
+            $timbRow = Database::queryForMap(
+                "SELECT * FROM co_timbrados WHERE id_propietario = ? AND cod_empresa = ? AND nro_timbrado = ? LIMIT 1",
+                [$idProp, $codEmpresa, $ing['nro_timbrado']]
+            );
+        }
+
+        $tipDocStr = strtoupper(trim((string)($ing['tip_doc'] ?? 'FACTURA')));
+        $tipoDocCodigo = 1;
+        if (str_contains($tipDocStr, 'AUTO')) $tipoDocCodigo = 4;
+        elseif (str_contains($tipDocStr, 'CRÉD') || str_contains($tipDocStr, 'CRED')) $tipoDocCodigo = 5;
+        elseif (str_contains($tipDocStr, 'DÉB') || str_contains($tipDocStr, 'DEB')) $tipoDocCodigo = 6;
+
+        $nroFacParts = explode('-', (string)($ing['nro_factura'] ?? '001-001-0000001'));
+        $est = $nroFacParts[0] ?? ($timbRow['cod_establecimiento'] ?? '001');
+        $pun = $nroFacParts[1] ?? ($timbRow['cod_punto_expedicion'] ?? '001');
+        $num = $nroFacParts[2] ?? ($nroFacParts[0] ?? '0000001');
+
+        $monCode = (string)($ing['cod_moneda'] ?? '1');
+        $monIso = ($monCode === '2') ? 'USD' : (($monCode === '3') ? 'BRL' : 'PYG');
+
+        $reqPayload = [
+            'ambiente'                      => $empCfg['sifen_ambiente'] ?? 'TEST',
+            'certificadoBase64'             => $empCfg['sifen_certificado_b64'] ?? null,
+            'certificadoPassword'           => $empCfg['sifen_certificado_pass'] ?? null,
+            'idCsc'                         => $empCfg['sifen_id_csc'] ?? '0001',
+            'csc'                           => $empCfg['sifen_csc'] ?? null,
+            'rucEmisor'                     => $empCfg['ruc_empresa'] ?? '80000000-0',
+            'razonSocialEmisor'             => $empCfg['descripcion'] ?? 'CONTRIBUYENTE EMISOR',
+            'nombreFantasia'                => $empCfg['descripcion'] ?? 'CONTRIBUYENTE EMISOR',
+            'actividadEconomicaDescripcion' => $empCfg['actividad'] ?? 'ACTIVIDADES CONTABLES Y COMERCIALES',
+            'direccionEmisor'               => $empCfg['direccion'] ?? 'ASUNCION',
+            'descripcionCiudadEmisor'       => $empCfg['localidad'] ?? 'ASUNCION',
+            'descripcionDepartamentoEmisor' => $empCfg['departamento'] ?? 'CAPITAL',
+            'timbrado'                      => $ing['nro_timbrado'] ?? ($timbRow['nro_timbrado'] ?? '12345678'),
+            'fechaInicioTimbrado'           => !empty($timbRow['fec_inicio']) ? substr((string)$timbRow['fec_inicio'], 0, 10) : '2025-01-01',
+            'establecimiento'               => $est,
+            'puntoExpedicion'               => $pun,
+            'numeroDocumento'               => $num,
+            'serie'                         => $ing['serie'] ?? null,
+            'tipoDocumento'                 => $tipoDocCodigo,
+            'fechaEmision'                  => !empty($ing['fec_ingreso']) ? substr((string)$ing['fec_ingreso'], 0, 10) . 'T' . date('H:i:s') : date('Y-m-d\TH:i:s'),
+            'condicion'                     => $ing['condicion'] ?? 'CON',
+            'moneda'                        => $monIso,
+            'tasaCambio'                    => (float)($ing['tasa_cambio'] ?? 1),
+            'rucCliente'                    => $ing['ruc_cliente'] ?? '44444401-7',
+            'razonSocialCliente'            => $ing['nom_cliente'] ?? 'SIN NOMBRE',
+            'grav10'                        => (float)($ing['grav10'] ?? 0),
+            'iva10'                         => (float)($ing['iva10'] ?? 0),
+            'grav5'                         => (float)($ing['grav5'] ?? 0),
+            'iva5'                          => (float)($ing['iva5'] ?? 0),
+            'exentas'                       => (float)($ing['exentas'] ?? 0),
+            'observacion'                   => $ing['observacion'] ?? 'VENTA DE MERCADERÍAS / SERVICIOS',
+        ];
+
+        $sifenRes = SifenClientService::emitirDocumento($reqPayload, $empCfg['sifen_api_url'] ?? null);
+        if (($sifenRes['status'] ?? '') === 'success' && !empty($sifenRes['cdc'])) {
+            Database::update(
+                "UPDATE co_ingresos SET
+                    cdc = ?,
+                    sifen_estado = ?,
+                    sifen_protocolo = ?,
+                    sifen_qr_url = ?,
+                    sifen_xml = ?,
+                    sifen_mensaje = ?,
+                    sifen_fecha_firma = NOW()
+                 WHERE id_propietario = ? AND cod_empresa = ? AND id_ingreso = ?",
+                [
+                    $sifenRes['cdc'],
+                    $sifenRes['estadoSifen'] ?? 'EMITIDO',
+                    $sifenRes['nroProtocolo'] ?? null,
+                    $sifenRes['qrUrl'] ?? null,
+                    $sifenRes['xmlFirmado'] ?? null,
+                    substr((string)($sifenRes['mensajeRespuesta'] ?? ''), 0, 250),
+                    $idProp,
+                    $codEmpresa,
+                    $idIngreso
+                ]
+            );
+        }
+        return $sifenRes;
+    }
+
+    public static function apiSifenEmitir(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $in = self::getInput();
+        $idIngreso = (int)($in['idIngreso'] ?? 0);
+
+        if ($idIngreso <= 0) {
+            View::json(['status' => 'error', 'message' => 'Debe indicar el ID del comprobante de ingreso para emitir en SIFEN.']);
+            return;
+        }
+        $res = self::emitirSifenParaIngreso($idProp, $empresa, $idIngreso);
+        View::json($res);
+    }
+
+    public static function apiSifenCancelar(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $in = self::getInput();
+        $idIngreso = (int)($in['idIngreso'] ?? 0);
+        $cdc = preg_replace('/\D/', '', (string)($in['cdc'] ?? ''));
+        $motivo = trim((string)($in['motivo'] ?? 'Cancelación de comprobante electrónico por error en emisión'));
+
+        if ($idIngreso > 0 && $cdc === '') {
+            $cdc = (string)(Database::queryForValue(
+                "SELECT cdc FROM co_ingresos WHERE id_propietario = ? AND cod_empresa = ? AND id_ingreso = ?",
+                [$idProp, $empresa, $idIngreso]
+            ) ?? '');
+        }
+        if (strlen($cdc) !== 44) {
+            View::json(['status' => 'error', 'message' => 'El comprobante debe contar con un CDC válido de 44 dígitos para cancelarse en SIFEN.']);
+            return;
+        }
+
+        $empCfg = self::getEmpresaSifenConfig($idProp, $empresa);
+        $res = SifenClientService::cancelarDocumento([
+            'ambiente'            => $empCfg['sifen_ambiente'] ?? 'TEST',
+            'certificadoBase64'   => $empCfg['sifen_certificado_b64'] ?? null,
+            'certificadoPassword' => $empCfg['sifen_certificado_pass'] ?? null,
+            'rucEmisor'           => $empCfg['ruc_empresa'] ?? '',
+            'cdc'                 => $cdc,
+            'motivo'              => $motivo,
+        ], $empCfg['sifen_api_url'] ?? null);
+
+        if ($idIngreso > 0 && ($res['status'] ?? '') === 'success') {
+            Database::update(
+                "UPDATE co_ingresos SET
+                    anulada = 'S',
+                    sifen_estado = 'CANCELADO',
+                    sifen_mensaje = ?
+                 WHERE id_propietario = ? AND cod_empresa = ? AND id_ingreso = ?",
+                [substr((string)($res['mensajeRespuesta'] ?? 'Cancelado en SIFEN'), 0, 250), $idProp, $empresa, $idIngreso]
+            );
+        }
+        View::json($res);
+    }
+
+    public static function apiSifenDescargarXml(string $idIngreso): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $id = (int)$idIngreso;
+
+        $row = Database::queryForMap(
+            "SELECT cdc, sifen_xml FROM co_ingresos WHERE id_propietario = ? AND cod_empresa = ? AND id_ingreso = ? LIMIT 1",
+            [$idProp, $empresa, $id]
+        );
+        if (!$row) {
+            http_response_code(404);
+            echo 'Comprobante no encontrado.';
+            return;
+        }
+        if (empty($row['sifen_xml'])) {
+            $gen = self::emitirSifenParaIngreso($idProp, $empresa, $id);
+            $row['sifen_xml'] = $gen['xmlFirmado'] ?? '';
+            $row['cdc']       = $gen['cdc'] ?? ($row['cdc'] ?? 'DE');
+        }
+        $cdcName = !empty($row['cdc']) ? preg_replace('/\D/', '', (string)$row['cdc']) : ('INGRESO_' . $id);
+        header('Content-Type: application/xml; charset=utf-8');
+        header('Content-Disposition: attachment; filename="DE_' . $cdcName . '.xml"');
+        echo (string)$row['sifen_xml'];
+    }
+
+    public static function pagePrintKude(): void {
+        if (!self::requireAuth(false)) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $idIngreso = (int)($_GET['id'] ?? $_GET['idIngreso'] ?? 0);
+
+        $ing = Database::queryForMap(
+            "SELECT * FROM co_ingresos WHERE id_propietario = ? AND cod_empresa = ? AND id_ingreso = ? LIMIT 1",
+            [$idProp, $empresa, $idIngreso]
+        );
+        if (!$ing) {
+            http_response_code(404);
+            echo '<h3 style="font-family:sans-serif;text-align:center;margin-top:50px;">Comprobante no encontrado</h3>';
+            return;
+        }
+
+        // Si aún no tiene CDC o QR generado, generarlo en el acto para el KuDE
+        if (empty($ing['cdc']) || empty($ing['sifen_qr_url'])) {
+            self::emitirSifenParaIngreso($idProp, $empresa, $idIngreso);
+            $ing = Database::queryForMap(
+                "SELECT * FROM co_ingresos WHERE id_propietario = ? AND cod_empresa = ? AND id_ingreso = ? LIMIT 1",
+                [$idProp, $empresa, $idIngreso]
+            );
+        }
+
+        $empCfg = self::getEmpresaSifenConfig($idProp, $empresa);
+        $timbRow = null;
+        if (!empty($ing['nro_timbrado'])) {
+            $timbRow = Database::queryForMap(
+                "SELECT * FROM co_timbrados WHERE id_propietario = ? AND cod_empresa = ? AND nro_timbrado = ? LIMIT 1",
+                [$idProp, $empresa, $ing['nro_timbrado']]
+            );
+        }
+
+        View::render('kude_print', [
+            'ingreso'  => $ing,
+            'empresa'  => $empCfg,
+            'timbrado' => $timbRow ?: [],
+        ]);
     }
 
     // =========================================================================
@@ -657,7 +902,9 @@ class MovimientosContablesController {
                            condicion, cod_moneda, nom_cliente, ruc_cliente,
                            COALESCE(exentas, 0) AS exentas, COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
                            COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10, COALESCE(tot_iva, 0) AS tot_iva,
-                           COALESCE(valor_total, 0) AS valor_total, estado
+                           COALESCE(valor_total, 0) AS valor_total, estado,
+                           COALESCE(anulada, 'N') AS anulada, COALESCE(inutilizado, 'N') AS inutilizado,
+                           sifen_estado, sifen_protocolo, sifen_qr_url, sifen_mensaje
                     FROM co_ingresos
                     WHERE id_propietario = ? AND cod_empresa = ? ";
             $params = [$idProp, $empresa];
@@ -691,7 +938,8 @@ class MovimientosContablesController {
                            DATE_FORMAT(fec_ingreso, '%Y-%m-%d') AS fec_ingreso, condicion, cod_cliente,
                            nom_cliente, ruc_cliente, COALESCE(cod_tipo_ingreso, 1) AS cod_tipo_ingreso,
                            tip_ingreso, form_145, cod_moneda, tasa_cambio, grav10, iva10, grav5, iva5,
-                           exentas, tot_iva, valor_bruto, no_gravado, redondeo, valor_total, observacion
+                           exentas, tot_iva, valor_bruto, no_gravado, redondeo, valor_total, observacion,
+                           sifen_estado, sifen_protocolo, sifen_qr_url, sifen_mensaje, sifen_fecha_firma
                     FROM co_ingresos
                     WHERE id_propietario = ? AND id_ingreso = ? AND cod_empresa = ? LIMIT 1";
             $list = Database::queryForListUpper($sql, [$idProp, (int)$id, $empresa]);
@@ -815,6 +1063,7 @@ class MovimientosContablesController {
                 }
             }
 
+            $savedId = $idIngreso;
             if ($idIngreso === null) {
                 $maxId = (int)Database::queryForValue(
                     "SELECT COALESCE(MAX(id_ingreso), 0) + 1 FROM co_ingresos WHERE id_propietario = ?",
@@ -836,11 +1085,8 @@ class MovimientosContablesController {
                         $valorBruto, $noGravado, $redondeo, $valorTotal, $observacion, $usuario
                     ]
                 );
-                View::json([
-                    'status'    => 'success',
-                    'message'   => "Ingreso registrado correctamente con el ID #{$maxId}",
-                    'idIngreso' => $maxId,
-                ]);
+                $savedId = $maxId;
+                $msg = "Ingreso registrado correctamente con el ID #{$maxId}";
             } else {
                 Database::update(
                     "UPDATE co_ingresos SET
@@ -861,12 +1107,32 @@ class MovimientosContablesController {
                         $idProp, $idIngreso, $empresa
                     ]
                 );
-                View::json([
-                    'status'    => 'success',
-                    'message'   => "Registro de Ingreso #{$idIngreso} actualizado con éxito.",
-                    'idIngreso' => $idIngreso,
-                ]);
+                $msg = "Registro de Ingreso #{$idIngreso} actualizado con éxito.";
             }
+
+            // Si se solicita emisión electrónica SIFEN o el timbrado es Electrónico (y no tiene CDC previo)
+            $emitirSifen = !empty($payload['emitirSifen']);
+            if (!$emitirSifen && ($cdc === null || $cdc === '') && $nroTimbrado) {
+                $tipoTimb = (string)(Database::queryForValue(
+                    "SELECT tipo_timbrado FROM co_timbrados WHERE id_propietario = ? AND cod_empresa = ? AND nro_timbrado = ? LIMIT 1",
+                    [$idProp, $empresa, $nroTimbrado]
+                ) ?? '');
+                if (stripos($tipoTimb, 'electr') !== false) {
+                    $emitirSifen = true;
+                }
+            }
+
+            $sifenData = null;
+            if ($emitirSifen && $anulada !== 'S' && $inutilizado !== 'S') {
+                $sifenData = self::emitirSifenParaIngreso($idProp, $empresa, (int)$savedId);
+            }
+
+            View::json([
+                'status'    => 'success',
+                'message'   => $msg,
+                'idIngreso' => $savedId,
+                'sifen'     => $sifenData,
+            ]);
         } catch (\Throwable $e) {
             View::json(['status' => 'error', 'message' => 'Error al guardar el ingreso: ' . $e->getMessage()]);
         }

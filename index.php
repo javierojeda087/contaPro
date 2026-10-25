@@ -4,7 +4,7 @@ declare(strict_types=1);
 // 1. Servir archivos estáticos directamente cuando se ejecuta con `php -S`
 if (PHP_SAPI === 'cli-server') {
     $urlPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-    if (preg_match('#^/(config|core|app|database)/|\.(sql|key|p12|env|md|sh|bak|zip|bat|yml|yaml|log|ini)$#i', $urlPath)) {
+    if (preg_match('#^/(config|core|app/(Controllers|Models|Services|Helpers)|database)/|\.(sql|key|p12|env|md|sh|bak|zip|bat|yml|yaml|log|ini)$#i', $urlPath)) {
         http_response_code(403);
         exit('403 Forbidden');
     }
@@ -15,6 +15,8 @@ if (PHP_SAPI === 'cli-server') {
 }
 
 // 2. Configuración regional, codificación UTF-8 y seguridad de sesión HTTPS
+@ini_set('display_errors', '0');
+ob_start();
 mb_internal_encoding('UTF-8');
 date_default_timezone_set('America/Asuncion');
 
@@ -235,6 +237,10 @@ if ($uri === '/app/formulario-120/print' || $uri === '/formulario_120/print') {
 }
 if ($uri === '/api/formulario-120/exportar-xls' || $uri === '/app/formulario-120/exportar-xls') {
     ReportesContablesController::exportarXlsFormulario120();
+    exit;
+}
+if ($uri === '/app/kude/print' || $uri === '/kude/print') {
+    MovimientosContablesController::pagePrintKude();
     exit;
 }
 
@@ -547,6 +553,9 @@ $exactApiRoutes = [
     '/api/regimen/delete'                          => [DefinicionesContablesController::class, 'apiRegimenDelete'],
 
     // Movimientos Contables: SIFEN, Egresos, Ingresos, Asientos
+    '/api/sifen/health'                            => [MovimientosContablesController::class, 'apiSifenHealth'],
+    '/api/sifen/emitir'                            => [MovimientosContablesController::class, 'apiSifenEmitir'],
+    '/api/sifen/cancelar'                          => [MovimientosContablesController::class, 'apiSifenCancelar'],
     '/api/sifen/consultar-cdc'                     => [MovimientosContablesController::class, 'apiSifenConsultarCdc'],
     '/api/egresos/verificar-cdc'                   => [MovimientosContablesController::class, 'apiVerificarCdc'],
     '/api/egresos/list'                            => [MovimientosContablesController::class, 'apiEgresosList'],
@@ -592,6 +601,7 @@ $dynamicApiRoutes = [
     '#^/api/tipo[-_]ingreso/get/(.+)$#'               => [DefinicionesContablesController::class, 'apiTipoIngresoGet'],
     '#^/api/egresos/get/(.+)$#'                       => [MovimientosContablesController::class, 'apiEgresosGet'],
     '#^/api/ingresos/get/(.+)$#'                      => [MovimientosContablesController::class, 'apiIngresosGet'],
+    '#^/api/sifen/descargar-xml/(.+)$#'               => [MovimientosContablesController::class, 'apiSifenDescargarXml'],
     '#^/api/asientos/obtener/(.+)$#'                  => [MovimientosContablesController::class, 'apiAsientosObtener'],
 ];
 

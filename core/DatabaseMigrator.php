@@ -8,14 +8,26 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 10;
+    private const SCHEMA_VERSION = 12;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
             return;
         }
-        self::migrate();
-        $_SESSION['_migrator_version'] = self::SCHEMA_VERSION;
+        $lockFile = __DIR__ . '/schema_v' . self::SCHEMA_VERSION . '.lock';
+        if (is_file($lockFile)) {
+            $_SESSION['_migrator_version'] = self::SCHEMA_VERSION;
+            return;
+        }
+        try {
+            @set_time_limit(120);
+            Database::getConnection();
+            self::migrate();
+            @file_put_contents($lockFile, (string)time());
+            $_SESSION['_migrator_version'] = self::SCHEMA_VERSION;
+        } catch (\Throwable $ignored) {
+            // Si el motor MySQL local aún no está encendido, no bloquear la carga de páginas públicas/login
+        }
     }
 
     public static function migrate(): array {
@@ -169,6 +181,12 @@ class DatabaseMigrator {
             'cta_exentas'     => 'VARCHAR(40) DEFAULT NULL',
             'timbrado_asoc'   => 'VARCHAR(50) DEFAULT NULL',
             'comprobante_asoc'=> 'VARCHAR(50) DEFAULT NULL',
+            'sifen_estado'    => 'VARCHAR(40) DEFAULT NULL',
+            'sifen_protocolo' => 'VARCHAR(60) DEFAULT NULL',
+            'sifen_qr_url'    => 'TEXT DEFAULT NULL',
+            'sifen_xml'       => 'LONGTEXT DEFAULT NULL',
+            'sifen_mensaje'   => 'VARCHAR(255) DEFAULT NULL',
+            'sifen_fecha_firma' => 'DATETIME DEFAULT NULL',
         ];
         foreach ($extraColsIngresos as $col => $def) {
             if (!self::columnExists('co_ingresos', $col)) {
@@ -176,6 +194,45 @@ class DatabaseMigrator {
                 $applied[] = "co_ingresos.$col";
             }
         }
+
+        // 4b. Asegurar columnas de configuración SIFEN en empresas (Contribuyentes)
+        $extraColsEmpresas = [
+            'sifen_ambiente'           => "VARCHAR(10) DEFAULT 'TEST'",
+            'sifen_id_csc'             => "VARCHAR(10) DEFAULT '0001'",
+            'sifen_csc'                => 'VARCHAR(64) DEFAULT NULL',
+            'sifen_certificado_b64'    => 'LONGTEXT DEFAULT NULL',
+            'sifen_certificado_nombre' => 'VARCHAR(120) DEFAULT NULL',
+            'sifen_certificado_pass'   => 'VARCHAR(120) DEFAULT NULL',
+            'sifen_api_url'            => 'VARCHAR(255) DEFAULT NULL',
+        ];
+        foreach ($extraColsEmpresas as $col => $def) {
+            if (!self::columnExists('empresas', $col)) {
+                Database::execute("ALTER TABLE `empresas` ADD COLUMN `$col` $def", true);
+                $applied[] = "empresas.$col";
+            }
+        }
+
+        // 4c. Asegurar columnas auxiliares en personas e ident_personas
+        $extraColsPersonas = [
+            'ruc'            => 'VARCHAR(30) DEFAULT NULL',
+            'ci'             => 'VARCHAR(30) DEFAULT NULL',
+            'direccion'      => 'VARCHAR(300) DEFAULT NULL',
+            'telefono'       => 'VARCHAR(50) DEFAULT NULL',
+            'email'          => 'VARCHAR(150) DEFAULT NULL',
+            'estado'         => "VARCHAR(1) DEFAULT 'A'",
+            'tipo_documento' => "VARCHAR(30) DEFAULT 'RUC'",
+        ];
+        foreach ($extraColsPersonas as $col => $def) {
+            if (!self::columnExists('personas', $col)) {
+                Database::execute("ALTER TABLE `personas` ADD COLUMN `$col` $def", true);
+                $applied[] = "personas.$col";
+            }
+        }
+        if (!self::columnExists('ident_personas', 'por_defecto')) {
+            Database::execute("ALTER TABLE `ident_personas` ADD COLUMN `por_defecto` VARCHAR(1) DEFAULT 'S'", true);
+            $applied[] = 'ident_personas.por_defecto';
+        }
+        Database::execute("ALTER TABLE `ident_personas` MODIFY COLUMN `cod_ident` VARCHAR(20) DEFAULT NULL", true);
 
         // 5. Asegurar los grupos por plan: CONADM, CONTA (Plan Básico), CONTAM (Plan Medio), CONTAP (Plan Pro)
         $gruposBase = [

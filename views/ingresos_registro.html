@@ -35,6 +35,18 @@
 
                         <div style="height: 24px; width: 1px; background: #cbd5e1; margin: 0 4px;"></div>
 
+                        <button type="button" class="btn" onclick="emitirSifenSeleccionado()" title="Generar CDC 44 dígitos, XML v150 y QR en SIFEN" style="background: #f0fdf4; border: 1.5px solid #86efac; font-weight: 800; font-size: 0.85rem; color: #15803d; height: 38px; padding: 0 14px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
+                            <i class="ph ph-seal-check" style="font-size: 1.15rem; color: #16a34a;"></i> Emitir SIFEN
+                        </button>
+                        <button type="button" class="btn" onclick="imprimirKudeSeleccionado()" title="Ver e Imprimir KuDE (Representación Gráfica Oficial con QR)" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #0f172a; height: 38px; padding: 0 14px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
+                            <i class="ph ph-printer" style="font-size: 1.15rem; color: #0284c7;"></i> KuDE / QR
+                        </button>
+                        <button type="button" class="btn" onclick="cancelarSifenSeleccionado()" title="Enviar Evento de Cancelación a SIFEN" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #b91c1c; height: 38px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; gap: 5px;">
+                            <i class="ph ph-prohibit" style="font-size: 1.1rem; color: #dc2626;"></i> Cancelar DE
+                        </button>
+
+                        <div style="height: 24px; width: 1px; background: #cbd5e1; margin: 0 4px;"></div>
+
                         <button type="button" class="btn" onclick="importarMarangatu()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #475569; height: 38px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
                             <i class="ph ph-download-simple" style="font-size: 1.15rem; color: #16a34a;"></i> Importar Marangatu
                         </button>
@@ -343,11 +355,14 @@
             </div>
 
             <!-- Modal Action Footer -->
-            <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 12px 24px; display: flex; justify-content: flex-end; gap: 12px; flex-shrink: 0;">
+            <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 12px 24px; display: flex; justify-content: flex-end; gap: 12px; flex-shrink: 0; flex-wrap: wrap;">
                 <button type="button" class="btn" onclick="cerrarModal()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.9rem; color: #475569; padding: 8px 22px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
                     <i class="ph ph-x" style="font-size: 1.1rem;"></i> Cancelar
                 </button>
-                <button type="button" class="btn" onclick="guardarIngreso()" style="background: linear-gradient(135deg, #16a34a, #15803d); border: none; font-weight: 800; font-size: 0.95rem; color: white; padding: 8px 28px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(22,163,74,0.35);">
+                <button type="button" class="btn" onclick="guardarIngreso(true)" title="Guardar comprobante y generar Factura Electrónica SIFEN (CDC + XML v150 + QR)" style="background: linear-gradient(135deg, #0284c7, #0369a1); border: none; font-weight: 800; font-size: 0.9rem; color: white; padding: 8px 20px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(2,132,199,0.3);">
+                    <i class="ph ph-seal-check" style="font-size: 1.15rem;"></i> Guardar y Emitir SIFEN
+                </button>
+                <button type="button" class="btn" onclick="guardarIngreso(false)" style="background: linear-gradient(135deg, #16a34a, #15803d); border: none; font-weight: 800; font-size: 0.95rem; color: white; padding: 8px 28px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(22,163,74,0.35);">
                     <i class="ph ph-check-bold" style="font-size: 1.15rem;"></i> Guardar
                 </button>
             </div>
@@ -658,8 +673,18 @@
                 const formattedIva10 = valIva10.toLocaleString('es-PY');
                 const formattedTotal = valTot.toLocaleString('es-PY');
 
+                const cdcRow = String(item.CDC || item.cdc || '').trim();
+                const sifenEst = String(item.SIFEN_ESTADO || item.sifen_estado || '').toUpperCase();
+                const isAnul = String(item.ANULADA || item.anulada || 'N') === 'S';
+                let sifenBadge = '';
+                if (isAnul || sifenEst === 'CANCELADO') {
+                    sifenBadge = ' <span class="badge" style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;font-size:0.68rem;">ANULADO</span>';
+                } else if (cdcRow.length === 44) {
+                    sifenBadge = ` <span class="badge" title="CDC: ${cdcRow}" style="background:#f0fdf4;color:#15803d;border:1px solid #86efac;font-size:0.68rem;">SIFEN</span>`;
+                }
+
                 tr.innerHTML = `
-                    <td style="padding: 10px 14px; font-weight: 700; color: #15803d;">${nroFac}</td>
+                    <td style="padding: 10px 14px; font-weight: 700; color: #15803d;">${nroFac}${sifenBadge}</td>
                     <td style="padding: 10px 14px; color: #334155;">${nroTimb}</td>
                     <td style="padding: 10px 14px; color: #475569;">${tipDocStr}</td>
                     <td class="text-center" style="padding: 10px 14px; color: #334155;">${fecStr}</td>
@@ -1048,19 +1073,43 @@
             document.getElementById('valorTotal').value = vTotal.toLocaleString('es-PY');
         }
 
-        function verificarCDC() {
-            const cdc = document.getElementById('cdc').value;
+        function verificarCDC(rawInputOverride = null) {
+            const cdc = (rawInputOverride || document.getElementById('cdc').value || '').trim();
             if (!cdc) {
                 Swal.fire('Atención', 'Ingrese el Código CDC de 44 dígitos.', 'warning');
                 return;
             }
-            fetch('/api/ingresos/verificar-cdc?cdc=' + encodeURIComponent(cdc))
+            fetch('/api/sifen/consultar-cdc', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cdc: cdc })
+            })
                 .then(res => res.json())
                 .then(data => {
-                    if (data.valid) {
-                        Swal.fire('CDC Válido', data.message, 'success');
+                    if (data.valido) {
+                        if (data.cdc) document.getElementById('cdc').value = data.cdc;
+                        if (data.establecimiento) document.getElementById('facEst').value = data.establecimiento;
+                        if (data.puntoExpedicion) document.getElementById('facPto').value = data.puntoExpedicion;
+                        if (data.numeroDocumento) document.getElementById('facNro').value = data.numeroDocumento;
+                        if (data.fechaFactura) document.getElementById('fecIngreso').value = data.fechaFactura;
+                        if (data.grav10 && parseFloat(data.grav10) > 0) {
+                            document.getElementById('grav10').value = formatMiles(data.grav10);
+                        }
+                        if (data.grav5 && parseFloat(data.grav5) > 0) {
+                            document.getElementById('grav5').value = formatMiles(data.grav5);
+                        }
+                        if (data.exentas && parseFloat(data.exentas) > 0) {
+                            document.getElementById('exentas').value = formatMiles(data.exentas);
+                        }
+                        recalcularTotales();
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'CDC SIFEN Verificado',
+                            html: `<b>Tipo:</b> ${data.tipoDoc || 'Factura Electrónica'}<br><b>Comprobante:</b> ${data.nroFactura || '-'}<br><b>Fecha:</b> ${data.fechaFactura || '-'}<br><b>Estado:</b> ${data.estadoSifen || 'Válido'}`,
+                            confirmButtonColor: '#16a34a'
+                        });
                     } else {
-                        Swal.fire('CDC Inválido', data.message, 'error');
+                        Swal.fire('CDC Inválido', data.message || 'El CDC ingresado no es válido.', 'error');
                     }
                 })
                 .catch(err => {
@@ -1079,18 +1128,19 @@
         }
 
         function procesarQR() {
-            const url = document.getElementById('qrText').value;
-            if (url && url.includes('cdc=')) {
-                const match = url.match(/cdc=([0-9]{44})/);
-                if (match && match[1]) {
-                    document.getElementById('cdc').value = match[1];
-                    cerrarQRModal();
-                    Swal.fire('¡Éxito!', 'CDC extraído del código QR correctamente.', 'success');
-                    verificarCDC();
-                    return;
-                }
+            const url = (document.getElementById('qrText').value || '').trim();
+            if (!url) {
+                Swal.fire('Atención', 'Pegue la URL del QR o el CDC de 44 dígitos.', 'warning');
+                return;
             }
-            Swal.fire('Atención', 'No se encontró un CDC válido en la cadena ingresada.', 'warning');
+            const match = url.match(/([0-9]{44})/);
+            if (match && match[1]) {
+                document.getElementById('cdc').value = match[1];
+                cerrarQRModal();
+                verificarCDC(url);
+                return;
+            }
+            Swal.fire('Atención', 'No se encontró un CDC válido de 44 dígitos en la cadena ingresada.', 'warning');
         }
 
         async function verificarYCrearClienteIngreso(esBusquedaManual = false) {
@@ -1102,12 +1152,16 @@
 
             try {
                 // 1. Verificar si ya existe como Cliente o Persona en BD local
-                const res1 = await fetch('/api/co_clientes/auto-registrar-ruc', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ruc: rucVal, nombre: '' })
-                });
-                const data1 = await res1.json();
+                let data1 = {};
+                try {
+                    const res1 = await fetch('/api/co_clientes/auto-registrar-ruc', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ruc: rucVal, nombre: '' })
+                    });
+                    const txt1 = await res1.text();
+                    data1 = txt1 ? JSON.parse(txt1) : {};
+                } catch (ignored) {}
 
                 if (data1.status === 'CLIENTE_EXISTE') {
                     document.getElementById('rucCliente').value = data1.ruc || rucVal;
@@ -1136,7 +1190,8 @@
                 try {
                     const resDnit = await fetch(`/api/dnit/consultar-ruc?ruc=${encodeURIComponent(rucBase)}`);
                     if (resDnit.ok) {
-                        const jsonProxy = await resDnit.json();
+                        const txtDnit = await resDnit.text();
+                        const jsonProxy = txtDnit ? JSON.parse(txtDnit) : {};
                         if (jsonProxy.status === 'SUCCESS' && jsonProxy.data) {
                             dataDnit = { data: jsonProxy.data };
                         }
@@ -1155,21 +1210,30 @@
                     document.getElementById('nomCliente').value = nomDnit;
 
                     // 3. Crear automáticamente como Persona y Cliente en la BD
-                    const resCreate = await fetch('/api/co_clientes/auto-registrar-ruc', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ruc: rucToUse, nombre: nomDnit })
-                    });
-                    const dataCreate = await resCreate.json();
-
-                    if (dataCreate.status === 'CREADO') {
-                        document.getElementById('codCliente').value = dataCreate.codCliente || '';
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡Nuevo Cliente Creado!',
-                            html: `RUC verificado en la DNIT (turuc.com.py).<br>Se creó la persona y el <b>Cliente #${dataCreate.codCliente || ''}</b>:<br><b>${nomDnit}</b>`,
-                            confirmButtonColor: '#16a34a'
+                    try {
+                        const resCreate = await fetch('/api/co_clientes/auto-registrar-ruc', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ ruc: rucToUse, nombre: nomDnit })
                         });
+                        const txtCreate = await resCreate.text();
+                        const dataCreate = txtCreate ? JSON.parse(txtCreate) : {};
+
+                        if (dataCreate.status === 'CREADO') {
+                            document.getElementById('codCliente').value = dataCreate.codCliente || '';
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Nuevo Cliente Creado!',
+                                html: `RUC verificado en la DNIT (turuc.com.py).<br>Se creó la persona y el <b>Cliente #${dataCreate.codCliente || ''}</b>:<br><b>${nomDnit}</b>`,
+                                confirmButtonColor: '#16a34a'
+                            });
+                        } else if (dataCreate.status === 'CLIENTE_EXISTE') {
+                            document.getElementById('codCliente').value = dataCreate.codCliente || '';
+                            document.getElementById('rucCliente').value = dataCreate.ruc || rucToUse;
+                            document.getElementById('nomCliente').value = dataCreate.nombre || nomDnit;
+                        }
+                    } catch (createErr) {
+                        console.warn('Advertencia al auto-registrar cliente en BD local:', createErr);
                     }
                 } else {
                     document.getElementById('nomCliente').value = '';
@@ -1442,7 +1506,7 @@
             }, 100);
         }
 
-        function guardarIngreso() {
+        function guardarIngreso(emitirSifen = false) {
             resetFormBorders();
             if (!validarCamposObligatoriosIngreso()) {
                 return;
@@ -1469,6 +1533,7 @@
             const payload = {
                 idIngreso: document.getElementById('idIngreso').value,
                 cdc: cdc,
+                emitirSifen: emitirSifen,
                 tipDoc: document.getElementById('tipDoc').value,
                 regimen: regimenVal,
                 codRegimen: regimenVal,
@@ -1515,23 +1580,124 @@
                     // 2. Limpiar la pantalla de carga para seguir registrando comprobantes
                     limpiarPantallaParaNuevoIngreso();
 
-                    // 3. Notificación flotante de éxito tipo toast
-                    Swal.fire({
-                        toast: true,
-                        position: 'top-end',
-                        icon: 'success',
-                        title: '¡Ingreso guardado con éxito!',
-                        text: 'Listado actualizado. Pantalla lista para el siguiente comprobante.',
-                        showConfirmButton: false,
-                        timer: 2500,
-                        timerProgressBar: true
-                    });
+                    // 3. Si se emitió un Documento Electrónico SIFEN, ofrecer ver el KuDE con QR
+                    if (data.sifen && data.sifen.cdc) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Documento Electrónico Emitido!',
+                            html: `<b>CDC (44 dígitos):</b><br><code style="font-size:0.85rem;color:#15803d;font-weight:700;">${data.sifen.cdcFormateado || data.sifen.cdc}</code><br><br><b>Estado SIFEN:</b> ${data.sifen.estadoSifen || 'EMITIDO'}<br><span style="font-size:0.82rem;color:#475569;">${data.sifen.mensajeRespuesta || ''}</span>`,
+                            showCancelButton: true,
+                            confirmButtonColor: '#16a34a',
+                            cancelButtonColor: '#64748b',
+                            confirmButtonText: '🖨️ Imprimir KuDE / QR',
+                            cancelButtonText: 'Continuar cargando'
+                        }).then(r => {
+                            if (r.isConfirmed && data.idIngreso) {
+                                window.open('/app/kude/print?id=' + encodeURIComponent(data.idIngreso), '_blank');
+                            }
+                        });
+                    } else {
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: '¡Ingreso guardado con éxito!',
+                            text: 'Listado actualizado. Pantalla lista para el siguiente comprobante.',
+                            showConfirmButton: false,
+                            timer: 2500,
+                            timerProgressBar: true
+                        });
+                    }
                 } else {
                     Swal.fire('Error', data.message, 'error');
                 }
             })
             .catch(err => {
                 Swal.fire('Error', 'Fallo de conexión al guardar el ingreso.', 'error');
+            });
+        }
+
+        function emitirSifenSeleccionado() {
+            if (!selectedIdIngreso) {
+                Swal.fire('Atención', 'Seleccione un comprobante de ingreso de la tabla para emitir su Documento Electrónico SIFEN.', 'warning');
+                return;
+            }
+            Swal.fire({
+                title: 'Procesando en SIFEN...',
+                text: 'Calculando CDC de 44 dígitos, firmando XML v150 y generando código QR oficial...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+            fetch('/api/sifen/emitir', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idIngreso: selectedIdIngreso })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success' && data.cdc) {
+                    cargarIngresos();
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Factura Electrónica Generada!',
+                        html: `<b>CDC (44 dígitos):</b><br><code style="font-size:0.85rem;color:#15803d;font-weight:700;">${data.cdcFormateado || data.cdc}</code><br><br><b>Estado SIFEN:</b> ${data.estadoSifen || 'EMITIDO'}<br><span style="font-size:0.82rem;color:#475569;">${data.mensajeRespuesta || ''}</span>`,
+                        showCancelButton: true,
+                        confirmButtonColor: '#16a34a',
+                        cancelButtonColor: '#64748b',
+                        confirmButtonText: '🖨️ Ver e Imprimir KuDE / QR',
+                        cancelButtonText: 'Cerrar'
+                    }).then(r => {
+                        if (r.isConfirmed) {
+                            window.open('/app/kude/print?id=' + encodeURIComponent(selectedIdIngreso), '_blank');
+                        }
+                    });
+                } else {
+                    Swal.fire('Error SIFEN', data.mensajeRespuesta || data.message || 'No se pudo emitir el Documento Electrónico.', 'error');
+                }
+            })
+            .catch(() => Swal.fire('Error', 'Error de comunicación con el servicio SIFEN.', 'error'));
+        }
+
+        function imprimirKudeSeleccionado() {
+            if (!selectedIdIngreso) {
+                Swal.fire('Atención', 'Seleccione un comprobante de ingreso de la tabla para ver e imprimir su KuDE.', 'warning');
+                return;
+            }
+            window.open('/app/kude/print?id=' + encodeURIComponent(selectedIdIngreso), '_blank');
+        }
+
+        function cancelarSifenSeleccionado() {
+            if (!selectedIdIngreso) {
+                Swal.fire('Atención', 'Seleccione un comprobante de ingreso de la tabla para cancelar en SIFEN.', 'warning');
+                return;
+            }
+            Swal.fire({
+                title: 'Cancelar Documento Electrónico en SIFEN',
+                input: 'text',
+                inputLabel: 'Motivo de la cancelación (requerido por la DNIT):',
+                inputValue: 'Cancelación de comprobante electrónico por error en emisión',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Enviar Evento de Cancelación',
+                cancelButtonText: 'Volver'
+            }).then(result => {
+                if (result.isConfirmed && result.value) {
+                    fetch('/api/sifen/cancelar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ idIngreso: selectedIdIngreso, motivo: result.value })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            cargarIngresos();
+                            Swal.fire('Cancelado en SIFEN', data.mensajeRespuesta || 'Evento de cancelación registrado correctamente.', 'success');
+                        } else {
+                            Swal.fire('Atención', data.message || data.mensajeRespuesta || 'No se pudo cancelar el documento.', 'warning');
+                        }
+                    });
+                }
             });
         }
 

@@ -134,8 +134,57 @@
                         </div>
                         <div class="col-md-6">
                             <label style="font-size: 0.85rem; font-weight: 700; color: #334155; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                                <input type="checkbox" id="chkIndFacturacionElectronica" checked style="width: 17px; height: 17px; accent-color: #16a34a;"> Habilitado Facturación Electrónica
+                                <input type="checkbox" id="chkIndFacturacionElectronica" checked onchange="toggleSifenConfigBox()" style="width: 17px; height: 17px; accent-color: #16a34a;"> Habilitado Facturación Electrónica
                             </label>
+                        </div>
+                    </div>
+
+                    <!-- Panel de Configuración SIFEN (Facturación Electrónica DNIT v150) -->
+                    <div id="sifenConfigBox" style="margin-top: 14px; padding: 14px 16px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <div style="font-size: 0.84rem; font-weight: 800; color: #15803d; display: flex; align-items: center; gap: 6px;">
+                                <i class="ph ph-seal-check" style="font-size: 1.1rem;"></i> Parámetros SIFEN (Facturación Electrónica DNIT v150)
+                            </div>
+                            <button type="button" onclick="probarConexionSifenApi()" style="border: 1px solid #16a34a; background: #ffffff; color: #15803d; border-radius: 6px; padding: 3px 10px; font-size: 0.75rem; font-weight: 700; cursor: pointer;">
+                                <i class="ph ph-plugs-connected"></i> Probar API SIFEN
+                            </button>
+                        </div>
+
+                        <div class="row mb-2">
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold text-secondary" style="font-size: 0.76rem; margin-bottom: 3px;">Ambiente SIFEN :</label>
+                                <select id="sifenAmbiente" class="form-control form-control-sm" style="border-radius: 7px; font-weight: 700; font-size: 0.82rem;">
+                                    <option value="TEST">TEST (Homologación)</option>
+                                    <option value="PROD">PROD (Producción)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold text-secondary" style="font-size: 0.76rem; margin-bottom: 3px;">ID CSC :</label>
+                                <input type="text" id="sifenIdCsc" class="form-control form-control-sm" value="0001" maxlength="4" placeholder="0001" style="border-radius: 7px; font-weight: 700; font-size: 0.82rem;">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-secondary" style="font-size: 0.76rem; margin-bottom: 3px;">Clave Cert. (.p12) :</label>
+                                <input type="password" id="sifenCertificadoPass" class="form-control form-control-sm" placeholder="Contraseña .p12" style="border-radius: 7px; font-size: 0.82rem;">
+                            </div>
+                        </div>
+
+                        <div class="row mb-2">
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold text-secondary" style="font-size: 0.76rem; margin-bottom: 3px;">Código de Seguridad del Contribuyente (CSC - 32 caracteres) :</label>
+                                <input type="text" id="sifenCsc" class="form-control form-control-sm" placeholder="Ej: ABCD0000000000000000000000000000" maxlength="64" style="border-radius: 7px; font-family: monospace; font-size: 0.82rem;">
+                            </div>
+                        </div>
+
+                        <div class="row mb-1">
+                            <div class="col-md-7">
+                                <label class="form-label fw-bold text-secondary" style="font-size: 0.76rem; margin-bottom: 3px;">Certificado Digital PKCS#12 (.p12 / .pfx) :</label>
+                                <input type="file" id="sifenCertFile" accept=".p12,.pfx" onchange="onCertFileSelected(this)" class="form-control form-control-sm" style="border-radius: 7px; font-size: 0.78rem;">
+                                <div id="sifenCertStatus" style="font-size: 0.74rem; color: #15803d; font-weight: 700; margin-top: 3px;"></div>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold text-secondary" style="font-size: 0.76rem; margin-bottom: 3px;">URL Microservicio SIFEN (OCI) :</label>
+                                <input type="text" id="sifenApiUrl" class="form-control form-control-sm" placeholder="http://127.0.0.1:8085" style="border-radius: 7px; font-size: 0.78rem;">
+                            </div>
                         </div>
                     </div>
 
@@ -198,7 +247,11 @@
 
                 tr.ondblclick = abrirModalEditar;
 
-                const isFe = item.IND_FACTURACION_ELECTRONICA === 'S' ? '<span class="badge bg-success-subtle text-success border border-success">SÍ</span>' : '<span class="badge bg-secondary-subtle text-secondary border">NO</span>';
+                const ambTag = (item.SIFEN_AMBIENTE === 'PROD') ? 'PROD' : 'TEST';
+                const certIcon = (item.TIENE_CERTIFICADO === 'S') ? ' <i class="ph ph-certificate" title="Certificado .p12 cargado"></i>' : '';
+                const isFe = item.IND_FACTURACION_ELECTRONICA === 'S'
+                    ? `<span class="badge bg-success-subtle text-success border border-success">SÍ (${ambTag})${certIcon}</span>`
+                    : '<span class="badge bg-secondary-subtle text-secondary border">NO</span>';
 
                 tr.innerHTML = `
                     <td class="fw-bold text-primary" style="padding: 12px 20px;"><span class="badge bg-light text-primary border" style="font-size:0.85rem;">#${item.COD_EMPRESA || ''}</span></td>
@@ -218,10 +271,75 @@
             renderTabla(listData.filter(i => (i.DESCRIPCION && i.DESCRIPCION.toUpperCase().includes(query)) || (i.COD_EMPRESA && i.COD_EMPRESA.includes(query)) || (i.RUC_EMPRESA && i.RUC_EMPRESA.includes(query))));
         }
 
+        let pendingCertBase64 = '';
+        let pendingCertNombre = '';
+
+        function toggleSifenConfigBox() {
+            const chk = document.getElementById('chkIndFacturacionElectronica');
+            const box = document.getElementById('sifenConfigBox');
+            if (box && chk) {
+                box.style.display = chk.checked ? 'block' : 'none';
+            }
+        }
+
+        function onCertFileSelected(input) {
+            const file = input.files && input.files[0];
+            const statusEl = document.getElementById('sifenCertStatus');
+            if (!file) {
+                pendingCertBase64 = '';
+                pendingCertNombre = '';
+                return;
+            }
+            pendingCertNombre = file.name;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const res = String(evt.target.result || '');
+                pendingCertBase64 = res.includes(',') ? res.split(',')[1] : res;
+                if (statusEl) {
+                    statusEl.innerHTML = `<i class="ph ph-check-circle"></i> Listo para guardar: <b>${file.name}</b>`;
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function probarConexionSifenApi() {
+            const apiUrl = document.getElementById('sifenApiUrl')?.value.trim() || '';
+            try {
+                const res = await fetch('/api/sifen/health?apiUrl=' + encodeURIComponent(apiUrl));
+                const data = await res.json();
+                if (data.online) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Microservicio SIFEN Conectado',
+                        html: `<b>Servicio:</b> ${data.service}<br><b>Endpoint:</b> ${data.endpoint}<br><b>Versión SIFEN:</b> v${data.sifenVersion}`,
+                        confirmButtonColor: '#16a34a'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Motor Nativo Activo (Modo Respaldo)',
+                        html: `${data.message || 'El microservicio Java no está corriendo en este instante, pero el motor nativo de respaldo está listo para generar CDC, XML v150 y QR.'}`,
+                        confirmButtonColor: '#16a34a'
+                    });
+                }
+            } catch (e) {
+                Swal.fire('Error', 'No se pudo consultar el estado del servicio SIFEN.', 'error');
+            }
+        }
+
         function abrirModalNuevo() {
             document.getElementById('formContribuyente').reset();
             document.getElementById('codEmpresa').value = '';
             document.getElementById('codPersona').value = '';
+            pendingCertBase64 = '';
+            pendingCertNombre = '';
+            document.getElementById('sifenAmbiente').value = 'TEST';
+            document.getElementById('sifenIdCsc').value = '0001';
+            document.getElementById('sifenCsc').value = '';
+            document.getElementById('sifenCertificadoPass').value = '';
+            document.getElementById('sifenApiUrl').value = '';
+            document.getElementById('sifenCertStatus').innerHTML = '';
+            toggleSifenConfigBox();
             setRucEstado(null);
             ultimoRucVerificado = '';
             document.getElementById('modalTitle').innerText = 'Agregar Contribuyente';
@@ -308,6 +426,18 @@
             document.getElementById('localidad').value = item.LOCALIDAD || '';
             document.getElementById('chkRetieneIva').checked = (item.RETIENE_IVA === 'S');
             document.getElementById('chkIndFacturacionElectronica').checked = (item.IND_FACTURACION_ELECTRONICA === 'S');
+            pendingCertBase64 = '';
+            pendingCertNombre = '';
+            document.getElementById('sifenCertFile').value = '';
+            document.getElementById('sifenAmbiente').value = item.SIFEN_AMBIENTE || 'TEST';
+            document.getElementById('sifenIdCsc').value = item.SIFEN_ID_CSC || '0001';
+            document.getElementById('sifenCsc').value = item.SIFEN_CSC || '';
+            document.getElementById('sifenCertificadoPass').value = item.SIFEN_CERTIFICADO_PASS || '';
+            document.getElementById('sifenApiUrl').value = item.SIFEN_API_URL || '';
+            document.getElementById('sifenCertStatus').innerHTML = (item.TIENE_CERTIFICADO === 'S')
+                ? `<i class="ph ph-check-circle"></i> Certificado cargado: <b>${item.SIFEN_CERTIFICADO_NOMBRE || 'certificado.p12'}</b>`
+                : '<span style="color:#64748b;">Sin certificado .p12 cargado (Modo Homologación / Prueba)</span>';
+            toggleSifenConfigBox();
             document.getElementById('modalTitle').innerText = 'Modificar Contribuyente #' + item.COD_EMPRESA;
             document.getElementById('modalOverlay').style.display = 'flex';
         }
@@ -335,7 +465,14 @@
                 actividad: document.getElementById('actividad').value,
                 localidad: document.getElementById('localidad').value,
                 retieneIva: document.getElementById('chkRetieneIva').checked,
-                indFacturacionElectronica: document.getElementById('chkIndFacturacionElectronica').checked
+                indFacturacionElectronica: document.getElementById('chkIndFacturacionElectronica').checked,
+                sifenAmbiente: document.getElementById('sifenAmbiente').value,
+                sifenIdCsc: document.getElementById('sifenIdCsc').value,
+                sifenCsc: document.getElementById('sifenCsc').value,
+                sifenCertificadoPass: document.getElementById('sifenCertificadoPass').value,
+                sifenApiUrl: document.getElementById('sifenApiUrl').value,
+                sifenCertificadoB64: pendingCertBase64 || null,
+                sifenCertificadoNombre: pendingCertNombre || null
             };
 
             fetch('/api/contribuyentes/save', {
