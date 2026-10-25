@@ -692,8 +692,7 @@ class MovimientosContablesController {
 
             if ($idEgreso === null) {
                 $maxId = (int)Database::queryForValue(
-                    "SELECT COALESCE(MAX(id_egreso), 0) + 1 FROM co_egresos WHERE id_propietario = ?",
-                    [$idProp]
+                    "SELECT COALESCE(MAX(id_egreso), 0) + 1 FROM co_egresos"
                 );
                 Database::update(
                     "INSERT INTO co_egresos (
@@ -1066,8 +1065,7 @@ class MovimientosContablesController {
             $savedId = $idIngreso;
             if ($idIngreso === null) {
                 $maxId = (int)Database::queryForValue(
-                    "SELECT COALESCE(MAX(id_ingreso), 0) + 1 FROM co_ingresos WHERE id_propietario = ?",
-                    [$idProp]
+                    "SELECT COALESCE(MAX(id_ingreso), 0) + 1 FROM co_ingresos"
                 );
                 Database::update(
                     "INSERT INTO co_ingresos (
