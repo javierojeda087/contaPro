@@ -77,6 +77,85 @@
                     </div>
                 </div>
 
+                <!-- KPIs DE TOTALES DE EGRESOS (ACTUALIZACIÓN DINÁMICA SEGÚN FILTROS) -->
+                <div id="kpiEgresosBar" style="padding: 12px 22px; background: #ffffff; border-bottom: 1px solid #e2e8f0; display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 12px; flex-shrink: 0;">
+                    
+                    <!-- KPI 1: Comprobantes -->
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #3b82f6; border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px;">Comprobantes</span>
+                            <i class="ph ph-files" style="color: #3b82f6; font-size: 1.1rem;"></i>
+                        </div>
+                        <div style="font-size: 1.25rem; font-weight: 900; color: #0f172a; margin: 2px 0;" id="kpiCantComprobantes">0</div>
+                        <div style="font-size: 0.72rem; color: #64748b; font-weight: 600; display: flex; gap: 8px;">
+                            <span><b id="kpiCantElectr" style="color: #0284c7;">0</b> Electr.</span>
+                            <span>·</span>
+                            <span><b id="kpiCantContado" style="color: #15803d;">0</b> Cont. / <b id="kpiCantCredito" style="color: #b45309;">0</b> Créd.</span>
+                        </div>
+                    </div>
+
+                    <!-- KPI 2: Gravadas e IVA 10% -->
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #0284c7; border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.72rem; font-weight: 800; color: #0369a1; text-transform: uppercase; letter-spacing: 0.3px;">Total IVA 10%</span>
+                            <span style="font-size: 0.68rem; font-weight: 800; background: #e0f2fe; color: #0369a1; padding: 1px 6px; border-radius: 6px;">Tasa 10%</span>
+                        </div>
+                        <div style="font-size: 1.18rem; font-weight: 900; color: #0284c7; font-family: monospace; margin: 2px 0;">Gs. <span id="kpiTotalIva10">0</span></div>
+                        <div style="font-size: 0.72rem; color: #64748b; font-weight: 600;">
+                            Grav. 10%: <b id="kpiTotalGrav10" style="color: #334155;">Gs. 0</b>
+                        </div>
+                    </div>
+
+                    <!-- KPI 3: Gravadas e IVA 5% -->
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #0ea5e9; border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.72rem; font-weight: 800; color: #0284c7; text-transform: uppercase; letter-spacing: 0.3px;">Total IVA 5%</span>
+                            <span style="font-size: 0.68rem; font-weight: 800; background: #e0f2fe; color: #0284c7; padding: 1px 6px; border-radius: 6px;">Tasa 5%</span>
+                        </div>
+                        <div style="font-size: 1.18rem; font-weight: 900; color: #0ea5e9; font-family: monospace; margin: 2px 0;">Gs. <span id="kpiTotalIva5">0</span></div>
+                        <div style="font-size: 0.72rem; color: #64748b; font-weight: 600;">
+                            Grav. 5%: <b id="kpiTotalGrav5" style="color: #334155;">Gs. 0</b>
+                        </div>
+                    </div>
+
+                    <!-- KPI 4: Exentas -->
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #64748b; border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.72rem; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.3px;">Total Exentas</span>
+                            <i class="ph ph-shield-check" style="color: #64748b; font-size: 1.05rem;"></i>
+                        </div>
+                        <div style="font-size: 1.18rem; font-weight: 900; color: #334155; font-family: monospace; margin: 2px 0;">Gs. <span id="kpiTotalExentas">0</span></div>
+                        <div style="font-size: 0.72rem; color: #64748b; font-weight: 600;">
+                            Operaciones no gravadas
+                        </div>
+                    </div>
+
+                    <!-- KPI 5: Total IVA Crédito -->
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #16a34a; border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.72rem; font-weight: 800; color: #15803d; text-transform: uppercase; letter-spacing: 0.3px;">Total IVA (10% + 5%)</span>
+                            <i class="ph ph-TrendUp" style="color: #16a34a; font-size: 1.05rem;"></i>
+                        </div>
+                        <div style="font-size: 1.2rem; font-weight: 900; color: #15803d; font-family: monospace; margin: 2px 0;">Gs. <span id="kpiTotalIvaGeneral">0</span></div>
+                        <div style="font-size: 0.72rem; color: #166534; font-weight: 600;">
+                            Base Neto s/IVA: <b id="kpiTotalBaseNeta">Gs. 0</b>
+                        </div>
+                    </div>
+
+                    <!-- KPI 6: Total General Compras -->
+                    <div style="background: linear-gradient(135deg, #0f172a, #1e293b); border: 1px solid #0f172a; border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; justify-content: space-between; color: white; box-shadow: 0 2px 6px rgba(15,23,42,0.15);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.72rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4px;">Total General Egresos</span>
+                            <i class="ph ph-coins" style="color: #4ade80; font-size: 1.15rem;"></i>
+                        </div>
+                        <div style="font-size: 1.24rem; font-weight: 900; color: #4ade80; font-family: monospace; margin: 2px 0;">Gs. <span id="kpiTotalGeneral">0</span></div>
+                        <div style="font-size: 0.71rem; color: #cbd5e1; font-weight: 600;">
+                            Suma total de comprobantes listados
+                        </div>
+                    </div>
+
+                </div>
+
                 <!-- Egresos Table matching Reference Image -->
                 <div style="overflow-x: auto; flex: 1; min-height: 520px;">
                     <table class="table table-hover align-middle m-0" style="font-size: 0.9rem;">
@@ -131,6 +210,17 @@
                                 </td>
                             </tr>
                         </tbody>
+                        <tfoot id="tablaEgresosFoot" style="background: #f1f5f9; border-top: 2px solid #cbd5e1; font-weight: 800; color: #0f172a; position: sticky; bottom: 0; z-index: 5;">
+                            <tr>
+                                <td colspan="9" style="padding: 12px 16px; text-align: right; font-size: 0.85rem; color: #334155; text-transform: uppercase; letter-spacing: 0.3px;">
+                                    Totales de Comprobantes Listados (<span id="footCantComprobantes" style="color: #16a34a;">0</span>):
+                                </td>
+                                <td class="text-end" style="padding: 12px 16px; font-family: monospace; font-size: 0.92rem; color: #475569;" id="footTotalExenta">0</td>
+                                <td class="text-end" style="padding: 12px 16px; font-family: monospace; font-size: 0.92rem; color: #0284c7;" id="footTotalIva5">0</td>
+                                <td class="text-end" style="padding: 12px 16px; font-family: monospace; font-size: 0.92rem; color: #0284c7;" id="footTotalIva10">0</td>
+                                <td class="text-end" style="padding: 12px 16px; font-family: monospace; font-size: 0.98rem; color: #15803d; background: #dcfce7;" id="footTotalGeneral">0</td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
 
@@ -989,9 +1079,86 @@
             return s;
         }
 
+        function actualizarKpisEgresos(data) {
+            const lista = Array.isArray(data) ? data : [];
+            let cantTotal   = 0;
+            let cantElectr  = 0;
+            let cantContado = 0;
+            let cantCredito = 0;
+
+            let sumGrav10  = 0;
+            let sumIva10   = 0;
+            let sumGrav5   = 0;
+            let sumIva5    = 0;
+            let sumExentas = 0;
+            let sumTotal   = 0;
+
+            lista.forEach(item => {
+                cantTotal++;
+                const tipDoc = String(item.TIP_DOC || item.tip_doc || 'FAC').toUpperCase();
+                const sign = (tipDoc === 'NCR' || tipDoc.includes('CRED') || tipDoc.includes('CRÉD')) ? -1 : 1;
+
+                const tipTimb = String(item.TIP_TIMB || item.tip_timb || '').toUpperCase();
+                const cdc = String(item.CDC || item.cdc || '').replace(/\D/g, '');
+                if (tipTimb.includes('ELECTR') || cdc.length === 44) {
+                    cantElectr++;
+                }
+
+                const cond = String(item.CONDICION || item.condicion || 'CON').toUpperCase();
+                if (cond.startsWith('CRE') || cond.includes('CRED')) {
+                    cantCredito++;
+                } else {
+                    cantContado++;
+                }
+
+                const g10 = Math.round(parseFloat(item.GRAV10 || item.grav10 || 0));
+                const i10 = Math.round(parseFloat(item.IVA10  || item.iva10  || 0));
+                const g5  = Math.round(parseFloat(item.GRAV5  || item.grav5  || 0));
+                const i5  = Math.round(parseFloat(item.IVA5   || item.iva5   || 0));
+                const ex  = Math.round(parseFloat(item.EXENTAS || item.exentas || 0));
+                const tot = Math.round(parseFloat(item.VALOR_TOTAL || item.valor_total || 0));
+
+                sumGrav10  += sign * g10;
+                sumIva10   += sign * i10;
+                sumGrav5   += sign * g5;
+                sumIva5    += sign * i5;
+                sumExentas += sign * ex;
+                sumTotal   += sign * tot;
+            });
+
+            const sumIvaGen  = sumIva10 + sumIva5;
+            const sumBaseNet = Math.max(0, (sumGrav10 - sumIva10) + (sumGrav5 - sumIva5));
+
+            const setTxt = (id, txt) => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = txt;
+            };
+
+            setTxt('kpiCantComprobantes', cantTotal.toLocaleString('es-PY'));
+            setTxt('kpiCantElectr',       cantElectr.toLocaleString('es-PY'));
+            setTxt('kpiCantContado',      cantContado.toLocaleString('es-PY'));
+            setTxt('kpiCantCredito',      cantCredito.toLocaleString('es-PY'));
+
+            setTxt('kpiTotalIva10',       sumIva10.toLocaleString('es-PY'));
+            setTxt('kpiTotalGrav10',      `Gs. ${sumGrav10.toLocaleString('es-PY')}`);
+            setTxt('kpiTotalIva5',        sumIva5.toLocaleString('es-PY'));
+            setTxt('kpiTotalGrav5',       `Gs. ${sumGrav5.toLocaleString('es-PY')}`);
+            setTxt('kpiTotalExentas',     sumExentas.toLocaleString('es-PY'));
+            setTxt('kpiTotalIvaGeneral',  sumIvaGen.toLocaleString('es-PY'));
+            setTxt('kpiTotalBaseNeta',    `Gs. ${sumBaseNet.toLocaleString('es-PY')}`);
+            setTxt('kpiTotalGeneral',     sumTotal.toLocaleString('es-PY'));
+
+            setTxt('footCantComprobantes', cantTotal.toLocaleString('es-PY'));
+            setTxt('footTotalExenta',      sumExentas.toLocaleString('es-PY'));
+            setTxt('footTotalIva5',        sumIva5.toLocaleString('es-PY'));
+            setTxt('footTotalIva10',       sumIva10.toLocaleString('es-PY'));
+            setTxt('footTotalGeneral',     sumTotal.toLocaleString('es-PY'));
+        }
+
         function renderTabla(data) {
             const tbody = document.getElementById('tablaEgresosBody');
             tbody.innerHTML = '';
+            actualizarKpisEgresos(data);
 
             if (!data || data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="13" class="text-center py-5 text-muted" style="font-weight:600;">No se encontraron registros de egresos para el periodo seleccionado.</td></tr>';
