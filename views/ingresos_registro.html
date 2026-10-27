@@ -635,21 +635,32 @@
 
         function inicializarFiltroPeriodo() {
             const selectAnio = document.getElementById('filtroAnio');
-            if (!selectAnio) return;
+            if (selectAnio) {
+                const anioActual = new Date().getFullYear();
+                let html = '<option value="TODOS">Todos</option>';
+                for (let y = anioActual + 1; y >= anioActual - 5; y--) {
+                    html += `<option value="${y}">${y}</option>`;
+                }
+                selectAnio.innerHTML = html;
 
-            const anioActual = new Date().getFullYear();
-            let html = '<option value="TODOS">Todos</option>';
-            for (let y = anioActual + 1; y >= anioActual - 5; y--) {
-                html += `<option value="${y}">${y}</option>`;
+                // Seleccionar año actual o de la sesión si existe
+                const ejSession = /*[[${ejercicio != null ? ejercicio : session.ejercicio}]]*/ '';
+                const anioParsed = parseInt(String(ejSession).replace(/\D/g, ''), 10);
+                const anioTarget = (!isNaN(anioParsed) && anioParsed >= 1990 && anioParsed <= 2100) ? String(anioParsed) : String(anioActual);
+
+                if (selectAnio.querySelector(`option[value="${anioTarget}"]`)) {
+                    selectAnio.value = anioTarget;
+                } else {
+                    selectAnio.value = String(anioActual);
+                }
             }
-            selectAnio.innerHTML = html;
 
-            // Seleccionar año actual o de la sesión si existe
-            const ejSession = /*[[${session.ejercicio}]]*/ '';
-            if (ejSession && ejSession !== '' && selectAnio.querySelector(`option[value="${ejSession}"]`)) {
-                selectAnio.value = ejSession;
-            } else {
-                selectAnio.value = String(anioActual);
+            const selectMes = document.getElementById('filtroMes');
+            if (selectMes) {
+                const mesActual = String(new Date().getMonth() + 1);
+                if (selectMes.querySelector(`option[value="${mesActual}"]`)) {
+                    selectMes.value = mesActual;
+                }
             }
         }
 
