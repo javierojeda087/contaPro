@@ -156,8 +156,25 @@
 
                 </div>
 
-                <!-- Egresos Table matching Reference Image -->
-                <div style="overflow-x: auto; flex: 1; min-height: 520px;">
+                <!-- BARRA DE PESTAÑAS: INFORME DE LISTADO vs INFORME EN GRÁFICOS -->
+                <div style="padding: 8px 22px 0 22px; background: #f8fafc; border-bottom: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-shrink: 0;">
+                    <div style="display: flex; gap: 6px;">
+                        <button type="button" id="btnTabVistaListado" onclick="cambiarVistaEgresos('listado')"
+                                style="padding: 9px 18px; background: #ffffff; color: #15803d; border: 1px solid #cbd5e1; border-bottom: 2px solid #ffffff; border-radius: 8px 8px 0 0; font-weight: 800; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 7px; cursor: pointer; margin-bottom: -1px; box-shadow: 0 -2px 5px rgba(0,0,0,0.02);">
+                            <i class="ph ph-table" style="font-size: 1.1rem;"></i> Informe de Listado
+                        </button>
+                        <button type="button" id="btnTabVistaGraficos" onclick="cambiarVistaEgresos('graficos')"
+                                style="padding: 9px 18px; background: #e2e8f0; color: #475569; border: 1px solid transparent; border-radius: 8px 8px 0 0; font-weight: 700; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 7px; cursor: pointer; margin-bottom: -1px;">
+                            <i class="ph ph-chart-pie-slice" style="font-size: 1.1rem; color: #0284c7;"></i> Informe en Gráficos
+                        </button>
+                    </div>
+                    <div style="font-size: 0.76rem; color: #64748b; font-weight: 600; padding-bottom: 6px;">
+                        <i class="ph ph-info"></i> Los gráficos y KPIs reflejan en tiempo real los filtros seleccionados arriba
+                    </div>
+                </div>
+
+                <!-- PESTAÑA 1: INFORME DE LISTADO (TABLA) -->
+                <div id="vistaInformeListado" style="overflow-x: auto; flex: 1; min-height: 520px;">
                     <table class="table table-hover align-middle m-0" style="font-size: 0.9rem;">
                         <thead style="background: #f8fafc; color: #334155; font-weight: 800; font-size: 0.85rem; border-bottom: 2px solid #e2e8f0;">
                             <tr>
@@ -222,6 +239,80 @@
                             </tr>
                         </tfoot>
                     </table>
+                </div>
+
+                <!-- PESTAÑA 2: INFORME EN GRÁFICOS -->
+                <div id="vistaInformeGraficos" style="display: none; padding: 20px 22px; background: #f8fafc; flex: 1; min-height: 520px;">
+                    
+                    <!-- Fila Superior: Evolución Temporal + Composición Impositiva + Distribución por Régimen -->
+                    <div style="display: grid; grid-template-columns: 1.45fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                        
+                        <!-- Card Gráfico 1: Evolución por Fecha -->
+                        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.03); display: flex; flex-direction: column;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <div>
+                                    <h4 style="margin: 0; font-size: 0.92rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+                                        <i class="ph ph-chart-bar" style="color: #0284c7; font-size: 1.15rem;"></i> Evolución de Egresos por Fecha
+                                    </h4>
+                                    <span style="font-size: 0.74rem; color: #64748b;">Monto total facturado e IVA Crédito por fecha</span>
+                                </div>
+                            </div>
+                            <div id="chartEvolucionFechasContainer" style="flex: 1; min-height: 230px; display: flex; flex-direction: column; justify-content: flex-end;"></div>
+                        </div>
+
+                        <!-- Card Gráfico 2: Composición Impositiva (Dona SVG + Leyenda) -->
+                        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.03); display: flex; flex-direction: column;">
+                            <div style="margin-bottom: 10px;">
+                                <h4 style="margin: 0; font-size: 0.92rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+                                    <i class="ph ph-chart-donut" style="color: #16a34a; font-size: 1.15rem;"></i> Composición Impositiva
+                                </h4>
+                                <span style="font-size: 0.74rem; color: #64748b;">Base Imponible, IVA 10%, IVA 5% y Exentas</span>
+                            </div>
+                            <div id="chartComposicionImpositivaContainer" style="flex: 1; display: flex; flex-direction: column; justify-content: center;"></div>
+                        </div>
+
+                        <!-- Card Gráfico 3: Distribución por Régimen (Dona SVG + Leyenda) -->
+                        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.03); display: flex; flex-direction: column;">
+                            <div style="margin-bottom: 10px;">
+                                <h4 style="margin: 0; font-size: 0.92rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+                                    <i class="ph ph-pie-chart" style="color: #7e22ce; font-size: 1.15rem;"></i> Distribución por Régimen
+                                </h4>
+                                <span style="font-size: 0.74rem; color: #64748b;">Participación de IRP &amp; IVA, IVA, IRP y G. Capital</span>
+                            </div>
+                            <div id="chartDistribucionRegimenContainer" style="flex: 1; display: flex; flex-direction: column; justify-content: center;"></div>
+                        </div>
+
+                    </div>
+
+                    <!-- Fila Inferior: Top 10 Proveedores (Barras Horizontales) + Modalidad y Condición -->
+                    <div style="display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px;">
+                        
+                        <!-- Card Gráfico 4: Ranking Top Proveedores -->
+                        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <div>
+                                    <h4 style="margin: 0; font-size: 0.92rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+                                        <i class="ph ph-buildings" style="color: #15803d; font-size: 1.15rem;"></i> Top 10 Proveedores por Volumen de Compras
+                                    </h4>
+                                    <span style="font-size: 0.74rem; color: #64748b;">Proveedores con mayor facturación e IVA en el periodo filtrado</span>
+                                </div>
+                            </div>
+                            <div id="chartTopProveedoresContainer"></div>
+                        </div>
+
+                        <!-- Card Gráfico 5: Modalidad de Timbrado y Condición de Venta -->
+                        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 16px;">
+                            <div>
+                                <h4 style="margin: 0; font-size: 0.92rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+                                    <i class="ph ph-sliders-horizontal" style="color: #ea580c; font-size: 1.15rem;"></i> Modalidad de Comprobantes y Condición
+                                </h4>
+                                <span style="font-size: 0.74rem; color: #64748b;">Comparativa por tipo de emisión y condición de pago</span>
+                            </div>
+                            <div id="chartModalidadCondicionContainer" style="flex: 1; display: flex; flex-direction: column; justify-content: space-around; gap: 14px;"></div>
+                        </div>
+
+                    </div>
+
                 </div>
 
             </div>
@@ -1153,6 +1244,312 @@
             setTxt('footTotalIva5',        sumIva5.toLocaleString('es-PY'));
             setTxt('footTotalIva10',       sumIva10.toLocaleString('es-PY'));
             setTxt('footTotalGeneral',     sumTotal.toLocaleString('es-PY'));
+
+            renderGraficosEgresos(lista);
+        }
+
+        let _vistaActualEgresos = 'listado';
+        let _ultimoListadoFiltrado = [];
+
+        function cambiarVistaEgresos(vista) {
+            _vistaActualEgresos = vista;
+            const btnList = document.getElementById('btnTabVistaListado');
+            const btnGraf = document.getElementById('btnTabVistaGraficos');
+            const divList = document.getElementById('vistaInformeListado');
+            const divGraf = document.getElementById('vistaInformeGraficos');
+
+            if (vista === 'graficos') {
+                if (divList) divList.style.display = 'none';
+                if (divGraf) divGraf.style.display = 'block';
+                if (btnGraf) {
+                    btnGraf.style.background = '#ffffff';
+                    btnGraf.style.color = '#0284c7';
+                    btnGraf.style.border = '1px solid #cbd5e1';
+                    btnGraf.style.borderBottom = '2px solid #ffffff';
+                    btnGraf.style.fontWeight = '800';
+                }
+                if (btnList) {
+                    btnList.style.background = '#e2e8f0';
+                    btnList.style.color = '#475569';
+                    btnList.style.border = '1px solid transparent';
+                    btnList.style.fontWeight = '700';
+                }
+                renderGraficosEgresos(_ultimoListadoFiltrado);
+            } else {
+                if (divList) divList.style.display = 'block';
+                if (divGraf) divGraf.style.display = 'none';
+                if (btnList) {
+                    btnList.style.background = '#ffffff';
+                    btnList.style.color = '#15803d';
+                    btnList.style.border = '1px solid #cbd5e1';
+                    btnList.style.borderBottom = '2px solid #ffffff';
+                    btnList.style.fontWeight = '800';
+                }
+                if (btnGraf) {
+                    btnGraf.style.background = '#e2e8f0';
+                    btnGraf.style.color = '#475569';
+                    btnGraf.style.border = '1px solid transparent';
+                    btnGraf.style.fontWeight = '700';
+                }
+            }
+        }
+
+        function construirDonaSvg(segmentos, totalValor, centerLabelTop, centerLabelBottom) {
+            const radius = 52;
+            const circum = 2 * Math.PI * radius;
+            let offset = 0;
+            let circlesHtml = '';
+
+            if (totalValor <= 0) {
+                circlesHtml = `<circle cx="68" cy="68" r="${radius}" fill="transparent" stroke="#e2e8f0" stroke-width="18"></circle>`;
+            } else {
+                segmentos.forEach(seg => {
+                    if (seg.valor <= 0) return;
+                    const frac = seg.valor / totalValor;
+                    const dash = frac * circum;
+                    circlesHtml += `<circle cx="68" cy="68" r="${radius}" fill="transparent" stroke="${seg.color}" stroke-width="18"
+                        stroke-dasharray="${dash} ${circum - dash}" stroke-dashoffset="${-offset}" transform="rotate(-90 68 68)">
+                        <title>${seg.label}: Gs. ${Math.round(seg.valor).toLocaleString('es-PY')} (${(frac * 100).toFixed(1)}%)</title>
+                    </circle>`;
+                    offset += dash;
+                });
+            }
+
+            let legendHtml = segmentos.map(seg => {
+                const pct = totalValor > 0 ? ((seg.valor / totalValor) * 100).toFixed(1) : '0.0';
+                return `<div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; padding: 3px 0; border-bottom: 1px dashed #f1f5f9;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="width: 10px; height: 10px; border-radius: 3px; background: ${seg.color}; display: inline-block;"></span>
+                        <span style="font-weight: 700; color: #334155;">${seg.label}</span>
+                        ${seg.sub ? `<span style="color: #94a3b8; font-size: 0.7rem;">(${seg.sub})</span>` : ''}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-family: monospace; font-weight: 800; color: #0f172a;">Gs. ${Math.round(seg.valor).toLocaleString('es-PY')}</span>
+                        <span style="background: #f1f5f9; color: #475569; font-weight: 800; font-size: 0.68rem; padding: 1px 5px; border-radius: 4px; min-width: 40px; text-align: right;">${pct}%</span>
+                    </div>
+                </div>`;
+            }).join('');
+
+            return `
+                <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                    <div style="position: relative; width: 136px; height: 136px; flex-shrink: 0; margin: 0 auto;">
+                        <svg width="136" height="136" viewBox="0 0 136 136">${circlesHtml}</svg>
+                        <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; pointer-events: none;">
+                            <span style="font-size: 0.66rem; font-weight: 800; color: #64748b; text-transform: uppercase;">${centerLabelTop}</span>
+                            <span style="font-size: 0.82rem; font-weight: 900; color: #0f172a;">${centerLabelBottom}</span>
+                        </div>
+                    </div>
+                    <div style="flex: 1; min-width: 170px;">${legendHtml}</div>
+                </div>
+            `;
+        }
+
+        function renderGraficosEgresos(lista) {
+            _ultimoListadoFiltrado = Array.isArray(lista) ? lista : [];
+            const cEvol = document.getElementById('chartEvolucionFechasContainer');
+            const cImp  = document.getElementById('chartComposicionImpositivaContainer');
+            const cReg  = document.getElementById('chartDistribucionRegimenContainer');
+            const cProv = document.getElementById('chartTopProveedoresContainer');
+            const cMod  = document.getElementById('chartModalidadCondicionContainer');
+            if (!cEvol || !cImp || !cReg || !cProv || !cMod) return;
+
+            if (_ultimoListadoFiltrado.length === 0) {
+                const emptyMsg = '<div style="text-align: center; color: #94a3b8; padding: 32px 12px; font-weight: 600; font-size: 0.84rem;">Sin comprobantes para graficar en el filtro actual.</div>';
+                cEvol.innerHTML = emptyMsg;
+                cImp.innerHTML  = emptyMsg;
+                cReg.innerHTML  = emptyMsg;
+                cProv.innerHTML = emptyMsg;
+                cMod.innerHTML  = emptyMsg;
+                return;
+            }
+
+            let sumBase10 = 0, sumIva10 = 0, sumBase5 = 0, sumIva5 = 0, sumExenta = 0, sumTotal = 0;
+            let cantElectr = 0, montoElectr = 0, cantManual = 0, montoManual = 0;
+            let cantContado = 0, montoContado = 0, cantCredito = 0, montoCredito = 0;
+
+            const porFecha = {};
+            const porRegimen = {
+                '1': { label: 'IRP & IVA', color: '#2563eb', cant: 0, total: 0 },
+                '3': { label: 'IVA',       color: '#7c3aed', cant: 0, total: 0 },
+                '2': { label: 'IRP',       color: '#16a34a', cant: 0, total: 0 },
+                '4': { label: 'G. CAPITAL',color: '#d97706', cant: 0, total: 0 }
+            };
+            const porProveedor = {};
+
+            _ultimoListadoFiltrado.forEach(item => {
+                const tipDoc = String(item.TIP_DOC || item.tip_doc || 'FAC').toUpperCase();
+                const sign = (tipDoc === 'NCR' || tipDoc.includes('CRED') || tipDoc.includes('CRÉD')) ? -1 : 1;
+
+                const g10 = Math.max(0, Math.round(parseFloat(item.GRAV10 || item.grav10 || 0)));
+                const i10 = Math.max(0, Math.round(parseFloat(item.IVA10  || item.iva10  || 0)));
+                const g5  = Math.max(0, Math.round(parseFloat(item.GRAV5  || item.grav5  || 0)));
+                const i5  = Math.max(0, Math.round(parseFloat(item.IVA5   || item.iva5   || 0)));
+                const ex  = Math.max(0, Math.round(parseFloat(item.EXENTAS || item.exentas || 0)));
+                const tot = Math.max(0, Math.round(parseFloat(item.VALOR_TOTAL || item.valor_total || 0)));
+
+                const b10 = Math.max(0, g10 - i10);
+                const b5  = Math.max(0, g5 - i5);
+
+                sumBase10 += sign * b10;
+                sumIva10  += sign * i10;
+                sumBase5  += sign * b5;
+                sumIva5   += sign * i5;
+                sumExenta += sign * ex;
+                sumTotal  += sign * tot;
+
+                // Fecha
+                const rawFec = String(item.FEC_EGRESO || item.fec_egreso || '').split('T')[0].split(' ')[0];
+                const fecLabel = formatFechaTabla(item.FEC_EGRESO_FMT || item.fec_egreso_fmt || rawFec);
+                const fKey = rawFec || fecLabel;
+                if (!porFecha[fKey]) {
+                    porFecha[fKey] = { label: fecLabel.slice(0, 5), fullDate: fecLabel, total: 0, iva: 0, cant: 0 };
+                }
+                porFecha[fKey].total += sign * tot;
+                porFecha[fKey].iva   += sign * (i10 + i5);
+                porFecha[fKey].cant++;
+
+                // Régimen
+                const rRaw = String(item.COD_REGIMEN || item.cod_regimen || item.REGIMEN || item.regimen || '1').trim().toUpperCase();
+                let rKey = '1';
+                if (rRaw === '2' || rRaw === 'IRP') rKey = '2';
+                else if (rRaw === '3' || rRaw === 'IVA') rKey = '3';
+                else if (rRaw === '4' || rRaw.includes('CAPITAL')) rKey = '4';
+                porRegimen[rKey].cant++;
+                porRegimen[rKey].total += sign * tot;
+
+                // Proveedor
+                const nomP = String(item.NOM_PROVEEDOR || item.nom_proveedor || 'SIN NOMBRE').trim();
+                const rucP = String(item.RUC_PROVEEDOR || item.ruc_proveedor || '-').trim();
+                const pKey = rucP !== '-' ? rucP : nomP;
+                if (!porProveedor[pKey]) {
+                    porProveedor[pKey] = { nombre: nomP, ruc: rucP, cant: 0, iva: 0, total: 0 };
+                }
+                porProveedor[pKey].cant++;
+                porProveedor[pKey].iva   += sign * (i10 + i5);
+                porProveedor[pKey].total += sign * tot;
+
+                // Modalidad y Condición
+                const tipTimb = String(item.TIP_TIMB || item.tip_timb || '').toUpperCase();
+                const cdc = String(item.CDC || item.cdc || '').replace(/\D/g, '');
+                if (tipTimb.includes('ELECTR') || cdc.length === 44) {
+                    cantElectr++;
+                    montoElectr += sign * tot;
+                } else {
+                    cantManual++;
+                    montoManual += sign * tot;
+                }
+
+                const cond = String(item.CONDICION || item.condicion || 'CON').toUpperCase();
+                if (cond.startsWith('CRE') || cond.includes('CRED')) {
+                    cantCredito++;
+                    montoCredito += sign * tot;
+                } else {
+                    cantContado++;
+                    montoContado += sign * tot;
+                }
+            });
+
+            // 1. Render Gráfico Evolución por Fecha
+            const fechasArr = Object.keys(porFecha).sort().map(k => porFecha[k]);
+            const maxFechaTot = Math.max(1, ...fechasArr.map(f => f.total));
+            let barsHtml = fechasArr.map(f => {
+                const hPct = Math.max(6, Math.round((Math.max(0, f.total) / maxFechaTot) * 145));
+                const hIva = Math.max(2, Math.round((Math.max(0, f.iva) / maxFechaTot) * 145));
+                return `<div style="flex: 1; min-width: 34px; display: flex; flex-direction: column; align-items: center; gap: 4px;" title="${f.fullDate} · ${f.cant} comp. · Total: Gs. ${Math.round(f.total).toLocaleString('es-PY')} · IVA: Gs. ${Math.round(f.iva).toLocaleString('es-PY')}">
+                    <div style="font-size: 0.65rem; font-weight: 800; color: #334155; font-family: monospace; white-space: nowrap;">${f.total >= 1000000 ? (f.total/1000000).toFixed(1)+'M' : Math.round(f.total/1000)+'k'}</div>
+                    <div style="height: 150px; width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 2px; border-bottom: 1px solid #cbd5e1; padding: 0 2px;">
+                        <div style="width: 14px; height: ${hPct}px; background: linear-gradient(180deg, #0284c7, #0369a1); border-radius: 4px 4px 0 0; transition: height 0.3s;"></div>
+                        <div style="width: 8px; height: ${hIva}px; background: #16a34a; border-radius: 3px 3px 0 0; transition: height 0.3s;"></div>
+                    </div>
+                    <div style="font-size: 0.68rem; font-weight: 700; color: #64748b;">${f.label}</div>
+                </div>`;
+            }).join('');
+
+            cEvol.innerHTML = `
+                <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; align-items: flex-end;">${barsHtml}</div>
+                <div style="display: flex; justify-content: center; gap: 16px; font-size: 0.72rem; color: #475569; margin-top: 6px;">
+                    <span style="display: inline-flex; align-items: center; gap: 5px;"><span style="width: 10px; height: 10px; background: #0284c7; border-radius: 2px;"></span> Total Facturado</span>
+                    <span style="display: inline-flex; align-items: center; gap: 5px;"><span style="width: 10px; height: 10px; background: #16a34a; border-radius: 2px;"></span> IVA Crédito</span>
+                </div>
+            `;
+
+            // 2. Render Gráfico Composición Impositiva
+            cImp.innerHTML = construirDonaSvg([
+                { label: 'Base Imp. 10%', valor: Math.max(0, sumBase10), color: '#0284c7' },
+                { label: 'IVA 10%',       valor: Math.max(0, sumIva10),  color: '#16a34a' },
+                { label: 'Base Imp. 5%',  valor: Math.max(0, sumBase5),  color: '#38bdf8' },
+                { label: 'IVA 5%',        valor: Math.max(0, sumIva5),   color: '#4ade80' },
+                { label: 'Exentas',       valor: Math.max(0, sumExenta), color: '#94a3b8' }
+            ], Math.max(0, sumTotal), 'Total', `Gs. ${Math.round(sumTotal).toLocaleString('es-PY')}`);
+
+            // 3. Render Gráfico Distribución por Régimen
+            cReg.innerHTML = construirDonaSvg(
+                Object.values(porRegimen).map(r => ({
+                    label: r.label,
+                    sub: `${r.cant} comp.`,
+                    valor: Math.max(0, r.total),
+                    color: r.color
+                })),
+                Math.max(0, sumTotal),
+                'Comprobantes',
+                `${_ultimoListadoFiltrado.length} docs`
+            );
+
+            // 4. Render Top 10 Proveedores
+            const topProv = Object.values(porProveedor).sort((a, b) => b.total - a.total).slice(0, 10);
+            const maxProvTot = Math.max(1, ...(topProv.map(p => p.total)));
+            cProv.innerHTML = topProv.map((p, idx) => {
+                const wPct = Math.max(3, Math.round((Math.max(0, p.total) / maxProvTot) * 100));
+                const sharePct = sumTotal > 0 ? ((p.total / sumTotal) * 100).toFixed(1) : '0.0';
+                return `<div style="margin-bottom: 9px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.77rem; margin-bottom: 3px;">
+                        <div style="font-weight: 800; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 62%;">
+                            <span style="color: #16a34a; margin-right: 4px;">#${idx + 1}</span> ${p.nombre} <small style="color: #64748b; font-weight: 600;">(${p.ruc} · ${p.cant} comp.)</small>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; font-family: monospace;">
+                            <span style="font-size: 0.72rem; color: #0284c7; font-weight: 700;">IVA: ${Math.round(p.iva).toLocaleString('es-PY')}</span>
+                            <span style="font-weight: 900; color: #0f172a;">Gs. ${Math.round(p.total).toLocaleString('es-PY')}</span>
+                            <span style="background: #dcfce7; color: #15803d; font-weight: 800; font-size: 0.68rem; padding: 1px 6px; border-radius: 4px;">${sharePct}%</span>
+                        </div>
+                    </div>
+                    <div style="height: 8px; width: 100%; background: #f1f5f9; border-radius: 6px; overflow: hidden;">
+                        <div style="height: 100%; width: ${wPct}%; background: linear-gradient(90deg, #16a34a, #0284c7); border-radius: 6px;"></div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // 5. Render Modalidad (Electrónico vs Pre-impreso) y Condición (Contado vs Crédito)
+            const totalDocs = Math.max(1, _ultimoListadoFiltrado.length);
+            const pctEl  = ((cantElectr / totalDocs) * 100).toFixed(1);
+            const pctMan = ((cantManual / totalDocs) * 100).toFixed(1);
+            const pctCon = ((cantContado / totalDocs) * 100).toFixed(1);
+            const pctCre = ((cantCredito / totalDocs) * 100).toFixed(1);
+
+            cMod.innerHTML = `
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                    <div style="font-size: 0.75rem; font-weight: 800; color: #334155; text-transform: uppercase; margin-bottom: 8px;">Modalidad de Timbrado (SIFEN vs. Manual)</div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.77rem; margin-bottom: 5px;">
+                        <span><b style="color: #0284c7;">Electrónicos:</b> ${cantElectr} (${pctEl}%) · Gs. ${Math.round(montoElectr).toLocaleString('es-PY')}</span>
+                        <span><b style="color: #64748b;">Manuales:</b> ${cantManual} (${pctMan}%)</span>
+                    </div>
+                    <div style="height: 12px; width: 100%; background: #e2e8f0; border-radius: 6px; overflow: hidden; display: flex;">
+                        <div style="width: ${pctEl}%; background: #0284c7;" title="Electrónicos: ${pctEl}%"></div>
+                        <div style="width: ${pctMan}%; background: #94a3b8;" title="Manuales: ${pctMan}%"></div>
+                    </div>
+                </div>
+
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                    <div style="font-size: 0.75rem; font-weight: 800; color: #334155; text-transform: uppercase; margin-bottom: 8px;">Condición de Compra (Contado vs. Crédito)</div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.77rem; margin-bottom: 5px;">
+                        <span><b style="color: #16a34a;">Contado:</b> ${cantContado} (${pctCon}%) · Gs. ${Math.round(montoContado).toLocaleString('es-PY')}</span>
+                        <span><b style="color: #d97706;">Crédito:</b> ${cantCredito} (${pctCre}%) · Gs. ${Math.round(montoCredito).toLocaleString('es-PY')}</span>
+                    </div>
+                    <div style="height: 12px; width: 100%; background: #e2e8f0; border-radius: 6px; overflow: hidden; display: flex;">
+                        <div style="width: ${pctCon}%; background: #16a34a;" title="Contado: ${pctCon}%"></div>
+                        <div style="width: ${pctCre}%; background: #d97706;" title="Crédito: ${pctCre}%"></div>
+                    </div>
+                </div>
+            `;
         }
 
         function renderTabla(data) {
