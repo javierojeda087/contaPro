@@ -878,15 +878,18 @@ class ReportesContablesController {
     }
 
     // =========================================================================
-    // 6. FORMULARIO 120 IVA V3 (COF12000)
+    // 6. FORMULARIO 120 IVA VERSIÓN 4 (COF12000)
     // =========================================================================
     private static function fetchForm120EmpresaInfo(string $codEmpresa): array {
         $idProp = TenantContext::idPropietario();
         $emp = [
-            'cod_empresa'  => $codEmpresa,
-            'razon_social' => 'CONTRIBUYENTE DEMOSTRATIVO',
-            'rucNum'       => '5555',
-            'rucDv'        => '7',
+            'cod_empresa'      => $codEmpresa,
+            'razon_social'     => 'CONTRIBUYENTE DEMOSTRATIVO',
+            'primer_apellido'  => 'CONTRIBUYENTE DEMOSTRATIVO',
+            'segundo_apellido' => '',
+            'nombres'          => '',
+            'rucNum'           => '5555',
+            'rucDv'            => '7',
         ];
         try {
             $row = Database::queryForMap(
@@ -896,13 +899,35 @@ class ReportesContablesController {
             );
             if ($row) {
                 $emp['cod_empresa']  = (string)($row['cod_empresa'] ?? $codEmpresa);
-                $emp['razon_social'] = (string)($row['razon_social'] ?? 'CONTRIBUYENTE DEMOSTRATIVO');
+                $rs = trim((string)($row['razon_social'] ?? 'CONTRIBUYENTE DEMOSTRATIVO'));
+                $emp['razon_social'] = $rs;
                 $rucRaw = trim((string)($row['ruc'] ?? ''));
                 if (str_contains($rucRaw, '-')) {
                     [$emp['rucNum'], $emp['rucDv']] = explode('-', $rucRaw, 2);
                 } else {
                     $emp['rucNum'] = $rucRaw;
                     $emp['rucDv']  = '0';
+                }
+
+                // Separar Primer Apellido, Segundo Apellido y Nombres para personas físicas en el encabezado V4
+                $esJuridica = preg_match('/\b(S\.?A\.?|S\.?R\.?L\.?|LTDA|SOCIEDAD|EMPRESA|COOPERATIVA|E\.?A\.?S\.?|FUNDACION|ASOCIACION)\b/i', $rs);
+                if (!$esJuridica && str_contains($rs, ',')) {
+                    [$apellidosPart, $nombresPart] = array_map('trim', explode(',', $rs, 2));
+                    $apWords = preg_split('/\s+/', $apellidosPart) ?: [];
+                    $emp['primer_apellido']  = $apWords[0] ?? $apellidosPart;
+                    $emp['segundo_apellido'] = isset($apWords[1]) ? implode(' ', array_slice($apWords, 1)) : '';
+                    $emp['nombres']          = $nombresPart;
+                } elseif (!$esJuridica) {
+                    $words = preg_split('/\s+/', $rs) ?: [];
+                    if (count($words) >= 3 && count($words) <= 5) {
+                        $emp['primer_apellido']  = $words[0];
+                        $emp['segundo_apellido'] = $words[1];
+                        $emp['nombres']          = implode(' ', array_slice($words, 2));
+                    } else {
+                        $emp['primer_apellido'] = $rs;
+                    }
+                } else {
+                    $emp['primer_apellido'] = $rs;
                 }
             }
         } catch (\Throwable $ignored) {}
@@ -944,10 +969,40 @@ class ReportesContablesController {
         self::renderFormPage('formulario_120', [
             'empresa'     => self::fetchForm120EmpresaInfo($codEmpresa),
             'nomForma'    => 'COF12000',
-            'tituloForma' => 'Formulario 120 - Impuesto al Valor Agregado (Versión 3)',
+            'tituloForma' => 'Formulario N° 120 - Impuesto al Valor Agregado (Versión 4)',
             'defMes'      => $defMes,
             'defAnio'     => $defAnio,
         ]);
+    }
+
+    private static function normalizarSavedForm120V4(array $saved, array $autoData): array {
+        // Asegurar retrocompatibilidad si el registro guardado venía de V3 (ej. C151 desde C11, C160 desde C25, C166 desde C47, C62 desde C40)
+        if (((int)($saved['C151'] ?? 0) === 0) && ((int)($saved['C11'] ?? 0) > 0)) {
+            $saved['C151'] = (int)$saved['C11'];
+            $saved['C157'] = (int)($saved['C19'] ?? round((int)$saved['C11'] * 0.05));
+        }
+        if (((int)($saved['C155'] ?? 0) === 0) && ((int)($saved['C16'] ?? 0) > 0)) {
+            $saved['C155'] = (int)$saved['C16'];
+            $saved['C159'] = (int)($saved['C20'] ?? round((int)$saved['C16'] * 0.05));
+        }
+        if (((int)($saved['C160'] ?? 0) === 0) && ((int)($saved['C25'] ?? 0) > 0)) {
+            $saved['C160'] = (int)$saved['C25'];
+        }
+        if (((int)($saved['C164'] ?? 0) === 0) && ((int)($saved['C39'] ?? 0) > 0)) {
+            $saved['C164'] = (int)$saved['C39'];
+        }
+        if (((int)($saved['C166'] ?? 0) === 0) && ((int)($saved['C47'] ?? 0) > 0)) {
+            $saved['C166'] = (int)$saved['C47'];
+        }
+        if (((int)($saved['C62'] ?? 0) === 0) && ((int)($saved['C40'] ?? 0) > 0)) {
+            $saved['C62'] = (int)$saved['C40'];
+        }
+        foreach ($autoData as $k => $v) {
+            if (!array_key_exists($k, $saved) || $saved[$k] === null) {
+                $saved[$k] = $v;
+            }
+        }
+        return $saved;
     }
 
     public static function apiFormulario120Obtener(): void {
@@ -964,11 +1019,10 @@ class ReportesContablesController {
             [$idProp, $codEmpresa, $mes, $anio]
         );
         if (!empty($rows)) {
-            $saved = $rows[0];
-            // Si el formulario guardado tenía 0 en compras/ventas pero ahora existen comprobantes cargados en libros, usar el cálculo actualizado
-            $savedMov = (int)($saved['C10'] ?? 0) + (int)($saved['C11'] ?? 0) + (int)($saved['C12'] ?? 0) + (int)($saved['C32'] ?? 0) + (int)($saved['C35'] ?? 0) + (int)($saved['C40'] ?? 0);
             $autoData = $autoCalc['data'];
-            $autoMov  = (int)($autoData['C10'] ?? 0) + (int)($autoData['C11'] ?? 0) + (int)($autoData['C12'] ?? 0) + (int)($autoData['C32'] ?? 0) + (int)($autoData['C35'] ?? 0) + (int)($autoData['C40'] ?? 0);
+            $saved    = self::normalizarSavedForm120V4($rows[0], $autoData);
+            $savedMov = (int)($saved['C10'] ?? 0) + (int)($saved['C151'] ?? 0) + (int)($saved['C12'] ?? 0) + (int)($saved['C32'] ?? 0) + (int)($saved['C35'] ?? 0) + (int)($saved['C62'] ?? 0);
+            $autoMov  = (int)($autoData['C10'] ?? 0) + (int)($autoData['C151'] ?? 0) + (int)($autoData['C12'] ?? 0) + (int)($autoData['C32'] ?? 0) + (int)($autoData['C35'] ?? 0) + (int)($autoData['C62'] ?? 0);
 
             View::json([
                 'status'           => ($savedMov === 0 && $autoMov > 0) ? 'calculated' : 'found',
@@ -1099,24 +1153,35 @@ class ReportesContablesController {
             }
         }
 
-        $c10 = (int)round($vBase10);
-        $c22 = (int)round($vIva10);
-        $c11 = (int)round($vBase5);
-        $c19 = (int)round($vIva5);
-        $c12 = (int)round($vExenta);
-        $c13 = 0;
-        $c14 = 0;
-        $c15 = (int)round($vNcrBase10);
-        $c23 = (int)round($vNcrIva10);
-        $c16 = (int)round($vNcrBase5);
-        $c20 = (int)round($vNcrIva5);
-        $c17 = (int)round($vNcrExenta);
+        // Rubro 1 (Versión 4)
+        $c10  = (int)round($vBase10);
+        $c22  = (int)round($vIva10);
+        $c150 = 0; // Productos agrícolas al 5%
+        $c156 = 0;
+        $c151 = (int)round($vBase5); // Otros bienes y/o servicios gravados al 5%
+        $c157 = (int)round($vIva5);
+        $c11  = $c151; // Alias retrocompatible V3
+        $c19  = $c157;
+        $c12  = (int)round($vExenta);
+        $c152 = 0; // Exportación productos agrícolas
+        $c153 = 0; // Flete internacional exportación
+        $c13  = 0;
+        $c14  = 0; // Exportación otros bienes
+        $c15  = (int)round($vNcrBase10);
+        $c23  = (int)round($vNcrIva10);
+        $c154 = 0; // Ajustes 5% agrícolas
+        $c158 = 0;
+        $c155 = (int)round($vNcrBase5); // Ajustes 5% otros bienes y servicios
+        $c159 = (int)round($vNcrIva5);
+        $c16  = $c155;
+        $c20  = $c159;
+        $c17  = (int)round($vNcrExenta);
 
-        $c18 = $c10 + $c11 + $c12 + $c13 + $c14 + $c15 + $c16 + $c17;
-        $c21 = $c19 + $c20;
+        $c18 = $c10 + $c150 + $c151 + $c12 + $c152 + $c153 + $c14 + $c15 + $c154 + $c155 + $c17;
+        $c21 = $c156 + $c157 + $c158 + $c159;
         $c24 = $c22 + $c23;
 
-        // 2. Rubro 2: Acumulado de los últimos 6 meses (incluyendo el mes declarado)
+        // 2. Rubro 2 (Versión 4): Acumulado de los últimos 6 meses (incluyendo el periodo que se declara)
         $sixMonthsStart = date('Y-m-01', strtotime("-5 months", strtotime($startDateStr)));
         $rowsVentas6M = Database::queryForList(
             "SELECT tip_doc, COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
@@ -1138,11 +1203,14 @@ class ReportesContablesController {
             $acumGrav6M += $sign * ($b10_6 + $b5_6);
             $acumEx6M   += $sign * max(0.0, (float)$rv6['exentas']);
         }
-        $c25 = max(0, (int)round($acumGrav6M));
-        $c26 = max(0, (int)round($acumEx6M));
-        $c27 = $c25 + $c26;
-        $c28 = 0; $c29 = 0; $c30 = 0;
-        $c31 = $c27 + $c30;
+        $c160 = max(0, (int)round($acumGrav6M));
+        $c161 = 0;
+        $c25  = $c160;
+        $c26  = max(0, (int)round($acumEx6M));
+        $c27  = $c160 + $c161 + $c26;
+        $c162 = 0; $c163 = 0; $c28 = 0; $c29 = 0;
+        $c30  = $c162 + $c163 + $c29;
+        $c31  = $c27 + $c30;
 
         // 3. Compras del periodo desde co_egresos (respetando régimen, form_120, clasificacion_gasto y tipo de comprobante)
         $rowsCompras = Database::queryForList(
@@ -1162,13 +1230,15 @@ class ReportesContablesController {
             [$idProp, $codEmpresa, $startDateStr, $endDateStr]
         );
 
-        // Acumuladores Rubro 3
+        // Acumuladores Rubro 3 y Rubro 6
         $dirBase10 = 0.0; $dirIva10 = 0.0;
         $dirBase5  = 0.0; $dirIva5  = 0.0;
         $proBase10 = 0.0; $proIva10 = 0.0;
         $proBase5  = 0.0; $proIva5  = 0.0;
         $compExentasDirecto    = 0.0;
         $compExentasIndistinto = 0.0;
+        $noIvaBase10 = 0.0; $noIva10 = 0.0;
+        $noIvaBase5  = 0.0; $noIva5  = 0.0;
 
         // Estadísticas detalladas de los datos cargados
         $cantCompTotal      = 0;
@@ -1302,7 +1372,10 @@ class ReportesContablesController {
             } else {
                 $cantCompSoloIrp++;
                 $montoNoImputaIva += $sign * $totRaw;
-                // Comprobantes que no imputan crédito fiscal IVA o exentos van a Casilla 40
+                $noIvaBase10 += $sign * $b10;
+                $noIva10     += $sign * $i10;
+                $noIvaBase5  += $sign * $b5;
+                $noIva5      += $sign * $i5;
                 $compExentasDirecto += $sign * $exRaw;
             }
         }
@@ -1312,22 +1385,26 @@ class ReportesContablesController {
         usort($topProveedores, fn($a, $b) => $b['total'] <=> $a['total']);
         $topProveedores = array_slice($topProveedores, 0, 15);
 
+        // Rubro 3 (Versión 4)
         $c32 = max(0, (int)round($dirBase5));
         $c35 = max(0, (int)round($dirBase10));
         $c38 = max(0, (int)round($dirIva10 + $dirIva5));
 
         $c33 = max(0, (int)round($proBase5));
         $c36 = max(0, (int)round($proBase10));
-        // Proporción de operaciones gravadas sobre total 6 meses (si hay prorrateo)
-        $propGrav = ($c31 > 0) ? (($c25 + $c30) / $c31) : 1.0;
-        $c39 = max(0, (int)round(($proIva10 + $proIva5) * $propGrav));
+        $c39 = max(0, (int)round($proIva10 + $proIva5));
+
+        // Inc. c [164]: Rubro 3, Col. III: Inc. b [39] x (Rubro 2 Inc. a+b / Inc. d)
+        $propMercInterno = ($c27 > 0) ? (($c160 + $c161) / $c27) : 1.0;
+        $c164 = max(0, (int)round($c39 * $propMercInterno));
+        $c165 = 0; // Hoja de cálculo exportadores (casilla 216)
 
         $c34 = 0; $c37 = 0; $c42 = 0;
         $c40 = max(0, (int)round($compExentasDirecto));
         $c41 = max(0, (int)round($compExentasIndistinto));
-        $c43 = $c38 + $c39 + $c42;
+        $c43 = $c38 + $c164 + $c165 + $c42;
 
-        // 4. Determinación del Impuesto (Rubro 4)
+        // 4. Determinación del Impuesto o del Saldo Técnico (Rubro 4 Versión 4)
         $c44 = $c21 + $c24;
         $c45 = $c43;
         $prevMes  = ($mes === 1) ? 12 : $mes - 1;
@@ -1338,23 +1415,42 @@ class ReportesContablesController {
         ) ?? 0);
 
         if (($c45 + $c46) > $c44) {
-            $c47 = ($c45 + $c46) - $c44;
-            $c48 = 0;
+            $c166 = ($c45 + $c46) - $c44;
+            $c48  = 0;
         } else {
-            $c48 = $c44 - ($c45 + $c46);
-            $c47 = 0;
+            $c48  = $c44 - ($c45 + $c46);
+            $c166 = 0;
         }
+        $c167 = 0; // Saldo a favor a remitir en beneficio del Fisco (Art. 91)
+        $c47  = max(0, $c166 - $c167);
+        $c49  = 0; // Anexo Exportador casilla 148
+        $c168 = 0; // Deducción Ley N° 4.962/2013
+        $c50  = max(0, $c48 - $c49 - $c168);
 
-        $c49 = 0;
-        $c50 = max(0, $c48 - $c49);
+        // 5. Impuesto Determinado y/o Saldo Financiero a Favor del Contribuyente (Rubro 5 Versión 4)
+        $c55  = $c50;
+        $c51  = (int)(Database::queryForValue(
+            "SELECT c54 FROM co_formulario_120 WHERE id_propietario = ? AND cod_empresa = ? AND mes = ? AND anio = ? LIMIT 1",
+            [$idProp, $codEmpresa, $prevMes, $prevAnio]
+        ) ?? 0);
+        $c52  = 0; // Retenciones computables
+        $c169 = 0; // Percepciones computables
+        $c56  = 0; // Multa por contravención
+        $c53  = $c51 + $c52 + $c169;
+        $c57  = $c55 + $c56;
+        $c54  = ($c53 > $c57) ? ($c53 - $c57) : 0;
+        $c58  = ($c57 > $c53) ? ($c57 - $c53) : 0;
 
-        // 5. Liquidación y Saldo del Impuesto (Rubro 5)
-        $c55 = $c50;
-        $c51 = 0; $c52 = 0; $c56 = 0;
-        $c53 = $c51 + $c52;
-        $c57 = $c55 + $c56;
-        $c54 = ($c53 > $c57) ? ($c53 - $c57) : 0;
-        $c58 = ($c57 > $c53) ? ($c57 - $c53) : 0;
+        // 6. Información de las Compras vinculadas a operaciones exoneradas o no alcanzadas (Rubro 6 Versión 4)
+        $c59  = max(0, (int)round($noIvaBase10));
+        $c65  = max(0, (int)round($noIva10));
+        $c60  = max(0, (int)round($noIvaBase5));
+        $c66  = max(0, (int)round($noIva5));
+        $c61  = max(0, (int)round($compExentasIndistinto));
+        $c62  = max(0, (int)round($compExentasDirecto));
+        $c63  = 0;
+        $c64  = max(0, $c65 + $c66 + max(0, $c39 - $c164)); // IVA Costo o Gasto deducible en IRE o IRP
+        $c170 = $c167;
 
         $form = [
             'COD_EMPRESA'      => $codEmpresa,
@@ -1363,15 +1459,37 @@ class ReportesContablesController {
             'TIPO_DECLARACION' => 'O',
             'NUM_ORDEN_RECT'   => '',
             'CARACTER_CESE'    => 'N',
-            'C10' => $c10, 'C22' => $c22, 'C11' => $c11, 'C19' => $c19, 'C12' => $c12,
-            'C13' => $c13, 'C14' => $c14, 'C15' => $c15, 'C23' => $c23, 'C16' => $c16, 'C20' => $c20, 'C17' => $c17,
-            'C18' => $c18, 'C21' => $c21, 'C24' => $c24,
-            'C25' => $c25, 'C26' => $c26, 'C27' => $c27, 'C28' => $c28, 'C29' => $c29, 'C30' => $c30, 'C31' => $c31,
-            'C32' => $c32, 'C35' => $c35, 'C38' => $c38, 'C33' => $c33, 'C36' => $c36, 'C39' => $c39,
-            'C40' => $c40, 'C41' => $c41, 'C34' => $c34, 'C37' => $c37, 'C42' => $c42, 'C43' => $c43,
-            'C44' => $c44, 'C45' => $c45, 'C46' => $c46, 'C47' => $c47, 'C48' => $c48, 'C49' => $c49, 'C50' => $c50,
-            'C55' => $c55, 'C51' => $c51, 'C52' => $c52, 'C56' => $c56, 'C53' => $c53, 'C57' => $c57, 'C54' => $c54, 'C58' => $c58,
-            'C59' => 0, 'C65' => 0, 'C60' => 0, 'C66' => 0, 'C61' => 0, 'C62' => 0, 'C63' => 0, 'C64' => 0,
+            // Rubro 1 V4
+            'C10'  => $c10,  'C22'  => $c22,
+            'C150' => $c150, 'C156' => $c156,
+            'C151' => $c151, 'C157' => $c157,
+            'C11'  => $c11,  'C19'  => $c19,
+            'C12'  => $c12,  'C152' => $c152, 'C153' => $c153, 'C13' => $c13, 'C14' => $c14,
+            'C15'  => $c15,  'C23'  => $c23,
+            'C154' => $c154, 'C158' => $c158,
+            'C155' => $c155, 'C159' => $c159,
+            'C16'  => $c16,  'C20'  => $c20,
+            'C17'  => $c17,
+            'C18'  => $c18,  'C21'  => $c21,  'C24'  => $c24,
+            // Rubro 2 V4
+            'C160' => $c160, 'C161' => $c161, 'C25' => $c25, 'C26' => $c26, 'C27' => $c27,
+            'C162' => $c162, 'C163' => $c163, 'C28' => $c28, 'C29' => $c29, 'C30' => $c30, 'C31' => $c31,
+            // Rubro 3 V4
+            'C32'  => $c32,  'C35'  => $c35,  'C38' => $c38,
+            'C33'  => $c33,  'C36'  => $c36,  'C39' => $c39,
+            'C164' => $c164, 'C165' => $c165,
+            'C40'  => $c40,  'C41'  => $c41,
+            'C34'  => $c34,  'C37'  => $c37,  'C42' => $c42, 'C43' => $c43,
+            // Rubro 4 V4
+            'C44'  => $c44,  'C45'  => $c45,  'C46' => $c46,
+            'C166' => $c166, 'C167' => $c167, 'C47' => $c47,
+            'C48'  => $c48,  'C49'  => $c49,  'C168'=> $c168, 'C50' => $c50,
+            // Rubro 5 V4
+            'C55'  => $c55,  'C51'  => $c51,  'C52' => $c52, 'C169' => $c169,
+            'C56'  => $c56,  'C53'  => $c53,  'C57' => $c57, 'C54'  => $c54, 'C58' => $c58,
+            // Rubro 6 V4
+            'C59'  => $c59,  'C65'  => $c65,  'C60' => $c60, 'C66'  => $c66,
+            'C61'  => $c61,  'C62'  => $c62,  'C63' => $c63, 'C64'  => $c64, 'C170' => $c170,
         ];
 
         $resumenLibros = [
@@ -1382,8 +1500,8 @@ class ReportesContablesController {
             'ventasBrutoTotal'    => (int)round($vBrutoTotal),
             'ventasBase10'        => $c10,
             'ventasIva10'         => $c22,
-            'ventasBase5'         => $c11,
-            'ventasIva5'          => $c19,
+            'ventasBase5'         => $c151,
+            'ventasIva5'          => $c157,
             'ventasExentas'       => $c12,
             'cantCompras'         => $cantCompTotal,
             'cantComprasElectr'   => $cantCompElectronic,
@@ -1399,7 +1517,7 @@ class ReportesContablesController {
             'comprasIva10'        => (int)round($dirIva10 + $proIva10),
             'comprasBase5'        => $c32 + $c33,
             'comprasIva5'         => (int)round($dirIva5 + $proIva5),
-            'comprasExentas'      => $c40 + $c41,
+            'comprasExentas'      => $c61 + $c62,
             'comprasTotalIva'     => $c43,
             'montoNoImputaIva'    => (int)round($montoNoImputaIva),
             'porRegimen'          => array_values($porRegimen),
@@ -1428,16 +1546,41 @@ class ReportesContablesController {
         $numRect      = trim((string)($payload['numOrdenRect'] ?? ''));
         $caracterCese = trim((string)($payload['caracterCese'] ?? 'N')) ?: 'N';
 
-        $fields = [
+        // Mantener sincronizados los alias V3 con las casillas equivalentes de V4
+        if (isset($payload['c151']) && !isset($payload['c11'])) {
+            $payload['c11'] = (int)($payload['c150'] ?? 0) + (int)$payload['c151'];
+            $payload['c19'] = (int)($payload['c156'] ?? 0) + (int)($payload['c157'] ?? 0);
+        }
+        if (isset($payload['c155']) && !isset($payload['c16'])) {
+            $payload['c16'] = (int)($payload['c154'] ?? 0) + (int)$payload['c155'];
+            $payload['c20'] = (int)($payload['c158'] ?? 0) + (int)($payload['c159'] ?? 0);
+        }
+        if (isset($payload['c160']) && !isset($payload['c25'])) {
+            $payload['c25'] = (int)$payload['c160'] + (int)($payload['c161'] ?? 0);
+        }
+        if (isset($payload['c62']) && !isset($payload['c40'])) {
+            $payload['c40'] = (int)$payload['c62'];
+            $payload['c41'] = (int)($payload['c61'] ?? 0);
+        }
+
+        $allFields = [
             'c10','c22','c11','c19','c12','c13','c14','c15','c23','c16','c20','c17','c18','c21','c24',
-            'c25','c26','c27','c28','c29','c30','c31',
-            'c32','c35','c38','c33','c36','c39','c40','c41','c34','c37','c42','c43',
-            'c44','c45','c46','c47','c48','c49','c50',
-            'c55','c51','c52','c56','c53','c57','c54','c58',
-            'c59','c65','c60','c66','c61','c62','c63','c64'
+            'c150','c151','c152','c153','c154','c155','c156','c157','c158','c159',
+            'c25','c26','c27','c28','c29','c30','c31','c160','c161','c162','c163',
+            'c32','c35','c38','c33','c36','c39','c164','c165','c40','c41','c34','c37','c42','c43',
+            'c44','c45','c46','c166','c167','c47','c48','c49','c168','c50',
+            'c55','c51','c52','c169','c56','c53','c57','c54','c58',
+            'c59','c65','c60','c66','c61','c62','c63','c64','c170'
         ];
 
         try {
+            $fields = [];
+            foreach ($allFields as $f) {
+                if (\Core\DatabaseMigrator::columnExists('co_formulario_120', $f)) {
+                    $fields[] = $f;
+                }
+            }
+
             $exists = (int)Database::queryForValue(
                 "SELECT COUNT(*) FROM co_formulario_120 WHERE id_propietario = ? AND cod_empresa = ? AND mes = ? AND anio = ?",
                 [$idProp, $codEmpresa, $mes, $anio]
@@ -1473,7 +1616,7 @@ class ReportesContablesController {
                 );
             }
 
-            View::json(['status' => 'success', 'message' => 'Declaración Jurada Formulario 120 guardada correctamente.']);
+            View::json(['status' => 'success', 'message' => 'Declaración Jurada Formulario N° 120 (Versión 4) guardada correctamente.']);
         } catch (\Throwable $e) {
             View::json(['status' => 'error', 'message' => 'Error al guardar Formulario 120: ' . $e->getMessage()]);
         }
@@ -1494,9 +1637,9 @@ class ReportesContablesController {
             [$idProp, $codEmpresa, $mes, $anio]
         );
         if (!empty($rows)) {
-            $saved = $rows[0];
-            $savedMov = (int)($saved['C10'] ?? 0) + (int)($saved['C11'] ?? 0) + (int)($saved['C12'] ?? 0) + (int)($saved['C32'] ?? 0) + (int)($saved['C35'] ?? 0) + (int)($saved['C40'] ?? 0);
-            $autoMov  = (int)($autoData['C10'] ?? 0) + (int)($autoData['C11'] ?? 0) + (int)($autoData['C12'] ?? 0) + (int)($autoData['C32'] ?? 0) + (int)($autoData['C35'] ?? 0) + (int)($autoData['C40'] ?? 0);
+            $saved    = self::normalizarSavedForm120V4($rows[0], $autoData);
+            $savedMov = (int)($saved['C10'] ?? 0) + (int)($saved['C151'] ?? 0) + (int)($saved['C12'] ?? 0) + (int)($saved['C32'] ?? 0) + (int)($saved['C35'] ?? 0) + (int)($saved['C62'] ?? 0);
+            $autoMov  = (int)($autoData['C10'] ?? 0) + (int)($autoData['C151'] ?? 0) + (int)($autoData['C12'] ?? 0) + (int)($autoData['C32'] ?? 0) + (int)($autoData['C35'] ?? 0) + (int)($autoData['C62'] ?? 0);
             $data = ($savedMov === 0 && $autoMov > 0) ? $autoData : $saved;
         } else {
             $data = $autoData;
@@ -1518,10 +1661,12 @@ class ReportesContablesController {
         $mes        = (int)($_GET['mes'] ?? date('n'));
         $anio       = (int)($_GET['anio'] ?? date('Y'));
 
-        $empData     = self::fetchForm120EmpresaInfo($codEmpresa);
-        $rucNum      = $empData['rucNum'] ?? '5555';
-        $rucDv       = $empData['rucDv'] ?? '7';
-        $razonSocial = $empData['razon_social'] ?? 'CONTRIBUYENTE DEMOSTRATIVO';
+        $empData         = self::fetchForm120EmpresaInfo($codEmpresa);
+        $rucNum          = $empData['rucNum'] ?? '5555';
+        $rucDv           = $empData['rucDv'] ?? '7';
+        $primerApellido  = $empData['primer_apellido'] ?? $empData['razon_social'] ?? '';
+        $segundoApellido = $empData['segundo_apellido'] ?? '';
+        $nombres         = $empData['nombres'] ?? '';
 
         $calc = self::calcularFormulario120Auto($idProp, $codEmpresa, $mes, $anio);
         $autoData = $calc['data'] ?? [];
@@ -1532,9 +1677,9 @@ class ReportesContablesController {
             [$idProp, $codEmpresa, $mes, $anio]
         );
         if (!empty($rows)) {
-            $saved = $rows[0];
-            $savedMov = (int)($saved['C10'] ?? 0) + (int)($saved['C11'] ?? 0) + (int)($saved['C12'] ?? 0) + (int)($saved['C32'] ?? 0) + (int)($saved['C35'] ?? 0) + (int)($saved['C40'] ?? 0);
-            $autoMov  = (int)($autoData['C10'] ?? 0) + (int)($autoData['C11'] ?? 0) + (int)($autoData['C12'] ?? 0) + (int)($autoData['C32'] ?? 0) + (int)($autoData['C35'] ?? 0) + (int)($autoData['C40'] ?? 0);
+            $saved    = self::normalizarSavedForm120V4($rows[0], $autoData);
+            $savedMov = (int)($saved['C10'] ?? 0) + (int)($saved['C151'] ?? 0) + (int)($saved['C12'] ?? 0) + (int)($saved['C32'] ?? 0) + (int)($saved['C35'] ?? 0) + (int)($saved['C62'] ?? 0);
+            $autoMov  = (int)($autoData['C10'] ?? 0) + (int)($autoData['C151'] ?? 0) + (int)($autoData['C12'] ?? 0) + (int)($autoData['C32'] ?? 0) + (int)($autoData['C35'] ?? 0) + (int)($autoData['C62'] ?? 0);
             $d = ($savedMov === 0 && $autoMov > 0) ? $autoData : $saved;
         } else {
             $d = $autoData;
@@ -1542,57 +1687,81 @@ class ReportesContablesController {
         $v = fn(string $k): int => (int)round((float)($d[$k] ?? $d[strtolower($k)] ?? 0));
 
         $lines = [
-            "IMPUESTO AL VALOR AGREGADO     Versión 3,,PARA LLENAR LEA INSTRUCTIVO DISPONIBLE EN LA WEB,,,,,,LOS IMPORTES SE CONSIGNARAN SIN CENTIMOS,,,,,,,,,,,,,,,,",
-            ",,Número de Orden,,,,,,RUC,,,,,,,,,,DV,,,,,, ",
-            ",, ,,,,,,{$rucNum},,,,,,,,{$rucDv},,,,,,",
+            "IMPUESTO AL VALOR AGREGADO - VERSIÓN 4 (FORMULARIO 120),,PARA LLENAR LEA EL INSTRUCTIVO DISPONIBLE EN LA WEB,,,,,,LOS IMPORTES SE CONSIGNARAN SIN CENTIMOS,,,,,,,,,,,,,,,,",
+            ",,Número de Orden,,,,,,RUC,,,,,,,,,,DV,,,,,,",
+            ",, ,,,,,,{$rucNum},,,,,,,,,{$rucDv},,,,,,",
             ",,Razón Social/Primer Apellido,,,,,,Segundo Apellido,,,,,,,,,,,,,,,,",
-            ",,,,,,,, ,,,,,,,,,,,,,,,,",
+            ",,\"{$primerApellido}\",,,,,,\"{$segundoApellido}\",,,,,,,,,,,,,,,,",
             ",,Nombres,,,,,,,,,,,,,,,,,,,,,,",
-            ",,\"{$razonSocial}\",,,,,,,,,,,,,,,,,,,,,,",
-            ",,01,,[X],Declaración Jurada Original,,,Número de Orden Declaración que se rectifica,,,,,,,,,,,,,,,,",
+            ",,\"{$nombres}\",,,,,,,,,,,,,,,,,,,,,,",
+            ",,01,,[X],Declaración Jurada Original,,,Número de Orden de Declaración que se rectifica,,,,,,,,,,,,,,,,",
             ",,02,,[ ],Declaración Jurada Rectificativa,,,03, ,,,,,,,,,,,,,,",
-            ",,05,,[ ],\"Declaración Jurada en Caracter de Cese de Actividades, Clausura o Cierre Definitivo\",,,04,Periodo/Ejercicio Fiscal,,,,,,,,,,,,,",
-            "120,,,,,,,,,,,,Mes,,Año,,,,,,,,,",
-            ",,,,,,,,,,,," . sprintf('%02d', $mes) . ",,{$anio},,,,,,,,,",
+            ",,05,,[ ],\"Declaración Jurada en Carácter de Cese de Actividades, Clausura o Cierre Definitivo\",,,04,Periodo / Ejercicio Fiscal:," . sprintf('%02d', $mes) . "/{$anio},,,,,,,,,,,,",
             "PARA CONTRIBUYENTES QUE REALICEN OPERACIONES GRAVADAS Y EXONERADAS (INCLUIDAS LAS EXPORTACIONES),,,,,,,,,,,,,,,,,,,,,,,,",
             ",,,,,,,,,,,,,,,,,,,,,,,,",
-            "INC,RUBRO 1 - ENAJENACIÓN DE BIENES Y/O PRESTACIÓN DE SERVICIOS DEL PERIODO,,,,,MONTO IMPONIBLE -I-,,,IVA DÉBITO,,,,,,,,,,,,,,,",
-            ",,,,,,,,,AL 5% -II-,,,,,AL 10% -III-,,,,,,,,,,",
-            "a,Enajenación de Bienes y Prestación de Servicios gravadas con tasa del 10%,,,,,10,{$v('C10')},,,,,,,22,{$v('C22')},,,,,,,,,",
-            "b,Enajenación de Bienes y Prestación de Servicios gravadas con tasa del 5%,,,,,11,{$v('C11')},,19,{$v('C19')},,,,,,,,,,,,,,",
-            "c,Enajenación de bienes y/o prestación de servicios exonerados o no alcanzado por el tributo,,,,,12,{$v('C12')},,,,,,,,,,,,,",
-            "d,Exportación de productos agropecuarios en estado natural,,,,,13,{$v('C13')},,,,,,,,,,,,,,,,,",
-            "e,Exportación de otros bienes,,,,,14,{$v('C14')},,,,,,,,,,,,,,,,,",
-            "f,\"Ajustes de precios, devoluciones realizadas, descuentos obtenidos y recupero de Impuesto por operaciones incobrables declaradas a la tasa del 10%\",,,,,15,{$v('C15')},,,,,,,,23,{$v('C23')},,,,,,,,,",
-            "g,\"Ajustes de precios, devoluciones realizadas, descuentos obtenidos y recupero de Impuesto por operaciones incobrables declaradas a la tasa del 5%\",,,,,16,{$v('C16')},,,20,{$v('C20')},,,,,,,,,,,,,,",
-            "h,\"Ajustes de precios, devoluciones realizadas, descuentos obtenidos y recupero por operaciones incobrables, exonerados o no alcanzados por el tributo\",,,,,17,{$v('C17')},,, , ,,,,,,,,,,,,,,",
-            "i,TOTAL: ( Col.I: Inc. a+b+c+d+e+f+g+h); (Col.II: Inc. b+g); (Col.III: Inc. a+f) ,,,,,18,{$v('C18')},,21,{$v('C21')},,,,24,{$v('C24')},,,,,,,,,",
-            "INC,RUBRO 2 - ENAJENACIÓN DE BIENES Y/O PRESTACIÓN DE SERVICIOS DE LOS ÚLTIMOS 6 MESES,,,,,MONTO ACUMULADO,,,,,,,,,,,,,,,,,,",
-            "a,Enajenación de bienes y/o prestación de servicios gravados,,,,,25,{$v('C25')},,,,,,,,,,,,,,,,,",
-            "b,Enajenación de bienes y/o prestación de servicios exonerados o no alcanzados,,,,,26,{$v('C26')},,,,,,,,,,,,,,,,,",
-            "c,SUBTOTAL (Inc. a+b),,,,,27,{$v('C27')},,,,,,,,,,,,,,,,,",
-            "g,TOTAL OPERACIONES ÚLTIMOS 6 MESES,,,,,31,{$v('C31')},,,,,,,,,,,,,,,,,",
-            "INC,RUBRO 3 - COMPRAS LOCALES E IMPORTACIONES DEL PERIODO,,,,,MONTO IMPONIBLE 5%,,,MONTO IMPONIBLE 10%,,,,,IVA CRÉDITO -III-,,,,,,,,,,",
-            "a,Créditos Fiscales atribuidos directamente a operaciones gravadas en mercado interno,,,,,32,{$v('C32')},,35,{$v('C35')},,,,38,{$v('C38')},,,,,,,,,",
-            "b,Créditos Fiscales atribuidos indistintamente a operaciones gravadas y exoneradas,,,,,33,{$v('C33')},,36,{$v('C36')},,,,39,{$v('C39')},,,,,,,,,",
-            "e,Compras de bienes y/o servicios exentos o no alcanzados o en que no corresponda crédito fiscal,,,,,40,{$v('C40')},,41,{$v('C41')},,,,,,,,,,,,,,",
-            "f,TOTAL DE CRÉDITO FISCAL PARA OPERACIONES EN EL MERCADO INTERNO (Col. III: Inc. a+c+d+e),,,,,,,,,,,,,43,{$v('C43')},,,,,,,,,",
-            "INC,RUBRO 4 – DETERMINACIÓN DEL IMPUESTO,,,,,,,,,,,,,MONTO,",
-            "a,\"Débito fiscal (Proviene del Rubro 1, Col. II + III: Inc. i)\",,,,,,,,,,,,,44,{$v('C44')}",
-            "b,\"Crédito fiscal (Proviene del Rubro 3, Inc. f)\",,,,,,,,,,,,,45,{$v('C45')}",
-            "c,\"Saldo a favor del contribuyente del período anterior\",,,,,,,,,,,,,46,{$v('C46')}",
-            "d,\"SALDO A FAVOR DEL CONTRIBUYENTE\",,,,,,,,,,,,,47,{$v('C47')}",
-            "e,\"SALDO A FAVOR DEL FISCO\",,,,,,,,,,,,,48,{$v('C48')}",
-            "g,IMPUESTO DETERMINADO Inc. e - Inc. f,,,,,,,,,,,,,50,{$v('C50')}",
-            "INC,RUBRO 5 – LIQUIDACIÓN Y SALDO DEL IMPUESTO,,,,,,,,MONTO A FAVOR DEL,,,,,,",
-            "a,\"Impuesto determinado para operaciones gravadas\",,,,,,,,,,,,,55,{$v('C55')}",
-            "c,\"Retenciones computables por operaciones gravadas\",,,,,52,{$v('C52')},,,,,,,,",
-            "g,\"SALDO DEFINITIVO A PAGAR A FAVOR DEL FISCO\",,,,,,,,,,,,,58,{$v('C58')}",
+            "INC.,RUBRO 1 - ENAJENACIÓN DE BIENES Y/O PRESTACIÓN DE SERVICIOS DEL PERIODO,,,,,MONTO IMPONIBLE -I-,,,IVA DÉBITO AL 5% -II-,,,,,IVA DÉBITO AL 10% -III-,,,,,,,,,,",
+            "a,Enajenación de bienes y/o prestación de servicios gravados con tasa del 10%,,,,,10,{$v('C10')},,,,,,,22,{$v('C22')},,,,,,,,,",
+            "b,Enajenación de productos agrícolas en estado natural y sus derivados del primer proceso de elaboración o industrialización gravados con tasa del 5%,,,,,150,{$v('C150')},,156,{$v('C156')},,,,,,,,,,,,,,",
+            "c,Enajenación de otros bienes y/o prestación de servicios gravados con tasa del 5%,,,,,151,{$v('C151')},,157,{$v('C157')},,,,,,,,,,,,,,",
+            "d,\"Enajenación de bienes, prestación de servicios o ingresos exonerados o no alcanzados por el Impuesto\",,,,,12,{$v('C12')},,,,,,,,,,,,,,,,,",
+            "e,Exportación de productos agrícolas en estado natural y sus derivados del primer proceso de elaboración o industrialización,,,,,152,{$v('C152')},,,,,,,,,,,,,,,,,",
+            "f,Prestación de Servicios de Flete Internacional para la exportación de bienes,,,,,153,{$v('C153')},,,,,,,,,,,,,,,,,",
+            "g,Exportación de otros bienes,,,,,14,{$v('C14')},,,,,,,,,,,,,,,,,",
+            "h,\"Ajustes de precios, devoluciones realizadas, descuentos obtenidos y recupero de Impuestos por operaciones incobrables, declaradas a la tasa del 10%\",,,,,15,{$v('C15')},,,,,,,23,{$v('C23')},,,,,,,,,",
+            "i,\"Ajustes de precios, devoluciones realizadas, descuentos obtenidos y recupero de Impuestos por operaciones incobrables, declaradas a la tasa del 5% (productos agrícolas)\",,,,,154,{$v('C154')},,158,{$v('C158')},,,,,,,,,,,,,,",
+            "j,\"Ajustes de precios, devoluciones realizadas, descuentos obtenidos y recupero de Impuestos por operaciones incobrables, declaradas a la tasa del 5% (otros bienes y servicios)\",,,,,155,{$v('C155')},,159,{$v('C159')},,,,,,,,,,,,,,",
+            "k,\"Ajustes de precios, devoluciones realizadas, descuentos obtenidos y recupero por operaciones incobrables, exonerados o no alcanzados por el Impuesto\",,,,,17,{$v('C17')},,,,,,,,,,,,,,,,,",
+            "l,\"TOTAL (Col. I: Inc. a+b+c+d+e+f+g+h+i+j+k); (Col. II: b+c+i+j); (Col. III: Inc. a+h)\",,,,,18,{$v('C18')},,21,{$v('C21')},,,,,24,{$v('C24')},,,,,,,,,",
+            "INC.,RUBRO 2 - ENAJENACIÓN DE BIENES Y/O PRESTACIÓN DE SERVICIOS DE LOS ÚLTIMOS SEIS (6) MESES (INCLUIDO EL PERIODO QUE SE DECLARA),,,,,MONTO ACUMULADO,,,,,,,,,,,,,,,,,,",
+            "a,\"Enajenación de bienes y/o prestación de servicios gravados en el mercado interno, con excepción de los productos agrícolas en estado natural\",,,,,160,{$v('C160')},,,,,,,,,,,,,,,,,",
+            "b,Enajenación de productos agrícolas en estado natural y sus derivados del primer proceso de elaboración o industrialización en el mercado interno,,,,,161,{$v('C161')},,,,,,,,,,,,,,,,,",
+            "c,Enajenación de bienes y/o prestación de servicios exonerados o no alcanzados,,,,,26,{$v('C26')},,,,,,,,,,,,,,,,,",
+            "d,TOTAL DE OPERACIONES EN EL MERCADO INTERNO (Inc. a+b+c),,,,,27,{$v('C27')},,,,,,,,,,,,,,,,,",
+            "e,Exportación de productos agrícolas en estado natural y sus derivados del primer proceso de elaboración o industrialización,,,,,162,{$v('C162')},,,,,,,,,,,,,,,,,",
+            "f,Servicios de flete internacional prestados por empresas transportadoras para la exportación de bienes,,,,,163,{$v('C163')},,,,,,,,,,,,,,,,,",
+            "g,Exportación de otros bienes,,,,,29,{$v('C29')},,,,,,,,,,,,,,,,,",
+            "h,TOTAL DE OPERACIONES DE EXPORTACIÓN (Inc. e+f+g),,,,,30,{$v('C30')},,,,,,,,,,,,,,,,,",
+            "i,TOTAL DE OPERACIONES ACUMULADAS (Inc. d+h),,,,,31,{$v('C31')},,,,,,,,,,,,,,,,,",
+            "INC.,RUBRO 3 - COMPRAS LOCALES E IMPORTACIONES DEL PERIODO,,,,,MONTO IMPONIBLE AL 5% -I-,,,MONTO IMPONIBLE AL 10% -II-,,,,,IVA CRÉDITO -III-,,,,,,,,,,",
+            "a,IVA Crédito atribuido directamente a operaciones gravadas en el mercado interno,,,,,32,{$v('C32')},,35,{$v('C35')},,,,,38,{$v('C38')},,,,,,,,,",
+            "b,\"IVA Crédito atribuido indistintamente a operaciones gravadas, exoneradas o no alcanzadas\",,,,,33,{$v('C33')},,36,{$v('C36')},,,,,39,{$v('C39')},,,,,,,,,",
+            "c,IVA Crédito atribuido proporcionalmente a operaciones gravadas en el mercado interno [Rubro 3 Col. III Inc. b x (Rubro 2 Inc. a+b / Inc. d)],,,,,,,,,,,,,164,{$v('C164')},,,,,,,,,",
+            "d,IVA Crédito atribuido proporcionalmente a operaciones gravadas en el mercado interno y a exportación (Casilla 216 hoja de cálculo),,,,,,,,,,,,,165,{$v('C165')},,,,,,,,,",
+            "e,\"IVA Crédito por ajustes de precios, devoluciones y descuentos otorgados, por ventas ya declaradas y operaciones declaradas incobrables\",,,,,34,{$v('C34')},,37,{$v('C37')},,,,,42,{$v('C42')},,,,,,,,,",
+            "f,TOTAL DE IVA CRÉDITO PARA OPERACIONES EN EL MERCADO INTERNO (Col. III: Inc. a+c+d+e),,,,,,,,,,,,,43,{$v('C43')},,,,,,,,,",
+            "INC.,RUBRO 4 - DETERMINACIÓN DEL IMPUESTO O DEL SALDO TÉCNICO,,,,,,,,,,,,,MONTO,,,,,,,,,,",
+            "a,\"IVA Débito (Proviene del Rubro 1, Col. II y III: Inc. l)\",,,,,,,,,,,,,44,{$v('C44')},,,,,,,,,",
+            "b,\"IVA Crédito (Proviene del Rubro 3, Inc. f)\",,,,,,,,,,,,,45,{$v('C45')},,,,,,,,,",
+            "c,\"Saldo a favor del contribuyente del período anterior por operaciones en el mercado interno (Proviene del Rubro 4, Inc. f)\",,,,,,,,,,,,,46,{$v('C46')},,,,,,,,,",
+            "d,SALDO A FAVOR DEL CONTRIBUYENTE cuando el Inc. a sea menor que Inc. b+Inc. c,,,,,,,,,,,,,166,{$v('C166')},,,,,,,,,",
+            "e,Saldo a favor del contribuyente a remitir en beneficio del Fisco (Art. 91 de la Ley). Hasta el monto del Inc. d,,,,,,,,,,,,,167,{$v('C167')},,,,,,,,,",
+            "f,\"SALDO A FAVOR DEL CONTRIBUYENTE (Monto a trasladar en el Inc. c del presente Rubro, en el siguiente periodo fiscal), Inc. d - Inc. e\",,,,,,,,,,,,,47,{$v('C47')},,,,,,,,,",
+            "g,\"Saldo a favor del fisco, cuando Inc. a sea mayor que Inc. b+Inc. c\",,,,,,,,,,,,,48,{$v('C48')},,,,,,,,,",
+            "h,Monto del IVA Crédito utilizado en el periodo que se liquida para operaciones gravadas (Casilla 148 del Anexo Exportador),,,,,,,,,,,,,49,{$v('C49')},,,,,,,,,",
+            "i,\"Deducción conforme al Art. 7° y 8° de la Ley N° 4.962/2013 por incorporación de personas con discapacidad (No trasladable)\",,,,,,,,,,,,,168,{$v('C168')},,,,,,,,,",
+            "j,IMPUESTO DETERMINADO (Inc. g - Inc. h - Inc. i),,,,,,,,,,,,,50,{$v('C50')},,,,,,,,,",
+            "INC.,RUBRO 5 - IMPUESTO DETERMINADO Y/O SALDO FINANCIERO A FAVOR DEL CONTRIBUYENTE,,,,,MONTO A FAVOR DEL CONTRIBUYENTE -I-,,,,,,,MONTO A FAVOR DEL FISCO -II-,,,,,,,,,,,",
+            "a,\"Impuesto determinado para operaciones gravadas (Proviene del Rubro 4, Inc. j)\",,,,,,,,,,,,,55,{$v('C55')},,,,,,,,,",
+            "b,\"Saldo a favor del contribuyente del período anterior (Proviene del Rubro 5, Col. I: Inc. g)\",,,,,51,{$v('C51')},,,,,,,,,,,,,,,,,",
+            "c,Retenciones computables por operaciones gravadas,,,,,52,{$v('C52')},,,,,,,,,,,,,,,,,",
+            "d,Percepciones computables por operaciones gravadas,,,,,169,{$v('C169')},,,,,,,,,,,,,,,,,",
+            "e,Multa por presentar la Declaración Jurada con posterioridad al vencimiento,,,,,,,,,,,,,56,{$v('C56')},,,,,,,,,",
+            "f,SUBTOTALES: (Col. I: Inc. b+c+d); (Col. II: Inc. a+e),,,,,53,{$v('C53')},,,,,,,57,{$v('C57')},,,,,,,,,",
+            "g,SALDO A FAVOR DEL CONTRIBUYENTE (Monto a trasladar al siguiente periodo fiscal en el Inc. b del presente Rubro),,,,,54,{$v('C54')},,,,,,,,,,,,,,,,,",
+            "h,SALDO A PAGAR A FAVOR DEL FISCO (Diferencia entre Col. I y II: Inc. f cuando Col. II sea mayor que Col. I),,,,,,,,,,,,,58,{$v('C58')},,,,,,,,,",
+            "INC.,\"RUBRO 6 - INFORMACIÓN DE LAS COMPRAS DEL PERIODO, VINCULADAS A OPERACIONES EXONERADAS O NO ALCANZADAS POR EL IMPUESTO\",,,,,MONTO -I-,,,,,,,IVA -II-,,,,,,,,,,,",
+            "a,Compras con IVA Crédito del 10% relacionadas directamente a operaciones exoneradas o no alcanzadas por el Impuesto,,,,,59,{$v('C59')},,,,,,,65,{$v('C65')},,,,,,,,,",
+            "b,Compras con IVA Crédito del 5% relacionadas directamente a operaciones exoneradas o no alcanzadas por el Impuesto,,,,,60,{$v('C60')},,,,,,,66,{$v('C66')},,,,,,,,,",
+            "c,\"Compras exentas relacionadas a operaciones exoneradas, no alcanzadas y a exportaciones\",,,,,61,{$v('C61')},,,,,,,,,,,,,,,,,",
+            "d,Compras exentas relacionadas a operaciones exoneradas o no alcanzadas por el Impuesto,,,,,62,{$v('C62')},,,,,,,,,,,,,,,,,",
+            "e,\"Ajustes de precios, descuentos otorgados y/o devoluciones recibidas, por enajenación de bienes o prestación de servicios exonerados\",,,,,63,{$v('C63')},,,,,,,,,,,,,,,,,",
+            "f,Impuesto al Valor Agregado - Costo o Gasto deducible en el IRE o IRP,,,,,64,{$v('C64')},,,,,,,,,,,,,,,,,",
+            "g,\"Impuesto al Valor Agregado - Costo o Gasto por remisión del saldo IVA Crédito al fisco, no deducible en el IRE o IRP\",,,,,170,{$v('C170')},,,,,,,,,,,,,,,,,",
             ",,,,,,,,,,,,,,,,,,,,,,,,",
             "RESUMEN DE LIBROS IVA DEL PERIODO,,Cant. Ventas:,{$resumen['cantVentas']},,Cant. Compras:,{$resumen['cantCompras']},,Compras Electrónicas:,{$resumen['cantComprasElectr']},,Total Bruto Compras:,{$resumen['comprasBrutoTotal']}",
         ];
 
-        $filename = sprintf('FORM120_V3_%s_%02d_%04d.csv', $rucNum, $mes, $anio);
+        $filename = sprintf('FORM120_V4_%s_%02d_%04d.csv', $rucNum, $mes, $anio);
         header('Content-Type: text/csv; charset=UTF-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
         echo "\xEF\xBB\xBF" . implode("\r\n", $lines) . "\r\n";

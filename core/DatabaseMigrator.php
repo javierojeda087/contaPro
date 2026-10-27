@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 12;
+    private const SCHEMA_VERSION = 13;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -361,6 +361,18 @@ class DatabaseMigrator {
 
         if (strtoupper(trim((string)($_SESSION['usuario'] ?? ''))) === 'CONTA') {
             $_SESSION['grupo'] = 'CONADM';
+        }
+
+        // 6. Asegurar casillas nuevas de Formulario 120 Versión 4 (DNIT) en co_formulario_120
+        $colsForm120V4 = [
+            'c150','c151','c152','c153','c154','c155','c156','c157','c158','c159',
+            'c160','c161','c162','c163','c164','c165','c166','c167','c168','c169','c170'
+        ];
+        foreach ($colsForm120V4 as $colF) {
+            if (!self::columnExists('co_formulario_120', $colF)) {
+                Database::execute("ALTER TABLE `co_formulario_120` ADD COLUMN `$colF` DECIMAL(18,0) DEFAULT 0", true);
+                $applied[] = "co_formulario_120.$colF";
+            }
         }
 
         return $applied;
