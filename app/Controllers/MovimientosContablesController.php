@@ -113,9 +113,20 @@ class MovimientosContablesController {
                 );
             } catch (\Throwable $ignored) {}
         }
+        $ej = TenantContext::ejercicio();
+        $anioEj = (int)preg_replace('/\D/', '', (string)$ej);
+        if ($anioEj < 1990 || $anioEj > 2100) {
+            $anioEj = (int)date('Y');
+        }
+        $mesActual = (int)date('n');
+        $defFechaDesde = sprintf('%04d-%02d-01', $anioEj, $mesActual);
+        $defFechaHasta = date('Y-m-t', strtotime($defFechaDesde));
+
         self::renderFormPage('egresos_registro', [
             'contribuyenteNombre' => $contribuyenteNombre,
             'empresaDesc'         => $contribuyenteNombre,
+            'defFechaDesde'       => $defFechaDesde,
+            'defFechaHasta'       => $defFechaHasta,
         ]);
     }
 
@@ -421,7 +432,7 @@ class MovimientosContablesController {
     private static function resolveTipoEgresoId(?string $val, int $idProp): string {
         if (!$val || trim($val) === '' || strcasecmp(trim($val), 'null') === 0) return '1';
         $v = trim($val);
-        if (ctype_digit($v)) return $v;
+        if (is_numeric($v)) return (string)(int)round((float)$v);
         $up = strtoupper($v);
         if (str_contains($up, 'GASTOS GENERALES')) return '1';
         if (str_contains($up, 'MERCADER')) return '2';
@@ -434,13 +445,13 @@ class MovimientosContablesController {
             "SELECT cod_tipo FROM co_tipos_egreso WHERE id_propietario IN (?, 1) AND UPPER(TRIM(descripcion)) = ? LIMIT 1",
             [$idProp, $up]
         );
-        return $id !== null ? (string)$id : '1';
+        return $id !== null ? (string)(int)round((float)$id) : '1';
     }
 
     private static function resolveClasificacionGastoId(?string $val, int $idProp): string {
         if (!$val || trim($val) === '' || strcasecmp(trim($val), 'null') === 0) return '1';
         $v = trim($val);
-        if (ctype_digit($v)) return $v;
+        if (is_numeric($v)) return (string)(int)round((float)$v);
         $up = strtoupper($v);
         if (str_contains($up, 'RELACIONADA')) return '2';
         if (str_contains($up, 'INVERSIONES PERSONAL') || str_contains($up, 'INVERSIONES DE FAMILIAR') || str_contains($up, 'INVERSIONES Y DE FAMILIAR')) return '3';
@@ -451,13 +462,13 @@ class MovimientosContablesController {
             "SELECT cod_clasificacion FROM co_clasificacion_gasto WHERE id_propietario IN (?, 1) AND UPPER(TRIM(descripcion)) = ? LIMIT 1",
             [$idProp, $up]
         );
-        return $id !== null ? (string)$id : '1';
+        return $id !== null ? (string)(int)round((float)$id) : '1';
     }
 
     private static function resolveRegimenId(?string $val, int $idProp): int {
         if (!$val || trim($val) === '' || strcasecmp(trim($val), 'null') === 0) return 1;
         $v = trim($val);
-        if (ctype_digit($v)) return (int)$v;
+        if (is_numeric($v)) return (int)round((float)$v);
         $up = strtoupper($v);
         if (str_contains($up, 'IRP') && str_contains($up, 'IVA')) return 1;
         if (str_contains($up, 'IRP')) return 2;
@@ -468,15 +479,17 @@ class MovimientosContablesController {
             "SELECT cod_regimen FROM co_regimen WHERE id_propietario IN (?, 1) AND UPPER(TRIM(descripcion)) = ? LIMIT 1",
             [$idProp, $up]
         );
-        return $id !== null ? (int)$id : 1;
+        return $id !== null ? (int)round((float)$id) : 1;
     }
 
     public static function apiEgresosList(): void {
         if (!self::requireAuth()) return;
         $idProp = TenantContext::idPropietario();
         $empresa = TenantContext::empresa();
-        $anio = trim((string)($_GET['anio'] ?? ''));
-        $mes  = trim((string)($_GET['mes'] ?? ''));
+        $anio       = trim((string)($_GET['anio'] ?? ''));
+        $mes        = trim((string)($_GET['mes'] ?? ''));
+        $fechaDesde = self::parseSqlDate((string)($_GET['fechaDesde'] ?? $_GET['desde'] ?? ''));
+        $fechaHasta = self::parseSqlDate((string)($_GET['fechaHasta'] ?? $_GET['hasta'] ?? ''));
 
         try {
             $sql = "SELECT id_egreso, cdc, tip_doc, tip_timb, tip_egreso, clasificacion_gasto,
@@ -494,15 +507,25 @@ class MovimientosContablesController {
                     WHERE id_propietario = ? AND cod_empresa = ? ";
             $params = [$idProp, $empresa];
 
-            if ($anio !== '' && strcasecmp($anio, 'TODOS') !== 0) {
-                $sql .= "AND YEAR(fec_egreso) = ? ";
-                $params[] = (int)$anio;
+            if ($fechaDesde !== null) {
+                $sql .= "AND DATE(fec_egreso) >= ? ";
+                $params[] = $fechaDesde;
             }
-            if ($mes !== '' && strcasecmp($mes, 'TODOS') !== 0) {
-                $sql .= "AND MONTH(fec_egreso) = ? ";
-                $params[] = (int)$mes;
+            if ($fechaHasta !== null) {
+                $sql .= "AND DATE(fec_egreso) <= ? ";
+                $params[] = $fechaHasta;
             }
-            $sql .= "ORDER BY id_egreso DESC";
+            if ($fechaDesde === null && $fechaHasta === null) {
+                if ($anio !== '' && strcasecmp($anio, 'TODOS') !== 0) {
+                    $sql .= "AND YEAR(fec_egreso) = ? ";
+                    $params[] = (int)$anio;
+                }
+                if ($mes !== '' && strcasecmp($mes, 'TODOS') !== 0) {
+                    $sql .= "AND MONTH(fec_egreso) = ? ";
+                    $params[] = (int)$mes;
+                }
+            }
+            $sql .= "ORDER BY fec_egreso DESC, id_egreso DESC";
 
             $list = Database::queryForListUpper($sql, $params);
             View::json(['status' => 'success', 'data' => $list]);
@@ -558,7 +581,7 @@ class MovimientosContablesController {
 
         try {
             $cdc       = isset($payload['cdc']) ? trim((string)$payload['cdc']) : null;
-            $tipDoc    = trim((string)($payload['tipDoc'] ?? 'Factura')) ?: 'Factura';
+            $tipDoc    = self::resolveTipoDocCode((string)($payload['tipDoc'] ?? 'FAC'));
             $rawReg    = (string)($payload['codRegimen'] ?? $payload['regimen'] ?? '1');
             $codRegimen = self::resolveRegimenId($rawReg, $idProp);
             $regimen   = (string)$codRegimen;
@@ -843,6 +866,356 @@ class MovimientosContablesController {
         }
     }
 
+    private static function resolveTipoDocCode(?string $val): string {
+        if (!$val || trim($val) === '') return 'FAC';
+        $u = strtoupper(trim($val));
+        if ($u === 'FAC' || str_contains($u, 'FACTURA')) {
+            if (str_contains($u, 'AUTO')) return 'AUT';
+            return 'FAC';
+        }
+        if ($u === 'NCR' || str_contains($u, 'CRED') || str_contains($u, 'CRÉD')) return 'NCR';
+        if ($u === 'DEB' || str_contains($u, 'DEB') || str_contains($u, 'DÉB')) return 'DEB';
+        if ($u === 'AUT' || str_contains($u, 'AUTO')) return 'AUT';
+        if ($u === 'BOL' || str_contains($u, 'BOLETA') || str_contains($u, 'RESPALDO')) return 'BOL';
+        return substr($u, 0, 10);
+    }
+
+    private static function normalizarRucConDv(string $rawRuc, string $cdc = ''): string {
+        $r = strtoupper(trim($rawRuc));
+        if ($r === '') return '';
+        if (str_contains($r, '-')) {
+            $parts = explode('-', $r, 2);
+            $base = preg_replace('/\D/', '', $parts[0]);
+            $dv   = trim($parts[1]);
+            if ($base !== '' && $dv !== '') {
+                return $base . '-' . $dv;
+            }
+        }
+        $baseDigits = preg_replace('/\D/', '', $r);
+        if ($baseDigits === '') return $r;
+
+        $cdcDigits = preg_replace('/\D/', '', $cdc);
+        if (strlen($cdcDigits) === 44) {
+            $cdcRuc = ltrim(substr($cdcDigits, 2, 8), '0');
+            $cdcDv  = substr($cdcDigits, 10, 1);
+            if ($cdcRuc !== '' && $cdcRuc === ltrim($baseDigits, '0')) {
+                return $baseDigits . '-' . $cdcDv;
+            }
+        }
+
+        $dvCalc = \App\Services\PersonaService::calcularDvParaguay($baseDigits);
+        return $baseDigits . '-' . $dvCalc;
+    }
+
+    public static function apiEgresosValidarImportacion(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+
+        try {
+            // 1. Obtener comprobantes existentes de esta empresa para detectar duplicados y mostrar cuál es
+            $egresosRows = Database::queryForList(
+                "SELECT id_egreso, TRIM(COALESCE(cdc, '')) AS cdc,
+                        UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) AS tip_doc,
+                        TRIM(COALESCE(nro_timbrado, '')) AS nro_timbrado,
+                        REPLACE(TRIM(COALESCE(nro_factura, '')), '-', '') AS fac_clean,
+                        TRIM(COALESCE(nro_factura, '')) AS nro_factura,
+                        DATE_FORMAT(fec_egreso, '%d/%m/%Y') AS fec_egreso_fmt,
+                        TRIM(COALESCE(nom_proveedor, '')) AS nom_proveedor,
+                        TRIM(COALESCE(ruc_proveedor, '')) AS ruc_proveedor,
+                        COALESCE(valor_total, 0) AS valor_total,
+                        UPPER(TRIM(SUBSTRING_INDEX(REPLACE(COALESCE(ruc_proveedor, ''), ' ', ''), '-', 1))) AS ruc_base
+                 FROM co_egresos
+                 WHERE id_propietario = ? AND cod_empresa = ?",
+                [$idProp, $empresa]
+            );
+
+            $existingCdcs = [];
+            $existingKeys = [];
+            foreach ($egresosRows as $er) {
+                $info = [
+                    'idEgreso'     => (int)$er['id_egreso'],
+                    'nroFactura'   => (string)$er['nro_factura'],
+                    'nroTimbrado'  => (string)$er['nro_timbrado'],
+                    'fecEgreso'    => (string)($er['fec_egreso_fmt'] ?? ''),
+                    'nomProveedor' => (string)$er['nom_proveedor'],
+                    'rucProveedor' => (string)$er['ruc_proveedor'],
+                    'valorTotal'   => (float)$er['valor_total'],
+                ];
+                $c = preg_replace('/\D/', '', (string)$er['cdc']);
+                if (strlen($c) === 44) {
+                    $existingCdcs[$c] = $info;
+                }
+                $facClean = (string)$er['fac_clean'];
+                $timb = (string)$er['nro_timbrado'];
+                $rucB = ltrim((string)$er['ruc_base'], '0');
+                if ($facClean !== '' && $timb !== '') {
+                    $key1 = $timb . '|' . $facClean . '|' . $rucB;
+                    $existingKeys[$key1] = $info;
+                    $key2 = $timb . '|' . $facClean;
+                    if (!isset($existingKeys[$key2])) {
+                        $existingKeys[$key2] = $info;
+                    }
+                }
+            }
+
+            // 2. Obtener proveedores existentes
+            $provRows = Database::queryForList(
+                "SELECT cod_proveedor, nombre, ruc
+                 FROM co_proveedores
+                 WHERE id_propietario = ? AND cod_empresa = ?",
+                [$idProp, $empresa]
+            );
+            $proveedoresMap = [];
+            foreach ($provRows as $pr) {
+                $rawR = trim((string)($pr['ruc'] ?? ''));
+                if ($rawR === '') continue;
+                $baseR = ltrim(strtoupper(trim(explode('-', $rawR)[0])), '0');
+                if ($baseR !== '') {
+                    $proveedoresMap[$baseR] = [
+                        'codProveedor' => (string)$pr['cod_proveedor'],
+                        'nombre'       => (string)$pr['nombre'],
+                        'ruc'          => $rawR,
+                    ];
+                }
+            }
+
+            View::json([
+                'status'         => 'success',
+                'existingCdcs'   => $existingCdcs,
+                'existingKeys'   => $existingKeys,
+                'proveedoresMap' => $proveedoresMap,
+            ]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al validar datos de importación: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiEgresosImportarLote(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $usuario = TenantContext::usuario();
+        $payload = self::getInput();
+        $items = is_array($payload['items'] ?? null) ? $payload['items'] : [];
+
+        if (empty($items)) {
+            View::json(['status' => 'error', 'message' => 'No hay comprobantes válidos para importar.']);
+            return;
+        }
+
+        try {
+            @set_time_limit(180);
+
+            $comprador = trim((string)(Database::queryForValue(
+                "SELECT descripcion FROM empresas WHERE id_propietario = ? AND cod_empresa = ? LIMIT 1",
+                [$idProp, $empresa]
+            ) ?? ''));
+            if ($comprador === '') {
+                $comprador = TenantContext::nomEmpresa();
+            }
+
+            // Mapa de proveedores actuales
+            $provRows = Database::queryForList(
+                "SELECT cod_proveedor, cod_persona, nombre, ruc
+                 FROM co_proveedores
+                 WHERE id_propietario = ? AND cod_empresa = ?",
+                [$idProp, $empresa]
+            );
+            $provCache = [];
+            foreach ($provRows as $pr) {
+                $rawR = trim((string)($pr['ruc'] ?? ''));
+                if ($rawR === '') continue;
+                $baseR = ltrim(preg_replace('/\D/', '', explode('-', $rawR)[0]), '0');
+                if ($baseR !== '') {
+                    $provCache[$baseR] = [
+                        'codProveedor' => (string)$pr['cod_proveedor'],
+                        'nombre'       => (string)$pr['nombre'],
+                        'ruc'          => $rawR,
+                    ];
+                }
+            }
+
+            // Mapa de comprobantes existentes en BD
+            $egresosRows = Database::queryForList(
+                "SELECT id_egreso, TRIM(COALESCE(cdc, '')) AS cdc,
+                        TRIM(COALESCE(nro_timbrado, '')) AS nro_timbrado,
+                        REPLACE(TRIM(COALESCE(nro_factura, '')), '-', '') AS fac_clean,
+                        SUBSTRING_INDEX(REPLACE(COALESCE(ruc_proveedor, ''), ' ', ''), '-', 1) AS ruc_base
+                 FROM co_egresos
+                 WHERE id_propietario = ? AND cod_empresa = ?",
+                [$idProp, $empresa]
+            );
+            $existingCdcs = [];
+            $existingKeys = [];
+            foreach ($egresosRows as $er) {
+                $c = preg_replace('/\D/', '', (string)$er['cdc']);
+                if (strlen($c) === 44) {
+                    $existingCdcs[$c] = true;
+                }
+                $facClean = (string)$er['fac_clean'];
+                $timb = (string)$er['nro_timbrado'];
+                $rucB = ltrim(preg_replace('/\D/', '', (string)$er['ruc_base']), '0');
+                if ($facClean !== '' && $timb !== '') {
+                    $existingKeys[$timb . '|' . $facClean . '|' . $rucB] = true;
+                }
+            }
+
+            $proveedoresCreados = 0;
+            $insertados = 0;
+            $duplicadosOmitidos = 0;
+            $minFecha = null;
+            $maxFecha = null;
+
+            $maxId = (int)Database::queryForValue("SELECT COALESCE(MAX(id_egreso), 0) FROM co_egresos");
+
+            foreach ($items as $item) {
+                $cdc = preg_replace('/\D/', '', (string)($item['cdc'] ?? ''));
+                $tipDoc = self::resolveTipoDocCode((string)($item['tipDoc'] ?? 'FAC'));
+                $rawReg = (string)($item['regimen'] ?? $item['codRegimen'] ?? '1');
+                $codRegimen = self::resolveRegimenId($rawReg, $idProp);
+                $regimen = (string)$codRegimen;
+                $clasificacionGasto = (string)(int)self::resolveClasificacionGastoId((string)($item['clasificacionGasto'] ?? '1'), $idProp);
+                $tipEgreso = (string)(int)self::resolveTipoEgresoId((string)($item['tipEgreso'] ?? '1'), $idProp);
+                $tipTimb = 'Electrónico';
+                $nroTimbrado = preg_replace('/\D/', '', (string)($item['nroTimbrado'] ?? ''));
+                $vencTimbrado = self::parseSqlDate((string)($item['vencTimbrado'] ?? '')) ?: '2100-12-31';
+                $nroFactura = self::formatNroFactura((string)($item['nroFactura'] ?? ''));
+                $fecEgreso = self::parseSqlDate((string)($item['fecEgreso'] ?? ''));
+                $rawRuc = trim((string)($item['rucProveedor'] ?? ''));
+                $nomProveedor = mb_strtoupper(trim((string)($item['nomProveedor'] ?? '')), 'UTF-8');
+
+                if ($nroFactura === '' || $nroTimbrado === '' || !$fecEgreso || $rawRuc === '' || $nomProveedor === '') {
+                    continue;
+                }
+
+                $rucConDv = self::normalizarRucConDv($rawRuc, $cdc);
+                $rucBase = ltrim(preg_replace('/\D/', '', explode('-', $rucConDv)[0]), '0');
+                $facClean = str_replace('-', '', $nroFactura);
+                $dupKey = $nroTimbrado . '|' . $facClean . '|' . $rucBase;
+
+                if (($cdc !== '' && isset($existingCdcs[$cdc])) || isset($existingKeys[$dupKey])) {
+                    $duplicadosOmitidos++;
+                    continue;
+                }
+
+                // Verificar o crear proveedor automáticamente
+                if ($rucBase !== '' && isset($provCache[$rucBase])) {
+                    $codProveedor = $provCache[$rucBase]['codProveedor'];
+                    $rucFinal = $provCache[$rucBase]['ruc'] ?: $rucConDv;
+                    if (!str_contains($rucFinal, '-')) {
+                        $rucFinal = $rucConDv;
+                    }
+                } else {
+                    $codPersona = \App\Services\PersonaService::syncPersonaData(null, $nomProveedor, $rucConDv, 'RUC');
+                    $nextProvId = (int)Database::queryForValue(
+                        "SELECT COALESCE(MAX(CAST(cod_proveedor AS UNSIGNED)), 0) + 1
+                         FROM co_proveedores
+                         WHERE id_propietario = ? AND CAST(cod_proveedor AS UNSIGNED) < 3000",
+                        [$idProp]
+                    );
+                    $codProveedor = (string)max(1, $nextProvId);
+                    Database::update(
+                        "INSERT INTO co_proveedores (id_propietario, cod_proveedor, cod_empresa, cod_persona, nombre, ruc, tipo_documento, estado, usuario_reg, fec_reg)
+                         VALUES (?, ?, ?, ?, ?, ?, 'RUC', 'A', ?, NOW())",
+                        [$idProp, $codProveedor, $empresa, $codPersona, $nomProveedor, $rucConDv, $usuario]
+                    );
+                    $rucFinal = $rucConDv;
+                    if ($rucBase !== '') {
+                        $provCache[$rucBase] = [
+                            'codProveedor' => $codProveedor,
+                            'nombre'       => $nomProveedor,
+                            'ruc'          => $rucFinal,
+                        ];
+                    }
+                    $proveedoresCreados++;
+                }
+
+                // Condición: CONTADO -> CON, CRÉDITO -> CRE
+                $rawCond = strtoupper(trim((string)($item['condicion'] ?? 'CON')));
+                $condicion = (str_starts_with($rawCond, 'CR') || str_contains($rawCond, 'CRED') || str_contains($rawCond, 'CRÉD') || $rawCond === 'CRE') ? 'CRE' : 'CON';
+
+                // Moneda: 1 = Guaraníes (Gs), 2 = Dólares (USD)
+                $rawMon = strtoupper(trim((string)($item['codMoneda'] ?? '1')));
+                $codMoneda = ($rawMon === '2' || $rawMon === 'SI' || str_contains($rawMon, 'USD') || str_contains($rawMon, 'DOLAR')) ? '2' : '1';
+                $tasaCambio = (float)($item['tasaCambio'] ?? 1);
+
+                $grav10 = round((float)($item['grav10'] ?? 0));
+                $iva10  = round((float)($item['iva10'] ?? round($grav10 / 11)));
+                $grav5  = round((float)($item['grav5'] ?? 0));
+                $iva5   = round((float)($item['iva5'] ?? round($grav5 / 21)));
+                $exentas = round((float)($item['exentas'] ?? 0));
+                $totIva = $iva10 + $iva5;
+                $valorTotal = round((float)($item['valorTotal'] ?? ($grav10 + $grav5 + $exentas)));
+
+                $maxId++;
+                Database::update(
+                    "INSERT INTO co_egresos (
+                        id_propietario, id_egreso, cod_empresa, cdc, tip_doc, cod_regimen, regimen,
+                        clasificacion_gasto, tip_timb, nro_timbrado, venc_timbrado, nro_factura, serie,
+                        fec_egreso, comprador, cod_proveedor, nom_proveedor, ruc_proveedor, tip_egreso,
+                        form_120, condicion, form_145, cod_moneda, tasa_cambio, grav10, iva10, grav5,
+                        iva5, exentas, tot_iva, valor_total, observacion, estado, usuario_reg
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, 'Directo', ?, 'Original', ?, ?, ?, ?, ?, ?, ?, ?, ?, '', 'A', ?)",
+                    [
+                        $idProp, $maxId, $empresa, $cdc ?: null, $tipDoc, $codRegimen, $regimen,
+                        $clasificacionGasto, $tipTimb, $nroTimbrado, $vencTimbrado, $nroFactura,
+                        $fecEgreso, $comprador, $codProveedor, $nomProveedor, $rucFinal, $tipEgreso,
+                        $condicion, $codMoneda, $tasaCambio, $grav10, $iva10, $grav5, $iva5, $exentas, $totIva, $valorTotal, $usuario
+                    ]
+                );
+
+                // Construir asiento contable automático
+                $neto10 = $grav10 - $iva10;
+                $neto5  = $grav5 - $iva5;
+                $debeList = [];
+                if ($neto10 > 0) {
+                    $debeList[] = ['cuenta' => '01.01.04.01.01 - MERCADERÍAS GRAVADAS POR EL IVA AL 10%', 'debe' => $neto10];
+                }
+                if ($iva10 > 0) {
+                    $debeList[] = ['cuenta' => '01.01.03.05.03.01 - IVA CRÉDITO 10%', 'debe' => $iva10];
+                }
+                if ($neto5 > 0) {
+                    $debeList[] = ['cuenta' => '01.01.04.01.02 - MERCADERÍAS GRAVADAS POR EL IVA AL 5%', 'debe' => $neto5];
+                }
+                if ($iva5 > 0) {
+                    $debeList[] = ['cuenta' => '01.01.03.05.03.02 - IVA CRÉDITO 05%', 'debe' => $iva5];
+                }
+                if ($exentas > 0) {
+                    $debeList[] = ['cuenta' => '01.01.04.01.03 - MERCADERÍAS EXENTAS DEL IVA', 'debe' => $exentas];
+                }
+                $haberList = [];
+                if ($valorTotal > 0) {
+                    $ctaHaber = ($condicion === 'CON')
+                        ? '01.01.01.02.01 - CAJA GUARANÍES'
+                        : '02.01.01.01 - PROVEEDORES LOCALES [ CORTO PLAZO ]';
+                    $haberList[] = ['cuenta' => $ctaHaber, 'haber' => $valorTotal];
+                }
+                self::registrarAsientoContableEgreso($idProp, $maxId, $empresa, $usuario, $fecEgreso, $nroFactura, $nomProveedor, $debeList, $haberList);
+
+                if ($cdc !== '') $existingCdcs[$cdc] = true;
+                $existingKeys[$dupKey] = true;
+                $insertados++;
+
+                if ($minFecha === null || $fecEgreso < $minFecha) $minFecha = $fecEgreso;
+                if ($maxFecha === null || $fecEgreso > $maxFecha) $maxFecha = $fecEgreso;
+            }
+
+            View::json([
+                'status'             => 'success',
+                'insertados'         => $insertados,
+                'proveedoresCreados' => $proveedoresCreados,
+                'duplicadosOmitidos' => $duplicadosOmitidos,
+                'minFecha'           => $minFecha,
+                'maxFecha'           => $maxFecha,
+                'message'            => "Se importaron {$insertados} comprobantes electrónicos de egreso exitosamente"
+                                      . ($proveedoresCreados > 0 ? " y se crearon {$proveedoresCreados} nuevos proveedores." : "."),
+            ]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al importar lote de egresos: ' . $e->getMessage()]);
+        }
+    }
+
     // =========================================================================
     // API INGRESOS (/api/ingresos/*)
     // =========================================================================
@@ -961,7 +1334,7 @@ class MovimientosContablesController {
 
         try {
             $cdc       = isset($payload['cdc']) ? trim((string)$payload['cdc']) : null;
-            $tipDoc    = trim((string)($payload['tipDoc'] ?? 'Factura')) ?: 'Factura';
+            $tipDoc    = self::resolveTipoDocCode((string)($payload['tipDoc'] ?? 'FAC'));
             $rawReg    = (string)($payload['codRegimen'] ?? $payload['regimen'] ?? '1');
             $codRegimen = self::resolveRegimenId($rawReg, $idProp);
             $regimen   = (string)$codRegimen;

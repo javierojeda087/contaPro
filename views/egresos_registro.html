@@ -42,36 +42,20 @@
                         </button>
                     </div>
 
-                    <!-- Periodo & Search Controls matching Reference Image -->
-                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                        <div style="display: flex; align-items: center; gap: 8px; background: #ffffff; height: 38px; padding: 0 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.88rem;">
-                            <span style="font-weight: 700; color: #64748b;">Periodo:</span>
-                            <!-- Año Select -->
-                            <select id="filtroAnio" onchange="cargarEgresos()" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 8px; font-weight: 700; color: #0f172a; font-size: 0.85rem; outline: none; background: #f8fafc; cursor: pointer; height: 28px;">
-                                <option value="TODOS">Todos</option>
-                            </select>
-                            <!-- Mes Select -->
-                            <select id="filtroMes" onchange="cargarEgresos()" style="border: 2px solid #16a34a; border-radius: 6px; padding: 3px 8px; font-weight: 800; color: #15803d; font-size: 0.85rem; outline: none; background: #dcfce7; cursor: pointer; height: 28px;" title="Seleccionar Mes">
-                                <option value="TODOS">Todos</option>
-                                <option value="1">1</option>
-                                <option value="2">2</option>
-                                <option value="3">3</option>
-                                <option value="4">4</option>
-                                <option value="5">5</option>
-                                <option value="6">6</option>
-                                <option value="7">7</option>
-                                <option value="8">8</option>
-                                <option value="9">9</option>
-                                <option value="10">10</option>
-                                <option value="11">11</option>
-                                <option value="12">12</option>
-                            </select>
+                    <!-- Sección de Filtros (Fecha Desde / Hasta, Régimen, Consultar y Buscar) -->
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 8px; background: #ffffff; height: 38px; padding: 0 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem;">
+                            <i class="ph ph-funnel" style="color: #16a34a; font-size: 1rem;"></i>
+                            <span style="font-weight: 700; color: #64748b;">Desde:</span>
+                            <input type="date" id="filtroFechaDesde" th:value="${defFechaDesde}" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px 8px; font-weight: 700; color: #0f172a; font-size: 0.84rem; outline: none; background: #f8fafc; cursor: pointer; height: 28px;">
+                            <span style="font-weight: 700; color: #64748b; margin-left: 2px;">Hasta:</span>
+                            <input type="date" id="filtroFechaHasta" th:value="${defFechaHasta}" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px 8px; font-weight: 700; color: #0f172a; font-size: 0.84rem; outline: none; background: #f8fafc; cursor: pointer; height: 28px;">
                         </div>
 
                         <!-- Filtro Régimen -->
-                        <div style="display: flex; align-items: center; gap: 8px; background: #ffffff; height: 38px; padding: 0 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.88rem;">
+                        <div style="display: flex; align-items: center; gap: 8px; background: #ffffff; height: 38px; padding: 0 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem;">
                             <span style="font-weight: 700; color: #64748b;">Régimen:</span>
-                            <select id="filtroRegimen" onchange="filtrarEgresos()" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 8px; font-weight: 700; color: #0f172a; font-size: 0.85rem; outline: none; background: #f8fafc; cursor: pointer; height: 28px;">
+                            <select id="filtroRegimen" onchange="filtrarEgresos()" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 8px; font-weight: 700; color: #0f172a; font-size: 0.84rem; outline: none; background: #f8fafc; cursor: pointer; height: 28px;">
                                 <option value="TODOS">Todos</option>
                                 <option value="1">IRP & IVA</option>
                                 <option value="2">IRP</option>
@@ -80,9 +64,14 @@
                             </select>
                         </div>
 
+                        <!-- Botón Consultar -->
+                        <button type="button" id="btnConsultarEgresos" class="btn" onclick="cargarEgresos()" style="background: #16a34a; border: 1.5px solid #15803d; font-weight: 700; font-size: 0.86rem; color: #ffffff; height: 38px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2); transition: all 0.2s; cursor: pointer;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
+                            <i class="ph ph-magnifying-glass" style="font-size: 1.05rem;"></i> Consultar
+                        </button>
+
                         <!-- Search Input with CTRL+F placeholder -->
-                        <div style="position: relative; width: 230px;">
-                            <input type="text" id="searchInput" class="form-control" placeholder="BUSCAR" onkeyup="filtrarEgresos()" style="padding-right: 36px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; height: 38px;" autocomplete="off">
+                        <div style="position: relative; width: 200px;">
+                            <input type="text" id="searchInput" class="form-control" placeholder="BUSCAR" onkeyup="filtrarEgresos()" style="padding-right: 34px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; height: 38px;" autocomplete="off">
                             <i class="ph ph-magnifying-glass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #64748b; font-size: 1.1rem;"></i>
                         </div>
                     </div>
@@ -491,6 +480,152 @@
         </div>
     </div>
 
+    <!-- MODAL DE IMPORTACIÓN / MIGRACIÓN DE PLANILLA EXCEL DE EGRESOS ELECTRÓNICOS -->
+    <div id="importarExcelModalOverlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.6); z-index: 2100; display: none; align-items: center; justify-content: center; padding: 6px;">
+        <div style="background: white; border-radius: 12px; border: 1px solid #94a3b8; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.45); width: 99.4vw; max-width: 99.4vw; height: 96vh; display: flex; flex-direction: column; overflow: hidden; animation: modalSlideDown 0.22s cubic-bezier(0.16, 1, 0.3, 1);">
+            
+            <!-- Modal Header -->
+            <div style="background: #f8fafc; border-bottom: 1px solid #cbd5e1; padding: 10px 18px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 36px; height: 36px; border-radius: 8px; background: linear-gradient(135deg, #16a34a, #15803d); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+                        <i class="ph ph-file-xls"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.08rem; font-weight: 800; color: #0f172a;">Importar / Migrar Planilla de Egresos Electrónicos (Excel / Marangatu)</h3>
+                        <div style="font-size: 0.78rem; color: #64748b; font-weight: 600;">Filtra automáticamente comprobantes <b>ELECTRÓNICOS</b>, muestra arriba y permite filtrar los <b>Existentes / En Rojo</b>, verifica/crea proveedores y guarda con sus códigos exactos (<b>FAC, CON/CRE</b>, etc.).</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" onclick="cerrarModalImportarExcel()" style="font-size: 0.95rem; cursor: pointer;"></button>
+            </div>
+
+            <!-- Top Controls: File Selector, Defaults & Status Counters -->
+            <div style="padding: 10px 18px; background: #f1f5f9; border-bottom: 1px solid #cbd5e1; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; flex-shrink: 0;">
+                
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+                    <label for="excelFileInput" style="background: #16a34a; color: white; font-weight: 700; font-size: 0.84rem; padding: 0 15px; height: 36px; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 2px 4px rgba(22, 163, 74, 0.25); margin: 0;">
+                        <i class="ph ph-folder-open" style="font-size: 1.15rem;"></i> Seleccionar Archivo Excel / CSV
+                    </label>
+                    <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv,.txt,.tsv" style="display: none;" onchange="procesarArchivoExcelSeleccionado(this)">
+
+                    <button type="button" class="btn" onclick="toggleZonaPegarPlanilla()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.82rem; color: #334155; height: 36px; padding: 0 12px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="ph ph-clipboard-text" style="font-size: 1.1rem; color: #0284c7;"></i> Pegar Planilla
+                    </button>
+
+                    <span id="lblArchivoImportNombre" style="font-size: 0.82rem; font-weight: 700; color: #475569; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Ningún archivo seleccionado</span>
+
+                    <div style="height: 24px; width: 1px; background: #cbd5e1; margin: 0 2px;"></div>
+
+                    <!-- Valores por defecto para el lote -->
+                    <div style="display: flex; align-items: center; gap: 6px; background: white; padding: 0 10px; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.8rem;">
+                        <span style="font-weight: 700; color: #64748b;">Tipo Egreso:</span>
+                        <select id="importDefTipEgreso" onchange="aplicarDefectoTipoEgresoLote(this.value)" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px 6px; font-weight: 700; color: #0f172a; font-size: 0.78rem; max-width: 200px; height: 28px;">
+                            <option value="1">GASTOS GENERALES Y OPERATIVOS</option>
+                            <option value="2">COMPRA DE MERCADERÍAS / MATERIA PRIMA</option>
+                            <option value="3">COMBUSTIBLES Y LUBRICANTES</option>
+                            <option value="4">SERVICIOS BÁSICOS</option>
+                            <option value="5">ALQUILERES PAGADOS</option>
+                            <option value="6">HONORARIOS PROFESIONALES</option>
+                        </select>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 6px; background: white; padding: 0 10px; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.8rem;">
+                        <span style="font-weight: 700; color: #64748b;">Clasif. Gasto:</span>
+                        <select id="importDefClasifGasto" onchange="aplicarDefectoClasifGastoLote(this.value)" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px 6px; font-weight: 700; color: #15803d; background: #f0fdf4; font-size: 0.78rem; max-width: 185px; height: 28px;">
+                            <option value="1">Gasto</option>
+                            <option value="2">Inversiones Relacionadas a la Act. Gravada</option>
+                            <option value="3">Inversiones Personales / Familiares</option>
+                            <option value="4">Gastos Personales / Familiares</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Summary Badges (Clickable Filters) & Bulk Delete Red Rows -->
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <span style="font-size: 0.75rem; font-weight: 700; color: #64748b;">Filtrar vista:</span>
+                    <button type="button" id="badgeImportTotal" onclick="filtrarVistaImportacion('TODOS')" title="Click para ver todos los comprobantes electrónicos" style="background: #1e293b; color: #ffffff; border: 1.5px solid #0f172a; font-weight: 800; font-size: 0.78rem; padding: 5px 11px; border-radius: 6px; cursor: pointer;">Electrónicos (Todos): 0</button>
+                    <span id="badgeImportOmitidosManual" style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.78rem; padding: 5px 10px; border-radius: 6px; display: none;">Manuales omitidos: 0</span>
+                    <button type="button" id="badgeImportValidos" onclick="filtrarVistaImportacion('VALIDOS')" title="Click para ver solo los comprobantes válidos" style="background: #dcfce7; color: #15803d; border: 1.5px solid #86efac; font-weight: 800; font-size: 0.78rem; padding: 5px 11px; border-radius: 6px; cursor: pointer;">Válidos: 0</button>
+                    <button type="button" id="badgeImportConflictos" onclick="filtrarVistaImportacion('ROJOS')" title="Click para ver cuál es el comprobante existente o con conflicto" style="background: #fef2f2; color: #dc2626; border: 1.5px solid #fca5a5; font-weight: 800; font-size: 0.78rem; padding: 5px 11px; border-radius: 6px; cursor: pointer;">Existentes / En Rojo: 0</button>
+                    <button type="button" id="btnEliminarTodosRojos" onclick="eliminarFilasRojasImportacion()" style="display: none; background: #dc2626; color: #ffffff; border: 1.5px solid #b91c1c; font-weight: 800; font-size: 0.78rem; height: 34px; padding: 0 12px; border-radius: 8px; align-items: center; gap: 5px; cursor: pointer; box-shadow: 0 2px 6px rgba(220,38,38,0.28);">
+                        <i class="ph ph-trash"></i> Eliminar Todos en Rojo
+                    </button>
+                </div>
+            </div>
+
+            <!-- Collapsible Paste Area -->
+            <div id="zonaPegarPlanilla" style="display: none; padding: 10px 18px; background: #fffbeb; border-bottom: 1px solid #fde68a; flex-shrink: 0;">
+                <div style="display: flex; gap: 10px; align-items: flex-start;">
+                    <textarea id="txtPegarPlanilla" rows="3" placeholder="Pegue aquí las filas copiadas directamente desde su planilla Excel de Marangatu..." style="flex: 1; font-family: monospace; font-size: 0.8rem; padding: 8px 10px; border-radius: 8px; border: 1.5px solid #cbd5e1;"></textarea>
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <button type="button" class="btn" onclick="procesarTextoPegadoPlanilla()" style="background: #0284c7; color: white; font-weight: 700; font-size: 0.82rem; padding: 6px 14px; border-radius: 8px;">Cargar Vista Previa</button>
+                        <button type="button" class="btn" onclick="toggleZonaPegarPlanilla()" style="background: white; border: 1px solid #cbd5e1; color: #64748b; font-weight: 700; font-size: 0.78rem; padding: 4px 14px; border-radius: 8px;">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview Grid Body -->
+            <div style="flex: 1; overflow: auto; background: #ffffff;">
+                <table class="table table-bordered align-middle m-0" style="font-size: 0.82rem; width: 100%; min-width: 2120px; border-collapse: separate; border-spacing: 0; table-layout: fixed;">
+                    <thead style="position: sticky; top: 0; z-index: 15; background: #1e293b; color: #ffffff; font-weight: 700; font-size: 0.75rem; text-transform: uppercase;">
+                        <tr>
+                            <th style="padding: 10px 6px; text-align: center; width: 46px;">#</th>
+                            <th style="padding: 10px 8px; text-align: center; width: 225px;">Estado / Detalle Existente</th>
+                            <th style="padding: 10px 6px; width: 128px;">Fecha</th>
+                            <th style="padding: 10px 6px; width: 105px;">Tipo Doc.</th>
+                            <th style="padding: 10px 6px; width: 96px; text-align: center;">Timbrado</th>
+                            <th style="padding: 10px 6px; width: 158px;">Factura</th>
+                            <th style="padding: 10px 6px; width: 325px;">CDC (44 dígitos)</th>
+                            <th style="padding: 10px 6px; width: 118px;">RUC Prov.</th>
+                            <th style="padding: 10px 8px; width: 280px;">Razón Social Proveedor</th>
+                            <th style="padding: 10px 6px; width: 78px; text-align: center;">Cond.</th>
+                            <th style="padding: 10px 6px; width: 118px;">Régimen</th>
+                            <th style="padding: 10px 6px; width: 110px; text-align: right;">Grav. 10%</th>
+                            <th style="padding: 10px 6px; width: 96px; text-align: right;">IVA 10%</th>
+                            <th style="padding: 10px 6px; width: 105px; text-align: right;">Grav. 5%</th>
+                            <th style="padding: 10px 6px; width: 90px; text-align: right;">IVA 5%</th>
+                            <th style="padding: 10px 6px; width: 102px; text-align: right;">Exentas</th>
+                            <th style="padding: 10px 8px; width: 118px; text-align: right;">Total</th>
+                            <th style="padding: 10px 6px; width: 56px; text-align: center;">Quitar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyImportPreview">
+                        <tr>
+                            <td colspan="18" style="text-align: center; padding: 65px 20px; color: #64748b;">
+                                <i class="ph ph-file-xls" style="font-size: 3rem; color: #16a34a; display: block; margin-bottom: 10px;"></i>
+                                <div style="font-size: 1rem; font-weight: 700; color: #334155;">Seleccione un archivo Excel (.xlsx, .xls, .csv) o use "Pegar Planilla"</div>
+                                <div style="font-size: 0.85rem; margin-top: 4px;">Se cargarán automáticamente los comprobantes <b>ELECTRÓNICOS</b> en esta grilla para su validación, edición y confirmación.</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Modal Footer -->
+            <div style="background: #f8fafc; border-top: 1px solid #cbd5e1; padding: 12px 22px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 16px; font-size: 0.85rem; font-weight: 700; color: #334155;">
+                    <span>Total Grav. 10%: <strong id="lblImpTotG10" style="color: #0f172a;">0</strong></span>
+                    <span>Total IVA 10%: <strong id="lblImpTotI10" style="color: #0284c7;">0</strong></span>
+                    <span>Total Grav. 5%: <strong id="lblImpTotG5" style="color: #0f172a;">0</strong></span>
+                    <span>Total Exentas: <strong id="lblImpTotEx" style="color: #64748b;">0</strong></span>
+                    <span style="background: #f0fdf4; border: 1px solid #86efac; padding: 4px 12px; border-radius: 6px; color: #15803d; font-size: 0.92rem;">Total General Válidos: Gs. <strong id="lblImpTotGeneral">0</strong></span>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button type="button" class="btn" onclick="cerrarModalImportarExcel()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #475569; height: 40px; padding: 0 18px; border-radius: 8px;">
+                        Cancelar
+                    </button>
+                    <button type="button" id="btnConfirmarImportacionEgresos" class="btn" onclick="confirmarEInsertarImportacion()" style="background: #16a34a; border: 1.5px solid #15803d; font-weight: 800; font-size: 0.9rem; color: white; height: 40px; padding: 0 22px; border-radius: 8px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 10px rgba(22, 163, 74, 0.28); cursor: pointer;">
+                        <i class="ph ph-check-circle" style="font-size: 1.15rem;"></i> Confirmar e Insertar en Egresos
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- SheetJS para lectura nativa de archivos Excel (.xlsx / .xls / .csv) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <style>
         @keyframes modalSlideDown {
             from { opacity: 0; transform: translateY(-20px) scale(0.97); }
@@ -622,21 +757,31 @@
         });
 
         function inicializarFiltroPeriodo() {
-            const selectAnio = document.getElementById('filtroAnio');
-            if (!selectAnio) return;
+            const inputDesde = document.getElementById('filtroFechaDesde');
+            const inputHasta = document.getElementById('filtroFechaHasta');
+            if (!inputDesde || !inputHasta) return;
 
-            const anioActual = new Date().getFullYear();
-            let html = '<option value="TODOS">Todos</option>';
-            for (let y = anioActual + 1; y >= anioActual - 5; y--) {
-                html += `<option value="${y}">${y}</option>`;
+            const hoy = new Date();
+            const ejSession = /*[[${ejercicio != null ? ejercicio : session.ejercicio}]]*/ '';
+            const anioParsed = parseInt(String(ejSession).replace(/\D/g, ''), 10);
+            const anio = (!isNaN(anioParsed) && anioParsed >= 1990 && anioParsed <= 2100) ? anioParsed : hoy.getFullYear();
+            const mes = hoy.getMonth();
+
+            const primerDia = new Date(anio, mes, 1);
+            const ultimoDia = new Date(anio, mes + 1, 0);
+
+            const fmtDate = (d) => {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${day}`;
+            };
+
+            if (!inputDesde.value || inputDesde.value.includes('${')) {
+                inputDesde.value = fmtDate(primerDia);
             }
-            selectAnio.innerHTML = html;
-
-            const ejSession = /*[[${session.ejercicio}]]*/ '';
-            if (ejSession && ejSession !== '' && selectAnio.querySelector(`option[value="${ejSession}"]`)) {
-                selectAnio.value = ejSession;
-            } else {
-                selectAnio.value = String(anioActual);
+            if (!inputHasta.value || inputHasta.value.includes('${')) {
+                inputHasta.value = fmtDate(ultimoDia);
             }
         }
 
@@ -682,7 +827,8 @@
                     const currentVal = String(select.value || '1');
                     select.innerHTML = '';
                     list.filter(item => (item.ESTADO || item.estado) === 'A' || String(item.COD_REGIMEN || item.cod_regimen) === currentVal).forEach(item => {
-                        const cod = item.COD_REGIMEN || item.cod_regimen;
+                        const rawCod = item.COD_REGIMEN || item.cod_regimen;
+                        const cod = !isNaN(parseFloat(rawCod)) ? String(parseInt(rawCod, 10)) : String(rawCod);
                         const desc = item.DESCRIPCION || item.descripcion;
                         const opt = document.createElement('option');
                         opt.value = cod;
@@ -690,7 +836,7 @@
                         select.appendChild(opt);
                     });
                     if (currentVal && Array.from(select.options).some(o => o.value == currentVal)) {
-                        select.value = currentVal;
+                        select.value = !isNaN(parseFloat(currentVal)) ? String(parseInt(currentVal, 10)) : currentVal;
                     } else {
                         select.value = '1';
                     }
@@ -701,7 +847,8 @@
                     const currentFiltro = filtroSelect.value || 'TODOS';
                     filtroSelect.innerHTML = '<option value="TODOS">Todos</option>';
                     list.filter(item => (item.ESTADO || item.estado) === 'A').forEach(item => {
-                        const cod = item.COD_REGIMEN || item.cod_regimen;
+                        const rawCod = item.COD_REGIMEN || item.cod_regimen;
+                        const cod = !isNaN(parseFloat(rawCod)) ? String(parseInt(rawCod, 10)) : String(rawCod);
                         const desc = item.DESCRIPCION || item.descripcion;
                         const opt = document.createElement('option');
                         opt.value = cod;
@@ -727,15 +874,17 @@
                         const currentVal = select.value;
                         select.innerHTML = '';
                         list.filter(item => (item.ESTADO || item.estado) === 'A' || String(item.COD_TIPO || item.cod_tipo) === String(currentVal)).forEach(item => {
-                            const id = String(item.COD_TIPO || item.cod_tipo);
+                            const rawId = item.COD_TIPO || item.cod_tipo;
+                            const id = !isNaN(parseFloat(rawId)) ? String(parseInt(rawId, 10)) : String(rawId);
                             const desc = item.DESCRIPCION || item.descripcion;
                             const opt = document.createElement('option');
                             opt.value = id;
                             opt.text = desc;
                             select.appendChild(opt);
                         });
-                        if (currentVal && Array.from(select.options).some(o => o.value === String(currentVal))) {
-                            select.value = String(currentVal);
+                        const normCur = !isNaN(parseFloat(currentVal)) ? String(parseInt(currentVal, 10)) : String(currentVal);
+                        if (normCur && Array.from(select.options).some(o => o.value === normCur)) {
+                            select.value = normCur;
                         } else if (select.options.length > 0) {
                             select.selectedIndex = 0;
                         }
@@ -756,15 +905,17 @@
                         const currentVal = select.value;
                         select.innerHTML = '';
                         list.filter(item => (item.ESTADO || item.estado) === 'A' || String(item.COD_CLASIFICACION || item.cod_clasificacion) === String(currentVal)).forEach(item => {
-                            const id = String(item.COD_CLASIFICACION || item.cod_clasificacion);
+                            const rawId = item.COD_CLASIFICACION || item.cod_clasificacion;
+                            const id = !isNaN(parseFloat(rawId)) ? String(parseInt(rawId, 10)) : String(rawId);
                             const desc = item.DESCRIPCION || item.descripcion;
                             const opt = document.createElement('option');
                             opt.value = id;
                             opt.text = desc;
                             select.appendChild(opt);
                         });
-                        if (currentVal && Array.from(select.options).some(o => o.value === String(currentVal))) {
-                            select.value = String(currentVal);
+                        const normCur = !isNaN(parseFloat(currentVal)) ? String(parseInt(currentVal, 10)) : String(currentVal);
+                        if (normCur && Array.from(select.options).some(o => o.value === normCur)) {
+                            select.value = normCur;
                         } else if (select.options.length > 0) {
                             select.selectedIndex = 0;
                         }
@@ -776,10 +927,15 @@
         }
 
         function cargarEgresos() {
-            const anioVal = document.getElementById('filtroAnio')?.value || 'TODOS';
-            const mesVal = document.getElementById('filtroMes')?.value || 'TODOS';
+            const fechaDesde = document.getElementById('filtroFechaDesde')?.value || '';
+            const fechaHasta = document.getElementById('filtroFechaHasta')?.value || '';
 
-            fetch(`/api/egresos/list?anio=${encodeURIComponent(anioVal)}&mes=${encodeURIComponent(mesVal)}`)
+            if (fechaDesde && fechaHasta && fechaDesde > fechaHasta) {
+                Swal.fire('Atención', 'La Fecha Desde no puede ser mayor a la Fecha Hasta.', 'warning');
+                return;
+            }
+
+            fetch(`/api/egresos/list?fechaDesde=${encodeURIComponent(fechaDesde)}&fechaHasta=${encodeURIComponent(fechaHasta)}`)
                 .then(res => res.json())
                 .then(res => {
                     if (res.status === 'success') {
@@ -873,23 +1029,24 @@
                 const nroTimb = item.NRO_TIMBRADO || item.nro_timbrado || '-';
                 const rucStr = item.RUC_PROVEEDOR || item.ruc_proveedor || '-';
                 const nomStr = item.NOM_PROVEEDOR || item.nom_proveedor || '-';
-                const rawReg = String(item.COD_REGIMEN || item.cod_regimen || item.REGIMEN || item.regimen || '1').trim();
+                const rawRegVal = String(item.COD_REGIMEN || item.cod_regimen || item.REGIMEN || item.regimen || '1').trim();
+                const rawRegNum = !isNaN(parseFloat(rawRegVal)) ? String(parseInt(rawRegVal, 10)) : rawRegVal;
                 let regStr = 'IRP & IVA';
                 let regBadgeStyle = 'background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;';
-                if (rawReg === '1' || rawReg.toUpperCase().includes('IRP & IVA')) {
+                if (rawRegNum === '1' || rawRegVal.toUpperCase().includes('IRP & IVA')) {
                     regStr = 'IRP & IVA';
                     regBadgeStyle = 'background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;';
-                } else if (rawReg === '2' || rawReg.toUpperCase() === 'IRP') {
+                } else if (rawRegNum === '2' || rawRegVal.toUpperCase() === 'IRP') {
                     regStr = 'IRP';
                     regBadgeStyle = 'background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0;';
-                } else if (rawReg === '3' || rawReg.toUpperCase() === 'IVA') {
+                } else if (rawRegNum === '3' || rawRegVal.toUpperCase() === 'IVA') {
                     regStr = 'IVA';
                     regBadgeStyle = 'background: #faf5ff; color: #7e22ce; border: 1px solid #e9d5ff;';
-                } else if (rawReg === '4' || rawReg.toUpperCase().includes('CAPITAL')) {
+                } else if (rawRegNum === '4' || rawRegVal.toUpperCase().includes('CAPITAL')) {
                     regStr = 'G. CAPITAL';
                     regBadgeStyle = 'background: #fffbeb; color: #b45309; border: 1px solid #fde68a;';
                 } else {
-                    regStr = rawReg;
+                    regStr = rawRegVal;
                     regBadgeStyle = 'background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1;';
                 }
                 
@@ -982,13 +1139,15 @@
             let filtered = listEgresosData;
 
             if (filtroReg && filtroReg !== 'TODOS') {
+                const fRegNorm = !isNaN(parseFloat(filtroReg)) ? String(parseInt(filtroReg, 10)) : filtroReg;
                 filtered = filtered.filter(item => {
                     const r = String(item.COD_REGIMEN || item.cod_regimen || item.REGIMEN || item.regimen || '1').trim();
-                    if (r === filtroReg) return true;
-                    if (filtroReg === '1' && (r.toUpperCase().includes('IRP & IVA') || r === '1')) return true;
-                    if (filtroReg === '2' && (r.toUpperCase() === 'IRP' || r === '2')) return true;
-                    if (filtroReg === '3' && (r.toUpperCase() === 'IVA' || r === '3')) return true;
-                    if (filtroReg === '4' && (r.toUpperCase().includes('CAPITAL') || r === '4')) return true;
+                    const rNorm = !isNaN(parseFloat(r)) ? String(parseInt(r, 10)) : r;
+                    if (r === filtroReg || rNorm === fRegNorm) return true;
+                    if (fRegNorm === '1' && (r.toUpperCase().includes('IRP & IVA') || rNorm === '1')) return true;
+                    if (fRegNorm === '2' && (r.toUpperCase() === 'IRP' || rNorm === '2')) return true;
+                    if (fRegNorm === '3' && (r.toUpperCase() === 'IVA' || rNorm === '3')) return true;
+                    if (fRegNorm === '4' && (r.toUpperCase().includes('CAPITAL') || rNorm === '4')) return true;
                     return false;
                 });
             }
@@ -1945,12 +2104,861 @@
             });
         }
 
+        let importPreviewList = [];
+        let importManualOmitidosCount = 0;
+        let importFiltroEstado = 'TODOS'; // 'TODOS' | 'VALIDOS' | 'ROJOS'
+        let importValidationCache = {
+            existingCdcs: {},
+            existingKeys: {},
+            proveedoresMap: {}
+        };
+
+        function calcularDvParaguayJS(rucSinDv) {
+            const digits = String(rucSinDv || '').replace(/\D/g, '');
+            if (!digits) return 0;
+            const baseMax = 11;
+            let k = 2;
+            let total = 0;
+            for (let i = digits.length - 1; i >= 0; i--) {
+                if (k > baseMax) k = 2;
+                total += parseInt(digits[i], 10) * k;
+                k++;
+            }
+            const resto = total % 11;
+            return resto > 1 ? 11 - resto : 0;
+        }
+
+        function normalizarRucConDvJS(rawRuc, cdc) {
+            let r = String(rawRuc || '').trim().toUpperCase();
+            if (!r) return '';
+            if (r.includes('-')) {
+                const parts = r.split('-');
+                const b = parts[0].replace(/\D/g, '');
+                const dv = (parts[1] || '').trim();
+                if (b && dv !== '') return `${b}-${dv}`;
+            }
+            const baseDigits = r.replace(/\D/g, '');
+            if (!baseDigits) return r;
+
+            const cdcDigits = String(cdc || '').replace(/\D/g, '');
+            if (cdcDigits.length === 44) {
+                const cdcRuc = cdcDigits.substring(2, 10).replace(/^0+/, '');
+                const cdcDv = cdcDigits.substring(10, 11);
+                if (cdcRuc && cdcRuc === baseDigits.replace(/^0+/, '')) {
+                    return `${baseDigits}-${cdcDv}`;
+                }
+            }
+            const dvCalc = calcularDvParaguayJS(baseDigits);
+            return `${baseDigits}-${dvCalc}`;
+        }
+
+        async function refrescarCacheValidacionImport() {
+            try {
+                const res = await fetch('/api/egresos/validar-importacion');
+                const data = await res.json();
+                if (data && data.status === 'success') {
+                    importValidationCache.existingCdcs = data.existingCdcs || {};
+                    importValidationCache.existingKeys = data.existingKeys || {};
+                    importValidationCache.proveedoresMap = data.proveedoresMap || {};
+                }
+            } catch (e) {
+                console.warn('No se pudo refrescar cache de validación:', e);
+            }
+        }
+
+        async function abrirModalImportarExcel() {
+            // Sincronizar combos por defecto del modal con los cargados en la pantalla
+            const mainTipEg = document.getElementById('tipEgreso');
+            const impTipEg = document.getElementById('importDefTipEgreso');
+            if (mainTipEg && impTipEg && mainTipEg.options.length > 0) {
+                impTipEg.innerHTML = mainTipEg.innerHTML;
+                impTipEg.value = mainTipEg.value || '1';
+            }
+            const mainClasG = document.getElementById('clasificacionGasto');
+            const impClasG = document.getElementById('importDefClasifGasto');
+            if (mainClasG && impClasG && mainClasG.options.length > 0) {
+                impClasG.innerHTML = mainClasG.innerHTML;
+                impClasG.value = mainClasG.value || '1';
+            }
+
+            await refrescarCacheValidacionImport();
+
+            const overlay = document.getElementById('importarExcelModalOverlay');
+            if (overlay) overlay.style.display = 'flex';
+        }
+
+        function cerrarModalImportarExcel() {
+            const overlay = document.getElementById('importarExcelModalOverlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+
+        function toggleZonaPegarPlanilla() {
+            const z = document.getElementById('zonaPegarPlanilla');
+            if (!z) return;
+            z.style.display = (z.style.display === 'none' || !z.style.display) ? 'block' : 'none';
+            if (z.style.display === 'block') {
+                document.getElementById('txtPegarPlanilla')?.focus();
+            }
+        }
+
+        function parseMontoImport(rawVal, fmtVal) {
+            if (fmtVal !== undefined && fmtVal !== null && String(fmtVal).trim() !== '') {
+                const sFmt = String(fmtVal).trim();
+                // Si viene con puntos de miles ej. "199.000" o "3.200.000"
+                if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(sFmt)) {
+                    const clean = sFmt.replace(/\./g, '').replace(',', '.');
+                    return Math.round(parseFloat(clean) || 0);
+                }
+            }
+            if (typeof rawVal === 'number') {
+                return Math.round(rawVal);
+            }
+            let s = String(rawVal ?? fmtVal ?? '').trim();
+            if (!s) return 0;
+            if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) {
+                return Math.round(parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0);
+            }
+            if (/^-?\d+\.\d{1,2}$/.test(s)) {
+                return Math.round(parseFloat(s) || 0);
+            }
+            let clean = s.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
+            return Math.round(parseFloat(clean) || 0);
+        }
+
+        function parseFechaImport(val, cdcFallback = '') {
+            if (val !== null && val !== undefined && val !== '') {
+                if (typeof val === 'number' && val > 25000 && val < 80000) {
+                    const utcDays = Math.floor(val - 25569);
+                    const d = new Date(utcDays * 86400 * 1000);
+                    const yyyy = d.getUTCFullYear();
+                    const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getUTCDate()).padStart(2, '0');
+                    return `${yyyy}-${mm}-${dd}`;
+                }
+                let s = String(val).trim();
+                if (s.includes(' ')) s = s.split(' ')[0];
+                if (s.includes('T')) s = s.split('T')[0];
+
+                const mDmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+                if (mDmy) {
+                    return `${mDmy[3]}-${mDmy[2].padStart(2, '0')}-${mDmy[1].padStart(2, '0')}`;
+                }
+                const mYmd = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+                if (mYmd) {
+                    return `${mYmd[1]}-${mYmd[2].padStart(2, '0')}-${mYmd[3].padStart(2, '0')}`;
+                }
+            }
+            const cdcDigits = String(cdcFallback || '').replace(/\D/g, '');
+            if (cdcDigits.length === 44) {
+                const y = cdcDigits.substring(25, 29);
+                const m = cdcDigits.substring(29, 31);
+                const d = cdcDigits.substring(31, 33);
+                if (parseInt(y, 10) >= 2000 && parseInt(m, 10) >= 1 && parseInt(m, 10) <= 12 && parseInt(d, 10) >= 1 && parseInt(d, 10) <= 31) {
+                    return `${y}-${m}-${d}`;
+                }
+            }
+            return '';
+        }
+
+        function normalizarTipoDocImport(rawTip) {
+            const u = String(rawTip || 'FAC').trim().toUpperCase();
+            if (u === 'NCR' || u.includes('CRED') || u.includes('CRÉD')) return 'NCR';
+            if (u === 'DEB' || u.includes('DEB') || u.includes('DÉB')) return 'DEB';
+            if (u === 'AUT' || u.includes('AUTO')) return 'AUT';
+            return 'FAC';
+        }
+
+        function procesarFilasCrudasImportacion(rowsFmt, rowsRaw = null) {
+            importPreviewList = [];
+            importManualOmitidosCount = 0;
+            importFiltroEstado = 'TODOS';
+
+            const rawDefTipEg = document.getElementById('importDefTipEgreso')?.value || '1';
+            const defTipEg = !isNaN(parseFloat(rawDefTipEg)) ? String(parseInt(rawDefTipEg, 10)) : '1';
+            const rawDefClasG = document.getElementById('importDefClasifGasto')?.value || '1';
+            const defClasG = !isNaN(parseFloat(rawDefClasG)) ? String(parseInt(rawDefClasG, 10)) : '1';
+
+            for (let rIdx = 0; rIdx < rowsFmt.length; rIdx++) {
+                const cols = rowsFmt[rIdx];
+                const rawCols = (rowsRaw && rowsRaw[rIdx]) ? rowsRaw[rIdx] : cols;
+                if (!cols || cols.length < 10) continue;
+
+                const col2 = String(cols[2] ?? '').trim();
+                const col4 = String(cols[4] ?? '').trim();
+                const col6 = String(cols[6] ?? '').trim();
+                const col7 = String(cols[7] ?? '').trim();
+                const col11 = String(cols[11] ?? '').trim();
+                const col12 = String(cols[12] ?? '').trim();
+
+                // Ignorar fila de encabezados si existe
+                if (
+                    col2.toUpperCase().includes('RUC') ||
+                    col7.toUpperCase().includes('FECHA') ||
+                    col11.toUpperCase().includes('TIMBRADO') ||
+                    (!col2 && !col12)
+                ) {
+                    continue;
+                }
+
+                // Determinar si es ELECTRÓNICO
+                // Col 13 = CDC (44 dígitos), Col 27 (o última columna con texto) = ELECTRONICO / MANUAL
+                let rawCdc = String(cols[13] ?? '').replace(/\D/g, '');
+                let origenStr = String(cols[27] ?? '').trim().toUpperCase();
+                if (!origenStr) {
+                    for (let c = cols.length - 1; c >= 20; c--) {
+                        const v = String(cols[c] ?? '').trim().toUpperCase();
+                        if (v.includes('ELECTR') || v === 'MANUAL') {
+                            origenStr = v;
+                            break;
+                        }
+                    }
+                }
+                if (rawCdc.length !== 44) {
+                    for (let c = 10; c < cols.length; c++) {
+                        const digits = String(cols[c] ?? '').replace(/\D/g, '');
+                        if (digits.length === 44) {
+                            rawCdc = digits;
+                            break;
+                        }
+                    }
+                }
+
+                const esElectronico = origenStr.includes('ELECTR') || rawCdc.length === 44;
+                if (!esElectronico) {
+                    importManualOmitidosCount++;
+                    continue;
+                }
+
+                const tipDoc = normalizarTipoDocImport(col6);
+                const fecEgreso = parseFechaImport(rawCols[7] ?? col7, rawCdc);
+                const condRaw = String(cols[9] ?? 'CONTADO').trim().toUpperCase();
+                const condicion = (condRaw.startsWith('CR') || condRaw.includes('CRED') || condRaw.includes('CRÉD')) ? 'CRE' : 'CON';
+                const nroTimbrado = col11.replace(/\D/g, '').slice(0, 8);
+                const nroFactura = formatNroFactura(col12, tipDoc);
+                const rucProveedor = normalizarRucConDvJS(col2, rawCdc);
+                const nomProveedor = col4.toUpperCase();
+
+                const grav10 = parseMontoImport(rawCols[14], cols[14]);
+                const iva10Planilla = parseMontoImport(rawCols[15], cols[15]);
+                const grav5 = parseMontoImport(rawCols[16], cols[16]);
+                const iva5Planilla = parseMontoImport(rawCols[17], cols[17]);
+                const exentas = parseMontoImport(rawCols[18], cols[18]);
+                const totalPlanilla = parseMontoImport(rawCols[19], cols[19]);
+
+                const iva10 = iva10Planilla > 0 ? iva10Planilla : Math.round(grav10 / 11);
+                const iva5 = iva5Planilla > 0 ? iva5Planilla : Math.round(grav5 / 21);
+                const valorTotal = (grav10 + grav5 + exentas) > 0 ? (grav10 + grav5 + exentas) : totalPlanilla;
+
+                // Inferir régimen de Col 20 (Imputa IVA) y Col 22 (Imputa IRP)
+                const impIva = String(cols[20] ?? 'SI').trim().toUpperCase() === 'SI';
+                const impIrp = String(cols[22] ?? 'SI').trim().toUpperCase() === 'SI';
+                let regimen = '1';
+                if (impIva && impIrp) regimen = '1';
+                else if (!impIva && impIrp) regimen = '2';
+                else if (impIva && !impIrp) regimen = '3';
+
+                importPreviewList.push({
+                    cdc: rawCdc,
+                    tipDoc: tipDoc,
+                    tipTimb: 'Electrónico',
+                    vencTimbrado: '2100-12-31',
+                    nroTimbrado: nroTimbrado,
+                    nroFactura: nroFactura !== '-' ? nroFactura : col12,
+                    fecEgreso: fecEgreso,
+                    rucProveedor: rucProveedor,
+                    nomProveedor: nomProveedor,
+                    condicion: condicion,
+                    regimen: regimen,
+                    codRegimen: parseInt(regimen, 10) || 1,
+                    tipEgreso: defTipEg,
+                    clasificacionGasto: defClasG,
+                    codMoneda: '1',
+                    tasaCambio: 1,
+                    form120: 'Directo',
+                    form145: 'Original',
+                    grav10: grav10,
+                    iva10: iva10,
+                    grav5: grav5,
+                    iva5: iva5,
+                    exentas: exentas,
+                    valorTotal: valorTotal,
+                    yaExisteBD: false,
+                    infoExistenteBD: null,
+                    duplicadoEnPlanilla: false,
+                    proveedorExiste: false,
+                    codProveedor: '',
+                    errores: []
+                });
+            }
+
+            revalidarTodasLasFilasImportacion();
+            // Ordenar automáticamente las filas en rojo (existentes en BD o con error) al inicio para que se vean de inmediato
+            importPreviewList.sort((a, b) => {
+                const redA = esFilaEnRojo(a) ? 0 : 1;
+                const redB = esFilaEnRojo(b) ? 0 : 1;
+                return redA - redB;
+            });
+            revalidarTodasLasFilasImportacion();
+            renderTablaImportPreview();
+        }
+
+        function revalidarTodasLasFilasImportacion() {
+            const seenCdcs = new Set();
+            const seenKeys = new Set();
+
+            // También cruzar con listEgresosData cargada en memoria por seguridad adicional
+            const localCdcs = {};
+            const localKeys = {};
+            if (Array.isArray(listEgresosData)) {
+                listEgresosData.forEach(eg => {
+                    const infoObj = {
+                        idEgreso: eg.ID_EGRESO || eg.id_egreso || '',
+                        nroFactura: eg.NRO_FACTURA || eg.nro_factura || '',
+                        nroTimbrado: eg.NRO_TIMBRADO || eg.nro_timbrado || '',
+                        fecEgreso: eg.FEC_EGRESO_FMT || eg.fec_egreso_fmt || eg.FEC_EGRESO || eg.fec_egreso || '',
+                        nomProveedor: eg.NOM_PROVEEDOR || eg.nom_proveedor || '',
+                        valorTotal: parseFloat(eg.VALOR_TOTAL || eg.valor_total || 0)
+                    };
+                    const c = String(eg.CDC || eg.cdc || '').replace(/\D/g, '');
+                    if (c.length === 44) localCdcs[c] = infoObj;
+                    const t = String(eg.NRO_TIMBRADO || eg.nro_timbrado || '').trim();
+                    const f = String(eg.NRO_FACTURA || eg.nro_factura || '').replace(/[-\s]/g, '');
+                    const rBase = String(eg.RUC_PROVEEDOR || eg.ruc_proveedor || '').split('-')[0].replace(/\D/g, '').replace(/^0+/, '');
+                    if (t && f) {
+                        localKeys[`${t}|${f}|${rBase}`] = infoObj;
+                        localKeys[`${t}|${f}`] = infoObj;
+                    }
+                });
+            }
+
+            importPreviewList.forEach((row) => {
+                row.errores = [];
+                row.yaExisteBD = false;
+                row.infoExistenteBD = null;
+                row.duplicadoEnPlanilla = false;
+
+                const cdcClean = String(row.cdc || '').replace(/\D/g, '');
+                const timbClean = String(row.nroTimbrado || '').replace(/\D/g, '');
+                const facFmt = formatNroFactura(row.nroFactura, row.tipDoc);
+                const facClean = (facFmt && facFmt !== '-') ? facFmt.replace(/-/g, '') : String(row.nroFactura || '').replace(/[-\s]/g, '');
+                const rucBase = String(row.rucProveedor || '').split('-')[0].replace(/\D/g, '').replace(/^0+/, '');
+
+                // Verificar proveedor en cache
+                if (rucBase && importValidationCache.proveedoresMap && importValidationCache.proveedoresMap[rucBase]) {
+                    row.proveedorExiste = true;
+                    row.codProveedor = importValidationCache.proveedoresMap[rucBase].codProveedor;
+                } else {
+                    row.proveedorExiste = false;
+                    row.codProveedor = '';
+                }
+
+                // 1. Validar si ya existe en la BD y guardar detalle del registro existente
+                const key1 = `${timbClean}|${facClean}|${rucBase}`;
+                const key2 = `${timbClean}|${facClean}`;
+
+                let matchInfo = null;
+                if (cdcClean.length === 44 && (importValidationCache.existingCdcs[cdcClean] || localCdcs[cdcClean])) {
+                    matchInfo = importValidationCache.existingCdcs[cdcClean] || localCdcs[cdcClean];
+                } else if (timbClean && facClean && (importValidationCache.existingKeys[key1] || importValidationCache.existingKeys[key2] || localKeys[key1] || localKeys[key2])) {
+                    matchInfo = importValidationCache.existingKeys[key1] || importValidationCache.existingKeys[key2] || localKeys[key1] || localKeys[key2];
+                }
+
+                if (matchInfo) {
+                    row.yaExisteBD = true;
+                    row.infoExistenteBD = typeof matchInfo === 'object' ? matchInfo : null;
+                }
+
+                // 2. Validar si está duplicado dentro del mismo archivo Excel
+                if ((cdcClean.length === 44 && seenCdcs.has(cdcClean)) || (timbClean && facClean && seenKeys.has(key1))) {
+                    row.duplicadoEnPlanilla = true;
+                }
+                if (cdcClean.length === 44) seenCdcs.add(cdcClean);
+                if (timbClean && facClean) seenKeys.add(key1);
+
+                // 3. Validaciones de campos obligatorios (igual que carga individual)
+                if (cdcClean.length !== 44) {
+                    row.errores.push('CDC debe tener 44 dígitos');
+                }
+                if (!timbClean || timbClean.length < 7) {
+                    row.errores.push('Timbrado inválido');
+                }
+                if (!facClean || facClean.length < 7) {
+                    row.errores.push('N° Factura incompleto');
+                }
+                if (!row.fecEgreso) {
+                    row.errores.push('Fecha obligatoria');
+                } else if (row.vencTimbrado && row.fecEgreso > row.vencTimbrado) {
+                    row.errores.push('Fecha > Venc. Timbrado');
+                }
+                if (!rucBase || rucBase.length < 3) {
+                    row.errores.push('RUC obligatorio');
+                }
+                if (!String(row.nomProveedor || '').trim()) {
+                    row.errores.push('Razón Social obligatoria');
+                }
+                if ((parseFloat(row.valorTotal) || 0) <= 0) {
+                    row.errores.push('Total debe ser > 0');
+                }
+            });
+
+            actualizarContadoresImportacion();
+        }
+
+        function esFilaEnRojo(row) {
+            return row.yaExisteBD || row.duplicadoEnPlanilla || (row.errores && row.errores.length > 0);
+        }
+
+        function obtenerHtmlEstadoFilaImport(row) {
+            if (row.yaExisteBD) {
+                const ex = row.infoExistenteBD;
+                let subInfo = '';
+                if (ex && ex.idEgreso) {
+                    const totEx = (parseFloat(ex.valorTotal) || 0).toLocaleString('es-PY');
+                    subInfo = `<div style="font-size: 0.68rem; color: #991b1b; font-weight: 700; margin-top: 3px; line-height: 1.25;">ID #${ex.idEgreso} · Fac: ${ex.nroFactura || row.nroFactura}<br>Gs. ${totEx}</div>`;
+                }
+                return `<span style="background: #dc2626; color: white; font-weight: 800; font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;" title="Este comprobante ya se encuentra registrado en Egresos"><i class="ph ph-warning-octagon"></i> YA EXISTE EN BD</span>${subInfo}`;
+            }
+            if (row.duplicadoEnPlanilla) {
+                return `<span style="background: #dc2626; color: white; font-weight: 800; font-size: 0.72rem; padding: 4px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;" title="Comprobante repetido en el archivo"><i class="ph ph-copy"></i> DUPLICADO EN EXCEL</span>`;
+            }
+            if (row.errores && row.errores.length > 0) {
+                return `<span style="background: #ef4444; color: white; font-weight: 800; font-size: 0.7rem; padding: 4px 8px; border-radius: 6px; display: inline-block;" title="${row.errores.join(' | ')}"><i class="ph ph-warning-circle"></i> ${row.errores[0]}</span>`;
+            }
+            const provTag = row.proveedorExiste
+                ? `<div style="font-size: 0.68rem; color: #15803d; font-weight: 700; margin-top: 2px;">Prov. #${row.codProveedor} OK</div>`
+                : `<div style="font-size: 0.68rem; color: #0284c7; font-weight: 700; margin-top: 2px;">+ Crear Proveedor</div>`;
+            return `<span style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-weight: 800; font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;"><i class="ph ph-check-circle"></i> VÁLIDO</span>${provTag}`;
+        }
+
+        function filtrarVistaImportacion(modo) {
+            importFiltroEstado = modo || 'TODOS';
+            actualizarContadoresImportacion();
+            renderTablaImportPreview();
+        }
+
+        function actualizarContadoresImportacion() {
+            const total = importPreviewList.length;
+            let validos = 0;
+            let enRojo = 0;
+            let sumG10 = 0, sumI10 = 0, sumG5 = 0, sumEx = 0, sumTot = 0;
+
+            importPreviewList.forEach(r => {
+                if (esFilaEnRojo(r)) {
+                    enRojo++;
+                } else {
+                    validos++;
+                    sumG10 += (parseFloat(r.grav10) || 0);
+                    sumI10 += (parseFloat(r.iva10) || 0);
+                    sumG5  += (parseFloat(r.grav5) || 0);
+                    sumEx  += (parseFloat(r.exentas) || 0);
+                    sumTot += (parseFloat(r.valorTotal) || 0);
+                }
+            });
+
+            const bTotal = document.getElementById('badgeImportTotal');
+            const bMan = document.getElementById('badgeImportOmitidosManual');
+            const bVal = document.getElementById('badgeImportValidos');
+            const bConf = document.getElementById('badgeImportConflictos');
+            const btnRojos = document.getElementById('btnEliminarTodosRojos');
+
+            if (bTotal) {
+                bTotal.innerText = `Electrónicos (Todos): ${total}`;
+                bTotal.style.boxShadow = importFiltroEstado === 'TODOS' ? '0 0 0 2px #0f172a' : 'none';
+            }
+            if (bMan) {
+                bMan.style.display = importManualOmitidosCount > 0 ? 'inline-block' : 'none';
+                bMan.innerText = `Manuales omitidos: ${importManualOmitidosCount}`;
+            }
+            if (bVal) {
+                bVal.innerText = `Válidos: ${validos}`;
+                bVal.style.boxShadow = importFiltroEstado === 'VALIDOS' ? '0 0 0 2px #15803d' : 'none';
+            }
+            if (bConf) {
+                bConf.innerText = `Existentes / En Rojo: ${enRojo}`;
+                bConf.style.boxShadow = importFiltroEstado === 'ROJOS' ? '0 0 0 2px #dc2626' : 'none';
+            }
+            if (btnRojos) btnRojos.style.display = enRojo > 0 ? 'inline-flex' : 'none';
+
+            const elG10 = document.getElementById('lblImpTotG10');
+            const elI10 = document.getElementById('lblImpTotI10');
+            const elG5 = document.getElementById('lblImpTotG5');
+            const elEx = document.getElementById('lblImpTotEx');
+            const elTot = document.getElementById('lblImpTotGeneral');
+
+            if (elG10) elG10.innerText = sumG10.toLocaleString('es-PY');
+            if (elI10) elI10.innerText = sumI10.toLocaleString('es-PY');
+            if (elG5) elG5.innerText = sumG5.toLocaleString('es-PY');
+            if (elEx) elEx.innerText = sumEx.toLocaleString('es-PY');
+            if (elTot) elTot.innerText = sumTot.toLocaleString('es-PY');
+        }
+
+        function renderTablaImportPreview() {
+            const tbody = document.getElementById('tbodyImportPreview');
+            if (!tbody) return;
+
+            if (!importPreviewList || importPreviewList.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="18" style="text-align: center; padding: 60px 20px; color: #64748b; font-weight: 600;">
+                            No hay comprobantes electrónicos cargados en la vista previa.
+                        </td>
+                    </tr>`;
+                actualizarContadoresImportacion();
+                return;
+            }
+
+            let html = '';
+            let filasMostradas = 0;
+
+            importPreviewList.forEach((row, idx) => {
+                const isRed = esFilaEnRojo(row);
+                if (importFiltroEstado === 'ROJOS' && !isRed) return;
+                if (importFiltroEstado === 'VALIDOS' && isRed) return;
+                filasMostradas++;
+
+                const trBg = isRed ? '#fef2f2' : '#ffffff';
+                const trBorderLeft = isRed ? '4px solid #dc2626' : '4px solid #16a34a';
+                const inputBorder = isRed ? '1.5px solid #f87171' : '1px solid #cbd5e1';
+                const inputBg = isRed ? '#fff5f5' : '#ffffff';
+                const textColor = isRed ? '#991b1b' : '#0f172a';
+
+                const esc = (s) => String(s ?? '').replace(/"/g, '&quot;');
+
+                html += `
+                    <tr id="impRow_${idx}" style="background: ${trBg}; border-left: ${trBorderLeft};">
+                        <td style="text-align: center; font-weight: 800; color: ${isRed ? '#dc2626' : '#64748b'}; padding: 6px;">${idx + 1}</td>
+                        <td id="impEstadoCell_${idx}" style="text-align: center; padding: 6px;">${obtenerHtmlEstadoFilaImport(row)}</td>
+                        <td style="padding: 5px;">
+                            <input type="date" value="${esc(row.fecEgreso)}" onchange="onEditFilaImport(${idx}, 'fecEgreso', this.value)" style="width: 100%; height: 32px; font-size: 0.8rem; font-weight: 700; color: ${textColor}; background: ${inputBg}; border: ${inputBorder}; border-radius: 5px; padding: 2px 5px;">
+                        </td>
+                        <td style="padding: 5px;">
+                            <select onchange="onEditFilaImport(${idx}, 'tipDoc', this.value)" style="width: 100%; height: 32px; font-size: 0.78rem; font-weight: 800; color: ${textColor}; background: ${inputBg}; border: ${inputBorder}; border-radius: 5px; padding: 2px 4px;">
+                                <option value="FAC" ${row.tipDoc === 'FAC' ? 'selected' : ''}>FAC - Factura</option>
+                                <option value="NCR" ${row.tipDoc === 'NCR' ? 'selected' : ''}>NCR - Nota Créd.</option>
+                                <option value="DEB" ${row.tipDoc === 'DEB' ? 'selected' : ''}>DEB - Nota Déb.</option>
+                                <option value="AUT" ${row.tipDoc === 'AUT' ? 'selected' : ''}>AUT - Autofac.</option>
+                            </select>
+                        </td>
+                        <td style="padding: 5px;">
+                            <input type="text" maxlength="8" value="${esc(row.nroTimbrado)}" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,8)" onchange="onEditFilaImport(${idx}, 'nroTimbrado', this.value)" style="width: 100%; height: 32px; font-size: 0.8rem; font-weight: 700; text-align: center; color: ${textColor}; background: ${inputBg}; border: ${inputBorder}; border-radius: 5px; padding: 2px 4px;">
+                        </td>
+                        <td style="padding: 5px;">
+                            <input type="text" value="${esc(row.nroFactura)}" onchange="onEditFilaImport(${idx}, 'nroFactura', this.value)" style="width: 100%; height: 32px; font-size: 0.82rem; font-weight: 800; color: ${isRed ? '#dc2626' : '#15803d'}; background: ${inputBg}; border: ${inputBorder}; border-radius: 5px; padding: 2px 6px;">
+                        </td>
+                        <td style="padding: 5px;">
+                            <input type="text" maxlength="44" value="${esc(row.cdc)}" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,44)" onchange="onEditFilaImport(${idx}, 'cdc', this.value)" style="width: 100%; height: 32px; font-family: monospace; font-size: 0.75rem; font-weight: 700; color: ${textColor}; background: ${inputBg}; border: ${inputBorder}; border-radius: 5px; padding: 2px 6px;" title="${esc(row.cdc)}">
+                        </td>
+                        <td style="padding: 5px;">
+                            <input type="text" value="${esc(row.rucProveedor)}" onchange="onEditFilaImport(${idx}, 'rucProveedor', this.value)" style="width: 100%; height: 32px; font-size: 0.8rem; font-weight: 700; color: ${textColor}; background: ${inputBg}; border: ${inputBorder}; border-radius: 5px; padding: 2px 6px;">
+                        </td>
+                        <td style="padding: 5px;">
+                            <input type="text" value="${esc(row.nomProveedor)}" onchange="onEditFilaImport(${idx}, 'nomProveedor', this.value)" style="width: 100%; height: 32px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: ${textColor}; background: ${inputBg}; border: ${inputBorder}; border-radius: 5px; padding: 2px 6px;" title="${esc(row.nomProveedor)}">
+                        </td>
+                        <td style="padding: 5px;">
+                            <select onchange="onEditFilaImport(${idx}, 'condicion', this.value)" style="width: 100%; height: 32px; font-size: 0.78rem; font-weight: 800; color: ${textColor}; background: ${inputBg}; border: ${inputBorder}; border-radius: 5px; padding: 2px 4px;">
+                                <option value="CON" ${row.condicion === 'CON' ? 'selected' : ''}>CON</option>
+                                <option value="CRE" ${row.condicion === 'CRE' ? 'selected' : ''}>CRE</option>
+                            </select>
+                        </td>
+                        <td style="padding: 5px;">
+                            <select onchange="onEditFilaImport(${idx}, 'regimen', this.value)" style="width: 100%; height: 32px; font-size: 0.76rem; font-weight: 700; color: ${textColor}; background: ${inputBg}; border: ${inputBorder}; border-radius: 5px; padding: 2px 4px;">
+                                <option value="1" ${String(row.regimen) === '1' ? 'selected' : ''}>1 - IRP & IVA</option>
+                                <option value="2" ${String(row.regimen) === '2' ? 'selected' : ''}>2 - IRP</option>
+                                <option value="3" ${String(row.regimen) === '3' ? 'selected' : ''}>3 - IVA</option>
+                                <option value="4" ${String(row.regimen) === '4' ? 'selected' : ''}>4 - G. CAPITAL</option>
+                            </select>
+                        </td>
+                        <td style="padding: 5px;">
+                            <input type="text" id="impG10_${idx}" value="${(parseFloat(row.grav10) || 0).toLocaleString('es-PY')}" oninput="formatearInputMiles(this)" onchange="onEditFilaImport(${idx}, 'grav10', this.value)" style="width: 100%; height: 32px; font-size: 0.8rem; font-weight: 700; text-align: right; color: ${textColor}; background: ${inputBg}; border: ${inputBorder}; border-radius: 5px; padding: 2px 6px;">
+                        </td>
+                        <td style="padding: 5px;">
+                            <input type="text" id="impI10_${idx}" value="${(parseFloat(row.iva10) || 0).toLocaleString('es-PY')}" oninput="formatearInputMiles(this)" onchange="onEditFilaImport(${idx}, 'iva10', this.value)" style="width: 100%; height: 32px; font-size: 0.8rem; font-weight: 700; text-align: right; color: #0284c7; background: ${inputBg}; border: ${inputBorder}; border-radius: 5px; padding: 2px 6px;">
+                        </td>
+                        <td style="padding: 5px;">
+                            <input type="text" id="impG5_${idx}" value="${(parseFloat(row.grav5) || 0).toLocaleString('es-PY')}" oninput="formatearInputMiles(this)" onchange="onEditFilaImport(${idx}, 'grav5', this.value)" style="width: 100%; height: 32px; font-size: 0.8rem; font-weight: 700; text-align: right; color: ${textColor}; background: ${inputBg}; border: ${inputBorder}; border-radius: 5px; padding: 2px 6px;">
+                        </td>
+                        <td style="padding: 5px;">
+                            <input type="text" id="impI5_${idx}" value="${(parseFloat(row.iva5) || 0).toLocaleString('es-PY')}" oninput="formatearInputMiles(this)" onchange="onEditFilaImport(${idx}, 'iva5', this.value)" style="width: 100%; height: 32px; font-size: 0.8rem; font-weight: 700; text-align: right; color: #0284c7; background: ${inputBg}; border: ${inputBorder}; border-radius: 5px; padding: 2px 6px;">
+                        </td>
+                        <td style="padding: 5px;">
+                            <input type="text" id="impEx_${idx}" value="${(parseFloat(row.exentas) || 0).toLocaleString('es-PY')}" oninput="formatearInputMiles(this)" onchange="onEditFilaImport(${idx}, 'exentas', this.value)" style="width: 100%; height: 32px; font-size: 0.8rem; font-weight: 700; text-align: right; color: ${textColor}; background: ${inputBg}; border: ${inputBorder}; border-radius: 5px; padding: 2px 6px;">
+                        </td>
+                        <td id="impTotCell_${idx}" style="padding: 6px 8px; text-align: right; font-weight: 800; font-size: 0.84rem; color: ${textColor};">
+                            ${(parseFloat(row.valorTotal) || 0).toLocaleString('es-PY')}
+                        </td>
+                        <td style="text-align: center; padding: 5px;">
+                            <button type="button" onclick="eliminarFilaImportacion(${idx})" title="Eliminar fila" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; width: 32px; height: 32px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;">
+                                <i class="ph ph-trash" style="font-size: 1rem;"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            if (filasMostradas === 0) {
+                html = `
+                    <tr>
+                        <td colspan="18" style="text-align: center; padding: 45px 20px; color: #64748b; font-weight: 700;">
+                            No hay comprobantes para el filtro seleccionado (${importFiltroEstado}). 
+                            <button type="button" onclick="filtrarVistaImportacion('TODOS')" style="margin-left: 10px; background: #1e293b; color: white; border: none; padding: 4px 12px; border-radius: 6px; font-size: 0.78rem; cursor: pointer;">Ver Todos</button>
+                        </td>
+                    </tr>`;
+            }
+
+            tbody.innerHTML = html;
+        }
+
+        function onEditFilaImport(idx, field, val) {
+            const row = importPreviewList[idx];
+            if (!row) return;
+
+            if (field === 'grav10') {
+                row.grav10 = parseMonto(val);
+                row.iva10 = Math.round(row.grav10 / 11);
+                row.valorTotal = row.grav10 + row.grav5 + row.exentas;
+            } else if (field === 'iva10') {
+                row.iva10 = parseMonto(val);
+            } else if (field === 'grav5') {
+                row.grav5 = parseMonto(val);
+                row.iva5 = Math.round(row.grav5 / 21);
+                row.valorTotal = row.grav10 + row.grav5 + row.exentas;
+            } else if (field === 'iva5') {
+                row.iva5 = parseMonto(val);
+            } else if (field === 'exentas') {
+                row.exentas = parseMonto(val);
+                row.valorTotal = row.grav10 + row.grav5 + row.exentas;
+            } else if (field === 'nroFactura') {
+                row.nroFactura = formatNroFactura(val, row.tipDoc);
+            } else if (field === 'rucProveedor') {
+                row.rucProveedor = normalizarRucConDvJS(val, row.cdc);
+            } else if (field === 'nomProveedor') {
+                row.nomProveedor = String(val || '').trim().toUpperCase();
+            } else {
+                row[field] = val;
+            }
+
+            revalidarTodasLasFilasImportacion();
+            renderTablaImportPreview();
+        }
+
+        function aplicarDefectoTipoEgresoLote(val) {
+            const norm = !isNaN(parseFloat(val)) ? String(parseInt(val, 10)) : '1';
+            importPreviewList.forEach(r => { r.tipEgreso = norm; });
+        }
+
+        function aplicarDefectoClasifGastoLote(val) {
+            const norm = !isNaN(parseFloat(val)) ? String(parseInt(val, 10)) : '1';
+            importPreviewList.forEach(r => { r.clasificacionGasto = norm; });
+        }
+
+        function eliminarFilaImportacion(idx) {
+            importPreviewList.splice(idx, 1);
+            revalidarTodasLasFilasImportacion();
+            if (importFiltroEstado === 'ROJOS' && !importPreviewList.some(r => esFilaEnRojo(r))) {
+                importFiltroEstado = 'TODOS';
+                actualizarContadoresImportacion();
+            }
+            renderTablaImportPreview();
+        }
+
+        function eliminarFilasRojasImportacion() {
+            const antes = importPreviewList.length;
+            importPreviewList = importPreviewList.filter(r => !esFilaEnRojo(r));
+            const quitados = antes - importPreviewList.length;
+            importFiltroEstado = 'TODOS';
+            revalidarTodasLasFilasImportacion();
+            renderTablaImportPreview();
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'info',
+                title: `Se eliminaron ${quitados} comprobante(s) en rojo.`,
+                showConfirmButton: false,
+                timer: 2000
+            });
+        }
+
+        async function procesarArchivoExcelSeleccionado(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+
+            const lbl = document.getElementById('lblArchivoImportNombre');
+            if (lbl) lbl.innerText = file.name;
+
+            await refrescarCacheValidacionImport();
+
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (ext === 'csv' || ext === 'txt' || ext === 'tsv') {
+                const text = await file.text();
+                procesarTextoPlanoPlanilla(text);
+                input.value = '';
+                return;
+            }
+
+            if (typeof XLSX === 'undefined') {
+                Swal.fire('Error', 'La librería de lectura Excel aún está cargando. Intente nuevamente.', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const wb = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = wb.SheetNames[0];
+                    const ws = wb.Sheets[firstSheetName];
+                    const rowsFmt = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
+                    const rowsRaw = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
+                    procesarFilasCrudasImportacion(rowsFmt, rowsRaw);
+                } catch (err) {
+                    console.error('Error al leer archivo Excel:', err);
+                    Swal.fire('Error', 'No se pudo leer el archivo seleccionado. Verifique que sea un archivo Excel o CSV válido.', 'error');
+                }
+                input.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function procesarTextoPlanoPlanilla(text) {
+            const lines = String(text || '').split(/\r?\n/).filter(l => l.trim() !== '');
+            const rows = lines.map(line => {
+                if (line.includes('\t')) return line.split('\t');
+                if (line.includes(';')) return line.split(';');
+                return line.split(',');
+            });
+            procesarFilasCrudasImportacion(rows, rows);
+        }
+
+        async function procesarTextoPegadoPlanilla() {
+            const txt = document.getElementById('txtPegarPlanilla')?.value || '';
+            if (!txt.trim()) {
+                Swal.fire('Atención', 'Pegue las filas de su planilla Excel antes de cargar la vista previa.', 'warning');
+                return;
+            }
+            await refrescarCacheValidacionImport();
+            procesarTextoPlanoPlanilla(txt);
+            document.getElementById('zonaPegarPlanilla').style.display = 'none';
+            const lbl = document.getElementById('lblArchivoImportNombre');
+            if (lbl) lbl.innerText = 'Datos pegados desde portapapeles';
+        }
+
+        function confirmarEInsertarImportacion() {
+            if (!importPreviewList || importPreviewList.length === 0) {
+                Swal.fire('Atención', 'No hay comprobantes cargados en la vista previa para importar.', 'warning');
+                return;
+            }
+
+            revalidarTodasLasFilasImportacion();
+            const filasRojas = importPreviewList.filter(r => esFilaEnRojo(r));
+            const filasValidas = importPreviewList.filter(r => !esFilaEnRojo(r));
+
+            if (filasRojas.length > 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Existen Comprobantes en Rojo',
+                    html: `Hay <b>${filasRojas.length}</b> comprobante(s) marcados en rojo (ya existen en la base de datos o tienen datos incompletos).<br><br>Por favor elimínelos con el botón <b>"Eliminar Todos en Rojo"</b> (o uno a uno) o corrija sus datos antes de confirmar.`,
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'Eliminar los Rojos ahora',
+                    cancelButtonText: 'Revisar Manualmente'
+                }).then(res => {
+                    if (res.isConfirmed) {
+                        eliminarFilasRojasImportacion();
+                    }
+                });
+                return;
+            }
+
+            if (filasValidas.length === 0) {
+                Swal.fire('Atención', 'No quedan comprobantes válidos para insertar.', 'warning');
+                return;
+            }
+
+            const nuevosProvs = new Set();
+            filasValidas.forEach(r => {
+                if (!r.proveedorExiste) {
+                    const b = String(r.rucProveedor || '').split('-')[0].replace(/\D/g, '');
+                    if (b) nuevosProvs.add(b);
+                }
+            });
+
+            Swal.fire({
+                icon: 'question',
+                title: '¿Confirmar Importación de Egresos?',
+                html: `Se insertarán <b>${filasValidas.length}</b> comprobantes electrónicos de egreso.` +
+                      (nuevosProvs.size > 0 ? `<br>Además, se crearán automáticamente <b>${nuevosProvs.size}</b> nuevo(s) proveedor(es).` : ''),
+                showCancelButton: true,
+                confirmButtonColor: '#16a34a',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Sí, Confirmar e Insertar',
+                cancelButtonText: 'Cancelar'
+            }).then(result => {
+                if (!result.isConfirmed) return;
+
+                const btn = document.getElementById('btnConfirmarImportacionEgresos');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite;"></i> Insertando comprobantes...';
+                }
+
+                fetch('/api/egresos/importar-lote', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items: filasValidas })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="ph ph-check-circle" style="font-size: 1.15rem;"></i> Confirmar e Insertar en Egresos';
+                    }
+
+                    if (data.status === 'success') {
+                        cerrarModalImportarExcel();
+                        importPreviewList = [];
+                        renderTablaImportPreview();
+
+                        // Ajustar filtro de fechas para mostrar el periodo importado si corresponde
+                        const fDesdeEl = document.getElementById('filtroFechaDesde');
+                        const fHastaEl = document.getElementById('filtroFechaHasta');
+                        if (data.minFecha && fDesdeEl && (!fDesdeEl.value || data.minFecha < fDesdeEl.value)) {
+                            const ym = data.minFecha.substring(0, 7);
+                            fDesdeEl.value = `${ym}-01`;
+                        }
+                        if (data.maxFecha && fHastaEl && (!fHastaEl.value || data.maxFecha > fHastaEl.value)) {
+                            fHastaEl.value = data.maxFecha;
+                        }
+
+                        cargarEgresos();
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Importación Completada!',
+                            html: `<b>${data.insertados || 0}</b> comprobantes electrónicos insertados en Egresos.` +
+                                  ((data.proveedoresCreados || 0) > 0 ? `<br><b>${data.proveedoresCreados}</b> nuevo(s) proveedor(es) registrado(s) automáticamente.` : ''),
+                            confirmButtonColor: '#16a34a'
+                        });
+                    } else {
+                        Swal.fire('Error', data.message || 'No se pudo completar la importación.', 'error');
+                    }
+                })
+                .catch(err => {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="ph ph-check-circle" style="font-size: 1.15rem;"></i> Confirmar e Insertar en Egresos';
+                    }
+                    Swal.fire('Error', 'Fallo de conexión al importar los comprobantes.', 'error');
+                });
+            });
+        }
+
         function importarMarangatu() {
-            Swal.fire('Importación Marangatu', 'Función de sincronización con compras de la SET.', 'info');
+            abrirModalImportarExcel();
         }
 
         function importarComprobante() {
-            Swal.fire('Importación de Comprobantes', 'Seleccione archivo de comprobante de egreso para importar.', 'info');
+            abrirModalImportarExcel();
         }
     </script>
 </body>

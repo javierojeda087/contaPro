@@ -141,7 +141,11 @@ class AuthController {
     }
 
     public static function landing(): void {
-        $planes = Database::queryForList("SELECT * FROM planes WHERE estado = 'A' ORDER BY orden, id_plan");
+        try {
+            $planes = Database::queryForList("SELECT * FROM planes WHERE estado = 'A' ORDER BY orden, id_plan");
+        } catch (\Throwable $e) {
+            $planes = [];
+        }
         View::render('landing', ['planes' => $planes]);
     }
 
