@@ -1081,11 +1081,16 @@ class MovimientosContablesController {
                 $regimen = (string)$codRegimen;
                 $clasificacionGasto = (string)(int)self::resolveClasificacionGastoId((string)($item['clasificacionGasto'] ?? '1'), $idProp);
                 $tipEgreso = (string)(int)self::resolveTipoEgresoId((string)($item['tipEgreso'] ?? '1'), $idProp);
-                $tipTimb = 'Electrónico';
-                $nroTimbrado = preg_replace('/\D/', '', (string)($item['nroTimbrado'] ?? ''));
-                $vencTimbrado = self::parseSqlDate((string)($item['vencTimbrado'] ?? '')) ?: '2100-12-31';
-                $nroFactura = self::formatNroFactura((string)($item['nroFactura'] ?? ''));
                 $fecEgreso = self::parseSqlDate((string)($item['fecEgreso'] ?? ''));
+                $esElectr = (strlen($cdc) === 44) || stripos((string)($item['tipTimb'] ?? ''), 'electr') !== false;
+                $tipTimb = $esElectr ? 'Electrónico' : 'Pre-impreso';
+                $nroTimbrado = preg_replace('/\D/', '', (string)($item['nroTimbrado'] ?? ''));
+                $defVenc = $esElectr ? '2100-12-31' : (($fecEgreso ? substr($fecEgreso, 0, 4) : date('Y')) . '-12-31');
+                $vencTimbrado = self::parseSqlDate((string)($item['vencTimbrado'] ?? '')) ?: $defVenc;
+                if (!$esElectr && $vencTimbrado === '2100-12-31') {
+                    $vencTimbrado = $defVenc;
+                }
+                $nroFactura = self::formatNroFactura((string)($item['nroFactura'] ?? ''));
                 $rawRuc = trim((string)($item['rucProveedor'] ?? ''));
                 $nomProveedor = mb_strtoupper(trim((string)($item['nomProveedor'] ?? '')), 'UTF-8');
 
@@ -1212,7 +1217,7 @@ class MovimientosContablesController {
                 'duplicadosOmitidos' => $duplicadosOmitidos,
                 'minFecha'           => $minFecha,
                 'maxFecha'           => $maxFecha,
-                'message'            => "Se importaron {$insertados} comprobantes electrónicos de egreso exitosamente"
+                'message'            => "Se importaron {$insertados} comprobante(s) de egreso exitosamente"
                                       . ($proveedoresCreados > 0 ? " y se crearon {$proveedoresCreados} nuevos proveedores." : "."),
             ]);
         } catch (\Throwable $e) {

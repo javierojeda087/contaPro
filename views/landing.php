@@ -546,9 +546,17 @@
     </div>
 
     <footer style="background: #0f172a; color: #94a3b8; text-align: center; padding: 32px 20px; font-size: 0.88rem;">
-        <div style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
             <div>&copy; <?= date('Y') ?> <strong>ContaPro Paraguay</strong> — Sistema Contable &amp; Impositivo en la Nube.</div>
-            <div>Desarrollado por <a href="https://www.josystem.click/" target="_blank" rel="noopener" style="color: #38bdf8; text-decoration: none; font-weight: 700;">JO System Software</a></div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="color: #94a3b8; font-weight: 500;">Desarrollado por</span>
+                <a href="https://www.josystem.click/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; display: inline-flex; align-items: center; gap: 10px;">
+                    <span style="background: #0099ff; color: #ffffff; padding: 5px 11px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-family: monospace; font-size: 0.95rem; line-height: 1; box-shadow: 0 0 18px rgba(0, 153, 255, 0.75);">&lt;/&gt;</span>
+                    <span style="color: #0099ff; font-weight: 800; font-size: 1.25rem; letter-spacing: -0.01em; line-height: 1;">JO System</span>
+                    <span style="width: 1.5px; height: 22px; background: #475569; display: inline-block;"></span>
+                    <span style="color: #0099ff; font-weight: 800; letter-spacing: 0.06em; font-size: 0.85rem; line-height: 1;">SOFTWARE</span>
+                </a>
+            </div>
         </div>
     </footer>
 

@@ -77,14 +77,14 @@
             </div>
 
             <div style="margin-top: auto; margin-bottom: 1.5rem; text-align: center;">
-                <a href="https://www.josystem.click/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; display: inline-flex; align-items: center; background: rgba(15, 23, 42, 0.88); border: 1.5px solid #16a34a; padding: 0.65rem 1.6rem; border-radius: 9999px; gap: 0.75rem; font-size: 0.95rem; color: #ffffff; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);">
+                <a href="https://www.josystem.click/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; display: inline-flex; align-items: center; background: #0b1325; border: 1.5px solid rgba(0, 153, 255, 0.45); padding: 0.65rem 1.6rem; border-radius: 9999px; gap: 0.75rem; font-size: 0.95rem; color: #ffffff; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);">
                     <span style="color: #f1f5f9; font-weight: 600;">Desarrollado por</span>
-                    <div style="display: flex; align-items: center; gap: 0.4rem;">
-                        <div style="background: #16a34a; color: white; padding: 0.15rem 0.55rem; border-radius: 6px; font-weight: 800; font-family: monospace; font-size: 0.9rem;">&lt;/&gt;</div>
-                        <span style="color: #38bdf8; font-weight: 800; font-size: 1.1rem;">JO System</span>
+                    <div style="display: flex; align-items: center; gap: 0.55rem;">
+                        <div style="background: #0099ff; color: white; padding: 0.22rem 0.6rem; border-radius: 8px; font-weight: 800; font-family: monospace; font-size: 0.9rem; box-shadow: 0 0 16px rgba(0, 153, 255, 0.8);">&lt;/&gt;</div>
+                        <span style="color: #0099ff; font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em;">JO System</span>
                     </div>
-                    <div style="width: 1.5px; height: 18px; background: #38bdf8; opacity: 0.6; margin: 0 0.2rem;"></div>
-                    <span style="color: #7dd3fc; font-weight: 700; letter-spacing: 0.1em; font-size: 0.82rem;">SOFTWARE</span>
+                    <div style="width: 1.5px; height: 20px; background: #475569; margin: 0 0.2rem;"></div>
+                    <span style="color: #0099ff; font-weight: 800; letter-spacing: 0.06em; font-size: 0.82rem;">SOFTWARE</span>
                 </a>
             </div>
         </div>

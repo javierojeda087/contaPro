@@ -683,8 +683,8 @@
                         <i class="ph ph-file-xls"></i>
                     </div>
                     <div>
-                        <h3 style="margin: 0; font-size: 1.08rem; font-weight: 800; color: #0f172a;">Importar / Migrar Planilla de Egresos Electrónicos (Excel / Marangatu)</h3>
-                        <div style="font-size: 0.78rem; color: #64748b; font-weight: 600;">Filtra automáticamente comprobantes <b>ELECTRÓNICOS</b>, muestra arriba y permite filtrar los <b>Existentes / En Rojo</b>, verifica/crea proveedores y guarda con sus códigos exactos (<b>FAC, CON/CRE</b>, etc.).</div>
+                        <h3 style="margin: 0; font-size: 1.08rem; font-weight: 800; color: #0f172a;">Importar / Migrar Planilla de Egresos (Excel / Marangatu)</h3>
+                        <div style="font-size: 0.78rem; color: #64748b; font-weight: 600;">Importa comprobantes <b>ELECTRÓNICOS y MANUALES</b>, muestra arriba y permite filtrar los <b>Existentes / En Rojo</b>, verifica/crea proveedores y guarda con sus códigos exactos (<b>FAC, CON/CRE</b>, etc.).</div>
                     </div>
                 </div>
                 <button type="button" class="btn-close" onclick="cerrarModalImportarExcel()" style="font-size: 0.95rem; cursor: pointer;"></button>
@@ -734,8 +734,8 @@
                 <!-- Summary Badges (Clickable Filters) & Bulk Delete Red Rows -->
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                     <span style="font-size: 0.75rem; font-weight: 700; color: #64748b;">Filtrar vista:</span>
-                    <button type="button" id="badgeImportTotal" onclick="filtrarVistaImportacion('TODOS')" title="Click para ver todos los comprobantes electrónicos" style="background: #1e293b; color: #ffffff; border: 1.5px solid #0f172a; font-weight: 800; font-size: 0.78rem; padding: 5px 11px; border-radius: 6px; cursor: pointer;">Electrónicos (Todos): 0</button>
-                    <span id="badgeImportOmitidosManual" style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.78rem; padding: 5px 10px; border-radius: 6px; display: none;">Manuales omitidos: 0</span>
+                    <button type="button" id="badgeImportTotal" onclick="filtrarVistaImportacion('TODOS')" title="Click para ver todos los comprobantes (Electrónicos y Manuales)" style="background: #1e293b; color: #ffffff; border: 1.5px solid #0f172a; font-weight: 800; font-size: 0.78rem; padding: 5px 11px; border-radius: 6px; cursor: pointer;">Todos: 0</button>
+                    <button type="button" id="badgeImportOmitidosManual" onclick="filtrarVistaImportacion('MANUALES')" title="Click para ver los comprobantes manuales incluidos" style="background: #e0f2fe; color: #0369a1; border: 1.5px solid #7dd3fc; font-weight: 800; font-size: 0.78rem; padding: 5px 10px; border-radius: 6px; cursor: pointer; display: none;">Manuales: 0</button>
                     <button type="button" id="badgeImportValidos" onclick="filtrarVistaImportacion('VALIDOS')" title="Click para ver solo los comprobantes válidos" style="background: #dcfce7; color: #15803d; border: 1.5px solid #86efac; font-weight: 800; font-size: 0.78rem; padding: 5px 11px; border-radius: 6px; cursor: pointer;">Válidos: 0</button>
                     <button type="button" id="badgeImportConflictos" onclick="filtrarVistaImportacion('ROJOS')" title="Click para ver cuál es el comprobante existente o con conflicto" style="background: #fef2f2; color: #dc2626; border: 1.5px solid #fca5a5; font-weight: 800; font-size: 0.78rem; padding: 5px 11px; border-radius: 6px; cursor: pointer;">Existentes / En Rojo: 0</button>
                     <button type="button" id="btnEliminarTodosRojos" onclick="eliminarFilasRojasImportacion()" style="display: none; background: #dc2626; color: #ffffff; border: 1.5px solid #b91c1c; font-weight: 800; font-size: 0.78rem; height: 34px; padding: 0 12px; border-radius: 8px; align-items: center; gap: 5px; cursor: pointer; box-shadow: 0 2px 6px rgba(220,38,38,0.28);">
@@ -785,7 +785,7 @@
                             <td colspan="18" style="text-align: center; padding: 65px 20px; color: #64748b;">
                                 <i class="ph ph-file-xls" style="font-size: 3rem; color: #16a34a; display: block; margin-bottom: 10px;"></i>
                                 <div style="font-size: 1rem; font-weight: 700; color: #334155;">Seleccione un archivo Excel (.xlsx, .xls, .csv) o use "Pegar Planilla"</div>
-                                <div style="font-size: 0.85rem; margin-top: 4px;">Se cargarán automáticamente los comprobantes <b>ELECTRÓNICOS</b> en esta grilla para su validación, edición y confirmación.</div>
+                                <div style="font-size: 0.85rem; margin-top: 4px;">Se cargarán automáticamente los comprobantes <b>ELECTRÓNICOS y MANUALES</b> en esta grilla para su validación, edición y confirmación.</div>
                             </td>
                         </tr>
                     </tbody>
@@ -2932,7 +2932,6 @@
                 const esElectronico = origenStr.includes('ELECTR') || rawCdc.length === 44;
                 if (!esElectronico) {
                     importManualOmitidosCount++;
-                    continue;
                 }
 
                 const tipDoc = normalizarTipoDocImport(col6);
@@ -2963,11 +2962,13 @@
                 else if (!impIva && impIrp) regimen = '2';
                 else if (impIva && !impIrp) regimen = '3';
 
+                const anioVencDef = fecEgreso && fecEgreso.length >= 4 ? fecEgreso.substring(0, 4) : String(new Date().getFullYear());
+
                 importPreviewList.push({
-                    cdc: rawCdc,
+                    cdc: esElectronico ? rawCdc : '',
                     tipDoc: tipDoc,
-                    tipTimb: 'Electrónico',
-                    vencTimbrado: '2100-12-31',
+                    tipTimb: esElectronico ? 'Electrónico' : 'Pre-impreso',
+                    vencTimbrado: esElectronico ? '2100-12-31' : `${anioVencDef}-12-31`,
                     nroTimbrado: nroTimbrado,
                     nroFactura: nroFactura !== '-' ? nroFactura : col12,
                     fecEgreso: fecEgreso,
@@ -3081,9 +3082,18 @@
                 if (cdcClean.length === 44) seenCdcs.add(cdcClean);
                 if (timbClean && facClean) seenKeys.add(key1);
 
-                // 3. Validaciones de campos obligatorios (igual que carga individual)
-                if (cdcClean.length !== 44) {
-                    row.errores.push('CDC debe tener 44 dígitos');
+                // 3. Validaciones de campos obligatorios (Electrónicos vs Manuales)
+                if (cdcClean.length === 44) {
+                    row.tipTimb = 'Electrónico';
+                    row.vencTimbrado = '2100-12-31';
+                } else if (cdcClean.length === 0) {
+                    row.tipTimb = 'Pre-impreso';
+                    if (!row.vencTimbrado || row.vencTimbrado === '2100-12-31') {
+                        const yVenc = row.fecEgreso && row.fecEgreso.length >= 4 ? row.fecEgreso.substring(0, 4) : String(new Date().getFullYear());
+                        row.vencTimbrado = `${yVenc}-12-31`;
+                    }
+                } else {
+                    row.errores.push('CDC debe tener 44 dígitos (o vacío si es Manual)');
                 }
                 if (!timbClean || timbClean.length < 7) {
                     row.errores.push('Timbrado inválido');
@@ -3130,9 +3140,10 @@
             if (row.errores && row.errores.length > 0) {
                 return `<span style="background: #ef4444; color: white; font-weight: 800; font-size: 0.7rem; padding: 4px 8px; border-radius: 6px; display: inline-block;" title="${row.errores.join(' | ')}"><i class="ph ph-warning-circle"></i> ${row.errores[0]}</span>`;
             }
+            const tipoTag = (String(row.cdc || '').replace(/\D/g, '').length === 44) ? 'Electr.' : 'Manual';
             const provTag = row.proveedorExiste
-                ? `<div style="font-size: 0.68rem; color: #15803d; font-weight: 700; margin-top: 2px;">Prov. #${row.codProveedor} OK</div>`
-                : `<div style="font-size: 0.68rem; color: #0284c7; font-weight: 700; margin-top: 2px;">+ Crear Proveedor</div>`;
+                ? `<div style="font-size: 0.68rem; color: #15803d; font-weight: 700; margin-top: 2px;">${tipoTag} · Prov. #${row.codProveedor} OK</div>`
+                : `<div style="font-size: 0.68rem; color: #0284c7; font-weight: 700; margin-top: 2px;">${tipoTag} · + Crear Proveedor</div>`;
             return `<span style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-weight: 800; font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;"><i class="ph ph-check-circle"></i> VÁLIDO</span>${provTag}`;
         }
 
@@ -3146,9 +3157,13 @@
             const total = importPreviewList.length;
             let validos = 0;
             let enRojo = 0;
+            let manualesCount = 0;
             let sumG10 = 0, sumI10 = 0, sumG5 = 0, sumEx = 0, sumTot = 0;
 
             importPreviewList.forEach(r => {
+                if (String(r.cdc || '').replace(/\D/g, '').length !== 44) {
+                    manualesCount++;
+                }
                 if (esFilaEnRojo(r)) {
                     enRojo++;
                 } else {
@@ -3168,12 +3183,13 @@
             const btnRojos = document.getElementById('btnEliminarTodosRojos');
 
             if (bTotal) {
-                bTotal.innerText = `Electrónicos (Todos): ${total}`;
+                bTotal.innerText = `Todos: ${total}`;
                 bTotal.style.boxShadow = importFiltroEstado === 'TODOS' ? '0 0 0 2px #0f172a' : 'none';
             }
             if (bMan) {
-                bMan.style.display = importManualOmitidosCount > 0 ? 'inline-block' : 'none';
-                bMan.innerText = `Manuales omitidos: ${importManualOmitidosCount}`;
+                bMan.style.display = manualesCount > 0 ? 'inline-block' : 'none';
+                bMan.innerText = `Manuales incluidos: ${manualesCount}`;
+                bMan.style.boxShadow = importFiltroEstado === 'MANUALES' ? '0 0 0 2px #0369a1' : 'none';
             }
             if (bVal) {
                 bVal.innerText = `Válidos: ${validos}`;
@@ -3206,7 +3222,7 @@
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="18" style="text-align: center; padding: 60px 20px; color: #64748b; font-weight: 600;">
-                            No hay comprobantes electrónicos cargados en la vista previa.
+                            No hay comprobantes cargados en la vista previa.
                         </td>
                     </tr>`;
                 actualizarContadoresImportacion();
@@ -3218,8 +3234,10 @@
 
             importPreviewList.forEach((row, idx) => {
                 const isRed = esFilaEnRojo(row);
+                const isManual = String(row.cdc || '').replace(/\D/g, '').length !== 44;
                 if (importFiltroEstado === 'ROJOS' && !isRed) return;
                 if (importFiltroEstado === 'VALIDOS' && isRed) return;
+                if (importFiltroEstado === 'MANUALES' && !isManual) return;
                 filasMostradas++;
 
                 const trBg = isRed ? '#fef2f2' : '#ffffff';
@@ -3252,7 +3270,7 @@
                             <input type="text" value="${esc(row.nroFactura)}" onchange="onEditFilaImport(${idx}, 'nroFactura', this.value)" style="width: 100%; height: 32px; font-size: 0.82rem; font-weight: 800; color: ${isRed ? '#dc2626' : '#15803d'}; background: ${inputBg}; border: ${inputBorder}; border-radius: 5px; padding: 2px 6px;">
                         </td>
                         <td style="padding: 5px;">
-                            <input type="text" maxlength="44" value="${esc(row.cdc)}" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,44)" onchange="onEditFilaImport(${idx}, 'cdc', this.value)" style="width: 100%; height: 32px; font-family: monospace; font-size: 0.75rem; font-weight: 700; color: ${textColor}; background: ${inputBg}; border: ${inputBorder}; border-radius: 5px; padding: 2px 6px;" title="${esc(row.cdc)}">
+                            <input type="text" maxlength="44" value="${esc(row.cdc)}" placeholder="Manual / Pre-impreso (Sin CDC)" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,44)" onchange="onEditFilaImport(${idx}, 'cdc', this.value)" style="width: 100%; height: 32px; font-family: monospace; font-size: 0.75rem; font-weight: 700; color: ${textColor}; background: ${inputBg}; border: ${inputBorder}; border-radius: 5px; padding: 2px 6px;" title="${esc(row.cdc || 'Comprobante Manual / Pre-impreso')}">
                         </td>
                         <td style="padding: 5px;">
                             <input type="text" value="${esc(row.rucProveedor)}" onchange="onEditFilaImport(${idx}, 'rucProveedor', this.value)" style="width: 100%; height: 32px; font-size: 0.8rem; font-weight: 700; color: ${textColor}; background: ${inputBg}; border: ${inputBorder}; border-radius: 5px; padding: 2px 6px;">
@@ -3492,7 +3510,7 @@
             Swal.fire({
                 icon: 'question',
                 title: '¿Confirmar Importación de Egresos?',
-                html: `Se insertarán <b>${filasValidas.length}</b> comprobantes electrónicos de egreso.` +
+                html: `Se insertarán <b>${filasValidas.length}</b> comprobante(s) de egreso (electrónicos y manuales).` +
                       (nuevosProvs.size > 0 ? `<br>Además, se crearán automáticamente <b>${nuevosProvs.size}</b> nuevo(s) proveedor(es).` : ''),
                 showCancelButton: true,
                 confirmButtonColor: '#16a34a',
@@ -3552,7 +3570,7 @@
                         Swal.fire({
                             icon: 'success',
                             title: '¡Importación Completada!',
-                            html: `<b>${data.insertados || 0}</b> comprobantes electrónicos insertados en Egresos.` +
+                            html: `<b>${data.insertados || 0}</b> comprobante(s) insertado(s) en Egresos.` +
                                   ((data.proveedoresCreados || 0) > 0 ? `<br><b>${data.proveedoresCreados}</b> nuevo(s) proveedor(es) registrado(s) automáticamente.` : ''),
                             confirmButtonColor: '#16a34a'
                         });
