@@ -13,266 +13,490 @@
         <div class="content-area" style="padding: 20px;">
 
             <!-- Header Controls & Actions -->
-            <div style="background: white; border-radius: 8px; padding: 16px 20px; border: 1px solid #e2e8f0; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+            <div style="background: white; border-radius: 10px; padding: 14px 20px; border: 1px solid #cbd5e1; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
                 
-                <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <label style="font-weight: 700; font-size: 0.88rem; color: #475569;">PERIODO FISCAL:</label>
-                        <select id="selMes" class="form-control" onchange="cargarFormulario()" style="width: 130px; font-weight: 700;">
-                            <option value="1">ENERO (01)</option>
-                            <option value="2">FEBRERO (02)</option>
-                            <option value="3">MARZO (03)</option>
-                            <option value="4">ABRIL (04)</option>
-                            <option value="5">MAYO (05)</option>
-                            <option value="6">JUNIO (06)</option>
-                            <option value="7">JULIO (07)</option>
-                            <option value="8">AGOSTO (08)</option>
-                            <option value="9">SEPTIEMBRE (09)</option>
-                            <option value="10">OCTUBRE (10)</option>
-                            <option value="11">NOVIEMBRE (11)</option>
-                            <option value="12">DICIEMBRE (12)</option>
+                        <label style="font-weight: 800; font-size: 0.85rem; color: #334155;">PERIODO FISCAL:</label>
+                        <select id="selMes" class="form-control" onchange="cargarFormulario()" style="width: 145px; font-weight: 700; height: 38px; border-radius: 8px; border: 1.5px solid #cbd5e1;">
+                            <option value="1" th:selected="${defMes == 1}">ENERO (01)</option>
+                            <option value="2" th:selected="${defMes == 2}">FEBRERO (02)</option>
+                            <option value="3" th:selected="${defMes == 3}">MARZO (03)</option>
+                            <option value="4" th:selected="${defMes == 4}">ABRIL (04)</option>
+                            <option value="5" th:selected="${defMes == 5}">MAYO (05)</option>
+                            <option value="6" th:selected="${defMes == 6}">JUNIO (06)</option>
+                            <option value="7" th:selected="${defMes == 7}">JULIO (07)</option>
+                            <option value="8" th:selected="${defMes == 8}">AGOSTO (08)</option>
+                            <option value="9" th:selected="${defMes == 9}">SEPTIEMBRE (09)</option>
+                            <option value="10" th:selected="${defMes == 10}">OCTUBRE (10)</option>
+                            <option value="11" th:selected="${defMes == 11}">NOVIEMBRE (11)</option>
+                            <option value="12" th:selected="${defMes == 12}">DICIEMBRE (12)</option>
                         </select>
-                        <select id="selAnio" class="form-control" onchange="cargarFormulario()" style="width: 100px; font-weight: 700;">
-                            <option value="2026" selected>2026</option>
-                            <option value="2025">2025</option>
-                            <option value="2024">2024</option>
+                        <select id="selAnio" class="form-control" onchange="cargarFormulario()" style="width: 100px; font-weight: 700; height: 38px; border-radius: 8px; border: 1.5px solid #cbd5e1;">
+                            <option value="2026" th:selected="${defAnio == 2026}">2026</option>
+                            <option value="2025" th:selected="${defAnio == 2025}">2025</option>
+                            <option value="2024" th:selected="${defAnio == 2024}">2024</option>
                         </select>
                     </div>
+
+                    <!-- Periodos con movimientos cargados -->
+                    <div id="periodosConDatosBar" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"></div>
                 </div>
 
-                    <button type="button" class="btn" onclick="exportarXlsFormulario120()" 
-                            style="background: #0891b2; color: white; border: none; padding: 8px 18px; border-radius: 6px; font-weight: 700; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(8,145,178,0.3);">
-                        <i class="ph ph-table" style="font-size: 1.1rem;"></i> Exportar XLS
-                    </button>
-
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                     <button type="button" class="btn" onclick="recalcularLibros()" 
-                            style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 8px 16px; border-radius: 6px; font-weight: 700; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
-                        <i class="ph ph-lightning" style="font-size: 1.1rem;"></i> ⚡ Calcular de Libros IVA
+                            style="background: #e0f2fe; color: #0369a1; border: 1.5px solid #7dd3fc; padding: 8px 14px; border-radius: 8px; font-weight: 800; font-size: 0.84rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <i class="ph ph-arrows-clockwise" style="font-size: 1.1rem;"></i> Recalcular de Libros IVA
                     </button>
 
                     <button type="button" class="btn" onclick="guardarFormulario()" 
-                            style="background: #16a34a; color: white; border: none; padding: 8px 18px; border-radius: 6px; font-weight: 700; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(22,163,74,0.3);">
-                        <i class="ph ph-floppy-disk" style="font-size: 1.1rem;"></i> Guardar
+                            style="background: #16a34a; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 800; font-size: 0.84rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(22,163,74,0.3);">
+                        <i class="ph ph-floppy-disk" style="font-size: 1.1rem;"></i> Guardar DDJJ
+                    </button>
+
+                    <button type="button" class="btn" onclick="exportarXlsFormulario120()" 
+                            style="background: #0891b2; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 800; font-size: 0.84rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(8,145,178,0.3);">
+                        <i class="ph ph-file-csv" style="font-size: 1.1rem;"></i> Exportar XLS / CSV
                     </button>
 
                     <button type="button" class="btn" onclick="imprimirFormulario()" 
-                            style="background: #0284c7; color: white; border: none; padding: 8px 18px; border-radius: 6px; font-weight: 700; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(2,132,199,0.3);">
+                            style="background: #0284c7; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 800; font-size: 0.84rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(2,132,199,0.3);">
                         <i class="ph ph-printer" style="font-size: 1.1rem;"></i> Imprimir Form 120
                     </button>
                 </div>
             </div>
 
+            <!-- RESUMEN EJECUTIVO DE DATOS CARGADOS EN LIBROS IVA (INGRESOS Y EGRESOS) -->
+            <div style="max-width: 1180px; margin: 0 auto 16px auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;">
+                
+                <!-- Card 1: Ventas Cargadas -->
+                <div style="background: white; border: 1px solid #cbd5e1; border-left: 4px solid #0284c7; border-radius: 10px; padding: 12px 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 0.75rem; font-weight: 800; color: #0369a1; text-transform: uppercase;">Libro Ventas (Ingresos)</span>
+                        <span id="resBadgeCantVentas" style="background: #e0f2fe; color: #0369a1; font-weight: 800; font-size: 0.74rem; padding: 2px 8px; border-radius: 12px;">0 comp.</span>
+                    </div>
+                    <div style="font-size: 1.15rem; font-weight: 900; color: #0f172a; margin-bottom: 4px;">Gs. <span id="resVentasBruto">0</span> <small style="font-size: 0.7rem; color: #64748b; font-weight: 600;">(Facturado)</small></div>
+                    <div style="font-size: 0.76rem; color: #475569; display: flex; justify-content: space-between;">
+                        <span>Base Imp. 10%/5%: <b id="resVentasBase">0</b></span>
+                        <span>IVA Débito: <b id="resVentasIva" style="color: #dc2626;">0</b></span>
+                    </div>
+                </div>
+
+                <!-- Card 2: Compras Cargadas -->
+                <div style="background: white; border: 1px solid #cbd5e1; border-left: 4px solid #16a34a; border-radius: 10px; padding: 12px 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 0.75rem; font-weight: 800; color: #15803d; text-transform: uppercase;">Libro Compras (Egresos)</span>
+                        <span id="resBadgeCantCompras" style="background: #dcfce7; color: #15803d; font-weight: 800; font-size: 0.74rem; padding: 2px 8px; border-radius: 12px;">0 comp.</span>
+                    </div>
+                    <div style="font-size: 1.15rem; font-weight: 900; color: #0f172a; margin-bottom: 4px;">Gs. <span id="resComprasBruto">0</span> <small style="font-size: 0.7rem; color: #64748b; font-weight: 600;">(IVA incl.)</small></div>
+                    <div style="font-size: 0.76rem; color: #475569; display: flex; justify-content: space-between;">
+                        <span>Imputan IVA: <b id="resComprasImputaIva">0</b> comp.</span>
+                        <span>Electrónicos: <b id="resComprasElectr">0</b></span>
+                    </div>
+                </div>
+
+                <!-- Card 3: Desglose Crédito Fiscal Compras -->
+                <div style="background: white; border: 1px solid #cbd5e1; border-left: 4px solid #0d9488; border-radius: 10px; padding: 12px 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 0.75rem; font-weight: 800; color: #0f766e; text-transform: uppercase;">Crédito Fiscal Computable</span>
+                        <span style="background: #ccfbf1; color: #0f766e; font-weight: 800; font-size: 0.72rem; padding: 2px 8px; border-radius: 12px;">Casilla [43]</span>
+                    </div>
+                    <div style="font-size: 1.15rem; font-weight: 900; color: #0f766e; margin-bottom: 4px;">Gs. <span id="resCreditoFiscalTotal">0</span></div>
+                    <div style="font-size: 0.76rem; color: #475569; display: flex; justify-content: space-between;">
+                        <span>IVA 10%: <b id="resComprasIva10">0</b> | 5%: <b id="resComprasIva5">0</b></span>
+                        <span>Exentas: <b id="resComprasExentas">0</b></span>
+                    </div>
+                </div>
+
+                <!-- Card 4: Resultado Liquidación Periodo -->
+                <div id="cardResultadoFiscal" style="background: #f0fdf4; border: 1px solid #86efac; border-left: 4px solid #16a34a; border-radius: 10px; padding: 12px 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span id="lblTituloResultadoCard" style="font-size: 0.75rem; font-weight: 800; color: #15803d; text-transform: uppercase;">Saldo a Favor Contribuyente</span>
+                        <span id="lblCasillaResultadoCard" style="background: white; color: #15803d; font-weight: 800; font-size: 0.72rem; padding: 2px 8px; border-radius: 12px; border: 1px solid #86efac;">Casilla [47]</span>
+                    </div>
+                    <div style="font-size: 1.2rem; font-weight: 900; color: #15803d; margin-bottom: 4px;" id="valResultadoCard">Gs. 0</div>
+                    <div style="font-size: 0.75rem; color: #475569;" id="subResultadoCard">Se traslada al siguiente periodo fiscal</div>
+                </div>
+            </div>
+
             <!-- Form 120 Official Header Paper Container -->
-            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); padding: 24px; max-width: 1100px; margin: 0 auto; font-family: Arial, Helvetica, sans-serif;">
+            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); padding: 24px; max-width: 1180px; margin: 0 auto; font-family: Arial, Helvetica, sans-serif;">
                 
                 <!-- Title Header -->
-                <div style="border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div style="border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 10px;">
                     <div>
-                        <div style="font-size: 1.4rem; font-weight: 800; color: #0f172a; letter-spacing: 0.5px;">IMPUESTO AL VALOR AGREGADO</div>
-                        <div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">FORMULARIO 120 - Versión 3 (DNIT / SET PARAGUAY)</div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="background: #0f172a; color: white; font-weight: 900; font-size: 1.15rem; padding: 4px 10px; border-radius: 6px;">FORM. 120</span>
+                            <div style="font-size: 1.35rem; font-weight: 800; color: #0f172a; letter-spacing: 0.4px;">IMPUESTO AL VALOR AGREGADO</div>
+                        </div>
+                        <div style="font-size: 0.82rem; color: #64748b; font-weight: 600; margin-top: 3px;">Versión 3 — Declaración Jurada Mensual (DNIT / Marangatu Paraguay)</div>
                     </div>
-                    <div style="text-align: right; font-size: 0.78rem; color: #64748b;">
-                        LOS IMPORTES SE CONSIGNARÁN SIN CÉNTIMOS
+                    <div style="text-align: right;">
+                        <span id="badgeEstadoOrigenForm" style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-size: 0.75rem; font-weight: 800; padding: 4px 10px; border-radius: 6px; display: inline-block; margin-bottom: 4px;">Calculado en vivo desde Libros IVA</span>
+                        <div style="font-size: 0.75rem; color: #64748b; font-weight: 700;">LOS IMPORTES SE CONSIGNAN SIN CÉNTIMOS</div>
                     </div>
                 </div>
 
                 <!-- Header Info Box: RUC, Razon Social, Declaracion -->
-                <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; font-size: 0.85rem;">
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; font-size: 0.85rem;">
                     <div>
-                        <strong style="color: #475569; display: block; font-size: 0.75rem; text-transform: uppercase;">RUC Contribuyente:</strong>
+                        <strong style="color: #475569; display: block; font-size: 0.74rem; text-transform: uppercase;">RUC Contribuyente:</strong>
                         <span id="txtRuc" style="font-weight: 800; font-size: 1.05rem; color: #0f172a;" th:text="${empresa.rucNum + '-' + empresa.rucDv}">5555-7</span>
                     </div>
 
                     <div>
-                        <strong style="color: #475569; display: block; font-size: 0.75rem; text-transform: uppercase;">Razón Social / Contribuyente:</strong>
-                        <span id="txtRazonSocial" style="font-weight: 800; font-size: 1.05rem; color: #0f172a;" th:text="${empresa.razon_social}">CONTRIBUYENTE DEMOSTRATIVO</span>
+                        <strong style="color: #475569; display: block; font-size: 0.74rem; text-transform: uppercase;">Razón Social / Contribuyente:</strong>
+                        <span id="txtRazonSocial" style="font-weight: 800; font-size: 1.02rem; color: #0f172a;" th:text="${empresa.razon_social}">CONTRIBUYENTE DEMOSTRATIVO</span>
                     </div>
 
                     <div>
-                        <strong style="color: #475569; display: block; font-size: 0.75rem; text-transform: uppercase;">Tipo de Declaración:</strong>
-                        <select id="f_tipoDecl" class="form-control" style="font-size: 0.85rem; font-weight: 700; padding: 2px 6px;">
+                        <strong style="color: #475569; display: block; font-size: 0.74rem; text-transform: uppercase;">Carácter de la Declaración:</strong>
+                        <select id="f_tipoDecl" class="form-control" style="font-size: 0.83rem; font-weight: 700; padding: 3px 8px; height: 32px;">
                             <option value="O" selected>[01] Declaración Jurada Original</option>
                             <option value="R">[02] Declaración Jurada Rectificativa</option>
                         </select>
                     </div>
 
                     <div>
-                        <strong style="color: #475569; display: block; font-size: 0.75rem; text-transform: uppercase;">Periodo Fiscal (Mes/Año):</strong>
-                        <span id="lblPeriodo" style="font-weight: 800; font-size: 1.05rem; color: #0284c7;">10 / 2026</span>
+                        <strong style="color: #475569; display: block; font-size: 0.74rem; text-transform: uppercase;">Periodo Fiscal [04]:</strong>
+                        <span id="lblPeriodo" style="font-weight: 900; font-size: 1.08rem; color: #0284c7;">09 / 2026</span>
                     </div>
                 </div>
 
                 <!-- RUBRO 1 -->
-                <div style="margin-bottom: 24px;">
-                    <div style="background: #0f172a; color: white; padding: 6px 12px; font-weight: 700; font-size: 0.85rem; border-radius: 4px 4px 0 0;">
-                        RUBRO 1 - ENAJENACIÓN DE BIENES Y/O PRESTACIÓN DE SERVICIOS DEL PERIODO (VENTAS)
+                <div style="margin-bottom: 22px;">
+                    <div style="background: #0f172a; color: white; padding: 7px 12px; font-weight: 700; font-size: 0.84rem; border-radius: 6px 6px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                        <span>RUBRO 1 - ENAJENACIÓN DE BIENES Y/O PRESTACIÓN DE SERVICIOS DEL PERIODO (VENTAS)</span>
+                        <span style="font-size: 0.74rem; color: #94a3b8; font-weight: 600;">Montos Imponibles sin IVA</span>
                     </div>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; border: 1px solid #cbd5e1;">
-                        <thead style="background: #f1f5f9; text-align: center; font-weight: bold;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.81rem; border: 1px solid #cbd5e1;">
+                        <thead style="background: #f1f5f9; text-align: center; font-weight: bold; color: #1e293b;">
                             <tr style="border-bottom: 1px solid #cbd5e1;">
-                                <th style="padding: 6px; width: 40px; border-right: 1px solid #cbd5e1;">INC</th>
-                                <th style="padding: 6px; border-right: 1px solid #cbd5e1; text-align: left;">DESCRIPCIÓN</th>
-                                <th style="padding: 6px; border-right: 1px solid #cbd5e1; width: 170px;">MONTO IMPONIBLE (5%)</th>
-                                <th style="padding: 6px; border-right: 1px solid #cbd5e1; width: 170px;">MONTO IMPONIBLE (10%) / EXENTO</th>
-                                <th style="padding: 6px; width: 170px;">IVA DÉBITO</th>
+                                <th style="padding: 7px 6px; width: 38px; border-right: 1px solid #cbd5e1;">INC</th>
+                                <th style="padding: 7px 8px; border-right: 1px solid #cbd5e1; text-align: left;">CONCEPTO / DESCRIPCIÓN</th>
+                                <th style="padding: 7px 6px; border-right: 1px solid #cbd5e1; width: 175px;">MONTO IMPONIBLE -I-</th>
+                                <th style="padding: 7px 6px; border-right: 1px solid #cbd5e1; width: 165px;">IVA DÉBITO 5% -II-</th>
+                                <th style="padding: 7px 6px; width: 165px;">IVA DÉBITO 10% -III-</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr style="border-bottom: 1px solid #e2e8f0;">
                                 <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">a</td>
-                                <td style="padding: 6px; border-right: 1px solid #cbd5e1;">Gravadas con tasa del 10%</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Enajenación de bienes y prestación de servicios gravadas con tasa del 10%</td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[10]</span><input type="text" id="c10" class="f-num" onchange="recalcRubro1()"></div></td>
                                 <td style="background: #f8fafc; border-right: 1px solid #cbd5e1;"></td>
-                                <td style="padding: 4px; border-right: 1px solid #cbd5e1;"><input type="text" id="c10" class="f-num" onchange="recalcRubro1()"> <span class="casilla">[10]</span></td>
-                                <td style="padding: 4px;"><input type="text" id="c22" class="f-num" onchange="recalcRubro1()"> <span class="casilla">[22]</span></td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[22]</span><input type="text" id="c22" class="f-num" onchange="recalcRubro1(true)"></div></td>
                             </tr>
                             <tr style="border-bottom: 1px solid #e2e8f0;">
                                 <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">b</td>
-                                <td style="padding: 6px; border-right: 1px solid #cbd5e1;">Gravadas con tasa del 5%</td>
-                                <td style="padding: 4px; border-right: 1px solid #cbd5e1;"><input type="text" id="c11" class="f-num" onchange="recalcRubro1()"> <span class="casilla">[11]</span></td>
-                                <td style="background: #f8fafc; border-right: 1px solid #cbd5e1;"></td>
-                                <td style="padding: 4px;"><input type="text" id="c19" class="f-num" onchange="recalcRubro1()"> <span class="casilla">[19]</span></td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Enajenación de bienes y prestación de servicios gravadas con tasa del 5%</td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[11]</span><input type="text" id="c11" class="f-num" onchange="recalcRubro1()"></div></td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[19]</span><input type="text" id="c19" class="f-num" onchange="recalcRubro1(true)"></div></td>
+                                <td style="background: #f8fafc;"></td>
                             </tr>
                             <tr style="border-bottom: 1px solid #e2e8f0;">
                                 <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">c</td>
-                                <td style="padding: 6px; border-right: 1px solid #cbd5e1;">Exoneradas o no alcanzadas por el tributo</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Enajenación de bienes y/o prestación de servicios exonerados o no alcanzados por el tributo</td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[12]</span><input type="text" id="c12" class="f-num" onchange="recalcRubro1()"></div></td>
                                 <td style="background: #f8fafc; border-right: 1px solid #cbd5e1;"></td>
-                                <td style="padding: 4px; border-right: 1px solid #cbd5e1;"><input type="text" id="c12" class="f-num" onchange="recalcRubro1()"> <span class="casilla">[12]</span></td>
                                 <td style="background: #f8fafc;"></td>
                             </tr>
                             <tr style="border-bottom: 1px solid #e2e8f0;">
                                 <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">d</td>
-                                <td style="padding: 6px; border-right: 1px solid #cbd5e1;">Exportación de productos agropecuarios en estado natural</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Exportación de productos agropecuarios en estado natural</td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[13]</span><input type="text" id="c13" class="f-num" onchange="recalcRubro1()"></div></td>
                                 <td style="background: #f8fafc; border-right: 1px solid #cbd5e1;"></td>
-                                <td style="padding: 4px; border-right: 1px solid #cbd5e1;"><input type="text" id="c13" class="f-num" onchange="recalcRubro1()"> <span class="casilla">[13]</span></td>
                                 <td style="background: #f8fafc;"></td>
                             </tr>
                             <tr style="border-bottom: 1px solid #e2e8f0;">
                                 <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">e</td>
-                                <td style="padding: 6px; border-right: 1px solid #cbd5e1;">Exportación de otros bienes</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Exportación de otros bienes</td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[14]</span><input type="text" id="c14" class="f-num" onchange="recalcRubro1()"></div></td>
                                 <td style="background: #f8fafc; border-right: 1px solid #cbd5e1;"></td>
-                                <td style="padding: 4px; border-right: 1px solid #cbd5e1;"><input type="text" id="c14" class="f-num" onchange="recalcRubro1()"> <span class="casilla">[14]</span></td>
+                                <td style="background: #f8fafc;"></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">f</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Ajustes de precios, devoluciones realizadas y descuentos obtenidos a la tasa del 10%</td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[15]</span><input type="text" id="c15" class="f-num" onchange="recalcRubro1()"></div></td>
+                                <td style="background: #f8fafc; border-right: 1px solid #cbd5e1;"></td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[23]</span><input type="text" id="c23" class="f-num" onchange="recalcRubro1(true)"></div></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">g</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Ajustes de precios, devoluciones realizadas y descuentos obtenidos a la tasa del 5%</td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[16]</span><input type="text" id="c16" class="f-num" onchange="recalcRubro1()"></div></td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[20]</span><input type="text" id="c20" class="f-num" onchange="recalcRubro1(true)"></div></td>
+                                <td style="background: #f8fafc;"></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">h</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Ajustes de precios, devoluciones realizadas y descuentos exonerados o no alcanzados</td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[17]</span><input type="text" id="c17" class="f-num" onchange="recalcRubro1()"></div></td>
+                                <td style="background: #f8fafc; border-right: 1px solid #cbd5e1;"></td>
                                 <td style="background: #f8fafc;"></td>
                             </tr>
                             <tr style="border-bottom: 1px solid #cbd5e1; background: #f8fafc; font-weight: bold;">
                                 <td style="text-align: center; border-right: 1px solid #cbd5e1;">i</td>
-                                <td style="padding: 6px; border-right: 1px solid #cbd5e1;">TOTALES RUBRO 1</td>
-                                <td style="padding: 4px; border-right: 1px solid #cbd5e1;"><input type="text" id="c21" class="f-num" readonly style="font-weight:bold;"> <span class="casilla">[21]</span></td>
-                                <td style="padding: 4px; border-right: 1px solid #cbd5e1;"><input type="text" id="c18" class="f-num" readonly style="font-weight:bold;"> <span class="casilla">[18]</span></td>
-                                <td style="padding: 4px;"><input type="text" id="c24" class="f-num" readonly style="font-weight:bold; color: #dc2626;"> <span class="casilla">[24]</span></td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">TOTALES RUBRO 1 (Col.I: a+b+c+d+e+f+g+h; Col.II: b+g; Col.III: a+f)</td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[18]</span><input type="text" id="c18" class="f-num" readonly style="font-weight:bold;"></div></td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[21]</span><input type="text" id="c21" class="f-num" readonly style="font-weight:bold; color: #dc2626;"></div></td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[24]</span><input type="text" id="c24" class="f-num" readonly style="font-weight:bold; color: #dc2626;"></div></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- RUBRO 2 -->
+                <div style="margin-bottom: 22px;">
+                    <div style="background: #1e293b; color: white; padding: 7px 12px; font-weight: 700; font-size: 0.84rem; border-radius: 6px 6px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                        <span>RUBRO 2 - ENAJENACIÓN DE BIENES Y/O PRESTACIÓN DE SERVICIOS DE LOS ÚLTIMOS 6 MESES</span>
+                        <span style="font-size: 0.74rem; color: #94a3b8; font-weight: 600;">Acumulado móvil de 6 meses (incluido el periodo que se declara)</span>
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.81rem; border: 1px solid #cbd5e1;">
+                        <tbody>
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="text-align: center; font-weight: bold; width: 38px; border-right: 1px solid #cbd5e1; padding: 6px;">a</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Enajenación de bienes y/o prestación de servicios gravados (últimos 6 meses)</td>
+                                <td style="padding: 4px 6px; width: 200px;"><div class="cell-wrap"><span class="casilla">[25]</span><input type="text" id="c25" class="f-num" onchange="recalcRubro2()"></div></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1; padding: 6px;">b</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Enajenación de bienes y/o prestación de servicios exonerados o no alcanzados (últimos 6 meses)</td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[26]</span><input type="text" id="c26" class="f-num" onchange="recalcRubro2()"></div></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc; font-weight: bold;">
+                                <td style="text-align: center; border-right: 1px solid #cbd5e1; padding: 6px;">c</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">SUBTOTAL (Inc. a + b)</td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[27]</span><input type="text" id="c27" class="f-num" readonly style="font-weight:bold;"></div></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #cbd5e1; background: #f1f5f9; font-weight: bold;">
+                                <td style="text-align: center; border-right: 1px solid #cbd5e1; padding: 6px;">g</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">TOTAL OPERACIONES REALIZADAS EN LOS ÚLTIMOS 6 MESES (Inc. c + f)</td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[31]</span><input type="text" id="c31" class="f-num" readonly style="font-weight:bold;"></div></td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
                 <!-- RUBRO 3 -->
-                <div style="margin-bottom: 24px;">
-                    <div style="background: #0f172a; color: white; padding: 6px 12px; font-weight: 700; font-size: 0.85rem; border-radius: 4px 4px 0 0;">
-                        RUBRO 3 - COMPRAS LOCALES E IMPORTACIONES DEL PERIODO (COMPRAS)
+                <div style="margin-bottom: 22px;">
+                    <div style="background: #0f172a; color: white; padding: 7px 12px; font-weight: 700; font-size: 0.84rem; border-radius: 6px 6px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                        <span>RUBRO 3 - COMPRAS LOCALES E IMPORTACIONES DEL PERIODO (EGRESOS QUE IMPUTAN IVA)</span>
+                        <span style="font-size: 0.74rem; color: #86efac; font-weight: 600;">Montos Imponibles sin IVA · Regímenes IRP &amp; IVA / IVA</span>
                     </div>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; border: 1px solid #cbd5e1;">
-                        <thead style="background: #f1f5f9; text-align: center; font-weight: bold;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.81rem; border: 1px solid #cbd5e1;">
+                        <thead style="background: #f1f5f9; text-align: center; font-weight: bold; color: #1e293b;">
                             <tr style="border-bottom: 1px solid #cbd5e1;">
-                                <th style="padding: 6px; width: 40px; border-right: 1px solid #cbd5e1;">INC</th>
-                                <th style="padding: 6px; border-right: 1px solid #cbd5e1; text-align: left;">DESCRIPCIÓN</th>
-                                <th style="padding: 6px; border-right: 1px solid #cbd5e1; width: 170px;">MONTO IMPONIBLE (5%)</th>
-                                <th style="padding: 6px; border-right: 1px solid #cbd5e1; width: 170px;">MONTO IMPONIBLE (10%)</th>
-                                <th style="padding: 6px; width: 170px;">IVA CRÉDITO</th>
+                                <th style="padding: 7px 6px; width: 38px; border-right: 1px solid #cbd5e1;">INC</th>
+                                <th style="padding: 7px 8px; border-right: 1px solid #cbd5e1; text-align: left;">CONCEPTO / ATRIBUCIÓN DEL CRÉDITO FISCAL</th>
+                                <th style="padding: 7px 6px; border-right: 1px solid #cbd5e1; width: 175px;">MONTO IMPONIBLE 5% -I-</th>
+                                <th style="padding: 7px 6px; border-right: 1px solid #cbd5e1; width: 175px;">MONTO IMPONIBLE 10% -II-</th>
+                                <th style="padding: 7px 6px; width: 175px;">IVA CRÉDITO -III-</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr style="border-bottom: 1px solid #e2e8f0;">
                                 <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">a</td>
-                                <td style="padding: 6px; border-right: 1px solid #cbd5e1;">Créditos fiscales atribuidos directamente a operaciones gravadas mercado interno</td>
-                                <td style="padding: 4px; border-right: 1px solid #cbd5e1;"><input type="text" id="c32" class="f-num" onchange="recalcRubro3()"> <span class="casilla">[32]</span></td>
-                                <td style="padding: 4px; border-right: 1px solid #cbd5e1;"><input type="text" id="c35" class="f-num" onchange="recalcRubro3()"> <span class="casilla">[35]</span></td>
-                                <td style="padding: 4px;"><input type="text" id="c38" class="f-num" onchange="recalcRubro3()"> <span class="casilla">[38]</span></td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Créditos fiscales atribuidos <b>directamente</b> a operaciones gravadas en el mercado interno</td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[32]</span><input type="text" id="c32" class="f-num" onchange="recalcRubro3()"></div></td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[35]</span><input type="text" id="c35" class="f-num" onchange="recalcRubro3()"></div></td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[38]</span><input type="text" id="c38" class="f-num" onchange="recalcRubro3(true)"></div></td>
                             </tr>
-                            <tr style="border-bottom: 1px solid #cbd5e1; background: #f8fafc; font-weight: bold;">
-                                <td style="text-align: center; border-right: 1px solid #cbd5e1;">f</td>
-                                <td style="padding: 6px; border-right: 1px solid #cbd5e1;">TOTAL DE CRÉDITO FISCAL PARA OPERACIONES EN MERCADO INTERNO</td>
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">b/c</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Créditos fiscales atribuidos <b>indistintamente (Prorrateo)</b> a operaciones gravadas y exoneradas</td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[33]</span><input type="text" id="c33" class="f-num" onchange="recalcRubro3()"></div></td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[36]</span><input type="text" id="c36" class="f-num" onchange="recalcRubro3()"></div></td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[39]</span><input type="text" id="c39" class="f-num" onchange="recalcRubro3(true)"></div></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">d</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Créditos fiscales atribuidos directamente a operaciones de exportación</td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[34]</span><input type="text" id="c34" class="f-num" onchange="recalcRubro3()"></div></td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[37]</span><input type="text" id="c37" class="f-num" onchange="recalcRubro3()"></div></td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[42]</span><input type="text" id="c42" class="f-num" onchange="recalcRubro3(true)"></div></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1;">e</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Compras de bienes y/o servicios <b>exentos o no alcanzados</b> o en que no corresponda el crédito fiscal</td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[40]</span><input type="text" id="c40" class="f-num" onchange="recalcRubro3(true)"></div></td>
+                                <td style="padding: 4px 6px; border-right: 1px solid #cbd5e1;"><div class="cell-wrap"><span class="casilla">[41]</span><input type="text" id="c41" class="f-num" onchange="recalcRubro3(true)"></div></td>
+                                <td style="background: #f8fafc;"></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #cbd5e1; background: #f0fdf4; font-weight: bold;">
+                                <td style="text-align: center; border-right: 1px solid #cbd5e1; color: #15803d;">f</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1; color: #15803d;">TOTAL DE CRÉDITO FISCAL PARA OPERACIONES EN EL MERCADO INTERNO (Col. III: Inc. a + c + d)</td>
                                 <td style="background: #f8fafc; border-right: 1px solid #cbd5e1;"></td>
                                 <td style="background: #f8fafc; border-right: 1px solid #cbd5e1;"></td>
-                                <td style="padding: 4px;"><input type="text" id="c43" class="f-num" readonly style="font-weight:bold; color: #16a34a;"> <span class="casilla">[43]</span></td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[43]</span><input type="text" id="c43" class="f-num" readonly style="font-weight:900; color: #15803d;"></div></td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
                 <!-- RUBRO 4 -->
-                <div style="margin-bottom: 24px;">
-                    <div style="background: #0f172a; color: white; padding: 6px 12px; font-weight: 700; font-size: 0.85rem; border-radius: 4px 4px 0 0;">
+                <div style="margin-bottom: 22px;">
+                    <div style="background: #0f172a; color: white; padding: 7px 12px; font-weight: 700; font-size: 0.84rem; border-radius: 6px 6px 0 0;">
                         RUBRO 4 – DETERMINACIÓN DEL IMPUESTO
                     </div>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; border: 1px solid #cbd5e1;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.81rem; border: 1px solid #cbd5e1;">
                         <tbody>
                             <tr style="border-bottom: 1px solid #e2e8f0;">
-                                <td style="text-align: center; font-weight: bold; width: 40px; border-right: 1px solid #cbd5e1; padding: 6px;">a</td>
-                                <td style="padding: 6px; border-right: 1px solid #cbd5e1;">Débito fiscal (Proviene del Rubro 1)</td>
-                                <td style="padding: 4px; width: 200px;"><input type="text" id="c44" class="f-num" readonly style="font-weight:bold;"> <span class="casilla">[44]</span></td>
+                                <td style="text-align: center; font-weight: bold; width: 38px; border-right: 1px solid #cbd5e1; padding: 6px;">a</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Débito fiscal del periodo (Proviene del Rubro 1, Col. II + III: Casillas [21] + [24])</td>
+                                <td style="padding: 4px 6px; width: 200px;"><div class="cell-wrap"><span class="casilla">[44]</span><input type="text" id="c44" class="f-num" readonly style="font-weight:bold;"></div></td>
                             </tr>
                             <tr style="border-bottom: 1px solid #e2e8f0;">
                                 <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1; padding: 6px;">b</td>
-                                <td style="padding: 6px; border-right: 1px solid #cbd5e1;">Crédito fiscal (Proviene del Rubro 3)</td>
-                                <td style="padding: 4px;"><input type="text" id="c45" class="f-num" readonly style="font-weight:bold;"> <span class="casilla">[45]</span></td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Crédito fiscal del periodo (Proviene del Rubro 3, Inc. f: Casilla [43])</td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[45]</span><input type="text" id="c45" class="f-num" readonly style="font-weight:bold;"></div></td>
                             </tr>
                             <tr style="border-bottom: 1px solid #e2e8f0;">
                                 <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1; padding: 6px;">c</td>
-                                <td style="padding: 6px; border-right: 1px solid #cbd5e1;">Saldo a favor del contribuyente del período anterior</td>
-                                <td style="padding: 4px;"><input type="text" id="c46" class="f-num" onchange="recalcLiquidacion()"> <span class="casilla">[46]</span></td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Saldo a favor del contribuyente del período anterior (Casilla [47] de la DDJJ anterior)</td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[46]</span><input type="text" id="c46" class="f-num" onchange="recalcLiquidacion()"></div></td>
                             </tr>
                             <tr style="border-bottom: 1px solid #e2e8f0; background: #f0fdf4;">
                                 <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1; padding: 6px; color: #15803d;">d</td>
-                                <td style="padding: 6px; border-right: 1px solid #cbd5e1; font-weight: bold; color: #15803d;">SALDO A FAVOR DEL CONTRIBUYENTE (Monto a Trasladar al Siguiente Periodo)</td>
-                                <td style="padding: 4px;"><input type="text" id="c47" class="f-num" readonly style="font-weight:bold; color: #15803d;"> <span class="casilla">[47]</span></td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1; font-weight: bold; color: #15803d;">SALDO A FAVOR DEL CONTRIBUYENTE (Cuando Inc. b + c es mayor a Inc. a — A trasladar al siguiente periodo)</td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[47]</span><input type="text" id="c47" class="f-num" readonly style="font-weight:900; color: #15803d;"></div></td>
                             </tr>
-                            <tr style="border-bottom: 1px solid #cbd5e1; background: #fef2f2;">
+                            <tr style="border-bottom: 1px solid #e2e8f0; background: #fef2f2;">
                                 <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1; padding: 6px; color: #dc2626;">e</td>
-                                <td style="padding: 6px; border-right: 1px solid #cbd5e1; font-weight: bold; color: #dc2626;">SALDO A FAVOR DEL FISCO (IMPUESTO DETERMINADO)</td>
-                                <td style="padding: 4px;"><input type="text" id="c48" class="f-num" readonly style="font-weight:bold; color: #dc2626;"> <span class="casilla">[48]</span></td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1; font-weight: bold; color: #dc2626;">SALDO A FAVOR DEL FISCO (Cuando Inc. a es mayor a Inc. b + c)</td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[48]</span><input type="text" id="c48" class="f-num" readonly style="font-weight:900; color: #dc2626;"></div></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #cbd5e1; background: #f8fafc; font-weight: bold;">
+                                <td style="text-align: center; border-right: 1px solid #cbd5e1; padding: 6px;">g</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">IMPUESTO DETERMINADO (Inc. e - Inc. f)</td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[50]</span><input type="text" id="c50" class="f-num" readonly style="font-weight:bold;"></div></td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
                 <!-- RUBRO 5 -->
-                <div style="margin-bottom: 24px;">
-                    <div style="background: #0f172a; color: white; padding: 6px 12px; font-weight: 700; font-size: 0.85rem; border-radius: 4px 4px 0 0;">
-                        RUBRO 5 – LIQUIDACIÓN Y SALDO DEL IMPUESTO
+                <div style="margin-bottom: 22px;">
+                    <div style="background: #0f172a; color: white; padding: 7px 12px; font-weight: 700; font-size: 0.84rem; border-radius: 6px 6px 0 0;">
+                        RUBRO 5 – LIQUIDACIÓN Y SALDO DEFINITIVO DEL IMPUESTO
                     </div>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; border: 1px solid #cbd5e1;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.81rem; border: 1px solid #cbd5e1;">
                         <tbody>
                             <tr style="border-bottom: 1px solid #e2e8f0;">
-                                <td style="text-align: center; font-weight: bold; width: 40px; border-right: 1px solid #cbd5e1; padding: 6px;">a</td>
-                                <td style="padding: 6px; border-right: 1px solid #cbd5e1;">Impuesto determinado (Proviene de Rubro 4 Inc. e)</td>
-                                <td style="padding: 4px; width: 200px;"><input type="text" id="c55" class="f-num" readonly style="font-weight:bold;"> <span class="casilla">[55]</span></td>
+                                <td style="text-align: center; font-weight: bold; width: 38px; border-right: 1px solid #cbd5e1; padding: 6px;">a</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Impuesto determinado para operaciones gravadas (Proviene de Rubro 4 Inc. g [50])</td>
+                                <td style="padding: 4px 6px; width: 200px;"><div class="cell-wrap"><span class="casilla">[55]</span><input type="text" id="c55" class="f-num" readonly style="font-weight:bold;"></div></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1; padding: 6px;">b</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Saldo a favor del contribuyente por pagos previos o retenciones del periodo anterior</td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[51]</span><input type="text" id="c51" class="f-num" onchange="recalcLiquidacion()"></div></td>
                             </tr>
                             <tr style="border-bottom: 1px solid #e2e8f0;">
                                 <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1; padding: 6px;">c</td>
-                                <td style="padding: 6px; border-right: 1px solid #cbd5e1;">Retenciones computables por operaciones gravadas</td>
-                                <td style="padding: 4px;"><input type="text" id="c52" class="f-num" onchange="recalcLiquidacion()"> <span class="casilla">[52]</span></td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Retenciones computables por operaciones gravadas del periodo</td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[52]</span><input type="text" id="c52" class="f-num" onchange="recalcLiquidacion()"></div></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1; padding: 6px;">d</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1;">Multa por presentar la Declaración Jurada con posterioridad al vencimiento</td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[56]</span><input type="text" id="c56" class="f-num" onchange="recalcLiquidacion()"></div></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #e2e8f0; background: #f0fdf4;">
+                                <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1; padding: 6px; color: #15803d;">f</td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1; font-weight: bold; color: #15803d;">SALDO A FAVOR DEL CONTRIBUYENTE POR RETENCIONES / PAGOS EN EXCESO</td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[54]</span><input type="text" id="c54" class="f-num" readonly style="font-weight:bold; color: #15803d;"></div></td>
                             </tr>
                             <tr style="border-bottom: 1px solid #cbd5e1; background: #fff1f2;">
                                 <td style="text-align: center; font-weight: bold; border-right: 1px solid #cbd5e1; padding: 6px; color: #be123c;">g</td>
-                                <td style="padding: 6px; border-right: 1px solid #cbd5e1; font-weight: 800; color: #be123c; font-size: 0.9rem;">SALDO DEFINITIVO A PAGAR A FAVOR DEL FISCO</td>
-                                <td style="padding: 4px;"><input type="text" id="c58" class="f-num" readonly style="font-weight:800; color: #be123c; font-size: 0.95rem;"> <span class="casilla">[58]</span></td>
+                                <td style="padding: 6px 8px; border-right: 1px solid #cbd5e1; font-weight: 800; color: #be123c; font-size: 0.9rem;">SALDO DEFINITIVO A PAGAR A FAVOR DEL FISCO</td>
+                                <td style="padding: 4px 6px;"><div class="cell-wrap"><span class="casilla">[58]</span><input type="text" id="c58" class="f-num" readonly style="font-weight:900; color: #be123c; font-size: 0.95rem;"></div></td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+
+                <!-- ANEXO DE COMPOSICIÓN DE DATOS CARGADOS (POR RÉGIMEN Y PRINCIPALES PROVEEDORES DEL MES) -->
+                <div style="border-top: 2px dashed #cbd5e1; padding-top: 18px; margin-top: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                        <div>
+                            <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #0f172a;"><i class="ph ph-chart-bar" style="color: #16a34a;"></i> Anexo de Conciliación con Egresos e Ingresos Cargados</h4>
+                            <div style="font-size: 0.78rem; color: #64748b;">Desglose por régimen impositivo y principales proveedores registrados en el periodo seleccionado.</div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 16px;">
+                        <!-- Tabla por Régimen -->
+                        <div>
+                            <div style="font-size: 0.78rem; font-weight: 800; color: #334155; margin-bottom: 6px; text-transform: uppercase;">Composición de Egresos por Régimen</div>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem; border: 1px solid #cbd5e1;">
+                                <thead style="background: #f1f5f9; font-weight: 800; color: #1e293b;">
+                                    <tr style="border-bottom: 1px solid #cbd5e1;">
+                                        <th style="padding: 6px 8px; text-align: left;">Régimen</th>
+                                        <th style="padding: 6px 6px; text-align: center;">Comp.</th>
+                                        <th style="padding: 6px 8px; text-align: right;">Base 10% + 5%</th>
+                                        <th style="padding: 6px 8px; text-align: right;">IVA Crédito</th>
+                                        <th style="padding: 6px 8px; text-align: right;">Exentas</th>
+                                        <th style="padding: 6px 8px; text-align: right;">Total Bruto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyAnexoRegimen">
+                                    <tr><td colspan="6" style="text-align: center; padding: 14px; color: #64748b;">Sin movimientos en el periodo.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Tabla Top Proveedores -->
+                        <div>
+                            <div style="font-size: 0.78rem; font-weight: 800; color: #334155; margin-bottom: 6px; text-transform: uppercase;">Principales Proveedores del Periodo (Top 10)</div>
+                            <div style="max-height: 210px; overflow-y: auto; border: 1px solid #cbd5e1;">
+                                <table style="width: 100%; border-collapse: collapse; font-size: 0.76rem;">
+                                    <thead style="position: sticky; top: 0; background: #f1f5f9; font-weight: 800; color: #1e293b;">
+                                        <tr style="border-bottom: 1px solid #cbd5e1;">
+                                            <th style="padding: 6px 8px; text-align: left;">RUC / Proveedor</th>
+                                            <th style="padding: 6px 6px; text-align: center;">Cant.</th>
+                                            <th style="padding: 6px 8px; text-align: right;">IVA Créd.</th>
+                                            <th style="padding: 6px 8px; text-align: right;">Total (Gs.)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbodyAnexoProveedores">
+                                        <tr><td colspan="4" style="text-align: center; padding: 14px; color: #64748b;">Sin proveedores registrados en el periodo.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hidden inputs for additional columns preserved on save -->
+                <input type="hidden" id="c28" value="0">
+                <input type="hidden" id="c29" value="0">
+                <input type="hidden" id="c30" value="0">
+                <input type="hidden" id="c49" value="0">
+                <input type="hidden" id="c53" value="0">
+                <input type="hidden" id="c57" value="0">
 
             </div>
         </div>
     </main>
 
     <style>
+        .cell-wrap {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
         .f-num {
+            flex: 1;
             width: 100%;
             border: 1px solid #cbd5e1;
-            border-radius: 4px;
-            padding: 4px 6px;
+            border-radius: 5px;
+            padding: 4px 7px;
             text-align: right;
             font-family: monospace;
-            font-size: 0.88rem;
+            font-size: 0.86rem;
+            font-weight: 700;
             box-sizing: border-box;
             background: #ffffff;
         }
@@ -281,19 +505,28 @@
         }
         .casilla {
             font-size: 0.72rem;
-            color: #64748b;
-            font-weight: bold;
-            margin-left: 2px;
+            color: #475569;
+            font-weight: 800;
+            min-width: 28px;
+            text-align: center;
+            background: #e2e8f0;
+            padding: 2px 4px;
+            border-radius: 4px;
         }
     </style>
 
     <script>
+        const NOMBRES_MESES = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
         document.addEventListener('DOMContentLoaded', () => {
-            const today = new Date();
-            document.getElementById('selMes').value = today.getMonth() + 1;
-            document.getElementById('selAnio').value = today.getFullYear();
             cargarFormulario();
         });
+
+        function seleccionarPeriodoChip(mes, anio) {
+            document.getElementById('selMes').value = mes;
+            document.getElementById('selAnio').value = anio;
+            cargarFormulario();
+        }
 
         function cargarFormulario() {
             const mes = document.getElementById('selMes').value;
@@ -307,8 +540,152 @@
                     if (res.data) {
                         poblarCampos(res.data);
                     }
+                    if (res.resumenLibros) {
+                        renderResumenLibros(res.resumenLibros, res.status);
+                    }
+                    if (res.periodosConDatos) {
+                        renderPeriodosConDatos(res.periodosConDatos, parseInt(mes, 10), parseInt(anio, 10));
+                    }
                 })
                 .catch(err => console.error('Error cargando formulario 120:', err));
+        }
+
+        function renderPeriodosConDatos(periodos, curMes, curAnio) {
+            const bar = document.getElementById('periodosConDatosBar');
+            if (!bar) return;
+            if (!Array.isArray(periodos) || periodos.length === 0) {
+                bar.innerHTML = '';
+                return;
+            }
+            let html = '<span style="font-size: 0.75rem; font-weight: 700; color: #64748b; margin-left: 4px;">Con datos:</span>';
+            periodos.forEach(p => {
+                const m = parseInt(p.mes, 10);
+                const a = parseInt(p.anio, 10);
+                const cantE = parseInt(p.cant_egresos || 0, 10);
+                const cantI = parseInt(p.cant_ingresos || 0, 10);
+                const totComp = cantE + cantI;
+                const active = (m === curMes && a === curAnio);
+                const bg = active ? '#15803d' : '#f1f5f9';
+                const col = active ? '#ffffff' : '#334155';
+                const bdr = active ? '#15803d' : '#cbd5e1';
+
+                html += `<button type="button" onclick="seleccionarPeriodoChip(${m}, ${a})" style="background: ${bg}; color: ${col}; border: 1px solid ${bdr}; border-radius: 6px; padding: 4px 10px; font-size: 0.76rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+                    <i class="ph ph-calendar-check"></i> ${NOMBRES_MESES[m] || m}/${a} <span style="opacity: 0.9;">(${totComp} comp.)</span>
+                </button>`;
+            });
+            bar.innerHTML = html;
+        }
+
+        function renderResumenLibros(res, statusOrigen) {
+            const setTxt = (id, v) => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = v;
+            };
+
+            const badgeOrigen = document.getElementById('badgeEstadoOrigenForm');
+            if (badgeOrigen) {
+                if (statusOrigen === 'found') {
+                    badgeOrigen.style.background = '#e0f2fe';
+                    badgeOrigen.style.color = '#0369a1';
+                    badgeOrigen.style.borderColor = '#7dd3fc';
+                    badgeOrigen.innerText = 'Declaración Guardada en BD (Use Recalcular para actualizar)';
+                } else {
+                    badgeOrigen.style.background = '#dcfce7';
+                    badgeOrigen.style.color = '#15803d';
+                    badgeOrigen.style.borderColor = '#86efac';
+                    badgeOrigen.innerText = 'Calculado automáticamente desde Libros IVA';
+                }
+            }
+
+            setTxt('resBadgeCantVentas', `${res.cantVentas || 0} comp.`);
+            setTxt('resVentasBruto', formatNumber(res.ventasBrutoTotal || 0));
+            setTxt('resVentasBase', formatNumber((res.ventasBase10 || 0) + (res.ventasBase5 || 0)));
+            setTxt('resVentasIva', formatNumber((res.ventasIva10 || 0) + (res.ventasIva5 || 0)));
+
+            setTxt('resBadgeCantCompras', `${res.cantCompras || 0} comp.`);
+            setTxt('resComprasBruto', formatNumber(res.comprasBrutoTotal || 0));
+            setTxt('resComprasImputaIva', res.cantComprasImputaIva || 0);
+            setTxt('resComprasElectr', res.cantComprasElectr || 0);
+
+            setTxt('resCreditoFiscalTotal', formatNumber(res.comprasTotalIva || 0));
+            setTxt('resComprasIva10', formatNumber(res.comprasIva10 || 0));
+            setTxt('resComprasIva5', formatNumber(res.comprasIva5 || 0));
+            setTxt('resComprasExentas', formatNumber(res.comprasExentas || 0));
+
+            // Render Tabla por Régimen
+            const tbReg = document.getElementById('tbodyAnexoRegimen');
+            if (tbReg && Array.isArray(res.porRegimen)) {
+                const activos = res.porRegimen.filter(r => (r.cantidad || 0) > 0);
+                if (activos.length === 0) {
+                    tbReg.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 14px; color: #64748b;">No hay egresos cargados en este mes.</td></tr>';
+                } else {
+                    tbReg.innerHTML = activos.map(r => {
+                        const imputa = (r.codigo === '1' || r.codigo === '3');
+                        return `<tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 6px 8px; font-weight: 800; color: ${imputa ? '#15803d' : '#64748b'};">${r.nombre} ${imputa ? '<small style="color:#16a34a;">(Imputa IVA)</small>' : '<small>(No imputa IVA)</small>'}</td>
+                            <td style="padding: 6px 6px; text-align: center; font-weight: 700;">${r.cantidad}</td>
+                            <td style="padding: 6px 8px; text-align: right; font-family: monospace;">${formatNumber(Math.round((r.grav10 || 0) + (r.grav5 || 0)))}</td>
+                            <td style="padding: 6px 8px; text-align: right; font-family: monospace; font-weight: 800; color: ${imputa ? '#15803d' : '#94a3b8'};">${formatNumber(Math.round((r.iva10 || 0) + (r.iva5 || 0)))}</td>
+                            <td style="padding: 6px 8px; text-align: right; font-family: monospace;">${formatNumber(Math.round(r.exentas || 0))}</td>
+                            <td style="padding: 6px 8px; text-align: right; font-family: monospace; font-weight: 800;">${formatNumber(Math.round(r.total || 0))}</td>
+                        </tr>`;
+                    }).join('');
+                }
+            }
+
+            // Render Tabla Top Proveedores
+            const tbProv = document.getElementById('tbodyAnexoProveedores');
+            if (tbProv && Array.isArray(res.topProveedores)) {
+                if (res.topProveedores.length === 0) {
+                    tbProv.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 14px; color: #64748b;">Sin proveedores en este mes.</td></tr>';
+                } else {
+                    tbProv.innerHTML = res.topProveedores.slice(0, 10).map(p => `
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 5px 8px;"><strong style="color: #0f172a;">${p.nombre}</strong> <small style="color: #64748b;">(${p.ruc})</small></td>
+                            <td style="padding: 5px 6px; text-align: center; font-weight: 700;">${p.cantidad}</td>
+                            <td style="padding: 5px 8px; text-align: right; font-family: monospace; font-weight: 700; color: #15803d;">${formatNumber(Math.round((p.iva10 || 0) + (p.iva5 || 0)))}</td>
+                            <td style="padding: 5px 8px; text-align: right; font-family: monospace; font-weight: 800;">${formatNumber(Math.round(p.total || 0))}</td>
+                        </tr>
+                    `).join('');
+                }
+            }
+        }
+
+        function actualizarCardResultadoFiscal() {
+            const c47 = getNum('c47');
+            const c58 = getNum('c58');
+            const card = document.getElementById('cardResultadoFiscal');
+            const tit = document.getElementById('lblTituloResultadoCard');
+            const cas = document.getElementById('lblCasillaResultadoCard');
+            const val = document.getElementById('valResultadoCard');
+            const sub = document.getElementById('subResultadoCard');
+            if (!card) return;
+
+            if (c58 > 0) {
+                card.style.background = '#fef2f2';
+                card.style.borderColor = '#fca5a5';
+                card.style.borderLeft = '4px solid #dc2626';
+                tit.style.color = '#dc2626';
+                tit.innerText = 'Saldo a Pagar al Fisco';
+                cas.style.color = '#dc2626';
+                cas.style.borderColor = '#fca5a5';
+                cas.innerText = 'Casilla [58]';
+                val.style.color = '#dc2626';
+                val.innerText = `Gs. ${formatNumber(c58)}`;
+                sub.innerText = 'Impuesto determinado a ingresar en el periodo';
+            } else {
+                card.style.background = '#f0fdf4';
+                card.style.borderColor = '#86efac';
+                card.style.borderLeft = '4px solid #16a34a';
+                tit.style.color = '#15803d';
+                tit.innerText = 'Saldo a Favor Contribuyente';
+                cas.style.color = '#15803d';
+                cas.style.borderColor = '#86efac';
+                cas.innerText = 'Casilla [47]';
+                val.style.color = '#15803d';
+                val.innerText = `Gs. ${formatNumber(c47)}`;
+                sub.innerText = 'Crédito acumulado a trasladar al siguiente periodo';
+            }
         }
 
         function poblarCampos(data) {
@@ -321,14 +698,15 @@
             keys.forEach(k => {
                 const input = document.getElementById(k);
                 if (input) {
-                    const dbVal = data[k.toUpperCase()];
-                    input.value = dbVal !== undefined && dbVal !== null ? formatNumber(dbVal) : '0';
+                    const dbVal = data[k.toUpperCase()] ?? data[k];
+                    input.value = dbVal !== undefined && dbVal !== null ? formatNumber(Math.round(parseFloat(dbVal) || 0)) : '0';
                 }
             });
 
             if (data.TIPO_DECLARACION) {
                 document.getElementById('f_tipoDecl').value = data.TIPO_DECLARACION;
             }
+            actualizarCardResultadoFiscal();
         }
 
         function getNum(id) {
@@ -347,25 +725,32 @@
         }
 
         function formatNumber(num) {
-            return num.toLocaleString('es-PY');
+            return (Math.round(num) || 0).toLocaleString('es-PY');
         }
 
-        function recalcRubro1() {
+        function recalcRubro1(keepManualIva = false) {
             const c10 = getNum('c10');
             const c11 = getNum('c11');
             const c12 = getNum('c12');
             const c13 = getNum('c13');
             const c14 = getNum('c14');
+            const c15 = getNum('c15');
+            const c16 = getNum('c16');
+            const c17 = getNum('c17');
 
-            const c22 = Math.round(c10 / 11);
-            const c19 = Math.round(c11 / 21);
+            const c22 = keepManualIva ? getNum('c22') : Math.round(c10 * 0.10);
+            const c19 = keepManualIva ? getNum('c19') : Math.round(c11 * 0.05);
+            const c23 = keepManualIva ? getNum('c23') : Math.round(c15 * 0.10);
+            const c20 = keepManualIva ? getNum('c20') : Math.round(c16 * 0.05);
 
             setNum('c22', c22);
             setNum('c19', c19);
+            setNum('c23', c23);
+            setNum('c20', c20);
 
-            const c18 = c10 + c11 + c12 + c13 + c14;
-            const c21 = c19;
-            const c24 = c22;
+            const c18 = c10 + c11 + c12 + c13 + c14 + c15 + c16 + c17;
+            const c21 = c19 + c20;
+            const c24 = c22 + c23;
 
             setNum('c18', c18);
             setNum('c21', c21);
@@ -374,13 +759,33 @@
             recalcLiquidacion();
         }
 
-        function recalcRubro3() {
-            const c35 = getNum('c35');
-            const c32 = getNum('c32');
+        function recalcRubro2() {
+            const c25 = getNum('c25');
+            const c26 = getNum('c26');
+            const c30 = getNum('c30');
+            const c27 = c25 + c26;
+            const c31 = c27 + c30;
+            setNum('c27', c27);
+            setNum('c31', c31);
+        }
 
-            const c38 = Math.round(c35 / 11);
+        function recalcRubro3(keepManualIva = false) {
+            const c32 = getNum('c32');
+            const c35 = getNum('c35');
+            const c33 = getNum('c33');
+            const c36 = getNum('c36');
+            const c34 = getNum('c34');
+            const c37 = getNum('c37');
+
+            const c38 = keepManualIva ? getNum('c38') : Math.round(c35 * 0.10 + c32 * 0.05);
+            const c39 = keepManualIva ? getNum('c39') : Math.round(c36 * 0.10 + c33 * 0.05);
+            const c42 = keepManualIva ? getNum('c42') : Math.round(c37 * 0.10 + c34 * 0.05);
+            const c43 = c38 + c39 + c42;
+
             setNum('c38', c38);
-            setNum('c43', c38);
+            setNum('c39', c39);
+            setNum('c42', c42);
+            setNum('c43', c43);
 
             recalcLiquidacion();
         }
@@ -388,13 +793,13 @@
         function recalcLiquidacion() {
             const c21 = getNum('c21');
             const c24 = getNum('c24');
-            const c44 = c21 + c24; // Débito total
+            const c44 = c21 + c24;
             setNum('c44', c44);
 
-            const c45 = getNum('c43'); // Crédito total
+            const c45 = getNum('c43');
             setNum('c45', c45);
 
-            const c46 = getNum('c46'); // Saldo anterior
+            const c46 = getNum('c46');
 
             let c47 = 0;
             let c48 = 0;
@@ -410,11 +815,27 @@
             setNum('c47', c47);
             setNum('c48', c48);
 
+            const c49 = getNum('c49');
+            const c50 = Math.max(0, c48 - c49);
+            setNum('c50', c50);
+
             // Rubro 5
-            setNum('c55', c48);
-            const c52 = getNum('c52'); // Retenciones
-            const c58 = (c48 > c52) ? (c48 - c52) : 0;
+            setNum('c55', c50);
+            const c51 = getNum('c51');
+            const c52 = getNum('c52');
+            const c56 = getNum('c56');
+
+            const c53 = c51 + c52;
+            const c57 = c50 + c56;
+            setNum('c53', c53);
+            setNum('c57', c57);
+
+            const c54 = (c53 > c57) ? (c53 - c57) : 0;
+            const c58 = (c57 > c53) ? (c57 - c53) : 0;
+            setNum('c54', c54);
             setNum('c58', c58);
+
+            actualizarCardResultadoFiscal();
         }
 
         function recalcularLibros() {
@@ -426,7 +847,21 @@
                 .then(res => {
                     if (res.data) {
                         poblarCampos(res.data);
-                        alert("Formulario 120 recalculado exitosamente desde las ventas y compras del periodo.");
+                        if (res.resumenLibros) {
+                            renderResumenLibros(res.resumenLibros, 'calculated');
+                        }
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: 'success',
+                                title: 'Formulario 120 actualizado desde los Libros de Compras y Ventas.',
+                                showConfirmButton: false,
+                                timer: 2500
+                            });
+                        } else {
+                            alert("Formulario 120 recalculado exitosamente desde las ventas y compras del periodo.");
+                        }
                     }
                 })
                 .catch(err => console.error('Error calculando formulario 120:', err));
@@ -460,7 +895,16 @@
             .then(res => res.json())
             .then(res => {
                 if (res.status === 'success') {
-                    alert(res.message);
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Declaración Guardada',
+                            text: res.message,
+                            confirmButtonColor: '#16a34a'
+                        });
+                    } else {
+                        alert(res.message);
+                    }
                 } else {
                     alert(res.message || 'Error al guardar.');
                 }

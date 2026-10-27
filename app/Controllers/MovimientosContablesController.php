@@ -493,7 +493,7 @@ class MovimientosContablesController {
 
         try {
             $sql = "SELECT id_egreso, cdc, tip_doc, tip_timb, tip_egreso, clasificacion_gasto,
-                           COALESCE(cod_regimen, 1) AS cod_regimen, regimen, nro_timbrado,
+                           CAST(COALESCE(cod_regimen, 1) AS UNSIGNED) AS cod_regimen, regimen, nro_timbrado,
                            DATE_FORMAT(venc_timbrado, '%Y-%m-%d') AS venc_timbrado,
                            DATE_FORMAT(venc_timbrado, '%d/%m/%Y') AS venc_timbrado_fmt,
                            nro_factura, cod_proveedor,
@@ -540,7 +540,7 @@ class MovimientosContablesController {
         $empresa = TenantContext::empresa();
 
         try {
-            $sql = "SELECT id_egreso, cdc, tip_doc, COALESCE(cod_regimen, 1) AS cod_regimen, regimen,
+            $sql = "SELECT id_egreso, cdc, tip_doc, CAST(COALESCE(cod_regimen, 1) AS UNSIGNED) AS cod_regimen, regimen,
                            clasificacion_gasto, tip_timb, nro_timbrado,
                            DATE_FORMAT(venc_timbrado, '%Y-%m-%d') AS venc_timbrado, nro_factura, serie,
                            DATE_FORMAT(fec_egreso, '%Y-%m-%d') AS fec_egreso, comprador, cod_proveedor,

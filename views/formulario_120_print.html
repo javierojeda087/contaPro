@@ -13,10 +13,10 @@
             padding: 15px;
         }
         .page {
-            width: 960px;
+            width: 980px;
             margin: 0 auto;
             border: 1px solid #000;
-            padding: 10px;
+            padding: 12px;
             box-sizing: border-box;
         }
         .header-title {
@@ -42,7 +42,7 @@
             padding: 4px 6px;
             border: 1px solid #000;
             margin-top: 10px;
-            font-size: 11px;
+            font-size: 10.5px;
         }
         table.data-tbl {
             width: 100%;
@@ -56,7 +56,7 @@
         .text-right { text-align: right; }
         .text-center { text-align: center; }
         .font-bold { font-weight: bold; }
-        .casilla-num { font-size: 9px; color: #555; margin-left: 2px; }
+        .casilla-num { font-size: 9px; color: #333; font-weight: bold; margin-left: 3px; }
 
         @media print {
             body { padding: 0; }
@@ -67,98 +67,135 @@
 </head>
 <body>
 
-    <div class="no-print" style="margin-bottom: 15px; text-align: right; max-width: 960px; margin-left: auto; margin-right: auto;">
+    <div class="no-print" style="margin-bottom: 15px; text-align: right; max-width: 980px; margin-left: auto; margin-right: auto;">
         <button onclick="window.print()" style="padding: 8px 20px; background: #0284c7; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
             🖨️ Imprimir Formulario 120
         </button>
     </div>
 
     <div class="page">
-        <div class="header-title">IMPUESTO AL VALOR AGREGADO - Versión 3</div>
+        <div class="header-title">FORMULARIO 120 — IMPUESTO AL VALOR AGREGADO (Versión 3)</div>
         <div class="sub-header">PARA LLENAR LEA INSTRUCTIVO DISPONIBLE EN LA WEB - LOS IMPORTES SE CONSIGNARÁN SIN CÉNTIMOS</div>
 
         <div class="box-row">
             <table style="width: 100%; border-collapse: collapse;">
                 <tr>
-                    <td style="width: 50%;"><strong>RUC:</strong> <span th:text="${empresa.rucNum + '-' + empresa.rucDv}">5555-7</span></td>
-                    <td style="width: 50%;"><strong>PERIODO / EJERCICIO FISCAL:</strong> <span th:text="${mes + '/' + anio}">10/2026</span></td>
+                    <td style="width: 35%;"><strong>RUC:</strong> <span th:text="${empresa.rucNum + '-' + empresa.rucDv}">5555-7</span></td>
+                    <td style="width: 35%;"><strong>CARÁCTER:</strong> <span th:text="${f.TIPO_DECLARACION == 'R' ? '[02] RECTIFICATIVA' : '[01] ORIGINAL'}">[01] ORIGINAL</span></td>
+                    <td style="width: 30%;"><strong>PERIODO FISCAL [04]:</strong> <span th:text="${mes + '/' + anio}">09/2026</span></td>
                 </tr>
                 <tr>
-                    <td colspan="2" style="padding-top: 5px;"><strong>RAZÓN SOCIAL:</strong> <span th:text="${empresa.razon_social}">CONTRIBUYENTE DEMOSTRATIVO</span></td>
+                    <td colspan="3" style="padding-top: 5px;"><strong>RAZÓN SOCIAL / CONTRIBUYENTE:</strong> <span th:text="${empresa.razon_social}">CONTRIBUYENTE DEMOSTRATIVO</span></td>
                 </tr>
             </table>
         </div>
 
         <!-- RUBRO 1 -->
-        <div class="rubro-head">RUBRO 1 - ENAJENACIÓN DE BIENES Y/O PRESTACIÓN DE SERVICIOS DEL PERIODO</div>
+        <div class="rubro-head">RUBRO 1 - ENAJENACIÓN DE BIENES Y/O PRESTACIÓN DE SERVICIOS DEL PERIODO (VENTAS)</div>
         <table class="data-tbl">
             <thead>
                 <tr style="background: #f0f0f0;">
                     <th style="width: 30px;">INC</th>
                     <th>DESCRIPCIÓN</th>
-                    <th style="width: 140px;">MONTO IMPONIBLE AL 5%</th>
-                    <th style="width: 140px;">MONTO IMPONIBLE AL 10%</th>
-                    <th style="width: 140px;">IVA DÉBITO</th>
+                    <th style="width: 145px;">MONTO IMPONIBLE -I-</th>
+                    <th style="width: 140px;">IVA DÉBITO 5% -II-</th>
+                    <th style="width: 140px;">IVA DÉBITO 10% -III-</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td class="text-center font-bold">a</td>
                     <td>Enajenación de Bienes y Prestación de Servicios gravadas con tasa del 10%</td>
+                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C10, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[10]</span></td>
                     <td></td>
-                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C10, 1, 'POINT', 0, 'COMMA')}">6.000.000</span> <span class="casilla-num">[10]</span></td>
-                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C22, 1, 'POINT', 0, 'COMMA')}">600.000</span> <span class="casilla-num">[22]</span></td>
+                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C22, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[22]</span></td>
                 </tr>
                 <tr>
                     <td class="text-center font-bold">b</td>
                     <td>Enajenación de Bienes y Prestación de Servicios gravadas con tasa del 5%</td>
                     <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C11, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[11]</span></td>
-                    <td></td>
                     <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C19, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[19]</span></td>
+                    <td></td>
                 </tr>
                 <tr>
                     <td class="text-center font-bold">c</td>
-                    <td>Enajenación de bienes y/o prestación de servicios exonerados o no alcanzado</td>
-                    <td></td>
+                    <td>Enajenación de bienes y/o prestación de servicios exonerados o no alcanzados</td>
                     <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C12, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[12]</span></td>
+                    <td></td>
                     <td></td>
                 </tr>
                 <tr class="font-bold" style="background: #f9f9f9;">
                     <td class="text-center">i</td>
                     <td>TOTALES RUBRO 1</td>
+                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C18, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[18]</span></td>
                     <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C21, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[21]</span></td>
-                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C18, 1, 'POINT', 0, 'COMMA')}">6.000.000</span> <span class="casilla-num">[18]</span></td>
-                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C24, 1, 'POINT', 0, 'COMMA')}">600.000</span> <span class="casilla-num">[24]</span></td>
+                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C24, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[24]</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- RUBRO 2 -->
+        <div class="rubro-head">RUBRO 2 - ENAJENACIÓN DE BIENES Y/O PRESTACIÓN DE SERVICIOS DE LOS ÚLTIMOS 6 MESES</div>
+        <table class="data-tbl">
+            <tbody>
+                <tr>
+                    <td class="text-center font-bold" style="width: 30px;">a</td>
+                    <td>Enajenación de bienes y/o prestación de servicios gravados (últimos 6 meses)</td>
+                    <td class="text-right" style="width: 180px;"><span th:text="${#numbers.formatDecimal(f.C25, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[25]</span></td>
+                </tr>
+                <tr>
+                    <td class="text-center font-bold">b</td>
+                    <td>Enajenación de bienes y/o prestación de servicios exonerados o no alcanzados (últimos 6 meses)</td>
+                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C26, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[26]</span></td>
+                </tr>
+                <tr class="font-bold" style="background: #f9f9f9;">
+                    <td class="text-center">g</td>
+                    <td>TOTAL OPERACIONES DE LOS ÚLTIMOS 6 MESES</td>
+                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C31, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[31]</span></td>
                 </tr>
             </tbody>
         </table>
 
         <!-- RUBRO 3 -->
-        <div class="rubro-head">RUBRO 3 - COMPRAS LOCALES E IMPORTACIONES DEL PERIODO</div>
+        <div class="rubro-head">RUBRO 3 - COMPRAS LOCALES E IMPORTACIONES DEL PERIODO (EGRESOS)</div>
         <table class="data-tbl">
             <thead>
                 <tr style="background: #f0f0f0;">
                     <th style="width: 30px;">INC</th>
                     <th>DESCRIPCIÓN</th>
-                    <th style="width: 140px;">MONTO IMPONIBLE AL 5%</th>
-                    <th style="width: 140px;">MONTO IMPONIBLE AL 10%</th>
-                    <th style="width: 140px;">IVA CRÉDITO</th>
+                    <th style="width: 145px;">MONTO IMPONIBLE AL 5%</th>
+                    <th style="width: 145px;">MONTO IMPONIBLE AL 10%</th>
+                    <th style="width: 145px;">IVA CRÉDITO</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td class="text-center font-bold">a</td>
-                    <td>Créditos Fiscales atribuidos directamente a operaciones gravadas mercado interno</td>
+                    <td>Créditos Fiscales atribuidos directamente a operaciones gravadas en el mercado interno</td>
                     <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C32, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[32]</span></td>
-                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C35, 1, 'POINT', 0, 'COMMA')}">8.000.000</span> <span class="casilla-num">[35]</span></td>
-                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C38, 1, 'POINT', 0, 'COMMA')}">800.000</span> <span class="casilla-num">[38]</span></td>
+                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C35, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[35]</span></td>
+                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C38, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[38]</span></td>
+                </tr>
+                <tr>
+                    <td class="text-center font-bold">b/c</td>
+                    <td>Créditos Fiscales atribuidos indistintamente a operaciones gravadas y exoneradas (Prorrateo)</td>
+                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C33, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[33]</span></td>
+                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C36, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[36]</span></td>
+                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C39, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[39]</span></td>
+                </tr>
+                <tr>
+                    <td class="text-center font-bold">e</td>
+                    <td>Compras de bienes y/o servicios exentos o no alcanzados o en que no corresponda crédito fiscal</td>
+                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C40, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[40]</span></td>
+                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C41, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[41]</span></td>
+                    <td></td>
                 </tr>
                 <tr class="font-bold" style="background: #f9f9f9;">
                     <td class="text-center">f</td>
                     <td>TOTAL DE CRÉDITO FISCAL PARA OPERACIONES EN MERCADO INTERNO</td>
                     <td></td>
                     <td></td>
-                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C43, 1, 'POINT', 0, 'COMMA')}">800.000</span> <span class="casilla-num">[43]</span></td>
+                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C43, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[43]</span></td>
                 </tr>
             </tbody>
         </table>
@@ -169,13 +206,13 @@
             <tbody>
                 <tr>
                     <td class="text-center font-bold" style="width: 30px;">a</td>
-                    <td>Débito fiscal (Proviene del Rubro 1)</td>
-                    <td class="text-right" style="width: 180px;"><span th:text="${#numbers.formatDecimal(f.C44, 1, 'POINT', 0, 'COMMA')}">600.000</span> <span class="casilla-num">[44]</span></td>
+                    <td>Débito fiscal del periodo (Proviene del Rubro 1: Casillas [21] + [24])</td>
+                    <td class="text-right" style="width: 180px;"><span th:text="${#numbers.formatDecimal(f.C44, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[44]</span></td>
                 </tr>
                 <tr>
                     <td class="text-center font-bold">b</td>
-                    <td>Crédito fiscal (Proviene del Rubro 3)</td>
-                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C45, 1, 'POINT', 0, 'COMMA')}">800.000</span> <span class="casilla-num">[45]</span></td>
+                    <td>Crédito fiscal del periodo (Proviene del Rubro 3: Casilla [43])</td>
+                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C45, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[45]</span></td>
                 </tr>
                 <tr>
                     <td class="text-center font-bold">c</td>
@@ -185,7 +222,7 @@
                 <tr class="font-bold">
                     <td class="text-center">d</td>
                     <td>SALDO A FAVOR DEL CONTRIBUYENTE (A trasladar al siguiente periodo)</td>
-                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C47, 1, 'POINT', 0, 'COMMA')}">200.000</span> <span class="casilla-num">[47]</span></td>
+                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C47, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[47]</span></td>
                 </tr>
                 <tr class="font-bold">
                     <td class="text-center">e</td>
@@ -199,16 +236,39 @@
         <div class="rubro-head">RUBRO 5 – LIQUIDACIÓN Y SALDO DEL IMPUESTO</div>
         <table class="data-tbl">
             <tbody>
-                <tr class="font-bold">
-                    <td class="text-center" style="width: 30px;">g</td>
+                <tr>
+                    <td class="text-center font-bold" style="width: 30px;">a</td>
+                    <td>Impuesto determinado para operaciones gravadas</td>
+                    <td class="text-right" style="width: 180px;"><span th:text="${#numbers.formatDecimal(f.C55, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[55]</span></td>
+                </tr>
+                <tr>
+                    <td class="text-center font-bold">c</td>
+                    <td>Retenciones computables por operaciones gravadas</td>
+                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C52, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[52]</span></td>
+                </tr>
+                <tr class="font-bold" style="background: #f9f9f9;">
+                    <td class="text-center">g</td>
                     <td>SALDO DEFINITIVO A PAGAR A FAVOR DEL FISCO</td>
-                    <td class="text-right" style="width: 180px;"><span th:text="${#numbers.formatDecimal(f.C58, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[58]</span></td>
+                    <td class="text-right"><span th:text="${#numbers.formatDecimal(f.C58, 1, 'POINT', 0, 'COMMA')}">0</span> <span class="casilla-num">[58]</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- RESUMEN DE CONCILIACIÓN CON LIBROS IVA -->
+        <div class="rubro-head">RESUMEN DE CONCILIACIÓN CON LIBROS IVA DEL PERIODO</div>
+        <table class="data-tbl">
+            <tbody>
+                <tr>
+                    <td style="width: 25%;"><strong>Comprobantes de Venta:</strong> <span th:text="${resumen.cantVentas}">0</span></td>
+                    <td style="width: 25%;"><strong>Total Facturado Ventas:</strong> Gs. <span th:text="${#numbers.formatDecimal(resumen.ventasBrutoTotal, 1, 'POINT', 0, 'COMMA')}">0</span></td>
+                    <td style="width: 25%;"><strong>Comprobantes de Compra:</strong> <span th:text="${resumen.cantCompras}">0</span> (<span th:text="${resumen.cantComprasElectr}">0</span> electr.)</td>
+                    <td style="width: 25%;"><strong>Total Bruto Compras:</strong> Gs. <span th:text="${#numbers.formatDecimal(resumen.comprasBrutoTotal, 1, 'POINT', 0, 'COMMA')}">0</span></td>
                 </tr>
             </tbody>
         </table>
 
         <!-- Firma -->
-        <div style="margin-top: 30px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 10px;">
+        <div style="margin-top: 28px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 10px;">
             <div style="width: 60%;">
                 El que suscribe declara que los datos consignados en el formulario son correctos y verdaderos y han sido confeccionados sin omitir dato alguno.<br><br>
                 Lugar: ______________________, Fecha: _____/_____/_________

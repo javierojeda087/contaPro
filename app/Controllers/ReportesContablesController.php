@@ -911,13 +911,42 @@ class ReportesContablesController {
 
     public static function pageFormulario120(): void {
         if (!self::requireAuth(false)) return;
+        $idProp     = TenantContext::idPropietario();
         $codEmpresa = TenantContext::empresa();
+
+        // Detectar el último periodo con datos cargados en co_egresos o co_ingresos para sugerirlo por defecto
+        $defMes  = (int)date('n');
+        $defAnio = (int)date('Y');
+        try {
+            $lastPeriod = Database::queryForMap(
+                "SELECT anio, mes, SUM(cant) AS total_comp FROM (
+                    SELECT YEAR(fec_egreso) AS anio, MONTH(fec_egreso) AS mes, COUNT(*) AS cant
+                    FROM co_egresos
+                    WHERE id_propietario = ? AND cod_empresa = ? AND COALESCE(estado, 'A') <> 'I' AND fec_egreso IS NOT NULL
+                    GROUP BY YEAR(fec_egreso), MONTH(fec_egreso)
+                    UNION ALL
+                    SELECT YEAR(fec_ingreso) AS anio, MONTH(fec_ingreso) AS mes, COUNT(*) AS cant
+                    FROM co_ingresos
+                    WHERE id_propietario = ? AND cod_empresa = ? AND COALESCE(anulada, 'N') <> 'S' AND COALESCE(estado, 'A') <> 'I' AND fec_ingreso IS NOT NULL
+                    GROUP BY YEAR(fec_ingreso), MONTH(fec_ingreso)
+                ) t
+                GROUP BY anio, mes
+                ORDER BY total_comp DESC, anio DESC, mes DESC
+                LIMIT 1",
+                [$idProp, $codEmpresa, $idProp, $codEmpresa]
+            );
+            if ($lastPeriod && !empty($lastPeriod['anio']) && !empty($lastPeriod['mes'])) {
+                $defAnio = (int)$lastPeriod['anio'];
+                $defMes  = (int)$lastPeriod['mes'];
+            }
+        } catch (\Throwable $ignored) {}
+
         self::renderFormPage('formulario_120', [
             'empresa'     => self::fetchForm120EmpresaInfo($codEmpresa),
             'nomForma'    => 'COF12000',
             'tituloForma' => 'Formulario 120 - Impuesto al Valor Agregado (Versión 3)',
-            'defMes'      => (int)date('n'),
-            'defAnio'     => (int)date('Y'),
+            'defMes'      => $defMes,
+            'defAnio'     => $defAnio,
         ]);
     }
 
@@ -928,19 +957,30 @@ class ReportesContablesController {
         $mes        = (int)($_GET['mes'] ?? date('n'));
         $anio       = (int)($_GET['anio'] ?? date('Y'));
 
+        $autoCalc = self::calcularFormulario120Auto($idProp, $codEmpresa, $mes, $anio);
+
         $rows = Database::queryForListUpper(
             "SELECT * FROM co_formulario_120 WHERE id_propietario = ? AND cod_empresa = ? AND mes = ? AND anio = ? LIMIT 1",
             [$idProp, $codEmpresa, $mes, $anio]
         );
         if (!empty($rows)) {
+            $saved = $rows[0];
+            // Si el formulario guardado tenía 0 en compras/ventas pero ahora existen comprobantes cargados en libros, usar el cálculo actualizado
+            $savedMov = (int)($saved['C10'] ?? 0) + (int)($saved['C11'] ?? 0) + (int)($saved['C12'] ?? 0) + (int)($saved['C32'] ?? 0) + (int)($saved['C35'] ?? 0) + (int)($saved['C40'] ?? 0);
+            $autoData = $autoCalc['data'];
+            $autoMov  = (int)($autoData['C10'] ?? 0) + (int)($autoData['C11'] ?? 0) + (int)($autoData['C12'] ?? 0) + (int)($autoData['C32'] ?? 0) + (int)($autoData['C35'] ?? 0) + (int)($autoData['C40'] ?? 0);
+
             View::json([
-                'status'  => 'found',
-                'data'    => $rows[0],
-                'empresa' => self::fetchForm120EmpresaInfo($codEmpresa),
+                'status'           => ($savedMov === 0 && $autoMov > 0) ? 'calculated' : 'found',
+                'data'             => ($savedMov === 0 && $autoMov > 0) ? $autoData : $saved,
+                'calculadoLibros'  => $autoData,
+                'resumenLibros'    => $autoCalc['resumenLibros'],
+                'periodosConDatos' => $autoCalc['periodosConDatos'],
+                'empresa'          => self::fetchForm120EmpresaInfo($codEmpresa),
             ]);
             return;
         }
-        View::json(self::calcularFormulario120Auto($idProp, $codEmpresa, $mes, $anio));
+        View::json($autoCalc);
     }
 
     public static function apiFormulario120Calcular(): void {
@@ -952,61 +992,344 @@ class ReportesContablesController {
         View::json(self::calcularFormulario120Auto($idProp, $codEmpresa, $mes, $anio));
     }
 
+    private static function extraerBaseImponibleEImpuesto(float $montoGravado, float $montoIva, int $tasaPorcentaje): array {
+        $g = max(0.0, $montoGravado);
+        $i = max(0.0, $montoIva);
+        if ($g <= 0.0) {
+            return [0.0, 0.0];
+        }
+        $divisorInc = ($tasaPorcentaje === 5) ? 21.0 : 11.0;
+        $divisorNet = ($tasaPorcentaje === 5) ? 20.0 : 10.0;
+
+        if ($i <= 0.0) {
+            $i = round($g / $divisorInc);
+            return [max(0.0, $g - $i), $i];
+        }
+
+        // En ContaPro, grav10 y grav5 se guardan con IVA incluido (ej: grav10=199000, iva10=18091).
+        // Verificamos si gravado incluye IVA (g / 11 ≈ i) o si ya es neto (g / 10 ≈ i).
+        $diffInc = abs(($g / $divisorInc) - $i);
+        $diffNet = abs(($g / $divisorNet) - $i);
+
+        if ($diffInc <= $diffNet || $g >= ($i * ($divisorNet + 0.5))) {
+            return [max(0.0, $g - $i), $i];
+        }
+        return [$g, $i];
+    }
+
     private static function calcularFormulario120Auto(int $idProp, string $codEmpresa, int $mes, int $anio): array {
         $startDateStr = sprintf('%04d-%02d-01', $anio, $mes);
         $endDateStr   = date('Y-m-t', strtotime($startDateStr));
 
-        // 1. Ventas desde co_ingresos
-        $rowV = Database::queryForMap(
-            "SELECT COALESCE(SUM(grav10), 0) AS v10,
-                    COALESCE(SUM(iva10), 0) AS i10,
-                    COALESCE(SUM(grav5), 0) AS v5,
-                    COALESCE(SUM(iva5), 0) AS i5,
-                    COALESCE(SUM(exentas), 0) AS vex
+        // 0. Obtener lista de periodos con movimientos cargados (para navegación rápida en la UI)
+        $periodosConDatos = [];
+        try {
+            $periodosConDatos = Database::queryForList(
+                "SELECT anio, mes,
+                        SUM(cant_egresos) AS cant_egresos,
+                        SUM(total_egresos) AS total_egresos,
+                        SUM(cant_ingresos) AS cant_ingresos,
+                        SUM(total_ingresos) AS total_ingresos
+                 FROM (
+                    SELECT YEAR(fec_egreso) AS anio, MONTH(fec_egreso) AS mes,
+                           COUNT(*) AS cant_egresos, COALESCE(SUM(valor_total), 0) AS total_egresos,
+                           0 AS cant_ingresos, 0 AS total_ingresos
+                    FROM co_egresos
+                    WHERE id_propietario = ? AND cod_empresa = ? AND COALESCE(estado, 'A') <> 'I' AND fec_egreso IS NOT NULL
+                    GROUP BY YEAR(fec_egreso), MONTH(fec_egreso)
+                    UNION ALL
+                    SELECT YEAR(fec_ingreso) AS anio, MONTH(fec_ingreso) AS mes,
+                           0 AS cant_egresos, 0 AS total_egresos,
+                           COUNT(*) AS cant_ingresos, COALESCE(SUM(valor_total), 0) AS total_ingresos
+                    FROM co_ingresos
+                    WHERE id_propietario = ? AND cod_empresa = ? AND COALESCE(anulada, 'N') <> 'S' AND COALESCE(estado, 'A') <> 'I' AND fec_ingreso IS NOT NULL
+                    GROUP BY YEAR(fec_ingreso), MONTH(fec_ingreso)
+                 ) p
+                 WHERE anio IS NOT NULL AND mes IS NOT NULL
+                 GROUP BY anio, mes
+                 ORDER BY anio DESC, mes DESC",
+                [$idProp, $codEmpresa, $idProp, $codEmpresa]
+            );
+        } catch (\Throwable $ignored) {}
+
+        // 1. Ventas del periodo desde co_ingresos
+        $rowsVentas = Database::queryForList(
+            "SELECT id_ingreso, tip_doc, CAST(COALESCE(cod_regimen, 1) AS UNSIGNED) AS cod_regimen, regimen,
+                    nro_factura, nro_timbrado, DATE_FORMAT(fec_ingreso, '%d/%m/%Y') AS fec_fmt,
+                    nom_cliente, ruc_cliente, condicion,
+                    COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
+                    COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
+                    COALESCE(exentas, 0) AS exentas, COALESCE(valor_total, 0) AS valor_total
+             FROM co_ingresos
+             WHERE id_propietario = ? AND cod_empresa = ?
+               AND fec_ingreso >= ? AND fec_ingreso <= ?
+               AND COALESCE(anulada, 'N') <> 'S'
+               AND COALESCE(estado, 'A') <> 'I'
+             ORDER BY fec_ingreso ASC, id_ingreso ASC",
+            [$idProp, $codEmpresa, $startDateStr, $endDateStr]
+        );
+
+        $vBase10 = 0.0; $vIva10 = 0.0;
+        $vBase5  = 0.0; $vIva5  = 0.0;
+        $vExenta = 0.0;
+        $vNcrBase10 = 0.0; $vNcrIva10 = 0.0;
+        $vNcrBase5  = 0.0; $vNcrIva5  = 0.0;
+        $vNcrExenta = 0.0;
+        $vBrutoTotal = 0.0;
+
+        foreach ($rowsVentas as $rv) {
+            $tipDocV = strtoupper(trim((string)($rv['tip_doc'] ?? 'FAC')));
+            $isNcr   = ($tipDocV === 'NCR' || str_contains($tipDocV, 'CRED') || str_contains($tipDocV, 'CRÉD'));
+
+            [$b10, $i10] = self::extraerBaseImponibleEImpuesto((float)$rv['grav10'], (float)$rv['iva10'], 10);
+            [$b5,  $i5]  = self::extraerBaseImponibleEImpuesto((float)$rv['grav5'],  (float)$rv['iva5'],  5);
+            $ex          = max(0.0, (float)$rv['exentas']);
+            $tot         = max(0.0, (float)$rv['valor_total']);
+
+            if ($isNcr) {
+                $vNcrBase10 += $b10; $vNcrIva10 += $i10;
+                $vNcrBase5  += $b5;  $vNcrIva5  += $i5;
+                $vNcrExenta += $ex;
+                $vBrutoTotal -= $tot;
+            } else {
+                $vBase10 += $b10; $vIva10 += $i10;
+                $vBase5  += $b5;  $vIva5  += $i5;
+                $vExenta += $ex;
+                $vBrutoTotal += $tot;
+            }
+        }
+
+        $c10 = (int)round($vBase10);
+        $c22 = (int)round($vIva10);
+        $c11 = (int)round($vBase5);
+        $c19 = (int)round($vIva5);
+        $c12 = (int)round($vExenta);
+        $c13 = 0;
+        $c14 = 0;
+        $c15 = (int)round($vNcrBase10);
+        $c23 = (int)round($vNcrIva10);
+        $c16 = (int)round($vNcrBase5);
+        $c20 = (int)round($vNcrIva5);
+        $c17 = (int)round($vNcrExenta);
+
+        $c18 = $c10 + $c11 + $c12 + $c13 + $c14 + $c15 + $c16 + $c17;
+        $c21 = $c19 + $c20;
+        $c24 = $c22 + $c23;
+
+        // 2. Rubro 2: Acumulado de los últimos 6 meses (incluyendo el mes declarado)
+        $sixMonthsStart = date('Y-m-01', strtotime("-5 months", strtotime($startDateStr)));
+        $rowsVentas6M = Database::queryForList(
+            "SELECT tip_doc, COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
+                    COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5, COALESCE(exentas, 0) AS exentas
              FROM co_ingresos
              WHERE id_propietario = ? AND cod_empresa = ?
                AND fec_ingreso >= ? AND fec_ingreso <= ?
                AND COALESCE(anulada, 'N') <> 'S'
                AND COALESCE(estado, 'A') <> 'I'",
-            [$idProp, $codEmpresa, $startDateStr, $endDateStr]
+            [$idProp, $codEmpresa, $sixMonthsStart, $endDateStr]
         );
-        $c10 = (int)round((float)($rowV['v10'] ?? 0));
-        $c22 = (int)round((float)($rowV['i10'] ?? 0)) ?: (int)round($c10 / 10.0);
-        $c11 = (int)round((float)($rowV['v5'] ?? 0));
-        $c19 = (int)round((float)($rowV['i5'] ?? 0)) ?: (int)round($c11 / 20.0);
-        $c12 = (int)round((float)($rowV['vex'] ?? 0));
-
-        $c18 = $c10 + $c11 + $c12;
-        $c21 = $c19;
-        $c24 = $c22;
-
-        // 2. Acumulado Rubro 2
-        $c25 = $c10 + $c11;
-        $c26 = $c12;
+        $acumGrav6M = 0.0;
+        $acumEx6M   = 0.0;
+        foreach ($rowsVentas6M as $rv6) {
+            $tipV6 = strtoupper(trim((string)($rv6['tip_doc'] ?? 'FAC')));
+            $sign  = ($tipV6 === 'NCR' || str_contains($tipV6, 'CRED') || str_contains($tipV6, 'CRÉD')) ? -1.0 : 1.0;
+            [$b10_6, ] = self::extraerBaseImponibleEImpuesto((float)$rv6['grav10'], (float)$rv6['iva10'], 10);
+            [$b5_6,  ] = self::extraerBaseImponibleEImpuesto((float)$rv6['grav5'],  (float)$rv6['iva5'],  5);
+            $acumGrav6M += $sign * ($b10_6 + $b5_6);
+            $acumEx6M   += $sign * max(0.0, (float)$rv6['exentas']);
+        }
+        $c25 = max(0, (int)round($acumGrav6M));
+        $c26 = max(0, (int)round($acumEx6M));
         $c27 = $c25 + $c26;
+        $c28 = 0; $c29 = 0; $c30 = 0;
+        $c31 = $c27 + $c30;
 
-        // 3. Compras desde co_egresos
-        $rowC = Database::queryForMap(
-            "SELECT COALESCE(SUM(grav10), 0) AS c10,
-                    COALESCE(SUM(iva10), 0) AS ci10,
-                    COALESCE(SUM(grav5), 0) AS c5,
-                    COALESCE(SUM(iva5), 0) AS ci5
+        // 3. Compras del periodo desde co_egresos (respetando régimen, form_120, clasificacion_gasto y tipo de comprobante)
+        $rowsCompras = Database::queryForList(
+            "SELECT id_egreso, cdc, tip_doc, tip_timb,
+                    CAST(COALESCE(cod_regimen, 1) AS UNSIGNED) AS cod_regimen, regimen,
+                    clasificacion_gasto, tip_egreso, form_120, condicion,
+                    nro_factura, nro_timbrado, DATE_FORMAT(fec_egreso, '%d/%m/%Y') AS fec_fmt,
+                    nom_proveedor, ruc_proveedor,
+                    COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
+                    COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
+                    COALESCE(exentas, 0) AS exentas, COALESCE(valor_total, 0) AS valor_total
              FROM co_egresos
              WHERE id_propietario = ? AND cod_empresa = ?
                AND fec_egreso >= ? AND fec_egreso <= ?
-               AND COALESCE(estado, 'A') <> 'I'",
+               AND COALESCE(estado, 'A') <> 'I'
+             ORDER BY fec_egreso ASC, id_egreso ASC",
             [$idProp, $codEmpresa, $startDateStr, $endDateStr]
         );
-        $c35 = (int)round((float)($rowC['c10'] ?? 0));
-        $c32 = (int)round((float)($rowC['c5'] ?? 0));
-        $c38 = (int)round((float)($rowC['ci10'] ?? 0) + (float)($rowC['ci5'] ?? 0));
-        if ($c38 === 0 && ($c35 > 0 || $c32 > 0)) {
-            $c38 = (int)round($c35 / 10.0 + $c32 / 20.0);
+
+        // Acumuladores Rubro 3
+        $dirBase10 = 0.0; $dirIva10 = 0.0;
+        $dirBase5  = 0.0; $dirIva5  = 0.0;
+        $proBase10 = 0.0; $proIva10 = 0.0;
+        $proBase5  = 0.0; $proIva5  = 0.0;
+        $compExentasDirecto    = 0.0;
+        $compExentasIndistinto = 0.0;
+
+        // Estadísticas detalladas de los datos cargados
+        $cantCompTotal      = 0;
+        $cantCompElectronic = 0;
+        $cantCompManual     = 0;
+        $cantCompImputaIva  = 0;
+        $cantCompSoloIrp    = 0;
+        $cantCompContado    = 0;
+        $cantCompCredito    = 0;
+        $brutoComprasTotal  = 0.0;
+        $brutoGrav10Total   = 0.0;
+        $brutoGrav5Total    = 0.0;
+        $montoNoImputaIva   = 0.0;
+
+        $porRegimen = [
+            '1' => ['codigo' => '1', 'nombre' => 'IRP & IVA',  'cantidad' => 0, 'grav10' => 0.0, 'iva10' => 0.0, 'grav5' => 0.0, 'iva5' => 0.0, 'exentas' => 0.0, 'total' => 0.0],
+            '3' => ['codigo' => '3', 'nombre' => 'IVA',        'cantidad' => 0, 'grav10' => 0.0, 'iva10' => 0.0, 'grav5' => 0.0, 'iva5' => 0.0, 'exentas' => 0.0, 'total' => 0.0],
+            '2' => ['codigo' => '2', 'nombre' => 'IRP (Solo)', 'cantidad' => 0, 'grav10' => 0.0, 'iva10' => 0.0, 'grav5' => 0.0, 'iva5' => 0.0, 'exentas' => 0.0, 'total' => 0.0],
+            '4' => ['codigo' => '4', 'nombre' => 'G. CAPITAL', 'cantidad' => 0, 'grav10' => 0.0, 'iva10' => 0.0, 'grav5' => 0.0, 'iva5' => 0.0, 'exentas' => 0.0, 'total' => 0.0],
+        ];
+        $proveedoresResumen = [];
+
+        foreach ($rowsCompras as $rc) {
+            $cantCompTotal++;
+            $tipDocC = strtoupper(trim((string)($rc['tip_doc'] ?? 'FAC')));
+            $sign    = ($tipDocC === 'NCR' || str_contains($tipDocC, 'CRED') || str_contains($tipDocC, 'CRÉD')) ? -1.0 : 1.0;
+
+            $tipTimbC = strtoupper(trim((string)($rc['tip_timb'] ?? '')));
+            $cdcC     = preg_replace('/\D/', '', (string)($rc['cdc'] ?? ''));
+            if (str_contains($tipTimbC, 'ELECTR') || strlen($cdcC) === 44) {
+                $cantCompElectronic++;
+            } else {
+                $cantCompManual++;
+            }
+
+            $condC = strtoupper(trim((string)($rc['condicion'] ?? 'CON')));
+            if (str_starts_with($condC, 'CR')) {
+                $cantCompCredito++;
+            } else {
+                $cantCompContado++;
+            }
+
+            // Determinar régimen (1 = IRP & IVA, 2 = IRP, 3 = IVA, 4 = G. CAPITAL)
+            $rawReg  = strtoupper(trim((string)($rc['regimen'] ?? $rc['cod_regimen'] ?? '1')));
+            $codReg  = (int)($rc['cod_regimen'] ?? 1);
+            if ($rawReg === '2' || $rawReg === 'IRP' || $codReg === 2) {
+                $regKey = '2';
+            } elseif ($rawReg === '3' || $rawReg === 'IVA' || $codReg === 3) {
+                $regKey = '3';
+            } elseif ($rawReg === '4' || str_contains($rawReg, 'CAPITAL') || $codReg === 4) {
+                $regKey = '4';
+            } else {
+                $regKey = '1';
+            }
+
+            // Determinar si clasificacion_gasto es personal/familiar (3 o 4) o relacionada a la actividad (1 o 2)
+            $clasG = trim((string)($rc['clasificacion_gasto'] ?? '1'));
+            if (is_numeric($clasG)) {
+                $clasG = (string)(int)round((float)$clasG);
+            }
+            $esGastoPersonal = ($clasG === '3' || $clasG === '4' || stripos($clasG, 'PERSONAL') !== false || stripos($clasG, 'FAMILIAR') !== false);
+
+            // Imputa IVA si el régimen es 1 (IRP & IVA) o 3 (IVA) y no es gasto personal
+            $imputaIva = ($regKey === '1' || $regKey === '3') && !$esGastoPersonal;
+
+            $g10Raw = (float)$rc['grav10'];
+            $i10Raw = (float)$rc['iva10'];
+            $g5Raw  = (float)$rc['grav5'];
+            $i5Raw  = (float)$rc['iva5'];
+            $exRaw  = max(0.0, (float)$rc['exentas']);
+            $totRaw = max(0.0, (float)$rc['valor_total']);
+
+            [$b10, $i10] = self::extraerBaseImponibleEImpuesto($g10Raw, $i10Raw, 10);
+            [$b5,  $i5]  = self::extraerBaseImponibleEImpuesto($g5Raw,  $i5Raw,  5);
+
+            $brutoComprasTotal += $sign * $totRaw;
+            $brutoGrav10Total  += $sign * $g10Raw;
+            $brutoGrav5Total   += $sign * $g5Raw;
+
+            $porRegimen[$regKey]['cantidad']++;
+            $porRegimen[$regKey]['grav10']  += $sign * $b10;
+            $porRegimen[$regKey]['iva10']   += $sign * $i10;
+            $porRegimen[$regKey]['grav5']   += $sign * $b5;
+            $porRegimen[$regKey]['iva5']    += $sign * $i5;
+            $porRegimen[$regKey]['exentas'] += $sign * $exRaw;
+            $porRegimen[$regKey]['total']   += $sign * $totRaw;
+
+            // Agrupar por proveedor para el resumen ejecutivo
+            $rucP = trim((string)($rc['ruc_proveedor'] ?? 'S/RUC'));
+            $nomP = trim((string)($rc['nom_proveedor'] ?? 'PROVEEDOR'));
+            $pKey = $rucP ?: $nomP;
+            if (!isset($proveedoresResumen[$pKey])) {
+                $proveedoresResumen[$pKey] = [
+                    'ruc'      => $rucP,
+                    'nombre'   => $nomP,
+                    'cantidad' => 0,
+                    'base10'   => 0.0,
+                    'iva10'    => 0.0,
+                    'base5'    => 0.0,
+                    'iva5'     => 0.0,
+                    'exentas'  => 0.0,
+                    'total'    => 0.0,
+                ];
+            }
+            $proveedoresResumen[$pKey]['cantidad']++;
+            $proveedoresResumen[$pKey]['base10']  += $sign * $b10;
+            $proveedoresResumen[$pKey]['iva10']   += $sign * $i10;
+            $proveedoresResumen[$pKey]['base5']   += $sign * $b5;
+            $proveedoresResumen[$pKey]['iva5']    += $sign * $i5;
+            $proveedoresResumen[$pKey]['exentas'] += $sign * $exRaw;
+            $proveedoresResumen[$pKey]['total']   += $sign * $totRaw;
+
+            $f120Modo = strtoupper(trim((string)($rc['form_120'] ?? 'DIRECTO')));
+            $esProrrateo = str_contains($f120Modo, 'PRORRAT') || str_contains($f120Modo, 'INDIST');
+
+            if ($imputaIva) {
+                $cantCompImputaIva++;
+                if ($esProrrateo) {
+                    $proBase10 += $sign * $b10;
+                    $proIva10  += $sign * $i10;
+                    $proBase5  += $sign * $b5;
+                    $proIva5   += $sign * $i5;
+                    $compExentasIndistinto += $sign * $exRaw;
+                } else {
+                    $dirBase10 += $sign * $b10;
+                    $dirIva10  += $sign * $i10;
+                    $dirBase5  += $sign * $b5;
+                    $dirIva5   += $sign * $i5;
+                    $compExentasDirecto += $sign * $exRaw;
+                }
+            } else {
+                $cantCompSoloIrp++;
+                $montoNoImputaIva += $sign * $totRaw;
+                // Comprobantes que no imputan crédito fiscal IVA o exentos van a Casilla 40
+                $compExentasDirecto += $sign * $exRaw;
+            }
         }
+
+        // Ordenar Top Proveedores por monto total descendente
+        $topProveedores = array_values($proveedoresResumen);
+        usort($topProveedores, fn($a, $b) => $b['total'] <=> $a['total']);
+        $topProveedores = array_slice($topProveedores, 0, 15);
+
+        $c32 = max(0, (int)round($dirBase5));
+        $c35 = max(0, (int)round($dirBase10));
+        $c38 = max(0, (int)round($dirIva10 + $dirIva5));
+
+        $c33 = max(0, (int)round($proBase5));
+        $c36 = max(0, (int)round($proBase10));
+        // Proporción de operaciones gravadas sobre total 6 meses (si hay prorrateo)
+        $propGrav = ($c31 > 0) ? (($c25 + $c30) / $c31) : 1.0;
+        $c39 = max(0, (int)round(($proIva10 + $proIva5) * $propGrav));
+
+        $c34 = 0; $c37 = 0; $c42 = 0;
+        $c40 = max(0, (int)round($compExentasDirecto));
+        $c41 = max(0, (int)round($compExentasIndistinto));
+        $c43 = $c38 + $c39 + $c42;
 
         // 4. Determinación del Impuesto (Rubro 4)
         $c44 = $c21 + $c24;
-        $c45 = $c38;
+        $c45 = $c43;
         $prevMes  = ($mes === 1) ? 12 : $mes - 1;
         $prevAnio = ($mes === 1) ? $anio - 1 : $anio;
         $c46 = (int)(Database::queryForValue(
@@ -1022,7 +1345,11 @@ class ReportesContablesController {
             $c47 = 0;
         }
 
-        $c55 = $c48;
+        $c49 = 0;
+        $c50 = max(0, $c48 - $c49);
+
+        // 5. Liquidación y Saldo del Impuesto (Rubro 5)
+        $c55 = $c50;
         $c51 = 0; $c52 = 0; $c56 = 0;
         $c53 = $c51 + $c52;
         $c57 = $c55 + $c56;
@@ -1037,20 +1364,55 @@ class ReportesContablesController {
             'NUM_ORDEN_RECT'   => '',
             'CARACTER_CESE'    => 'N',
             'C10' => $c10, 'C22' => $c22, 'C11' => $c11, 'C19' => $c19, 'C12' => $c12,
-            'C13' => 0, 'C14' => 0, 'C15' => 0, 'C23' => 0, 'C16' => 0, 'C20' => 0, 'C17' => 0,
+            'C13' => $c13, 'C14' => $c14, 'C15' => $c15, 'C23' => $c23, 'C16' => $c16, 'C20' => $c20, 'C17' => $c17,
             'C18' => $c18, 'C21' => $c21, 'C24' => $c24,
-            'C25' => $c25, 'C26' => $c26, 'C27' => $c27, 'C28' => 0, 'C29' => 0, 'C30' => 0, 'C31' => $c27,
-            'C32' => $c32, 'C35' => $c35, 'C38' => $c38, 'C33' => 0, 'C36' => 0, 'C39' => 0,
-            'C40' => 0, 'C41' => 0, 'C34' => 0, 'C37' => 0, 'C42' => 0, 'C43' => $c38,
-            'C44' => $c44, 'C45' => $c45, 'C46' => $c46, 'C47' => $c47, 'C48' => $c48, 'C49' => 0, 'C50' => $c48,
+            'C25' => $c25, 'C26' => $c26, 'C27' => $c27, 'C28' => $c28, 'C29' => $c29, 'C30' => $c30, 'C31' => $c31,
+            'C32' => $c32, 'C35' => $c35, 'C38' => $c38, 'C33' => $c33, 'C36' => $c36, 'C39' => $c39,
+            'C40' => $c40, 'C41' => $c41, 'C34' => $c34, 'C37' => $c37, 'C42' => $c42, 'C43' => $c43,
+            'C44' => $c44, 'C45' => $c45, 'C46' => $c46, 'C47' => $c47, 'C48' => $c48, 'C49' => $c49, 'C50' => $c50,
             'C55' => $c55, 'C51' => $c51, 'C52' => $c52, 'C56' => $c56, 'C53' => $c53, 'C57' => $c57, 'C54' => $c54, 'C58' => $c58,
             'C59' => 0, 'C65' => 0, 'C60' => 0, 'C66' => 0, 'C61' => 0, 'C62' => 0, 'C63' => 0, 'C64' => 0,
         ];
 
+        $resumenLibros = [
+            'periodoStr'          => sprintf('%02d/%04d', $mes, $anio),
+            'fechaDesde'          => self::formatDateDmy($startDateStr),
+            'fechaHasta'          => self::formatDateDmy($endDateStr),
+            'cantVentas'          => count($rowsVentas),
+            'ventasBrutoTotal'    => (int)round($vBrutoTotal),
+            'ventasBase10'        => $c10,
+            'ventasIva10'         => $c22,
+            'ventasBase5'         => $c11,
+            'ventasIva5'          => $c19,
+            'ventasExentas'       => $c12,
+            'cantCompras'         => $cantCompTotal,
+            'cantComprasElectr'   => $cantCompElectronic,
+            'cantComprasManual'   => $cantCompManual,
+            'cantComprasImputaIva'=> $cantCompImputaIva,
+            'cantComprasSoloIrp'  => $cantCompSoloIrp,
+            'cantComprasContado'  => $cantCompContado,
+            'cantComprasCredito'  => $cantCompCredito,
+            'comprasBrutoTotal'   => (int)round($brutoComprasTotal),
+            'comprasBrutoGrav10'  => (int)round($brutoGrav10Total),
+            'comprasBrutoGrav5'   => (int)round($brutoGrav5Total),
+            'comprasBase10'       => $c35 + $c36,
+            'comprasIva10'        => (int)round($dirIva10 + $proIva10),
+            'comprasBase5'        => $c32 + $c33,
+            'comprasIva5'         => (int)round($dirIva5 + $proIva5),
+            'comprasExentas'      => $c40 + $c41,
+            'comprasTotalIva'     => $c43,
+            'montoNoImputaIva'    => (int)round($montoNoImputaIva),
+            'porRegimen'          => array_values($porRegimen),
+            'topProveedores'      => $topProveedores,
+        ];
+
         return [
-            'status'  => 'calculated',
-            'data'    => $form,
-            'empresa' => self::fetchForm120EmpresaInfo($codEmpresa),
+            'status'           => 'calculated',
+            'data'             => $form,
+            'calculadoLibros'  => $form,
+            'resumenLibros'    => $resumenLibros,
+            'periodosConDatos' => $periodosConDatos,
+            'empresa'          => self::fetchForm120EmpresaInfo($codEmpresa),
         ];
     }
 
@@ -1124,19 +1486,25 @@ class ReportesContablesController {
         $mes        = (int)($_GET['mes'] ?? date('n'));
         $anio       = (int)($_GET['anio'] ?? date('Y'));
 
+        $calc = self::calcularFormulario120Auto($idProp, $codEmpresa, $mes, $anio);
+        $autoData = $calc['data'];
+
         $rows = Database::queryForListUpper(
             "SELECT * FROM co_formulario_120 WHERE id_propietario = ? AND cod_empresa = ? AND mes = ? AND anio = ? LIMIT 1",
             [$idProp, $codEmpresa, $mes, $anio]
         );
         if (!empty($rows)) {
-            $data = $rows[0];
+            $saved = $rows[0];
+            $savedMov = (int)($saved['C10'] ?? 0) + (int)($saved['C11'] ?? 0) + (int)($saved['C12'] ?? 0) + (int)($saved['C32'] ?? 0) + (int)($saved['C35'] ?? 0) + (int)($saved['C40'] ?? 0);
+            $autoMov  = (int)($autoData['C10'] ?? 0) + (int)($autoData['C11'] ?? 0) + (int)($autoData['C12'] ?? 0) + (int)($autoData['C32'] ?? 0) + (int)($autoData['C35'] ?? 0) + (int)($autoData['C40'] ?? 0);
+            $data = ($savedMov === 0 && $autoMov > 0) ? $autoData : $saved;
         } else {
-            $calc = self::calcularFormulario120Auto($idProp, $codEmpresa, $mes, $anio);
-            $data = $calc['data'];
+            $data = $autoData;
         }
 
         View::render('formulario_120_print', [
             'f'       => $data,
+            'resumen' => $calc['resumenLibros'],
             'empresa' => self::fetchForm120EmpresaInfo($codEmpresa),
             'mes'     => sprintf('%02d', $mes),
             'anio'    => $anio,
@@ -1155,11 +1523,22 @@ class ReportesContablesController {
         $rucDv       = $empData['rucDv'] ?? '7';
         $razonSocial = $empData['razon_social'] ?? 'CONTRIBUYENTE DEMOSTRATIVO';
 
+        $calc = self::calcularFormulario120Auto($idProp, $codEmpresa, $mes, $anio);
+        $autoData = $calc['data'] ?? [];
+        $resumen  = $calc['resumenLibros'] ?? [];
+
         $rows = Database::queryForListUpper(
             "SELECT * FROM co_formulario_120 WHERE id_propietario = ? AND cod_empresa = ? AND mes = ? AND anio = ? LIMIT 1",
             [$idProp, $codEmpresa, $mes, $anio]
         );
-        $d = !empty($rows) ? $rows[0] : (self::calcularFormulario120Auto($idProp, $codEmpresa, $mes, $anio)['data'] ?? []);
+        if (!empty($rows)) {
+            $saved = $rows[0];
+            $savedMov = (int)($saved['C10'] ?? 0) + (int)($saved['C11'] ?? 0) + (int)($saved['C12'] ?? 0) + (int)($saved['C32'] ?? 0) + (int)($saved['C35'] ?? 0) + (int)($saved['C40'] ?? 0);
+            $autoMov  = (int)($autoData['C10'] ?? 0) + (int)($autoData['C11'] ?? 0) + (int)($autoData['C12'] ?? 0) + (int)($autoData['C32'] ?? 0) + (int)($autoData['C35'] ?? 0) + (int)($autoData['C40'] ?? 0);
+            $d = ($savedMov === 0 && $autoMov > 0) ? $autoData : $saved;
+        } else {
+            $d = $autoData;
+        }
         $v = fn(string $k): int => (int)round((float)($d[$k] ?? $d[strtolower($k)] ?? 0));
 
         $lines = [
@@ -1169,13 +1548,13 @@ class ReportesContablesController {
             ",,Razón Social/Primer Apellido,,,,,,Segundo Apellido,,,,,,,,,,,,,,,,",
             ",,,,,,,, ,,,,,,,,,,,,,,,,",
             ",,Nombres,,,,,,,,,,,,,,,,,,,,,,",
-            ",,{$razonSocial},,,,,,,,,,,,,,,,,,,,,,",
-            ",,01,,[ ],Declaración Jurada Original,,,Número de Orden Declaración que se rectifica,,,,,,,,,,,,,,,,",
+            ",,\"{$razonSocial}\",,,,,,,,,,,,,,,,,,,,,,",
+            ",,01,,[X],Declaración Jurada Original,,,Número de Orden Declaración que se rectifica,,,,,,,,,,,,,,,,",
             ",,02,,[ ],Declaración Jurada Rectificativa,,,03, ,,,,,,,,,,,,,,",
             ",,05,,[ ],\"Declaración Jurada en Caracter de Cese de Actividades, Clausura o Cierre Definitivo\",,,04,Periodo/Ejercicio Fiscal,,,,,,,,,,,,,",
             "120,,,,,,,,,,,,Mes,,Año,,,,,,,,,",
             ",,,,,,,,,,,," . sprintf('%02d', $mes) . ",,{$anio},,,,,,,,,",
-            "PARA CONTRIBUYENTES QUE REALICEN OPERACIONES GRAVADAS Y EXONERADAS (INCLUIDAS LAS ExportaciónES),,,,,,,,,,,,,,,,,,,,,,,,",
+            "PARA CONTRIBUYENTES QUE REALICEN OPERACIONES GRAVADAS Y EXONERADAS (INCLUIDAS LAS EXPORTACIONES),,,,,,,,,,,,,,,,,,,,,,,,",
             ",,,,,,,,,,,,,,,,,,,,,,,,",
             "INC,RUBRO 1 - ENAJENACIÓN DE BIENES Y/O PRESTACIÓN DE SERVICIOS DEL PERIODO,,,,,MONTO IMPONIBLE -I-,,,IVA DÉBITO,,,,,,,,,,,,,,,",
             ",,,,,,,,,AL 5% -II-,,,,,AL 10% -III-,,,,,,,,,,",
@@ -1188,20 +1567,29 @@ class ReportesContablesController {
             "g,\"Ajustes de precios, devoluciones realizadas, descuentos obtenidos y recupero de Impuesto por operaciones incobrables declaradas a la tasa del 5%\",,,,,16,{$v('C16')},,,20,{$v('C20')},,,,,,,,,,,,,,",
             "h,\"Ajustes de precios, devoluciones realizadas, descuentos obtenidos y recupero por operaciones incobrables, exonerados o no alcanzados por el tributo\",,,,,17,{$v('C17')},,, , ,,,,,,,,,,,,,,",
             "i,TOTAL: ( Col.I: Inc. a+b+c+d+e+f+g+h); (Col.II: Inc. b+g); (Col.III: Inc. a+f) ,,,,,18,{$v('C18')},,21,{$v('C21')},,,,24,{$v('C24')},,,,,,,,,",
-            "INC,RUBRO 3 - COMPRAS LOCALES E IMPORTACIONES DEL PERIODO,,,,,MONTO IMPONIBLE,,,,,,,,IVA CRÉDITO -III-,,,,,,,,,,",
-            "a,Creditos Fiscales atribuidos directamente a operaciones gravadas en mercado interno,,,,,32,{$v('C32')},,35,{$v('C35')},,,,38,{$v('C38')},,,,,,,,,",
+            "INC,RUBRO 2 - ENAJENACIÓN DE BIENES Y/O PRESTACIÓN DE SERVICIOS DE LOS ÚLTIMOS 6 MESES,,,,,MONTO ACUMULADO,,,,,,,,,,,,,,,,,,",
+            "a,Enajenación de bienes y/o prestación de servicios gravados,,,,,25,{$v('C25')},,,,,,,,,,,,,,,,,",
+            "b,Enajenación de bienes y/o prestación de servicios exonerados o no alcanzados,,,,,26,{$v('C26')},,,,,,,,,,,,,,,,,",
+            "c,SUBTOTAL (Inc. a+b),,,,,27,{$v('C27')},,,,,,,,,,,,,,,,,",
+            "g,TOTAL OPERACIONES ÚLTIMOS 6 MESES,,,,,31,{$v('C31')},,,,,,,,,,,,,,,,,",
+            "INC,RUBRO 3 - COMPRAS LOCALES E IMPORTACIONES DEL PERIODO,,,,,MONTO IMPONIBLE 5%,,,MONTO IMPONIBLE 10%,,,,,IVA CRÉDITO -III-,,,,,,,,,,",
+            "a,Créditos Fiscales atribuidos directamente a operaciones gravadas en mercado interno,,,,,32,{$v('C32')},,35,{$v('C35')},,,,38,{$v('C38')},,,,,,,,,",
+            "b,Créditos Fiscales atribuidos indistintamente a operaciones gravadas y exoneradas,,,,,33,{$v('C33')},,36,{$v('C36')},,,,39,{$v('C39')},,,,,,,,,",
+            "e,Compras de bienes y/o servicios exentos o no alcanzados o en que no corresponda crédito fiscal,,,,,40,{$v('C40')},,41,{$v('C41')},,,,,,,,,,,,,,",
             "f,TOTAL DE CRÉDITO FISCAL PARA OPERACIONES EN EL MERCADO INTERNO (Col. III: Inc. a+c+d+e),,,,,,,,,,,,,43,{$v('C43')},,,,,,,,,",
-            "Creado por ContaPro,,,,,,,,,,,,,,,,,,,,,,,,",
             "INC,RUBRO 4 – DETERMINACIÓN DEL IMPUESTO,,,,,,,,,,,,,MONTO,",
             "a,\"Débito fiscal (Proviene del Rubro 1, Col. II + III: Inc. i)\",,,,,,,,,,,,,44,{$v('C44')}",
             "b,\"Crédito fiscal (Proviene del Rubro 3, Inc. f)\",,,,,,,,,,,,,45,{$v('C45')}",
             "c,\"Saldo a favor del contribuyente del período anterior\",,,,,,,,,,,,,46,{$v('C46')}",
             "d,\"SALDO A FAVOR DEL CONTRIBUYENTE\",,,,,,,,,,,,,47,{$v('C47')}",
             "e,\"SALDO A FAVOR DEL FISCO\",,,,,,,,,,,,,48,{$v('C48')}",
-            "g,IMPUESTO DETERMINADO Inc. e - Inc. F,,,,,,,,,,,,,50,{$v('C50')}",
+            "g,IMPUESTO DETERMINADO Inc. e - Inc. f,,,,,,,,,,,,,50,{$v('C50')}",
             "INC,RUBRO 5 – LIQUIDACIÓN Y SALDO DEL IMPUESTO,,,,,,,,MONTO A FAVOR DEL,,,,,,",
-            "a,\"Impuestos determinado para operaciones gravadas\",,,,,,,,,,,,,55,{$v('C55')}",
+            "a,\"Impuesto determinado para operaciones gravadas\",,,,,,,,,,,,,55,{$v('C55')}",
+            "c,\"Retenciones computables por operaciones gravadas\",,,,,52,{$v('C52')},,,,,,,,",
             "g,\"SALDO DEFINITIVO A PAGAR A FAVOR DEL FISCO\",,,,,,,,,,,,,58,{$v('C58')}",
+            ",,,,,,,,,,,,,,,,,,,,,,,,",
+            "RESUMEN DE LIBROS IVA DEL PERIODO,,Cant. Ventas:,{$resumen['cantVentas']},,Cant. Compras:,{$resumen['cantCompras']},,Compras Electrónicas:,{$resumen['cantComprasElectr']},,Total Bruto Compras:,{$resumen['comprasBrutoTotal']}",
         ];
 
         $filename = sprintf('FORM120_V3_%s_%02d_%04d.csv', $rucNum, $mes, $anio);

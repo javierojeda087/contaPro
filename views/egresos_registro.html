@@ -1277,33 +1277,60 @@
                         document.getElementById('idEgreso').value = item.ID_EGRESO || '';
                         document.getElementById('modalTitle').innerText = 'Modificar egreso';
                         document.getElementById('cdc').value = item.CDC || '';
-                        document.getElementById('tipDoc').value = item.TIP_DOC || 'Factura';
+                        const normCod = (v) => {
+                            const s = String(v ?? '').trim();
+                            return (!isNaN(parseFloat(s)) && isFinite(s)) ? String(parseInt(s, 10)) : s;
+                        };
+
+                        const rawTipDoc = String(item.TIP_DOC || item.tip_doc || 'FAC').trim();
+                        const tipDocSel = document.getElementById('tipDoc');
+                        if (tipDocSel) {
+                            let matchedDoc = false;
+                            for (let opt of tipDocSel.options) {
+                                if (opt.value.toUpperCase() === rawTipDoc.toUpperCase() || opt.text.toUpperCase() === rawTipDoc.toUpperCase()) {
+                                    tipDocSel.value = opt.value;
+                                    matchedDoc = true;
+                                    break;
+                                }
+                            }
+                            if (!matchedDoc && tipDocSel.options.length > 0) tipDocSel.selectedIndex = 0;
+                        }
                         
-                        const rawReg = String(item.COD_REGIMEN || item.cod_regimen || item.REGIMEN || item.regimen || '1').trim();
+                        const rawReg = String(item.REGIMEN || item.regimen || item.COD_REGIMEN || item.cod_regimen || '1').trim();
+                        const normReg = normCod(rawReg);
                         const regSel = document.getElementById('regimen');
                         if (regSel) {
                             let matched = false;
                             for (let opt of regSel.options) {
-                                if (opt.value === rawReg || opt.text.toUpperCase() === rawReg.toUpperCase()) {
+                                if (normCod(opt.value) === normReg || opt.text.toUpperCase() === rawReg.toUpperCase()) {
                                     regSel.value = opt.value;
                                     matched = true;
                                     break;
                                 }
                             }
                             if (!matched) {
-                                if (rawReg.toUpperCase().includes('IVA') && rawReg.toUpperCase().includes('IRP')) regSel.value = '1';
-                                else if (rawReg.toUpperCase() === 'IRP') regSel.value = '2';
-                                else if (rawReg.toUpperCase() === 'IVA') regSel.value = '3';
-                                else if (rawReg.toUpperCase().includes('CAPITAL')) regSel.value = '4';
-                                else if (regSel.options.length > 0) regSel.selectedIndex = 0;
+                                let targetCode = normReg;
+                                if (rawReg.toUpperCase().includes('IVA') && rawReg.toUpperCase().includes('IRP')) targetCode = '1';
+                                else if (rawReg.toUpperCase() === 'IRP') targetCode = '2';
+                                else if (rawReg.toUpperCase() === 'IVA') targetCode = '3';
+                                else if (rawReg.toUpperCase().includes('CAPITAL')) targetCode = '4';
+                                for (let opt of regSel.options) {
+                                    if (normCod(opt.value) === targetCode) {
+                                        regSel.value = opt.value;
+                                        matched = true;
+                                        break;
+                                    }
+                                }
+                                if (!matched && regSel.options.length > 0) regSel.selectedIndex = 0;
                             }
                         }
                         const rawClasG = String(item.CLASIFICACION_GASTO || item.clasificacion_gasto || '1').trim();
+                        const normClasG = normCod(rawClasG);
                         const clasSel = document.getElementById('clasificacionGasto');
                         if (clasSel) {
                             let matched = false;
                             for (let opt of clasSel.options) {
-                                if (opt.value === rawClasG || opt.text.toUpperCase() === rawClasG.toUpperCase()) {
+                                if (normCod(opt.value) === normClasG || opt.text.toUpperCase() === rawClasG.toUpperCase()) {
                                     clasSel.value = opt.value;
                                     matched = true;
                                     break;
@@ -1348,11 +1375,12 @@
                         document.getElementById('codProveedor').value = item.COD_PROVEEDOR || item.cod_proveedor || '';
 
                         const rawTipEg = String(item.TIP_EGRESO || item.tip_egreso || '1').trim();
+                        const normTipEg = normCod(rawTipEg);
                         const tipSel = document.getElementById('tipEgreso');
                         if (tipSel) {
                             let matched = false;
                             for (let opt of tipSel.options) {
-                                if (opt.value === rawTipEg || opt.text.toUpperCase() === rawTipEg.toUpperCase()) {
+                                if (normCod(opt.value) === normTipEg || opt.text.toUpperCase() === rawTipEg.toUpperCase()) {
                                     tipSel.value = opt.value;
                                     matched = true;
                                     break;
