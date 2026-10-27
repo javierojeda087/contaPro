@@ -493,7 +493,9 @@ class MovimientosContablesController {
 
         try {
             $sql = "SELECT id_egreso, cdc, tip_doc, tip_timb, tip_egreso, clasificacion_gasto,
-                           CAST(COALESCE(cod_regimen, 1) AS UNSIGNED) AS cod_regimen, regimen, nro_timbrado,
+                           CAST(COALESCE(NULLIF(cod_regimen, 0), 1) AS UNSIGNED) AS cod_regimen,
+                           COALESCE(NULLIF(TRIM(regimen), ''), CAST(CAST(COALESCE(NULLIF(cod_regimen, 0), 1) AS UNSIGNED) AS CHAR)) AS regimen,
+                           nro_timbrado,
                            DATE_FORMAT(venc_timbrado, '%Y-%m-%d') AS venc_timbrado,
                            DATE_FORMAT(venc_timbrado, '%d/%m/%Y') AS venc_timbrado_fmt,
                            nro_factura, cod_proveedor,
@@ -540,7 +542,9 @@ class MovimientosContablesController {
         $empresa = TenantContext::empresa();
 
         try {
-            $sql = "SELECT id_egreso, cdc, tip_doc, CAST(COALESCE(cod_regimen, 1) AS UNSIGNED) AS cod_regimen, regimen,
+            $sql = "SELECT id_egreso, cdc, tip_doc,
+                           CAST(COALESCE(NULLIF(cod_regimen, 0), 1) AS UNSIGNED) AS cod_regimen,
+                           COALESCE(NULLIF(TRIM(regimen), ''), CAST(CAST(COALESCE(NULLIF(cod_regimen, 0), 1) AS UNSIGNED) AS CHAR)) AS regimen,
                            clasificacion_gasto, tip_timb, nro_timbrado,
                            DATE_FORMAT(venc_timbrado, '%Y-%m-%d') AS venc_timbrado, nro_factura, serie,
                            DATE_FORMAT(fec_egreso, '%Y-%m-%d') AS fec_egreso, comprador, cod_proveedor,
@@ -1264,8 +1268,11 @@ class MovimientosContablesController {
         $mes  = trim((string)($_GET['mes'] ?? ''));
 
         try {
-            $sql = "SELECT id_ingreso, cdc, tip_doc, COALESCE(cod_regimen, 1) AS cod_regimen, regimen,
-                           COALESCE(cod_tipo_ingreso, 1) AS cod_tipo_ingreso, tip_ingreso, nro_timbrado,
+            $sql = "SELECT id_ingreso, cdc, tip_doc,
+                           CAST(COALESCE(NULLIF(cod_regimen, 0), 1) AS UNSIGNED) AS cod_regimen,
+                           COALESCE(NULLIF(TRIM(regimen), ''), CAST(CAST(COALESCE(NULLIF(cod_regimen, 0), 1) AS UNSIGNED) AS CHAR)) AS regimen,
+                           CAST(COALESCE(NULLIF(cod_tipo_ingreso, 0), 1) AS UNSIGNED) AS cod_tipo_ingreso,
+                           tip_ingreso, nro_timbrado,
                            DATE_FORMAT(venc_timbrado, '%Y-%m-%d') AS venc_timbrado,
                            DATE_FORMAT(venc_timbrado, '%d/%m/%Y') AS venc_timbrado_fmt,
                            nro_factura, cod_cliente,
@@ -1304,11 +1311,14 @@ class MovimientosContablesController {
         $empresa = TenantContext::empresa();
 
         try {
-            $sql = "SELECT id_ingreso, cdc, tip_doc, COALESCE(cod_regimen, 1) AS cod_regimen, regimen,
+            $sql = "SELECT id_ingreso, cdc, tip_doc,
+                           CAST(COALESCE(NULLIF(cod_regimen, 0), 1) AS UNSIGNED) AS cod_regimen,
+                           COALESCE(NULLIF(TRIM(regimen), ''), CAST(CAST(COALESCE(NULLIF(cod_regimen, 0), 1) AS UNSIGNED) AS CHAR)) AS regimen,
                            anulada, inutilizado, nro_timbrado,
                            DATE_FORMAT(venc_timbrado, '%Y-%m-%d') AS venc_timbrado, nro_factura, serie,
                            DATE_FORMAT(fec_ingreso, '%Y-%m-%d') AS fec_ingreso, condicion, cod_cliente,
-                           nom_cliente, ruc_cliente, COALESCE(cod_tipo_ingreso, 1) AS cod_tipo_ingreso,
+                           nom_cliente, ruc_cliente,
+                           CAST(COALESCE(NULLIF(cod_tipo_ingreso, 0), 1) AS UNSIGNED) AS cod_tipo_ingreso,
                            tip_ingreso, form_145, cod_moneda, tasa_cambio, grav10, iva10, grav5, iva5,
                            exentas, tot_iva, valor_bruto, no_gravado, redondeo, valor_total, observacion,
                            sifen_estado, sifen_protocolo, sifen_qr_url, sifen_mensaje, sifen_fecha_firma

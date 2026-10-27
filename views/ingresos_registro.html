@@ -66,18 +66,18 @@
                             <!-- Mes Select -->
                             <select id="filtroMes" onchange="cargarIngresos()" style="border: 2px solid #16a34a; border-radius: 6px; padding: 3px 8px; font-weight: 800; color: #15803d; font-size: 0.85rem; outline: none; background: #dcfce7; cursor: pointer; height: 28px;" title="Seleccionar Mes">
                                 <option value="TODOS">Todos</option>
-                                <option value="1">1</option>
-                                <option value="2">2</option>
-                                <option value="3">3</option>
-                                <option value="4">4</option>
-                                <option value="5">5</option>
-                                <option value="6">6</option>
-                                <option value="7">7</option>
-                                <option value="8">8</option>
-                                <option value="9">9</option>
-                                <option value="10">10</option>
-                                <option value="11">11</option>
-                                <option value="12">12</option>
+                                <option value="1">Enero</option>
+                                <option value="2">Febrero</option>
+                                <option value="3">Marzo</option>
+                                <option value="4">Abril</option>
+                                <option value="5">Mayo</option>
+                                <option value="6">Junio</option>
+                                <option value="7">Julio</option>
+                                <option value="8">Agosto</option>
+                                <option value="9">Septiembre</option>
+                                <option value="10">Octubre</option>
+                                <option value="11">Noviembre</option>
+                                <option value="12">Diciembre</option>
                             </select>
                         </div>
 
@@ -686,16 +686,42 @@
             }
         }
 
+        function normalizarCodEntero(val) {
+            const s = String(val ?? '').trim();
+            if (!s) return '';
+            if (!isNaN(parseFloat(s)) && isFinite(s)) {
+                return String(parseInt(s, 10));
+            }
+            return s;
+        }
+
+        function normalizarRegimenItem(itemOrVal) {
+            let raw = '';
+            if (itemOrVal && typeof itemOrVal === 'object') {
+                raw = String(itemOrVal.COD_REGIMEN ?? itemOrVal.cod_regimen ?? itemOrVal.REGIMEN ?? itemOrVal.regimen ?? '1').trim();
+            } else {
+                raw = String(itemOrVal ?? '1').trim();
+            }
+            const num = normalizarCodEntero(raw);
+            if (num === '1' || num === '2' || num === '3' || num === '4') return num;
+            const up = raw.toUpperCase();
+            if (up.includes('IRP') && up.includes('IVA')) return '1';
+            if (up.includes('IRP')) return '2';
+            if (up.includes('IVA')) return '3';
+            if (up.includes('CAPITAL')) return '4';
+            return '1';
+        }
+
         async function cargarRegimenesDynamic() {
             try {
                 const res = await fetch('/api/regimen/list');
                 const list = await res.json();
                 const select = document.getElementById('regimen');
                 if (select && list && list.length > 0) {
-                    const currentVal = String(select.value || '1');
+                    const currentVal = normalizarCodEntero(select.value || '1') || '1';
                     select.innerHTML = '';
-                    list.filter(item => (item.ESTADO || item.estado) === 'A' || String(item.COD_REGIMEN || item.cod_regimen) === currentVal).forEach(item => {
-                        const cod = item.COD_REGIMEN || item.cod_regimen;
+                    list.filter(item => (item.ESTADO || item.estado) === 'A' || normalizarCodEntero(item.COD_REGIMEN || item.cod_regimen) === currentVal).forEach(item => {
+                        const cod = normalizarCodEntero(item.COD_REGIMEN || item.cod_regimen);
                         const desc = item.DESCRIPCION || item.descripcion;
                         const opt = document.createElement('option');
                         opt.value = cod;
@@ -706,6 +732,23 @@
                         select.value = currentVal;
                     } else {
                         select.value = '1';
+                    }
+                }
+
+                const filtroSelect = document.getElementById('filtroRegimen');
+                if (filtroSelect && list && list.length > 0) {
+                    const currentFiltro = filtroSelect.value || 'TODOS';
+                    filtroSelect.innerHTML = '<option value="TODOS">Todos</option>';
+                    list.filter(item => (item.ESTADO || item.estado) === 'A').forEach(item => {
+                        const cod = normalizarCodEntero(item.COD_REGIMEN || item.cod_regimen);
+                        const desc = item.DESCRIPCION || item.descripcion;
+                        const opt = document.createElement('option');
+                        opt.value = cod;
+                        opt.text = desc;
+                        filtroSelect.appendChild(opt);
+                    });
+                    if (currentFiltro && Array.from(filtroSelect.options).some(o => String(o.value) === String(currentFiltro))) {
+                        filtroSelect.value = currentFiltro;
                     }
                 }
             } catch (e) {
@@ -719,10 +762,10 @@
                 const data = await res.json();
                 if (data && data.length > 0) {
                     const select = document.getElementById('tipIngreso');
-                    const currentVal = String(select.value || '1');
+                    const currentVal = normalizarCodEntero(select.value || '1') || '1';
                     select.innerHTML = '';
                     data.forEach(item => {
-                        const id = item.COD_TIPO_INGRESO || item.cod_tipo_ingreso;
+                        const id = normalizarCodEntero(item.COD_TIPO_INGRESO || item.cod_tipo_ingreso);
                         const desc = item.DESCRIPCION || item.descripcion;
                         const opt = document.createElement('option');
                         opt.value = id;
@@ -1048,11 +1091,7 @@
                 porFecha[fKey].cant++;
 
                 // Régimen
-                const rRaw = String(item.COD_REGIMEN || item.cod_regimen || item.REGIMEN || item.regimen || '1').trim().toUpperCase();
-                let rKey = '1';
-                if (rRaw === '2' || rRaw === 'IRP') rKey = '2';
-                else if (rRaw === '3' || rRaw === 'IVA') rKey = '3';
-                else if (rRaw === '4' || rRaw.includes('CAPITAL')) rKey = '4';
+                const rKey = normalizarRegimenItem(item);
                 porRegimen[rKey].cant++;
                 porRegimen[rKey].total += sign * tot;
 
@@ -1234,26 +1273,22 @@
                 const nomStr = item.NOM_CLIENTE || item.nom_cliente || '-';
 
                 // Régimen: 1 -> IRP & IVA, 2 -> IRP, 3 -> IVA, 4 -> G. CAPITAL
-                const rawRegVal = String(item.REGIMEN || item.regimen || item.COD_REGIMEN || item.cod_regimen || '1').trim();
-                const rawRegNum = String(item.COD_REGIMEN || item.cod_regimen || '').trim();
+                const regCodNorm = normalizarRegimenItem(item);
                 let regStr = 'IRP & IVA';
                 let regBadgeStyle = 'background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;';
 
-                if (rawRegNum === '1' || rawRegVal.toUpperCase().includes('IRP & IVA')) {
+                if (regCodNorm === '1') {
                     regStr = 'IRP & IVA';
                     regBadgeStyle = 'background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;';
-                } else if (rawRegNum === '2' || rawRegVal.toUpperCase() === 'IRP') {
+                } else if (regCodNorm === '2') {
                     regStr = 'IRP';
                     regBadgeStyle = 'background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0;';
-                } else if (rawRegNum === '3' || rawRegVal.toUpperCase() === 'IVA') {
+                } else if (regCodNorm === '3') {
                     regStr = 'IVA';
                     regBadgeStyle = 'background: #faf5ff; color: #7e22ce; border: 1px solid #e9d5ff;';
-                } else if (rawRegNum === '4' || rawRegVal.toUpperCase().includes('CAPITAL')) {
+                } else if (regCodNorm === '4') {
                     regStr = 'G. CAPITAL';
                     regBadgeStyle = 'background: #fffbeb; color: #b45309; border: 1px solid #fde68a;';
-                } else {
-                    regStr = rawRegVal;
-                    regBadgeStyle = 'background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1;';
                 }
                 
                 // Condición de Venta (C.V.): CRE para Crédito, CON para Contado
@@ -1348,14 +1383,9 @@
             let filtered = listIngresosData;
 
             if (regimenFiltro && regimenFiltro !== 'TODOS') {
+                const filtroNorm = normalizarRegimenItem(regimenFiltro);
                 filtered = filtered.filter(item => {
-                    const r = String(item.COD_REGIMEN || item.cod_regimen || item.REGIMEN || item.regimen || '').toUpperCase();
-                    if (r === regimenFiltro) return true;
-                    if (regimenFiltro === '1' && r.includes('IRP') && r.includes('IVA')) return true;
-                    if (regimenFiltro === '2' && r.includes('IRP') && !r.includes('IVA')) return true;
-                    if (regimenFiltro === '3' && r.includes('IVA') && !r.includes('IRP')) return true;
-                    if (regimenFiltro === '4' && r.includes('CAPITAL')) return true;
-                    return false;
+                    return normalizarRegimenItem(item) === filtroNorm;
                 });
             }
 
@@ -1515,15 +1545,27 @@
                         document.getElementById('codCliente').value = item.COD_CLIENTE || item.cod_cliente || '';
                         document.getElementById('modalTitle').innerText = 'Modificar ingreso';
                         document.getElementById('cdc').value = item.CDC || '';
-                        document.getElementById('tipDoc').value = item.TIP_DOC || 'Factura';
+                        const rawTipDoc = String(item.TIP_DOC || item.tip_doc || 'FAC').trim();
+                        const tipDocSel = document.getElementById('tipDoc');
+                        if (tipDocSel) {
+                            let matchedDoc = false;
+                            for (let opt of tipDocSel.options) {
+                                if (opt.value.toUpperCase() === rawTipDoc.toUpperCase() || opt.text.toUpperCase() === rawTipDoc.toUpperCase()) {
+                                    tipDocSel.value = opt.value;
+                                    matchedDoc = true;
+                                    break;
+                                }
+                            }
+                            if (!matchedDoc && tipDocSel.options.length > 0) tipDocSel.selectedIndex = 0;
+                        }
 
                         // Régimen selector matching
-                        const regVal = String(item.COD_REGIMEN || item.cod_regimen || item.REGIMEN || item.regimen || '1');
+                        const normReg = normalizarRegimenItem(item);
                         const regSelect = document.getElementById('regimen');
                         if (regSelect) {
                             let matched = false;
                             for (let opt of regSelect.options) {
-                                if (String(opt.value) === regVal || opt.text.trim().toUpperCase() === regVal.trim().toUpperCase()) {
+                                if (normalizarCodEntero(opt.value) === normReg || normalizarRegimenItem(opt.text) === normReg) {
                                     regSelect.value = opt.value;
                                     matched = true;
                                     break;
@@ -1567,12 +1609,13 @@
                         document.getElementById('nomCliente').value = item.NOM_CLIENTE || '';
 
                         // Tipo de Ingreso selector matching
-                        const tipVal = String(item.COD_TIPO_INGRESO || item.cod_tipo_ingreso || item.TIP_INGRESO || item.tip_ingreso || '1');
+                        const rawTipIng = String(item.COD_TIPO_INGRESO || item.cod_tipo_ingreso || item.TIP_INGRESO || item.tip_ingreso || '1').trim();
+                        const normTipIng = normalizarCodEntero(rawTipIng) || '1';
                         const tipSelect = document.getElementById('tipIngreso');
                         if (tipSelect) {
                             let matched = false;
                             for (let opt of tipSelect.options) {
-                                if (String(opt.value) === tipVal || opt.text.trim().toUpperCase() === tipVal.trim().toUpperCase()) {
+                                if (normalizarCodEntero(opt.value) === normTipIng || opt.text.trim().toUpperCase() === rawTipIng.toUpperCase()) {
                                     tipSelect.value = opt.value;
                                     matched = true;
                                     break;
@@ -2170,6 +2213,8 @@
                 observacion: document.getElementById('observacion').value
             };
 
+            const isModificacion = Boolean(payload.idIngreso);
+
             fetch('/api/ingresos/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -2181,8 +2226,13 @@
                     // 1. Actualizar el listado abajo inmediatamente
                     cargarIngresos();
 
-                    // 2. Limpiar la pantalla de carga para seguir registrando comprobantes
-                    limpiarPantallaParaNuevoIngreso();
+                    // 2. Si fue modificación cerrar el modal; si fue nuevo limpiar para seguir cargando
+                    if (isModificacion) {
+                        selectedIdIngreso = payload.idIngreso;
+                        cerrarModal();
+                    } else {
+                        limpiarPantallaParaNuevoIngreso();
+                    }
 
                     // 3. Si se emitió un Documento Electrónico SIFEN, ofrecer ver el KuDE con QR
                     if (data.sifen && data.sifen.cdc) {

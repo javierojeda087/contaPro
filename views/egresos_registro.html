@@ -42,20 +42,36 @@
                         </button>
                     </div>
 
-                    <!-- Sección de Filtros (Fecha Desde / Hasta, Régimen, Consultar y Buscar) -->
-                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                        <div style="display: flex; align-items: center; gap: 8px; background: #ffffff; height: 38px; padding: 0 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem;">
-                            <i class="ph ph-funnel" style="color: #16a34a; font-size: 1rem;"></i>
-                            <span style="font-weight: 700; color: #64748b;">Desde:</span>
-                            <input type="date" id="filtroFechaDesde" th:value="${defFechaDesde}" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px 8px; font-weight: 700; color: #0f172a; font-size: 0.84rem; outline: none; background: #f8fafc; cursor: pointer; height: 28px;">
-                            <span style="font-weight: 700; color: #64748b; margin-left: 2px;">Hasta:</span>
-                            <input type="date" id="filtroFechaHasta" th:value="${defFechaHasta}" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px 8px; font-weight: 700; color: #0f172a; font-size: 0.84rem; outline: none; background: #f8fafc; cursor: pointer; height: 28px;">
+                    <!-- Sección de Filtros (Periodo Año / Mes, Régimen y Buscar) -->
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 8px; background: #ffffff; height: 38px; padding: 0 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.88rem;">
+                            <span style="font-weight: 700; color: #64748b;">Periodo:</span>
+                            <!-- Año Select -->
+                            <select id="filtroAnio" onchange="cargarEgresos()" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 8px; font-weight: 700; color: #0f172a; font-size: 0.85rem; outline: none; background: #f8fafc; cursor: pointer; height: 28px;">
+                                <option value="TODOS">Todos</option>
+                            </select>
+                            <!-- Mes Select -->
+                            <select id="filtroMes" onchange="cargarEgresos()" style="border: 2px solid #16a34a; border-radius: 6px; padding: 3px 8px; font-weight: 800; color: #15803d; font-size: 0.85rem; outline: none; background: #dcfce7; cursor: pointer; height: 28px;" title="Seleccionar Mes">
+                                <option value="TODOS">Todos</option>
+                                <option value="1">Enero</option>
+                                <option value="2">Febrero</option>
+                                <option value="3">Marzo</option>
+                                <option value="4">Abril</option>
+                                <option value="5">Mayo</option>
+                                <option value="6">Junio</option>
+                                <option value="7">Julio</option>
+                                <option value="8">Agosto</option>
+                                <option value="9">Septiembre</option>
+                                <option value="10">Octubre</option>
+                                <option value="11">Noviembre</option>
+                                <option value="12">Diciembre</option>
+                            </select>
                         </div>
 
                         <!-- Filtro Régimen -->
-                        <div style="display: flex; align-items: center; gap: 8px; background: #ffffff; height: 38px; padding: 0 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem;">
+                        <div style="display: flex; align-items: center; gap: 8px; background: #ffffff; height: 38px; padding: 0 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.88rem;">
                             <span style="font-weight: 700; color: #64748b;">Régimen:</span>
-                            <select id="filtroRegimen" onchange="filtrarEgresos()" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 8px; font-weight: 700; color: #0f172a; font-size: 0.84rem; outline: none; background: #f8fafc; cursor: pointer; height: 28px;">
+                            <select id="filtroRegimen" onchange="filtrarEgresos()" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 8px; font-weight: 700; color: #0f172a; font-size: 0.85rem; outline: none; background: #f8fafc; cursor: pointer; height: 28px;">
                                 <option value="TODOS">Todos</option>
                                 <option value="1">IRP & IVA</option>
                                 <option value="2">IRP</option>
@@ -64,14 +80,9 @@
                             </select>
                         </div>
 
-                        <!-- Botón Consultar -->
-                        <button type="button" id="btnConsultarEgresos" class="btn" onclick="cargarEgresos()" style="background: #16a34a; border: 1.5px solid #15803d; font-weight: 700; font-size: 0.86rem; color: #ffffff; height: 38px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2); transition: all 0.2s; cursor: pointer;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
-                            <i class="ph ph-magnifying-glass" style="font-size: 1.05rem;"></i> Consultar
-                        </button>
-
                         <!-- Search Input with CTRL+F placeholder -->
-                        <div style="position: relative; width: 200px;">
-                            <input type="text" id="searchInput" class="form-control" placeholder="BUSCAR" onkeyup="filtrarEgresos()" style="padding-right: 34px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; height: 38px;" autocomplete="off">
+                        <div style="position: relative; width: 230px;">
+                            <input type="text" id="searchInput" class="form-control" placeholder="BUSCAR" onkeyup="filtrarEgresos()" style="padding-right: 36px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; height: 38px;" autocomplete="off">
                             <i class="ph ph-magnifying-glass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #64748b; font-size: 1.1rem;"></i>
                         </div>
                     </div>
@@ -938,31 +949,24 @@
         });
 
         function inicializarFiltroPeriodo() {
-            const inputDesde = document.getElementById('filtroFechaDesde');
-            const inputHasta = document.getElementById('filtroFechaHasta');
-            if (!inputDesde || !inputHasta) return;
+            const selectAnio = document.getElementById('filtroAnio');
+            if (!selectAnio) return;
 
-            const hoy = new Date();
+            const anioActual = new Date().getFullYear();
+            let html = '<option value="TODOS">Todos</option>';
+            for (let y = anioActual + 1; y >= anioActual - 5; y--) {
+                html += `<option value="${y}">${y}</option>`;
+            }
+            selectAnio.innerHTML = html;
+
             const ejSession = /*[[${ejercicio != null ? ejercicio : session.ejercicio}]]*/ '';
             const anioParsed = parseInt(String(ejSession).replace(/\D/g, ''), 10);
-            const anio = (!isNaN(anioParsed) && anioParsed >= 1990 && anioParsed <= 2100) ? anioParsed : hoy.getFullYear();
-            const mes = hoy.getMonth();
+            const anioTarget = (!isNaN(anioParsed) && anioParsed >= 1990 && anioParsed <= 2100) ? String(anioParsed) : String(anioActual);
 
-            const primerDia = new Date(anio, mes, 1);
-            const ultimoDia = new Date(anio, mes + 1, 0);
-
-            const fmtDate = (d) => {
-                const y = d.getFullYear();
-                const m = String(d.getMonth() + 1).padStart(2, '0');
-                const day = String(d.getDate()).padStart(2, '0');
-                return `${y}-${m}-${day}`;
-            };
-
-            if (!inputDesde.value || inputDesde.value.includes('${')) {
-                inputDesde.value = fmtDate(primerDia);
-            }
-            if (!inputHasta.value || inputHasta.value.includes('${')) {
-                inputHasta.value = fmtDate(ultimoDia);
+            if (selectAnio.querySelector(`option[value="${anioTarget}"]`)) {
+                selectAnio.value = anioTarget;
+            } else {
+                selectAnio.value = String(anioActual);
             }
         }
 
@@ -1108,15 +1112,10 @@
         }
 
         function cargarEgresos() {
-            const fechaDesde = document.getElementById('filtroFechaDesde')?.value || '';
-            const fechaHasta = document.getElementById('filtroFechaHasta')?.value || '';
+            const anioVal = document.getElementById('filtroAnio')?.value || 'TODOS';
+            const mesVal = document.getElementById('filtroMes')?.value || 'TODOS';
 
-            if (fechaDesde && fechaHasta && fechaDesde > fechaHasta) {
-                Swal.fire('Atención', 'La Fecha Desde no puede ser mayor a la Fecha Hasta.', 'warning');
-                return;
-            }
-
-            fetch(`/api/egresos/list?fechaDesde=${encodeURIComponent(fechaDesde)}&fechaHasta=${encodeURIComponent(fechaHasta)}`)
+            fetch(`/api/egresos/list?anio=${encodeURIComponent(anioVal)}&mes=${encodeURIComponent(mesVal)}`)
                 .then(res => res.json())
                 .then(res => {
                     if (res.status === 'success') {
@@ -2626,6 +2625,8 @@
                 asientoHaber: _calculadoHaberList
             };
 
+            const isModificacion = Boolean(payload.idEgreso);
+
             fetch('/api/egresos/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -2637,8 +2638,13 @@
                     // 1. Actualizar el listado abajo inmediatamente
                     cargarEgresos();
 
-                    // 2. Limpiar la pantalla de carga para seguir registrando comprobantes
-                    limpiarPantallaParaNuevoEgreso();
+                    // 2. Si fue modificación cerrar el modal; si fue nuevo limpiar para seguir cargando
+                    if (isModificacion) {
+                        selectedIdEgreso = payload.idEgreso;
+                        cerrarModal();
+                    } else {
+                        limpiarPantallaParaNuevoEgreso();
+                    }
 
                     // 3. Notificación de éxito
                     Swal.fire({
@@ -3511,15 +3517,26 @@
                         importPreviewList = [];
                         renderTablaImportPreview();
 
-                        // Ajustar filtro de fechas para mostrar el periodo importado si corresponde
-                        const fDesdeEl = document.getElementById('filtroFechaDesde');
-                        const fHastaEl = document.getElementById('filtroFechaHasta');
-                        if (data.minFecha && fDesdeEl && (!fDesdeEl.value || data.minFecha < fDesdeEl.value)) {
-                            const ym = data.minFecha.substring(0, 7);
-                            fDesdeEl.value = `${ym}-01`;
+                        // Ajustar filtro de periodo (Año / Mes) para mostrar el lote importado si corresponde
+                        const selAnio = document.getElementById('filtroAnio');
+                        const selMes  = document.getElementById('filtroMes');
+                        if (data.minFecha && selAnio) {
+                            const yMin = data.minFecha.substring(0, 4);
+                            const yMax = (data.maxFecha || data.minFecha).substring(0, 4);
+                            if (yMin === yMax && selAnio.querySelector(`option[value="${yMin}"]`)) {
+                                selAnio.value = yMin;
+                            } else {
+                                selAnio.value = 'TODOS';
+                            }
                         }
-                        if (data.maxFecha && fHastaEl && (!fHastaEl.value || data.maxFecha > fHastaEl.value)) {
-                            fHastaEl.value = data.maxFecha;
+                        if (data.minFecha && selMes) {
+                            const mMin = String(parseInt(data.minFecha.substring(5, 7), 10));
+                            const mMax = String(parseInt((data.maxFecha || data.minFecha).substring(5, 7), 10));
+                            if (mMin === mMax) {
+                                selMes.value = mMin;
+                            } else {
+                                selMes.value = 'TODOS';
+                            }
                         }
 
                         cargarEgresos();
