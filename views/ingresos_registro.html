@@ -55,30 +55,49 @@
                         </button>
                     </div>
 
-                    <!-- Periodo & Search Controls matching Image 2 -->
+                    <!-- Periodo (Año / Mes o Rango de Fechas) & Search Controls -->
                     <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                         <div style="display: flex; align-items: center; gap: 8px; background: #ffffff; height: 38px; padding: 0 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.88rem;">
                             <span style="font-weight: 700; color: #64748b;">Periodo:</span>
-                            <!-- Año Select -->
-                            <select id="filtroAnio" onchange="cargarIngresos()" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 8px; font-weight: 700; color: #0f172a; font-size: 0.85rem; outline: none; background: #f8fafc; cursor: pointer; height: 28px;">
-                                <option value="TODOS">Todos</option>
-                            </select>
-                            <!-- Mes Select -->
-                            <select id="filtroMes" onchange="cargarIngresos()" style="border: 2px solid #16a34a; border-radius: 6px; padding: 3px 8px; font-weight: 800; color: #15803d; font-size: 0.85rem; outline: none; background: #dcfce7; cursor: pointer; height: 28px;" title="Seleccionar Mes">
-                                <option value="TODOS">Todos</option>
-                                <option value="1">Enero</option>
-                                <option value="2">Febrero</option>
-                                <option value="3">Marzo</option>
-                                <option value="4">Abril</option>
-                                <option value="5">Mayo</option>
-                                <option value="6">Junio</option>
-                                <option value="7">Julio</option>
-                                <option value="8">Agosto</option>
-                                <option value="9">Septiembre</option>
-                                <option value="10">Octubre</option>
-                                <option value="11">Noviembre</option>
-                                <option value="12">Diciembre</option>
-                            </select>
+
+                            <!-- Vista por defecto: Año + Mes -->
+                            <div id="grupoFiltroMes" style="display: flex; align-items: center; gap: 6px;">
+                                <!-- Año Select -->
+                                <select id="filtroAnio" onchange="onCambioAnioMesIngresos()" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 8px; font-weight: 700; color: #0f172a; font-size: 0.85rem; outline: none; background: #f8fafc; cursor: pointer; height: 28px;">
+                                    <option value="TODOS">Todos</option>
+                                </select>
+                                <!-- Mes Select -->
+                                <select id="filtroMes" onchange="onCambioAnioMesIngresos()" style="border: 2px solid #16a34a; border-radius: 6px; padding: 3px 8px; font-weight: 800; color: #15803d; font-size: 0.85rem; outline: none; background: #dcfce7; cursor: pointer; height: 28px;" title="Seleccionar Mes">
+                                    <option value="TODOS">Todos</option>
+                                    <option value="1">Enero</option>
+                                    <option value="2">Febrero</option>
+                                    <option value="3">Marzo</option>
+                                    <option value="4">Abril</option>
+                                    <option value="5">Mayo</option>
+                                    <option value="6">Junio</option>
+                                    <option value="7">Julio</option>
+                                    <option value="8">Agosto</option>
+                                    <option value="9">Septiembre</option>
+                                    <option value="10">Octubre</option>
+                                    <option value="11">Noviembre</option>
+                                    <option value="12">Diciembre</option>
+                                    <option value="RANGO">📅 Por Rango de Fechas...</option>
+                                </select>
+                                <button type="button" onclick="cambiarModoPeriodo('RANGO')" title="Filtrar por rango de fechas (Desde / Hasta)" style="border: 1px solid #cbd5e1; background: #f8fafc; color: #0284c7; border-radius: 6px; height: 28px; padding: 0 8px; font-size: 0.78rem; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
+                                    <i class="ph ph-calendar-blank" style="font-size: 0.95rem;"></i> Rango
+                                </button>
+                            </div>
+
+                            <!-- Vista alternativa: Rango de Fechas (Desde / Hasta) -->
+                            <div id="grupoFiltroRango" style="display: none; align-items: center; gap: 6px;">
+                                <span style="font-size: 0.76rem; font-weight: 700; color: #475569;">Desde:</span>
+                                <input type="date" id="filtroFechaDesde" onchange="cargarIngresos()" style="border: 1.5px solid #0284c7; border-radius: 6px; padding: 2px 6px; font-weight: 700; color: #0f172a; font-size: 0.8rem; background: #f0f9ff; height: 28px; outline: none; cursor: pointer;">
+                                <span style="font-size: 0.76rem; font-weight: 700; color: #475569;">Hasta:</span>
+                                <input type="date" id="filtroFechaHasta" onchange="cargarIngresos()" style="border: 1.5px solid #0284c7; border-radius: 6px; padding: 2px 6px; font-weight: 700; color: #0f172a; font-size: 0.8rem; background: #f0f9ff; height: 28px; outline: none; cursor: pointer;">
+                                <button type="button" onclick="cambiarModoPeriodo('MES')" title="Volver a filtrar por Mes" style="border: 1px solid #86efac; background: #dcfce7; color: #15803d; border-radius: 6px; height: 28px; padding: 0 8px; font-size: 0.76rem; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
+                                    <i class="ph ph-calendar-check" style="font-size: 0.95rem;"></i> Mes
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Filtro Régimen -->
@@ -180,9 +199,9 @@
 
                 </div>
 
-                <!-- BARRA DE PESTAÑAS: INFORME DE LISTADO vs INFORME EN GRÁFICOS -->
-                <div style="padding: 8px 22px 0 22px; background: #f8fafc; border-bottom: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-shrink: 0;">
-                    <div style="display: flex; gap: 6px;">
+                <!-- BARRA DE PESTAÑAS: INFORME DE LISTADO vs INFORME EN GRÁFICOS vs INFORME ANUAL -->
+                <div style="padding: 8px 22px 0 22px; background: #f8fafc; border-bottom: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                         <button type="button" id="btnTabVistaListado" onclick="cambiarVistaIngresos('listado')"
                                 style="padding: 9px 18px; background: #ffffff; color: #15803d; border: 1px solid #cbd5e1; border-bottom: 2px solid #ffffff; border-radius: 8px 8px 0 0; font-weight: 800; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 7px; cursor: pointer; margin-bottom: -1px; box-shadow: 0 -2px 5px rgba(0,0,0,0.02);">
                             <i class="ph ph-table" style="font-size: 1.1rem;"></i> Informe de Listado
@@ -190,6 +209,10 @@
                         <button type="button" id="btnTabVistaGraficos" onclick="cambiarVistaIngresos('graficos')"
                                 style="padding: 9px 18px; background: #e2e8f0; color: #475569; border: 1px solid transparent; border-radius: 8px 8px 0 0; font-weight: 700; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 7px; cursor: pointer; margin-bottom: -1px;">
                             <i class="ph ph-chart-pie-slice" style="font-size: 1.1rem; color: #0284c7;"></i> Informe en Gráficos
+                        </button>
+                        <button type="button" id="btnTabVistaAnual" onclick="cambiarVistaIngresos('anual')"
+                                style="padding: 9px 18px; background: #e2e8f0; color: #475569; border: 1px solid transparent; border-radius: 8px 8px 0 0; font-weight: 700; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 7px; cursor: pointer; margin-bottom: -1px;">
+                            <i class="ph ph-calendar" style="font-size: 1.1rem; color: #7c3aed;"></i> Informe Anual (Ejercicio)
                         </button>
                     </div>
                     <div style="font-size: 0.76rem; color: #64748b; font-weight: 600; padding-bottom: 6px;">
@@ -265,9 +288,21 @@
                     </table>
                 </div>
 
-                <!-- PESTAÑA 2: INFORME EN GRÁFICOS -->
+                <!-- PESTAÑA 2 Y 3: INFORME EN GRÁFICOS (PERIODO / ANUAL DEL EJERCICIO) -->
                 <div id="vistaInformeGraficos" style="display: none; padding: 20px 22px; background: #f8fafc; flex: 1; min-height: 520px;">
                     
+                    <!-- Banner indicador cuando está activo el Informe Anual del Ejercicio -->
+                    <div id="bannerInformeAnual" style="display: none; background: linear-gradient(135deg, #eff6ff, #f5f3ff); border: 1px solid #c4b5fd; border-left: 4px solid #7c3aed; border-radius: 10px; padding: 10px 16px; margin-bottom: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <i class="ph ph-calendar-check" style="font-size: 1.35rem; color: #7c3aed;"></i>
+                            <div>
+                                <div style="font-size: 0.9rem; font-weight: 800; color: #1e1b4b;">Informe Anual Acumulado — Ejercicio Fiscal <span id="lblAnioEjercicioAnual">2026</span></div>
+                                <div style="font-size: 0.75rem; color: #4c1d95; font-weight: 600;">Resumen consolidado de todo el año (Enero a Diciembre), independiente del mes seleccionado.</div>
+                            </div>
+                        </div>
+                        <span id="badgeCantDocsAnual" style="background: #7c3aed; color: #ffffff; font-weight: 800; font-size: 0.78rem; padding: 4px 12px; border-radius: 20px;">0 comprobantes activos en el año</span>
+                    </div>
+
                     <!-- Fila Superior: Composición Impositiva + Distribución por Régimen -->
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; margin-bottom: 16px;">
                         
@@ -305,7 +340,7 @@
                                     <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 6px;">
                                         <i class="ph ph-users-three" style="color: #15803d; font-size: 1.2rem;"></i> Top 10 Clientes por Volumen de Ventas
                                     </h4>
-                                    <span style="font-size: 0.76rem; color: #64748b;">Clientes con mayor facturación e IVA Débito en el periodo filtrado</span>
+                                    <span style="font-size: 0.76rem; color: #64748b;">Clientes con mayor facturación e IVA Débito</span>
                                 </div>
                             </div>
                             <div id="chartTopClientesContainer"></div>
@@ -324,14 +359,14 @@
 
                     </div>
 
-                    <!-- Fila Inferior (Ancho Completo): Evolución de Ingresos por Fecha -->
+                    <!-- Fila Inferior (Ancho Completo): Evolución de Ingresos por Fecha o por Mes -->
                     <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px 22px; box-shadow: 0 2px 6px rgba(0,0,0,0.03); display: flex; flex-direction: column;">
                         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 14px;">
                             <div>
-                                <h4 style="margin: 0; font-size: 0.96rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+                                <h4 id="tituloGraficoEvolucion" style="margin: 0; font-size: 0.96rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 6px;">
                                     <i class="ph ph-chart-bar" style="color: #0284c7; font-size: 1.2rem;"></i> Evolución de Ingresos por Fecha
                                 </h4>
-                                <span style="font-size: 0.76rem; color: #64748b;">Monto total facturado e IVA Débito diario en el periodo seleccionado</span>
+                                <span id="subtituloGraficoEvolucion" style="font-size: 0.76rem; color: #64748b;">Monto total facturado e IVA Débito diario en el periodo seleccionado</span>
                             </div>
                             <div id="chartEvolucionFechasResumen" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;"></div>
                         </div>
@@ -634,7 +669,62 @@
             });
         });
 
+        let _modoFiltroPeriodo = 'MES';
+        let _ultimoMesSeleccionado = String(new Date().getMonth() + 1);
+
+        function sincronizarFechasDesdeMes() {
+            const anioVal = document.getElementById('filtroAnio')?.value || 'TODOS';
+            const mesVal  = document.getElementById('filtroMes')?.value || 'TODOS';
+            const inpDesde = document.getElementById('filtroFechaDesde');
+            const inpHasta = document.getElementById('filtroFechaHasta');
+            if (!inpDesde || !inpHasta) return;
+
+            const hoy = new Date();
+            const y = (anioVal !== 'TODOS' && !isNaN(parseInt(anioVal, 10))) ? parseInt(anioVal, 10) : hoy.getFullYear();
+            const m = (mesVal !== 'TODOS' && mesVal !== 'RANGO' && !isNaN(parseInt(mesVal, 10))) ? parseInt(mesVal, 10) : (hoy.getMonth() + 1);
+            const ultimoDia = new Date(y, m, 0).getDate();
+            const mm = String(m).padStart(2, '0');
+            const dd = String(ultimoDia).padStart(2, '0');
+
+            inpDesde.value = `${y}-${mm}-01`;
+            inpHasta.value = `${y}-${mm}-${dd}`;
+        }
+
+        function cambiarModoPeriodo(modo) {
+            _modoFiltroPeriodo = (modo === 'RANGO') ? 'RANGO' : 'MES';
+            const grpMes   = document.getElementById('grupoFiltroMes');
+            const grpRango = document.getElementById('grupoFiltroRango');
+            const selMes   = document.getElementById('filtroMes');
+
+            if (_modoFiltroPeriodo === 'RANGO') {
+                sincronizarFechasDesdeMes();
+                if (grpMes) grpMes.style.display = 'none';
+                if (grpRango) grpRango.style.display = 'flex';
+            } else {
+                if (selMes && selMes.value === 'RANGO') {
+                    selMes.value = _ultimoMesSeleccionado || String(new Date().getMonth() + 1);
+                }
+                if (grpRango) grpRango.style.display = 'none';
+                if (grpMes) grpMes.style.display = 'flex';
+            }
+            cargarIngresos();
+        }
+
+        function onCambioAnioMesIngresos() {
+            const selMes = document.getElementById('filtroMes');
+            if (selMes && selMes.value === 'RANGO') {
+                cambiarModoPeriodo('RANGO');
+                return;
+            }
+            if (selMes && selMes.value !== 'RANGO') {
+                _ultimoMesSeleccionado = selMes.value;
+            }
+            sincronizarFechasDesdeMes();
+            cargarIngresos();
+        }
+
         function inicializarFiltroPeriodo() {
+            _modoFiltroPeriodo = 'MES';
             const selectAnio = document.getElementById('filtroAnio');
             if (selectAnio) {
                 const anioActual = new Date().getFullYear();
@@ -661,8 +751,10 @@
                 const mesActual = String(new Date().getMonth() + 1);
                 if (selectMes.querySelector(`option[value="${mesActual}"]`)) {
                     selectMes.value = mesActual;
+                    _ultimoMesSeleccionado = mesActual;
                 }
             }
+            sincronizarFechasDesdeMes();
         }
 
         async function cargarMonedasDynamic() {
@@ -796,10 +888,18 @@
         }
 
         function cargarIngresos() {
-            const anioVal = document.getElementById('filtroAnio')?.value || 'TODOS';
-            const mesVal = document.getElementById('filtroMes')?.value || 'TODOS';
+            let url = '';
+            if (_modoFiltroPeriodo === 'RANGO') {
+                const fDesde = document.getElementById('filtroFechaDesde')?.value || '';
+                const fHasta = document.getElementById('filtroFechaHasta')?.value || '';
+                url = `/api/ingresos/list?fechaDesde=${encodeURIComponent(fDesde)}&fechaHasta=${encodeURIComponent(fHasta)}`;
+            } else {
+                const anioVal = document.getElementById('filtroAnio')?.value || 'TODOS';
+                const mesVal = document.getElementById('filtroMes')?.value || 'TODOS';
+                url = `/api/ingresos/list?anio=${encodeURIComponent(anioVal)}&mes=${encodeURIComponent(mesVal)}`;
+            }
 
-            fetch(`/api/ingresos/list?anio=${encodeURIComponent(anioVal)}&mes=${encodeURIComponent(mesVal)}`)
+            fetch(url)
                 .then(res => res.json())
                 .then(res => {
                     if (res.status === 'success') {
@@ -855,8 +955,45 @@
 
         let _vistaActualIngresos = 'listado';
         let _ultimoListadoIngresosFiltrado = [];
+        let _listIngresosAnualRaw = [];
+        let _anioCargadoAnualIngresos = '';
 
-        function actualizarKpisIngresos(data) {
+        function obtenerAnioEjercicioActualIngresos() {
+            const selAnio = document.getElementById('filtroAnio')?.value || '';
+            if (selAnio && selAnio !== 'TODOS' && !isNaN(parseInt(selAnio, 10))) {
+                return String(parseInt(selAnio, 10));
+            }
+            const fDesde = document.getElementById('filtroFechaDesde')?.value || '';
+            if (fDesde && fDesde.length >= 4) {
+                return fDesde.substring(0, 4);
+            }
+            return String(new Date().getFullYear());
+        }
+
+        function aplicarFiltrosLocalesListaIngresos(baseList) {
+            const query = (document.getElementById('searchInput')?.value || '').trim().toUpperCase();
+            const regimenFiltro = (document.getElementById('filtroRegimen')?.value || 'TODOS').trim().toUpperCase();
+            let filtered = Array.isArray(baseList) ? [...baseList] : [];
+
+            if (regimenFiltro && regimenFiltro !== 'TODOS') {
+                const filtroNorm = normalizarRegimenItem(regimenFiltro);
+                filtered = filtered.filter(item => normalizarRegimenItem(item) === filtroNorm);
+            }
+
+            if (query) {
+                filtered = filtered.filter(item => {
+                    const fac = String(item.NRO_FACTURA || item.nro_factura || '').toUpperCase();
+                    const nom = String(item.NOM_CLIENTE || item.nom_cliente || '').toUpperCase();
+                    const ruc = String(item.RUC_CLIENTE || item.ruc_cliente || '').toUpperCase();
+                    const timb = String(item.NRO_TIMBRADO || item.nro_timbrado || '').toUpperCase();
+                    const tip = String(item.TIP_DOC || item.tip_doc || '').toUpperCase();
+                    return fac.includes(query) || nom.includes(query) || ruc.includes(query) || timb.includes(query) || tip.includes(query);
+                });
+            }
+            return filtered;
+        }
+
+        function renderValoresKpisIngresos(data, actualizarFoot = true) {
             const lista = Array.isArray(data) ? data : [];
             let cantTotal   = 0;
             let cantElectr  = 0;
@@ -929,55 +1066,89 @@
             setTxt('kpiTotalBaseNeta',    `Gs. ${sumBaseNet.toLocaleString('es-PY')}`);
             setTxt('kpiTotalGeneral',     sumTotal.toLocaleString('es-PY'));
 
-            setTxt('footCantComprobantes', cantTotal.toLocaleString('es-PY'));
-            setTxt('footTotalExenta',      sumExentas.toLocaleString('es-PY'));
-            setTxt('footTotalIva5',        sumIva5.toLocaleString('es-PY'));
-            setTxt('footTotalIva10',       sumIva10.toLocaleString('es-PY'));
-            setTxt('footTotalGeneral',     sumTotal.toLocaleString('es-PY'));
+            if (actualizarFoot) {
+                setTxt('footCantComprobantes', cantTotal.toLocaleString('es-PY'));
+                setTxt('footTotalExenta',      sumExentas.toLocaleString('es-PY'));
+                setTxt('footTotalIva5',        sumIva5.toLocaleString('es-PY'));
+                setTxt('footTotalIva10',       sumIva10.toLocaleString('es-PY'));
+                setTxt('footTotalGeneral',     sumTotal.toLocaleString('es-PY'));
+            }
+        }
 
-            renderGraficosIngresos(lista);
+        function cargarYRenderizarInformeAnualIngresos() {
+            const anioEj = obtenerAnioEjercicioActualIngresos();
+            const lblAnio = document.getElementById('lblAnioEjercicioAnual');
+            if (lblAnio) lblAnio.innerText = anioEj;
+
+            fetch(`/api/ingresos/list?anio=${encodeURIComponent(anioEj)}&mes=TODOS`)
+                .then(res => res.json())
+                .then(res => {
+                    if (res.status === 'success') {
+                        _listIngresosAnualRaw = res.data || [];
+                        _anioCargadoAnualIngresos = anioEj;
+                        if (_vistaActualIngresos === 'anual') {
+                            const filtradaAnual = aplicarFiltrosLocalesListaIngresos(_listIngresosAnualRaw);
+                            renderValoresKpisIngresos(filtradaAnual, false);
+                            renderGraficosIngresos(filtradaAnual, true, anioEj);
+                        }
+                    }
+                })
+                .catch(err => console.error('Error al cargar informe anual de ingresos:', err));
+        }
+
+        function actualizarKpisIngresos(data) {
+            const lista = Array.isArray(data) ? data : [];
+            _ultimoListadoIngresosFiltrado = lista;
+            if (_vistaActualIngresos === 'anual') {
+                renderValoresKpisIngresos(lista, true);
+                cargarYRenderizarInformeAnualIngresos();
+            } else {
+                renderValoresKpisIngresos(lista, true);
+                renderGraficosIngresos(lista, false);
+            }
         }
 
         function cambiarVistaIngresos(vista) {
             _vistaActualIngresos = vista;
-            const btnList = document.getElementById('btnTabVistaListado');
-            const btnGraf = document.getElementById('btnTabVistaGraficos');
-            const divList = document.getElementById('vistaInformeListado');
-            const divGraf = document.getElementById('vistaInformeGraficos');
+            const btnList  = document.getElementById('btnTabVistaListado');
+            const btnGraf  = document.getElementById('btnTabVistaGraficos');
+            const btnAnual = document.getElementById('btnTabVistaAnual');
+            const divList  = document.getElementById('vistaInformeListado');
+            const divGraf  = document.getElementById('vistaInformeGraficos');
+
+            const setTabStyle = (btn, active, activeColor) => {
+                if (!btn) return;
+                if (active) {
+                    btn.style.background = '#ffffff';
+                    btn.style.color = activeColor;
+                    btn.style.border = '1px solid #cbd5e1';
+                    btn.style.borderBottom = '2px solid #ffffff';
+                    btn.style.fontWeight = '800';
+                } else {
+                    btn.style.background = '#e2e8f0';
+                    btn.style.color = '#475569';
+                    btn.style.border = '1px solid transparent';
+                    btn.style.fontWeight = '700';
+                }
+            };
+
+            setTabStyle(btnList,  vista === 'listado',  '#15803d');
+            setTabStyle(btnGraf,  vista === 'graficos', '#0284c7');
+            setTabStyle(btnAnual, vista === 'anual',    '#7c3aed');
 
             if (vista === 'graficos') {
                 if (divList) divList.style.display = 'none';
                 if (divGraf) divGraf.style.display = 'block';
-                if (btnGraf) {
-                    btnGraf.style.background = '#ffffff';
-                    btnGraf.style.color = '#0284c7';
-                    btnGraf.style.border = '1px solid #cbd5e1';
-                    btnGraf.style.borderBottom = '2px solid #ffffff';
-                    btnGraf.style.fontWeight = '800';
-                }
-                if (btnList) {
-                    btnList.style.background = '#e2e8f0';
-                    btnList.style.color = '#475569';
-                    btnList.style.border = '1px solid transparent';
-                    btnList.style.fontWeight = '700';
-                }
-                renderGraficosIngresos(_ultimoListadoIngresosFiltrado);
+                renderValoresKpisIngresos(_ultimoListadoIngresosFiltrado, false);
+                renderGraficosIngresos(_ultimoListadoIngresosFiltrado, false);
+            } else if (vista === 'anual') {
+                if (divList) divList.style.display = 'none';
+                if (divGraf) divGraf.style.display = 'block';
+                cargarYRenderizarInformeAnualIngresos();
             } else {
                 if (divList) divList.style.display = 'block';
                 if (divGraf) divGraf.style.display = 'none';
-                if (btnList) {
-                    btnList.style.background = '#ffffff';
-                    btnList.style.color = '#15803d';
-                    btnList.style.border = '1px solid #cbd5e1';
-                    btnList.style.borderBottom = '2px solid #ffffff';
-                    btnList.style.fontWeight = '800';
-                }
-                if (btnGraf) {
-                    btnGraf.style.background = '#e2e8f0';
-                    btnGraf.style.color = '#475569';
-                    btnGraf.style.border = '1px solid transparent';
-                    btnGraf.style.fontWeight = '700';
-                }
+                renderValoresKpisIngresos(_ultimoListadoIngresosFiltrado, true);
             }
         }
 
@@ -1031,21 +1202,44 @@
             `;
         }
 
-        function renderGraficosIngresos(lista) {
-            _ultimoListadoIngresosFiltrado = Array.isArray(lista) ? lista : [];
+        function renderGraficosIngresos(lista, esAnual = false, anioEj = '') {
+            const listaDatos = Array.isArray(lista) ? lista : [];
+            if (!esAnual) {
+                _ultimoListadoIngresosFiltrado = listaDatos;
+            }
+
+            const activos = listaDatos.filter(item => {
+                const isAnul = String(item.ANULADA || item.anulada || 'N') === 'S';
+                const isInut = String(item.INUTILIZADO || item.inutilizado || 'N') === 'S';
+                const sifenEst = String(item.SIFEN_ESTADO || item.sifen_estado || '').toUpperCase();
+                return !isAnul && !isInut && sifenEst !== 'CANCELADO';
+            });
+
+            const bannerAnual = document.getElementById('bannerInformeAnual');
+            const badgeAnual  = document.getElementById('badgeCantDocsAnual');
+            const titEvol     = document.getElementById('tituloGraficoEvolucion');
+            const subEvol     = document.getElementById('subtituloGraficoEvolucion');
+            const anioTexto   = anioEj || obtenerAnioEjercicioActualIngresos();
+
+            if (bannerAnual) bannerAnual.style.display = esAnual ? 'flex' : 'none';
+            if (badgeAnual)  badgeAnual.innerText = `${activos.length.toLocaleString('es-PY')} comprobante(s) activo(s) en ${anioTexto}`;
+            if (titEvol) {
+                titEvol.innerHTML = esAnual
+                    ? `<i class="ph ph-calendar" style="color: #7c3aed; font-size: 1.2rem;"></i> Evolución Mensual del Ejercicio ${anioTexto} (Enero a Diciembre)`
+                    : `<i class="ph ph-chart-bar" style="color: #0284c7; font-size: 1.2rem;"></i> Evolución de Ingresos por Fecha`;
+            }
+            if (subEvol) {
+                subEvol.innerText = esAnual
+                    ? `Monto total facturado e IVA Débito acumulado por cada mes del ejercicio ${anioTexto}`
+                    : `Monto total facturado e IVA Débito diario en el periodo seleccionado`;
+            }
+
             const cEvol = document.getElementById('chartEvolucionFechasContainer');
             const cImp  = document.getElementById('chartComposicionImpositivaContainer');
             const cReg  = document.getElementById('chartDistribucionRegimenContainer');
             const cCli  = document.getElementById('chartTopClientesContainer');
             const cMod  = document.getElementById('chartModalidadCondicionContainer');
             if (!cEvol || !cImp || !cReg || !cCli || !cMod) return;
-
-            const activos = _ultimoListadoIngresosFiltrado.filter(item => {
-                const isAnul = String(item.ANULADA || item.anulada || 'N') === 'S';
-                const isInut = String(item.INUTILIZADO || item.inutilizado || 'N') === 'S';
-                const sifenEst = String(item.SIFEN_ESTADO || item.sifen_estado || '').toUpperCase();
-                return !isAnul && !isInut && sifenEst !== 'CANCELADO';
-            });
 
             if (activos.length === 0) {
                 const emptyMsg = '<div style="text-align: center; color: #94a3b8; padding: 32px 12px; font-weight: 600; font-size: 0.84rem;">Sin comprobantes activos para graficar en el filtro actual.</div>';
@@ -1062,6 +1256,14 @@
             let sumBase10 = 0, sumIva10 = 0, sumBase5 = 0, sumIva5 = 0, sumExenta = 0, sumTotal = 0;
             let cantElectr = 0, montoElectr = 0, cantManual = 0, montoManual = 0;
             let cantContado = 0, montoContado = 0, cantCredito = 0, montoCredito = 0;
+
+            const nombresMesCorto = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+            const nombresMesLargo = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            const porMes = {};
+            for (let m = 1; m <= 12; m++) {
+                const mk = String(m).padStart(2, '0');
+                porMes[mk] = { label: nombresMesCorto[m - 1], fullDate: `${nombresMesLargo[m - 1]} ${anioTexto}`, total: 0, iva: 0, cant: 0 };
+            }
 
             const porFecha = {};
             const porRegimen = {
@@ -1093,7 +1295,7 @@
                 sumExenta += sign * ex;
                 sumTotal  += sign * tot;
 
-                // Fecha
+                // Fecha y Mes
                 const rawFec = String(item.FEC_INGRESO || item.fec_ingreso || '').split('T')[0].split(' ')[0];
                 const fecLabel = formatFechaTabla(item.FEC_INGRESO_FMT || item.fec_ingreso_fmt || rawFec);
                 const fKey = rawFec || fecLabel;
@@ -1103,6 +1305,19 @@
                 porFecha[fKey].total += sign * tot;
                 porFecha[fKey].iva   += sign * (i10 + i5);
                 porFecha[fKey].cant++;
+
+                let mesKey = '';
+                if (rawFec && rawFec.includes('-')) {
+                    mesKey = rawFec.split('-')[1] || '';
+                } else if (fecLabel && fecLabel.includes('/')) {
+                    mesKey = fecLabel.split('/')[1] || '';
+                }
+                mesKey = String(mesKey).padStart(2, '0');
+                if (porMes[mesKey]) {
+                    porMes[mesKey].total += sign * tot;
+                    porMes[mesKey].iva   += sign * (i10 + i5);
+                    porMes[mesKey].cant++;
+                }
 
                 // Régimen
                 const rKey = normalizarRegimenItem(item);
@@ -1141,45 +1356,52 @@
                 }
             });
 
-            // 1. Render Gráfico Evolución por Fecha (Ancho completo abajo)
-            const fechasArr = Object.keys(porFecha).sort().map(k => porFecha[k]);
-            const maxFechaTot = Math.max(1, ...fechasArr.map(f => f.total));
-            const picoDia = fechasArr.reduce((best, cur) => (!best || cur.total > best.total) ? cur : best, null);
-            const promDiario = fechasArr.length > 0 ? Math.round(sumTotal / fechasArr.length) : 0;
+            // 1. Render Gráfico Evolución (Por Fecha o Por Mes en modo Anual)
+            const serieArr = esAnual
+                ? Object.keys(porMes).sort().map(k => porMes[k])
+                : Object.keys(porFecha).sort().map(k => porFecha[k]);
+            const maxSerieTot = Math.max(1, ...serieArr.map(f => f.total));
+            const conMovArr = serieArr.filter(f => f.cant > 0 || f.total > 0);
+            const picoItem = conMovArr.reduce((best, cur) => (!best || cur.total > best.total) ? cur : best, null);
+            const promItem = conMovArr.length > 0 ? Math.round(sumTotal / conMovArr.length) : 0;
 
             const cEvolRes = document.getElementById('chartEvolucionFechasResumen');
             if (cEvolRes) {
                 cEvolRes.innerHTML = `
                     <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 5px 11px; font-size: 0.75rem; color: #475569; font-weight: 700;">
-                        Días con mov.: <b style="color: #0f172a;">${fechasArr.length}</b>
+                        ${esAnual ? 'Meses con mov.' : 'Días con mov.'}: <b style="color: #0f172a;">${conMovArr.length}</b>
                     </div>
                     <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 5px 11px; font-size: 0.75rem; color: #0369a1; font-weight: 700;">
-                        Promedio diario: <b style="font-family: monospace;">Gs. ${promDiario.toLocaleString('es-PY')}</b>
+                        ${esAnual ? 'Promedio mensual' : 'Promedio diario'}: <b style="font-family: monospace;">Gs. ${promItem.toLocaleString('es-PY')}</b>
                     </div>
-                    ${picoDia ? `<div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 5px 11px; font-size: 0.75rem; color: #15803d; font-weight: 700;">
-                        Mayor ingreso: <b>${picoDia.fullDate}</b> (<b style="font-family: monospace;">Gs. ${Math.round(picoDia.total).toLocaleString('es-PY')}</b>)
+                    ${picoItem ? `<div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 5px 11px; font-size: 0.75rem; color: #15803d; font-weight: 700;">
+                        ${esAnual ? 'Mayor mes' : 'Mayor ingreso'}: <b>${picoItem.fullDate}</b> (<b style="font-family: monospace;">Gs. ${Math.round(picoItem.total).toLocaleString('es-PY')}</b>)
                     </div>` : ''}
                 `;
             }
 
-            let barsHtml = fechasArr.map(f => {
-                const hPct = Math.max(6, Math.round((Math.max(0, f.total) / maxFechaTot) * 155));
-                const hIva = Math.max(3, Math.round((Math.max(0, f.iva) / maxFechaTot) * 155));
-                const montoCorto = f.total >= 1000000
-                    ? (f.total / 1000000).toFixed(1) + 'M'
-                    : (f.total >= 1000 ? Math.round(f.total / 1000) + 'k' : Math.round(f.total));
-                const isPeak = picoDia && picoDia.fullDate === f.fullDate && fechasArr.length > 1;
-                return `<div style="flex: 1; min-width: 38px; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 2; padding: 4px 2px; border-radius: 6px; transition: background 0.15s;"
+            let barsHtml = serieArr.map(f => {
+                const hPct = f.total > 0 ? Math.max(6, Math.round((Math.max(0, f.total) / maxSerieTot) * 155)) : 2;
+                const hIva = f.iva > 0 ? Math.max(3, Math.round((Math.max(0, f.iva) / maxSerieTot) * 155)) : 0;
+                const montoCorto = f.total <= 0
+                    ? '0'
+                    : (f.total >= 1000000
+                        ? (f.total / 1000000).toFixed(1) + 'M'
+                        : (f.total >= 1000 ? Math.round(f.total / 1000) + 'k' : Math.round(f.total)));
+                const isPeak = picoItem && picoItem.fullDate === f.fullDate && conMovArr.length > 1;
+                const barWidth = esAnual ? '26px' : '16px';
+                const ivaWidth = esAnual ? '14px' : '9px';
+                return `<div style="flex: 1; min-width: ${esAnual ? '64px' : '38px'}; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 2; padding: 4px 2px; border-radius: 6px; transition: background 0.15s;"
                              onmouseover="this.style.background='rgba(22,163,74,0.06)'" onmouseout="this.style.background='transparent'"
-                             title="Fecha: ${f.fullDate}&#10;Comprobantes: ${f.cant}&#10;Total Facturado: Gs. ${Math.round(f.total).toLocaleString('es-PY')}&#10;IVA Débito: Gs. ${Math.round(f.iva).toLocaleString('es-PY')}">
+                             title="${esAnual ? 'Mes' : 'Fecha'}: ${f.fullDate}&#10;Comprobantes: ${f.cant}&#10;Total Facturado: Gs. ${Math.round(f.total).toLocaleString('es-PY')}&#10;IVA Débito: Gs. ${Math.round(f.iva).toLocaleString('es-PY')}">
                     <div style="height: 180px; width: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; border-bottom: 1.5px solid #cbd5e1; padding: 0 2px;">
-                        <div style="font-size: 0.68rem; font-weight: 800; color: ${isPeak ? '#15803d' : '#334155'}; font-family: monospace; white-space: nowrap; margin-bottom: 4px; ${isPeak ? 'background:#dcfce7; padding:1px 4px; border-radius:4px;' : ''}">${montoCorto}</div>
+                        <div style="font-size: 0.68rem; font-weight: 800; color: ${isPeak ? '#15803d' : (f.total > 0 ? '#334155' : '#cbd5e1')}; font-family: monospace; white-space: nowrap; margin-bottom: 4px; ${isPeak ? 'background:#dcfce7; padding:1px 4px; border-radius:4px;' : ''}">${montoCorto}</div>
                         <div style="display: flex; align-items: flex-end; justify-content: center; gap: 3px; width: 100%;">
-                            <div style="width: 16px; height: ${hPct}px; background: linear-gradient(180deg, #22c55e, #15803d); border-radius: 4px 4px 0 0; box-shadow: 0 2px 4px rgba(22,163,74,0.2); transition: height 0.3s;"></div>
-                            <div style="width: 9px; height: ${hIva}px; background: linear-gradient(180deg, #0ea5e9, #0284c7); border-radius: 3px 3px 0 0; transition: height 0.3s;"></div>
+                            <div style="width: ${barWidth}; height: ${hPct}px; background: ${f.total > 0 ? 'linear-gradient(180deg, #22c55e, #15803d)' : '#e2e8f0'}; border-radius: 4px 4px 0 0; ${f.total > 0 ? 'box-shadow: 0 2px 4px rgba(22,163,74,0.2);' : ''} transition: height 0.3s;"></div>
+                            ${hIva > 0 ? `<div style="width: ${ivaWidth}; height: ${hIva}px; background: linear-gradient(180deg, #0ea5e9, #0284c7); border-radius: 3px 3px 0 0; transition: height 0.3s;"></div>` : ''}
                         </div>
                     </div>
-                    <div style="font-size: 0.71rem; font-weight: 800; color: ${isPeak ? '#0f172a' : '#64748b'}; margin-top: 6px; white-space: nowrap;">${f.label}</div>
+                    <div style="font-size: 0.73rem; font-weight: 800; color: ${isPeak ? '#0f172a' : '#475569'}; margin-top: 6px; white-space: nowrap;">${f.label}</div>
                     <div style="font-size: 0.63rem; font-weight: 600; color: #94a3b8;">${f.cant} doc.</div>
                 </div>`;
             }).join('');

@@ -1269,8 +1269,10 @@ class MovimientosContablesController {
         if (!self::requireAuth()) return;
         $idProp = TenantContext::idPropietario();
         $empresa = TenantContext::empresa();
-        $anio = trim((string)($_GET['anio'] ?? ''));
-        $mes  = trim((string)($_GET['mes'] ?? ''));
+        $anio       = trim((string)($_GET['anio'] ?? ''));
+        $mes        = trim((string)($_GET['mes'] ?? ''));
+        $fechaDesde = self::parseSqlDate((string)($_GET['fechaDesde'] ?? $_GET['desde'] ?? ''));
+        $fechaHasta = self::parseSqlDate((string)($_GET['fechaHasta'] ?? $_GET['hasta'] ?? ''));
 
         try {
             $sql = "SELECT id_ingreso, cdc, tip_doc,
@@ -1293,15 +1295,25 @@ class MovimientosContablesController {
                     WHERE id_propietario = ? AND cod_empresa = ? ";
             $params = [$idProp, $empresa];
 
-            if ($anio !== '' && strcasecmp($anio, 'TODOS') !== 0) {
-                $sql .= "AND YEAR(fec_ingreso) = ? ";
-                $params[] = (int)$anio;
+            if ($fechaDesde !== null) {
+                $sql .= "AND DATE(fec_ingreso) >= ? ";
+                $params[] = $fechaDesde;
             }
-            if ($mes !== '' && strcasecmp($mes, 'TODOS') !== 0) {
-                $sql .= "AND MONTH(fec_ingreso) = ? ";
-                $params[] = (int)$mes;
+            if ($fechaHasta !== null) {
+                $sql .= "AND DATE(fec_ingreso) <= ? ";
+                $params[] = $fechaHasta;
             }
-            $sql .= "ORDER BY id_ingreso DESC";
+            if ($fechaDesde === null && $fechaHasta === null) {
+                if ($anio !== '' && strcasecmp($anio, 'TODOS') !== 0) {
+                    $sql .= "AND YEAR(fec_ingreso) = ? ";
+                    $params[] = (int)$anio;
+                }
+                if ($mes !== '' && strcasecmp($mes, 'TODOS') !== 0) {
+                    $sql .= "AND MONTH(fec_ingreso) = ? ";
+                    $params[] = (int)$mes;
+                }
+            }
+            $sql .= "ORDER BY fec_ingreso DESC, id_ingreso DESC";
 
             $list = Database::queryForListUpper($sql, $params);
             View::json(['status' => 'success', 'data' => $list]);
