@@ -33,14 +33,18 @@ $acum = [
             font-family: Arial, Helvetica, sans-serif;
             font-size: 8.5pt;
             color: #000000;
-            background: #ffffff;
+            background: #f1f5f9;
             margin: 0;
-            padding: 12px;
+            padding: 16px;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
         .lc-sheet {
             background: #ffffff;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07);
+            padding: 24px 28px;
+            max-width: 1200px;
             margin: 0 auto 24px auto;
             page-break-after: always;
         }
@@ -166,18 +170,42 @@ $acum = [
             text-align: right;
             font-weight: bold;
         }
+        .no-print-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #1e293b;
+            color: white;
+            padding: 10px 20px;
+            margin: 0 auto 18px auto;
+            max-width: 1216px;
+            border-radius: 8px;
+        }
         @media print {
-            .no-print { display: none !important; }
-            body { padding: 0; }
+            .no-print, .no-print-bar { display: none !important; }
+            body { background: #ffffff !important; padding: 0 !important; }
+            .lc-sheet {
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+            }
         }
     </style>
 </head>
 <body>
 
-    <div class="no-print" style="margin-bottom: 12px; text-align: right;">
-        <button onclick="window.print()" style="background: #0284c7; color: white; border: none; padding: 7px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 9.5pt;">
-            🖨️ Imprimir / Guardar PDF
-        </button>
+    <div class="no-print-bar">
+        <div><strong style="font-size: 11pt;">Vista Previa de Impresión - Libro Compras</strong></div>
+        <div style="display: flex; gap: 10px;">
+            <button type="button" onclick="window.print()" style="background: #0284c7; color: white; border: none; padding: 7px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 9.5pt;">
+                🖨️ Imprimir / Guardar PDF
+            </button>
+            <button type="button" onclick="window.close()" style="background: #64748b; color: white; border: none; padding: 7px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 9.5pt;">
+                Cerrar
+            </button>
+        </div>
     </div>
 
     <?php foreach ($chunks as $pageIdx => $chunk):

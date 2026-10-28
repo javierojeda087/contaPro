@@ -86,13 +86,55 @@
                 </div>
             </div>
 
-            <!-- Contenedor de Hojas del Reporte Libro Compras (Diseño Oficial) -->
-            <div id="libroComprasPagesContainer">
-                <div class="lc-sheet">
-                    <div style="text-align: center; padding: 3rem; color: #64748b;">
-                        <i class="ph ph-spinner" style="font-size: 1.6rem; display: inline-block; animation: spin 1s linear infinite;"></i>
-                        <div style="margin-top: 8px; font-weight: 600;">Cargando Libro de Compras...</div>
-                    </div>
+            <!-- KPI Cards Summary -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Total General Compras</div>
+                    <div id="kpiTotal" style="font-size: 1.4rem; font-weight: 800; color: #0284c7; margin-top: 4px;">Gs. 0</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Gravado 10%</div>
+                    <div id="kpiGrav10" style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-top: 4px;">Gs. 0</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">IVA 10%</div>
+                    <div id="kpiIva10" style="font-size: 1.25rem; font-weight: 800; color: #0284c7; margin-top: 4px;">Gs. 0</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.25rem; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Exentas</div>
+                    <div id="kpiExentas" style="font-size: 1.25rem; font-weight: 800; color: #64748b; margin-top: 4px;">Gs. 0</div>
+                </div>
+            </div>
+
+            <!-- Data Table Card -->
+            <div class="card" style="height: auto !important; background: #ffffff; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; overflow: hidden;">
+                <div class="table-responsive">
+                    <table class="table" style="width: 100%; margin: 0; border-collapse: collapse; font-size: 0.88rem;">
+                        <thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #334155; font-weight: 800; text-transform: uppercase; font-size: 0.75rem;">
+                            <tr>
+                                <th style="padding: 12px 14px; text-align: center;">DÍA-MES</th>
+                                <th style="padding: 12px 14px;">DOCUMENTO</th>
+                                <th style="padding: 12px 14px;">TIMB.</th>
+                                <th style="padding: 12px 14px;">PROVEEDOR / RAZÓN SOCIAL</th>
+                                <th style="padding: 12px 14px; text-align: center;">RUC-DV</th>
+                                <th style="padding: 12px 14px; text-align: center;">COND</th>
+                                <th style="padding: 12px 14px; text-align: right;">GRAV. 10%</th>
+                                <th style="padding: 12px 14px; text-align: right;">GRAV. 5%</th>
+                                <th style="padding: 12px 14px; text-align: right;">IVA 10%</th>
+                                <th style="padding: 12px 14px; text-align: right;">IVA 5%</th>
+                                <th style="padding: 12px 14px; text-align: right;">EXENTAS</th>
+                                <th style="padding: 12px 14px; text-align: right;">BASE IMP.</th>
+                                <th style="padding: 12px 14px; text-align: right;">TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaCuerpo" style="color: #0f172a; font-weight: 600;">
+                            <tr>
+                                <td colspan="13" style="text-align: center; padding: 2rem; color: #64748b;">Cargando datos...</td>
+                            </tr>
+                        </tbody>
+                        <tfoot id="tablaPie" style="background: #f1f5f9; border-top: 2px solid #cbd5e1; font-weight: 800; font-size: 0.9rem;">
+                        </tfoot>
+                    </table>
                 </div>
             </div>
 
@@ -106,184 +148,11 @@
         .qf-btn.active { background: #16a34a; border-color: #16a34a; color: #fff; }
         .qf-btn:disabled { opacity: .4; cursor: not-allowed; }
         .qf-mes { padding: 4px 8px; min-width: 40px; }
-
-        /* Hoja estilo documento impreso */
-        .lc-sheet {
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07);
-            padding: 26px 30px 32px 30px;
-            margin: 0 auto 24px auto;
-            max-width: 1260px;
-            font-family: Arial, Helvetica, sans-serif;
-            color: #000000;
-            overflow-x: auto;
-        }
-        .lc-title {
-            text-align: center;
-            font-size: 20px;
-            font-weight: 400;
-            letter-spacing: 0.4px;
-            margin: 0 0 3px 0;
-            color: #000000;
-            text-transform: uppercase;
-        }
-        .lc-subtitle {
-            text-align: center;
-            font-size: 12px;
-            font-weight: 400;
-            margin: 0 0 14px 0;
-            color: #000000;
-            text-transform: uppercase;
-        }
-        .lc-hdr-row {
-            display: grid;
-            grid-template-columns: 3.6fr 1.6fr 2.1fr 3.2fr;
-            gap: 14px;
-            margin-bottom: 14px;
-            align-items: end;
-        }
-        .lc-box-label {
-            font-size: 10.5px;
-            color: #000000;
-            margin-bottom: 3px;
-            padding-left: 2px;
-        }
-        .lc-box-table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 1px solid #000000;
-            table-layout: fixed;
-            font-size: 10px;
-        }
-        .lc-box-table th {
-            border-bottom: 1px solid #000000;
-            border-right: 1px solid #000000;
-            padding: 3px 5px;
-            text-align: center;
-            font-weight: 400;
-            background: #ffffff;
-            color: #000000;
-            text-transform: uppercase;
-        }
-        .lc-box-table th:last-child {
-            border-right: none;
-        }
-        .lc-box-table td {
-            border-right: 1px solid #000000;
-            padding: 3px 6px;
-            height: 20px;
-            color: #000000;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .lc-box-table td:last-child {
-            border-right: none;
-        }
-
-        /* Tabla principal del Libro Compras */
-        .lc-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 10.5px;
-            color: #000000;
-        }
-        .lc-table thead th {
-            background: #e5e7eb;
-            border: 1px solid #000000;
-            padding: 4px 5px;
-            text-align: center;
-            font-weight: 700;
-            font-size: 10px;
-            text-transform: uppercase;
-            color: #000000;
-        }
-        .lc-table thead tr:first-child th {
-            border-top: 1.5px solid #000000;
-        }
-        .lc-table thead tr:last-child th {
-            border-bottom: 1.5px solid #000000;
-        }
-        .lc-table thead th:first-child {
-            border-left: 1.5px solid #000000;
-        }
-        .lc-table thead th:last-child {
-            border-right: 1.5px solid #000000;
-        }
-        .lc-table tbody tr.lc-data-row:nth-child(odd) {
-            background-color: #ffffff;
-        }
-        .lc-table tbody tr.lc-data-row:nth-child(even) {
-            background-color: #f6eae8;
-        }
-        .lc-table tbody tr.lc-data-row td {
-            padding: 2.5px 5px;
-            border: none;
-            white-space: nowrap;
-        }
-        .lc-table tbody tr.lc-row-anulada td {
-            text-decoration: line-through;
-            color: #7f1d1d;
-        }
-        /* Fila TRANSPORTE */
-        .lc-table tbody tr.lc-transporte-row td {
-            border: 1px solid #000000;
-            background: #ffffff !important;
-            padding: 3px 5px;
-            font-size: 10.5px;
-        }
-        /* Fila TOTAL GENERAL */
-        .lc-table tfoot tr.lc-total-row td.lc-total-label {
-            border: 1px solid #000000;
-            background: #ffffff;
-            padding: 4px 6px;
-            text-align: left;
-            font-weight: 400;
-        }
-        .lc-table tfoot tr.lc-total-row td.lc-total-val {
-            border: 1.5px solid #000000;
-            background: #e5e7eb;
-            padding: 4px 5px;
-            text-align: right;
-            font-weight: 700;
-        }
-
-        @media print {
-            @page {
-                size: A4 landscape;
-                margin: 8mm;
-            }
-            .no-print, .app-sidebar, .top-navbar {
-                display: none !important;
-            }
-            .main-content, .content-area {
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-            .lc-sheet {
-                box-shadow: none !important;
-                border: none !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                max-width: 100% !important;
-                page-break-after: always;
-            }
-            .lc-sheet:last-child {
-                page-break-after: auto;
-            }
-            body {
-                background: #ffffff !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-        }
     </style>
 
     <script th:inline="javascript">
         const EJER_INI = /*[[${ejerInicio}]]*/ '2026-01-01';
         const EJER_FIN = /*[[${ejerFinal}]]*/ '2026-12-31';
-        const ROWS_PER_PAGE = 28;
 
         document.addEventListener('DOMContentLoaded', () => {
             initFiltrosRapidos();
@@ -295,19 +164,6 @@
         const parseIso = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
         const clampIso = s => (s < EJER_INI ? EJER_INI : (s > EJER_FIN ? EJER_FIN : s));
         const hoyEnEjercicio = () => parseIso(clampIso(iso(new Date())));
-
-        function fmtDmy(ymd) {
-            if (!ymd || ymd.length < 10) return ymd || '';
-            return `${ymd.substring(8, 10)}/${ymd.substring(5, 7)}/${ymd.substring(0, 4)}`;
-        }
-
-        function escHtml(str) {
-            return String(str ?? '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
-        }
 
         function aplicarRango(desde, hasta, btn) {
             document.getElementById('fechaDesde').value = clampIso(iso(desde));
@@ -357,119 +213,6 @@
             return Math.round(Number(val)).toLocaleString('es-PY');
         }
 
-        function renderHeaderHtml(emp, desdeFmt, hastaFmt) {
-            const act = escHtml(emp.actividad || 'IVA & IRP');
-            const razon = escHtml(emp.descripcion || '');
-            const ruc = escHtml(emp.rucEmpresa || '');
-            const rep = escHtml(emp.repLegal || '');
-            const contNom = escHtml(emp.nomContador || '');
-            const contRuc = escHtml(emp.rucContador || '');
-
-            return `
-                <div class="lc-title">LIBRO COMPRAS</div>
-                <div class="lc-subtitle">ACTIVIDAD: ${act}</div>
-
-                <div class="lc-hdr-row">
-                    <div>
-                        <div class="lc-box-label">1. Identificador del Contribuyente</div>
-                        <table class="lc-box-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 72%;">RAZÓN SOCIAL/NOMBRES Y APELLIDOS</th>
-                                    <th style="width: 28%;">RUC</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td style="text-align: left;">${razon}</td>
-                                    <td style="text-align: left;">${ruc}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div>
-                        <div class="lc-box-label">2. Periodo Fiscal</div>
-                        <table class="lc-box-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 50%;">DESDE</th>
-                                    <th style="width: 50%;">HASTA</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td style="text-align: center;">${escHtml(desdeFmt)}</td>
-                                    <td style="text-align: center;">${escHtml(hastaFmt)}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div>
-                        <div class="lc-box-label">3. Representante Legal</div>
-                        <table class="lc-box-table">
-                            <thead>
-                                <tr>
-                                    <th>NOMBRES Y APELLIDOS</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td style="text-align: left;">${rep}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div>
-                        <div class="lc-box-label">4. Identificador del Contador</div>
-                        <table class="lc-box-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 70%;">NOMBRES Y APELLIDOS</th>
-                                    <th style="width: 30%;">RUC</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td style="text-align: left;">${contNom}</td>
-                                    <td style="text-align: left;">${contRuc}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderTableHeadHtml() {
-            return `
-                <thead>
-                    <tr>
-                        <th rowspan="2" style="width: 5.5%;">DIA-MES</th>
-                        <th rowspan="2" style="width: 11%;">DOCUMENTO</th>
-                        <th rowspan="2" style="width: 6.5%;">TIMB.</th>
-                        <th colspan="3">PROVEEDOR</th>
-                        <th rowspan="2" style="width: 4.5%;">COND</th>
-                        <th colspan="7">VALORES DE COMPRAS</th>
-                    </tr>
-                    <tr>
-                        <th style="width: 22%;">RAZÓN SOCIAL</th>
-                        <th style="width: 6.5%;">RUC</th>
-                        <th style="width: 2.5%;">DV</th>
-                        <th style="width: 6.5%;">GRAV. 10%</th>
-                        <th style="width: 6%;">GRAV. 5%</th>
-                        <th style="width: 6%;">IVA 10%</th>
-                        <th style="width: 5.5%;">IVA 5%</th>
-                        <th style="width: 5.5%;">EXENTAS</th>
-                        <th style="width: 5.5%;">BASE IMP.</th>
-                        <th style="width: 6.5%;">TOTAL</th>
-                    </tr>
-                </thead>
-            `;
-        }
-
         async function cargarLibroCompras() {
             const fechaDesde = document.getElementById('fechaDesde').value;
             const fechaHasta = document.getElementById('fechaHasta').value;
@@ -477,163 +220,87 @@
             const condicion = document.getElementById('condicion').value;
             const incluirAnulados = document.getElementById('incluirAnulados').checked;
 
-            const container = document.getElementById('libroComprasPagesContainer');
-            container.innerHTML = `
-                <div class="lc-sheet">
-                    <div style="text-align: center; padding: 3rem; color: #64748b;">
-                        <i class="ph ph-spinner" style="font-size: 1.6rem; display: inline-block; animation: spin 1s linear infinite;"></i>
-                        <div style="margin-top: 8px; font-weight: 600;">Cargando libro de compras...</div>
-                    </div>
-                </div>
-            `;
+            const tbody = document.getElementById('tablaCuerpo');
+            const tfoot = document.getElementById('tablaPie');
+
+            tbody.innerHTML = `<tr><td colspan="13" style="text-align: center; padding: 2rem; color: #64748b;"><i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite; font-size: 1.5rem;"></i> Cargando Libro Compras...</td></tr>`;
 
             try {
-                const url = `/api/reportes/libro-compras?fechaDesde=${encodeURIComponent(fechaDesde)}&fechaHasta=${encodeURIComponent(fechaHasta)}&codProveedor=${encodeURIComponent(codProveedor)}&condicion=${encodeURIComponent(condicion)}&incluirAnulados=${incluirAnulados}`;
-                const resp = await fetch(url);
+                const params = new URLSearchParams({
+                    fechaDesde: fechaDesde,
+                    fechaHasta: fechaHasta,
+                    codProveedor: codProveedor,
+                    condicion: condicion,
+                    incluirAnulados: incluirAnulados
+                });
+
+                const resp = await fetch(`/api/reportes/libro-compras?${params.toString()}`);
                 const data = await resp.json();
 
                 const records = data.records || [];
                 const totales = data.totales || {};
-                const emp = data.empresa || {};
                 if (data.fechaDesde) document.getElementById('fechaDesde').value = data.fechaDesde;
                 if (data.fechaHasta) document.getElementById('fechaHasta').value = data.fechaHasta;
 
-                const desdeFmt = data.fechaDesdeFmt || fmtDmy(data.fechaDesde || fechaDesde);
-                const hastaFmt = data.fechaHastaFmt || fmtDmy(data.fechaHasta || fechaHasta);
+                // Update KPI Cards
+                document.getElementById('kpiTotal').innerText = 'Gs. ' + formatGs(totales.total);
+                document.getElementById('kpiGrav10').innerText = 'Gs. ' + formatGs(totales.grav10);
+                document.getElementById('kpiIva10').innerText = 'Gs. ' + formatGs(totales.iva10);
+                document.getElementById('kpiExentas').innerText = 'Gs. ' + formatGs(totales.exentas);
 
                 if (records.length === 0) {
-                    container.innerHTML = `
-                        <div class="lc-sheet">
-                            ${renderHeaderHtml(emp, desdeFmt, hastaFmt)}
-                            <table class="lc-table">
-                                ${renderTableHeadHtml()}
-                                <tbody>
-                                    <tr class="lc-data-row">
-                                        <td colspan="14" style="text-align: center; padding: 18px; color: #475569;">No se registraron movimientos de compras en el periodo seleccionado.</td>
-                                    </tr>
-                                </tbody>
-                                <tfoot>
-                                    <tr class="lc-total-row">
-                                        <td colspan="7" class="lc-total-label">TOTAL GENERAL</td>
-                                        <td class="lc-total-val">0</td>
-                                        <td class="lc-total-val">0</td>
-                                        <td class="lc-total-val">0</td>
-                                        <td class="lc-total-val">0</td>
-                                        <td class="lc-total-val">0</td>
-                                        <td class="lc-total-val">0</td>
-                                        <td class="lc-total-val">0</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    `;
+                    tbody.innerHTML = `<tr><td colspan="13" style="text-align: center; padding: 2rem; color: #94a3b8; font-weight: 700;">No se encontraron registros de compras para el período seleccionado.</td></tr>`;
+                    tfoot.innerHTML = '';
                     return;
                 }
 
-                // Dividir en páginas y calcular TRANSPORTE acumulado entre páginas
-                const chunks = [];
-                for (let i = 0; i < records.length; i += ROWS_PER_PAGE) {
-                    chunks.push(records.slice(i, i + ROWS_PER_PAGE));
-                }
+                let html = '';
+                records.forEach(r => {
+                    const isAnulada = r.anulada;
+                    const rowStyle = isAnulada ? 'background: #fef2f2; color: #ef4444; text-decoration: line-through;' : '';
+                    const condBadge = r.condicion === 'CRE' 
+                        ? `<span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 800;">CRE</span>`
+                        : `<span style="background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 800;">CON</span>`;
 
-                let acum = { grav10: 0, grav5: 0, iva10: 0, iva5: 0, exentas: 0, baseImp: 0, total: 0 };
-                let pagesHtml = '';
+                    const rucDvText = r.rucDv !== '' && r.rucDv !== null && r.rucDv !== undefined ? `${r.rucNum}-${r.rucDv}` : r.rucNum;
 
-                chunks.forEach((chunk, pageIdx) => {
-                    const isFirstPage = pageIdx === 0;
-                    const isLastPage = pageIdx === chunks.length - 1;
-
-                    let transporteHtml = '';
-                    if (!isFirstPage) {
-                        transporteHtml = `
-                            <tr class="lc-transporte-row">
-                                <td colspan="7" style="text-align: left;">TRANSPORTE</td>
-                                <td style="text-align: right;">${formatGs(acum.grav10)}</td>
-                                <td style="text-align: right;">${formatGs(acum.grav5)}</td>
-                                <td style="text-align: right;">${formatGs(acum.iva10)}</td>
-                                <td style="text-align: right;">${formatGs(acum.iva5)}</td>
-                                <td style="text-align: right;">${formatGs(acum.exentas)}</td>
-                                <td style="text-align: right;">${formatGs(acum.baseImp)}</td>
-                                <td style="text-align: right;">${formatGs(acum.total)}</td>
-                            </tr>
-                        `;
-                    }
-
-                    let rowsHtml = '';
-                    chunk.forEach(r => {
-                        if (!r.anulada) {
-                            acum.grav10  += Number(r.grav10 || 0);
-                            acum.grav5   += Number(r.grav5 || 0);
-                            acum.iva10   += Number(r.iva10 || 0);
-                            acum.iva5    += Number(r.iva5 || 0);
-                            acum.exentas += Number(r.exentas || 0);
-                            acum.baseImp += Number(r.baseImp || 0);
-                            acum.total   += Number(r.total || 0);
-                        }
-
-                        const clsAnulada = r.anulada ? ' lc-row-anulada' : '';
-                        rowsHtml += `
-                            <tr class="lc-data-row${clsAnulada}">
-                                <td style="text-align: center;">${escHtml(r.diaMes)}</td>
-                                <td style="text-align: center;">${escHtml(r.documento)}</td>
-                                <td style="text-align: center;">${escHtml(r.timbrado)}</td>
-                                <td style="text-align: left;">${escHtml(r.razonSocial)}</td>
-                                <td style="text-align: left;">${escHtml(r.rucNum)}</td>
-                                <td style="text-align: center;">${escHtml(r.rucDv)}</td>
-                                <td style="text-align: center;">${escHtml(r.condicion)}</td>
-                                <td style="text-align: right;">${formatGs(r.grav10)}</td>
-                                <td style="text-align: right;">${formatGs(r.grav5)}</td>
-                                <td style="text-align: right;">${formatGs(r.iva10)}</td>
-                                <td style="text-align: right;">${formatGs(r.iva5)}</td>
-                                <td style="text-align: right;">${formatGs(r.exentas)}</td>
-                                <td style="text-align: right;">${formatGs(r.baseImp)}</td>
-                                <td style="text-align: right;">${formatGs(r.total)}</td>
-                            </tr>
-                        `;
-                    });
-
-                    let footHtml = '';
-                    if (isLastPage) {
-                        footHtml = `
-                            <tfoot>
-                                <tr class="lc-total-row">
-                                    <td colspan="7" class="lc-total-label">TOTAL GENERAL</td>
-                                    <td class="lc-total-val">${formatGs(totales.grav10)}</td>
-                                    <td class="lc-total-val">${formatGs(totales.grav5)}</td>
-                                    <td class="lc-total-val">${formatGs(totales.iva10)}</td>
-                                    <td class="lc-total-val">${formatGs(totales.iva5)}</td>
-                                    <td class="lc-total-val">${formatGs(totales.exentas)}</td>
-                                    <td class="lc-total-val">${formatGs(totales.baseImp)}</td>
-                                    <td class="lc-total-val">${formatGs(totales.total)}</td>
-                                </tr>
-                            </tfoot>
-                        `;
-                    }
-
-                    pagesHtml += `
-                        <div class="lc-sheet">
-                            ${renderHeaderHtml(emp, desdeFmt, hastaFmt)}
-                            <table class="lc-table">
-                                ${renderTableHeadHtml()}
-                                <tbody>
-                                    ${transporteHtml}
-                                    ${rowsHtml}
-                                </tbody>
-                                ${footHtml}
-                            </table>
-                        </div>
+                    html += `
+                        <tr style="${rowStyle} border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 10px 14px; text-align: center;">${r.diaMes || ''}</td>
+                            <td style="padding: 10px 14px; font-weight: 700;">${r.documento || ''}</td>
+                            <td style="padding: 10px 14px;">${r.timbrado || ''}</td>
+                            <td style="padding: 10px 14px;">${r.razonSocial || ''}</td>
+                            <td style="padding: 10px 14px; text-align: center;">${rucDvText || ''}</td>
+                            <td style="padding: 10px 14px; text-align: center;">${condBadge}</td>
+                            <td style="padding: 10px 14px; text-align: right;">${formatGs(r.grav10)}</td>
+                            <td style="padding: 10px 14px; text-align: right;">${formatGs(r.grav5)}</td>
+                            <td style="padding: 10px 14px; text-align: right;">${formatGs(r.iva10)}</td>
+                            <td style="padding: 10px 14px; text-align: right;">${formatGs(r.iva5)}</td>
+                            <td style="padding: 10px 14px; text-align: right;">${formatGs(r.exentas)}</td>
+                            <td style="padding: 10px 14px; text-align: right;">${formatGs(r.baseImp)}</td>
+                            <td style="padding: 10px 14px; text-align: right; font-weight: 800; color: #0284c7;">${formatGs(r.total)}</td>
+                        </tr>
                     `;
                 });
 
-                container.innerHTML = pagesHtml;
+                tbody.innerHTML = html;
+
+                tfoot.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="padding: 12px 14px; text-transform: uppercase;">TOTAL GENERAL</td>
+                        <td style="padding: 12px 14px; text-align: right;">${formatGs(totales.grav10)}</td>
+                        <td style="padding: 12px 14px; text-align: right;">${formatGs(totales.grav5)}</td>
+                        <td style="padding: 12px 14px; text-align: right;">${formatGs(totales.iva10)}</td>
+                        <td style="padding: 12px 14px; text-align: right;">${formatGs(totales.iva5)}</td>
+                        <td style="padding: 12px 14px; text-align: right;">${formatGs(totales.exentas)}</td>
+                        <td style="padding: 12px 14px; text-align: right;">${formatGs(totales.baseImp)}</td>
+                        <td style="padding: 12px 14px; text-align: right; color: #0284c7; font-size: 1.05rem;">${formatGs(totales.total)}</td>
+                    </tr>
+                `;
 
             } catch (e) {
                 console.error(e);
-                container.innerHTML = `
-                    <div class="lc-sheet">
-                        <div style="text-align: center; padding: 2rem; color: #ef4444;">Error al cargar el libro de compras.</div>
-                    </div>
-                `;
+                tbody.innerHTML = `<tr><td colspan="13" style="text-align: center; padding: 2rem; color: #dc2626; font-weight: 700;">Error cargando el reporte.</td></tr>`;
             }
         }
 
@@ -644,8 +311,15 @@
             const condicion = document.getElementById('condicion').value;
             const incluirAnulados = document.getElementById('incluirAnulados').checked;
 
-            const url = `/app/libro-compras/print?fechaDesde=${encodeURIComponent(fechaDesde)}&fechaHasta=${encodeURIComponent(fechaHasta)}&codProveedor=${encodeURIComponent(codProveedor)}&condicion=${encodeURIComponent(condicion)}&incluirAnulados=${incluirAnulados}`;
-            window.open(url, '_blank');
+            const params = new URLSearchParams({
+                fechaDesde: fechaDesde,
+                fechaHasta: fechaHasta,
+                codProveedor: codProveedor,
+                condicion: condicion,
+                incluirAnulados: incluirAnulados
+            });
+
+            window.open(`/app/libro-compras/print?${params.toString()}`, '_blank');
         }
     </script>
 </body>
