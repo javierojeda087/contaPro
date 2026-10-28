@@ -2294,9 +2294,9 @@
             if (!vencInput) return;
 
             // 1. Búsqueda instantánea en los egresos ya cargados en memoria
-            if (Array.isArray(allEgresos) && allEgresos.length > 0) {
-                for (let i = allEgresos.length - 1; i >= 0; i--) {
-                    const row = allEgresos[i];
+            if (typeof listEgresosData !== 'undefined' && Array.isArray(listEgresosData) && listEgresosData.length > 0) {
+                for (let i = listEgresosData.length - 1; i >= 0; i--) {
+                    const row = listEgresosData[i];
                     const tRow = String(row.NRO_TIMBRADO || row.nro_timbrado || '').trim();
                     const vRow = String(row.VENC_TIMBRADO || row.venc_timbrado || '').trim();
                     if (tRow === nroTimb && vRow && vRow !== '0000-00-00') {
