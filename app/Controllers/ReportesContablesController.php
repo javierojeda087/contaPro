@@ -112,8 +112,10 @@ class ReportesContablesController {
         $incluirAnulados = isset($_GET['incluirAnulados']) && ($_GET['incluirAnulados'] === 'true' || $_GET['incluirAnulados'] === '1');
 
         $res = self::procesarReporteLibroCompras($codEmpresa, $ejercicio, $fechaDesde, $fechaHasta, $codProveedor, $condicion, $incluirAnulados);
-        $res['fechaDesde'] = $fechaDesde;
-        $res['fechaHasta'] = $fechaHasta;
+        $res['fechaDesde']    = $fechaDesde;
+        $res['fechaHasta']    = $fechaHasta;
+        $res['fechaDesdeFmt'] = self::formatDateDmy($fechaDesde);
+        $res['fechaHastaFmt'] = self::formatDateDmy($fechaHasta);
         View::json($res);
     }
 
@@ -221,6 +223,10 @@ class ReportesContablesController {
             $i5  = (float)($r['iva5'] ?? 0);
             $ex  = (float)($r['exentas'] ?? 0);
             $tot = (float)($r['valor_total'] ?? 0);
+            if ($tot > 0 && abs(($g10 + $g5 + $ex) - $tot) <= 5 && ($i10 > 0 || $i5 > 0)) {
+                $g10 = max(0.0, $g10 - $i10);
+                $g5  = max(0.0, $g5 - $i5);
+            }
             $anulada = strcasecmp((string)($r['estado'] ?? 'A'), 'I') === 0;
 
             $records[] = [
