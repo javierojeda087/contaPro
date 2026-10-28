@@ -227,8 +227,16 @@ if ($uri === '/app/libro-compras/print' || $uri === '/libro_compras/print') {
     ReportesContablesController::printLibroCompras();
     exit;
 }
+if ($uri === '/api/reportes/libro-compras/excel' || $uri === '/app/libro-compras/excel') {
+    ReportesContablesController::exportarExcelLibroCompras();
+    exit;
+}
 if ($uri === '/app/libro-ventas/print' || $uri === '/libro_ventas/print') {
     ReportesContablesController::printLibroVentas();
+    exit;
+}
+if ($uri === '/api/reportes/libro-ventas/excel' || $uri === '/app/libro-ventas/excel') {
+    ReportesContablesController::exportarExcelLibroVentas();
     exit;
 }
 if ($uri === '/app/formulario-120/print' || $uri === '/formulario_120/print') {

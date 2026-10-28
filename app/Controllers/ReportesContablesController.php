@@ -143,6 +143,143 @@ class ReportesContablesController {
         ]);
     }
 
+    public static function exportarExcelLibroCompras(): void {
+        if (!self::requireAuth(false)) return;
+        $codEmpresa      = TenantContext::empresa();
+        $ejercicio       = EjercicioService::getEjercicio();
+        $rango           = EjercicioService::getRango($codEmpresa, $ejercicio);
+        $fechaDesde      = EjercicioService::clamp($_GET['fechaDesde'] ?? null, $rango, true);
+        $fechaHasta      = EjercicioService::clamp($_GET['fechaHasta'] ?? null, $rango, false);
+        $codProveedor    = trim((string)($_GET['codProveedor'] ?? ''));
+        $condicion       = trim((string)($_GET['condicion'] ?? ''));
+        $incluirAnulados = isset($_GET['incluirAnulados']) && ($_GET['incluirAnulados'] === 'true' || $_GET['incluirAnulados'] === '1');
+
+        $data     = self::procesarReporteLibroCompras($codEmpresa, $ejercicio, $fechaDesde, $fechaHasta, $codProveedor, $condicion, $incluirAnulados);
+        $emp      = $data['empresa'] ?? [];
+        $records  = $data['records'] ?? [];
+        $tot      = $data['totales'] ?? [];
+        $desdeFmt = self::formatDateDmy($fechaDesde);
+        $hastaFmt = self::formatDateDmy($fechaHasta);
+
+        while (ob_get_level() > 0) {
+            @ob_end_clean();
+        }
+        $filename = sprintf('Libro_Compras_%s_%s.xls', str_replace('-', '', $fechaDesde), str_replace('-', '', $fechaHasta));
+        header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        echo "\xEF\xBB\xBF";
+        ?>
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+            <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+            <style>
+                body, table { font-family: Arial, Helvetica, sans-serif; font-size: 9pt; color: #000000; }
+                .title { font-size: 14pt; font-weight: bold; text-align: center; }
+                .subtitle { font-size: 9.5pt; font-weight: bold; text-align: center; }
+                .box-hdr { border: 1px solid #000000; background-color: #f8fafc; font-weight: bold; font-size: 8pt; text-align: center; }
+                .box-val { border: 1px solid #000000; font-size: 8.5pt; }
+                .tbl-hdr { border: 1px solid #000000; background-color: #e5e7eb; font-weight: bold; font-size: 8.5pt; text-align: center; }
+                .cell-txt { border: 1px solid #d1d5db; mso-number-format:"\@"; }
+                .cell-num { border: 1px solid #d1d5db; text-align: right; mso-number-format:"\#\,\#\#0"; }
+                .tot-lbl { border: 1.5px solid #000000; font-weight: bold; background-color: #ffffff; }
+                .tot-val { border: 1.5px solid #000000; font-weight: bold; background-color: #e5e7eb; text-align: right; mso-number-format:"\#\,\#\#0"; }
+            </style>
+        </head>
+        <body>
+            <table border="0" cellpadding="3" cellspacing="0" width="100%">
+                <tr><td colspan="14" class="title">LIBRO COMPRAS</td></tr>
+                <tr><td colspan="14" class="subtitle">ACTIVIDAD: <?= htmlspecialchars((string)($emp['actividad'] ?? 'IRE-GENERAL/IRACIS')) ?></td></tr>
+                <tr><td colspan="14"></td></tr>
+                <tr>
+                    <td colspan="4" style="font-size:8pt; font-weight:bold;">1. Identificador del Contribuyente</td>
+                    <td colspan="3" style="font-size:8pt; font-weight:bold;">2. Periodo Fiscal</td>
+                    <td colspan="3" style="font-size:8pt; font-weight:bold;">3. Representante Legal</td>
+                    <td colspan="4" style="font-size:8pt; font-weight:bold;">4. Identificador del Contador</td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="box-hdr">RAZÓN SOCIAL/NOMBRES Y APELLIDOS</td>
+                    <td colspan="1" class="box-hdr">RUC</td>
+                    <td colspan="1" class="box-hdr">DESDE</td>
+                    <td colspan="2" class="box-hdr">HASTA</td>
+                    <td colspan="3" class="box-hdr">NOMBRES Y APELLIDOS</td>
+                    <td colspan="3" class="box-hdr">NOMBRES Y APELLIDOS</td>
+                    <td colspan="1" class="box-hdr">RUC</td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="box-val"><?= htmlspecialchars((string)($emp['descripcion'] ?? '')) ?></td>
+                    <td colspan="1" class="box-val" style="mso-number-format:'\@';"><?= htmlspecialchars((string)($emp['rucEmpresa'] ?? '')) ?></td>
+                    <td colspan="1" class="box-val" style="text-align:center; mso-number-format:'\@';"><?= htmlspecialchars($desdeFmt) ?></td>
+                    <td colspan="2" class="box-val" style="text-align:center; mso-number-format:'\@';"><?= htmlspecialchars($hastaFmt) ?></td>
+                    <td colspan="3" class="box-val"><?= htmlspecialchars((string)($emp['repLegal'] ?? '')) ?></td>
+                    <td colspan="3" class="box-val"><?= htmlspecialchars((string)($emp['nomContador'] ?? '')) ?></td>
+                    <td colspan="1" class="box-val" style="mso-number-format:'\@';"><?= htmlspecialchars((string)($emp['rucContador'] ?? '')) ?></td>
+                </tr>
+                <tr><td colspan="14"></td></tr>
+                <tr>
+                    <th rowspan="2" class="tbl-hdr">DIA-MES</th>
+                    <th rowspan="2" class="tbl-hdr">DOCUMENTO</th>
+                    <th rowspan="2" class="tbl-hdr">TIMB.</th>
+                    <th colspan="3" class="tbl-hdr">PROVEEDOR</th>
+                    <th rowspan="2" class="tbl-hdr">COND</th>
+                    <th colspan="7" class="tbl-hdr">VALORES DE COMPRAS</th>
+                </tr>
+                <tr>
+                    <th class="tbl-hdr">RAZÓN SOCIAL</th>
+                    <th class="tbl-hdr">RUC</th>
+                    <th class="tbl-hdr">DV</th>
+                    <th class="tbl-hdr">GRAV. 10%</th>
+                    <th class="tbl-hdr">GRAV. 5%</th>
+                    <th class="tbl-hdr">IVA 10%</th>
+                    <th class="tbl-hdr">IVA 5%</th>
+                    <th class="tbl-hdr">EXENTAS</th>
+                    <th class="tbl-hdr">BASE IMP.</th>
+                    <th class="tbl-hdr">TOTAL</th>
+                </tr>
+                <?php if (empty($records)): ?>
+                <tr>
+                    <td colspan="14" style="text-align:center; padding:10px; border:1px solid #000;">No se registraron movimientos de compras en el periodo seleccionado.</td>
+                </tr>
+                <?php else: foreach ($records as $idx => $r):
+                    $bg = ($idx % 2 === 1) ? 'background-color:#f6eae8;' : 'background-color:#ffffff;';
+                    $anulStyle = !empty($r['anulada']) ? 'text-decoration:line-through; color:#7f1d1d;' : '';
+                ?>
+                <tr style="<?= $bg . $anulStyle ?>">
+                    <td class="cell-txt" style="text-align:center;"><?= htmlspecialchars((string)($r['diaMes'] ?? '')) ?></td>
+                    <td class="cell-txt" style="text-align:center;"><?= htmlspecialchars((string)($r['documento'] ?? '')) ?></td>
+                    <td class="cell-txt" style="text-align:center;"><?= htmlspecialchars((string)($r['timbrado'] ?? '')) ?></td>
+                    <td class="cell-txt"><?= htmlspecialchars((string)($r['razonSocial'] ?? '')) ?></td>
+                    <td class="cell-txt"><?= htmlspecialchars((string)($r['rucNum'] ?? '')) ?></td>
+                    <td class="cell-txt" style="text-align:center;"><?= htmlspecialchars((string)($r['rucDv'] ?? '')) ?></td>
+                    <td class="cell-txt" style="text-align:center;"><?= htmlspecialchars((string)($r['condicion'] ?? '')) ?></td>
+                    <td class="cell-num"><?= (int)round((float)($r['grav10'] ?? 0)) ?></td>
+                    <td class="cell-num"><?= (int)round((float)($r['grav5'] ?? 0)) ?></td>
+                    <td class="cell-num"><?= (int)round((float)($r['iva10'] ?? 0)) ?></td>
+                    <td class="cell-num"><?= (int)round((float)($r['iva5'] ?? 0)) ?></td>
+                    <td class="cell-num"><?= (int)round((float)($r['exentas'] ?? 0)) ?></td>
+                    <td class="cell-num"><?= (int)round((float)($r['baseImp'] ?? 0)) ?></td>
+                    <td class="cell-num"><?= (int)round((float)($r['total'] ?? 0)) ?></td>
+                </tr>
+                <?php endforeach; endif; ?>
+                <tr>
+                    <td colspan="7" class="tot-lbl">TOTAL GENERAL</td>
+                    <td class="tot-val"><?= (int)round((float)($tot['grav10'] ?? 0)) ?></td>
+                    <td class="tot-val"><?= (int)round((float)($tot['grav5'] ?? 0)) ?></td>
+                    <td class="tot-val"><?= (int)round((float)($tot['iva10'] ?? 0)) ?></td>
+                    <td class="tot-val"><?= (int)round((float)($tot['iva5'] ?? 0)) ?></td>
+                    <td class="tot-val"><?= (int)round((float)($tot['exentas'] ?? 0)) ?></td>
+                    <td class="tot-val"><?= (int)round((float)($tot['baseImp'] ?? 0)) ?></td>
+                    <td class="tot-val"><?= (int)round((float)($tot['total'] ?? 0)) ?></td>
+                </tr>
+            </table>
+        </body>
+        </html>
+        <?php
+        exit;
+    }
+
     private static function procesarReporteLibroCompras(
         string $codEmpresa, string $ejercicio, string $fechaDesde, string $fechaHasta,
         string $codProveedor, string $condicion, bool $incluirAnulados
@@ -332,6 +469,140 @@ class ReportesContablesController {
             'fechaDesdeFmt' => self::formatDateDmy($fechaDesde),
             'fechaHastaFmt' => self::formatDateDmy($fechaHasta),
         ]);
+    }
+
+    public static function exportarExcelLibroVentas(): void {
+        if (!self::requireAuth(false)) return;
+        $codEmpresa      = TenantContext::empresa();
+        $ejercicio       = EjercicioService::getEjercicio();
+        $rango           = EjercicioService::getRango($codEmpresa, $ejercicio);
+        $fechaDesde      = EjercicioService::clamp($_GET['fechaDesde'] ?? null, $rango, true);
+        $fechaHasta      = EjercicioService::clamp($_GET['fechaHasta'] ?? null, $rango, false);
+        $codCliente      = trim((string)($_GET['codCliente'] ?? ''));
+        $condicion       = trim((string)($_GET['condicion'] ?? ''));
+        $incluirAnulados = isset($_GET['incluirAnulados']) && ($_GET['incluirAnulados'] === 'true' || $_GET['incluirAnulados'] === '1');
+
+        $data     = self::procesarReporteLibroVentas($codEmpresa, $ejercicio, $fechaDesde, $fechaHasta, $codCliente, $condicion, $incluirAnulados);
+        $emp      = $data['empresa'] ?? [];
+        $records  = $data['records'] ?? [];
+        $tot      = $data['totales'] ?? [];
+        $desdeFmt = self::formatDateDmy($fechaDesde);
+        $hastaFmt = self::formatDateDmy($fechaHasta);
+
+        while (ob_get_level() > 0) {
+            @ob_end_clean();
+        }
+        $filename = sprintf('Libro_Ventas_%s_%s.xls', str_replace('-', '', $fechaDesde), str_replace('-', '', $fechaHasta));
+        header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        echo "\xEF\xBB\xBF";
+        ?>
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+            <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+            <style>
+                body, table { font-family: Arial, Helvetica, sans-serif; font-size: 9pt; color: #000000; }
+                .title { font-size: 14pt; font-weight: bold; text-align: center; }
+                .subtitle { font-size: 9.5pt; font-weight: bold; text-align: center; }
+                .box-hdr { border: 1px solid #000000; background-color: #f8fafc; font-weight: bold; font-size: 8pt; text-align: center; }
+                .box-val { border: 1px solid #000000; font-size: 8.5pt; }
+                .tbl-hdr { border: 1px solid #000000; background-color: #e5e7eb; font-weight: bold; font-size: 8.5pt; text-align: center; }
+                .cell-txt { border: 1px solid #d1d5db; mso-number-format:"\@"; }
+                .cell-num { border: 1px solid #d1d5db; text-align: right; mso-number-format:"\#\,\#\#0"; }
+                .tot-lbl { border: 1.5px solid #000000; font-weight: bold; background-color: #ffffff; }
+                .tot-val { border: 1.5px solid #000000; font-weight: bold; background-color: #e5e7eb; text-align: right; mso-number-format:"\#\,\#\#0"; }
+            </style>
+        </head>
+        <body>
+            <table border="0" cellpadding="3" cellspacing="0" width="100%">
+                <tr><td colspan="13" class="title">LIBRO VENTAS</td></tr>
+                <tr><td colspan="13" class="subtitle">ACTIVIDAD: <?= htmlspecialchars((string)($emp['actividad'] ?? 'IRE-GENERAL/IRACIS')) ?></td></tr>
+                <tr><td colspan="13"></td></tr>
+                <tr>
+                    <td colspan="4" style="font-size:8pt; font-weight:bold;">1. Identificador del Contribuyente</td>
+                    <td colspan="3" style="font-size:8pt; font-weight:bold;">2. Periodo Fiscal</td>
+                    <td colspan="3" style="font-size:8pt; font-weight:bold;">3. Representante Legal</td>
+                    <td colspan="3" style="font-size:8pt; font-weight:bold;">4. Identificador del Contador</td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="box-hdr">RAZÓN SOCIAL/NOMBRES Y APELLIDOS</td>
+                    <td colspan="1" class="box-hdr">RUC</td>
+                    <td colspan="1" class="box-hdr">DESDE</td>
+                    <td colspan="2" class="box-hdr">HASTA</td>
+                    <td colspan="3" class="box-hdr">NOMBRES Y APELLIDOS</td>
+                    <td colspan="2" class="box-hdr">NOMBRES Y APELLIDOS</td>
+                    <td colspan="1" class="box-hdr">RUC</td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="box-val"><?= htmlspecialchars((string)($emp['descripcion'] ?? '')) ?></td>
+                    <td colspan="1" class="box-val" style="mso-number-format:'\@';"><?= htmlspecialchars((string)($emp['rucEmpresa'] ?? '')) ?></td>
+                    <td colspan="1" class="box-val" style="text-align:center; mso-number-format:'\@';"><?= htmlspecialchars($desdeFmt) ?></td>
+                    <td colspan="2" class="box-val" style="text-align:center; mso-number-format:'\@';"><?= htmlspecialchars($hastaFmt) ?></td>
+                    <td colspan="3" class="box-val"><?= htmlspecialchars((string)($emp['repLegal'] ?? '')) ?></td>
+                    <td colspan="2" class="box-val"><?= htmlspecialchars((string)($emp['nomContador'] ?? '')) ?></td>
+                    <td colspan="1" class="box-val" style="mso-number-format:'\@';"><?= htmlspecialchars((string)($emp['rucContador'] ?? '')) ?></td>
+                </tr>
+                <tr><td colspan="13"></td></tr>
+                <tr>
+                    <th rowspan="2" class="tbl-hdr">DIA-MES</th>
+                    <th rowspan="2" class="tbl-hdr">DOCUMENTO</th>
+                    <th rowspan="2" class="tbl-hdr">TIMB.</th>
+                    <th colspan="3" class="tbl-hdr">CLIENTE</th>
+                    <th rowspan="2" class="tbl-hdr">COND</th>
+                    <th colspan="6" class="tbl-hdr">VALORES DE VENTAS</th>
+                </tr>
+                <tr>
+                    <th class="tbl-hdr">RAZÓN SOCIAL</th>
+                    <th class="tbl-hdr">RUC</th>
+                    <th class="tbl-hdr">DV</th>
+                    <th class="tbl-hdr">GRAV. 10%</th>
+                    <th class="tbl-hdr">GRAV. 5%</th>
+                    <th class="tbl-hdr">IVA 10%</th>
+                    <th class="tbl-hdr">IVA 5%</th>
+                    <th class="tbl-hdr">EXENTAS</th>
+                    <th class="tbl-hdr">TOTAL</th>
+                </tr>
+                <?php if (empty($records)): ?>
+                <tr>
+                    <td colspan="13" style="text-align:center; padding:10px; border:1px solid #000;">No se registraron movimientos de ventas en el periodo seleccionado.</td>
+                </tr>
+                <?php else: foreach ($records as $idx => $r):
+                    $bg = ($idx % 2 === 1) ? 'background-color:#f6eae8;' : 'background-color:#ffffff;';
+                    $anulStyle = !empty($r['anulada']) ? 'text-decoration:line-through; color:#7f1d1d;' : '';
+                ?>
+                <tr style="<?= $bg . $anulStyle ?>">
+                    <td class="cell-txt" style="text-align:center;"><?= htmlspecialchars((string)($r['diaMes'] ?? '')) ?></td>
+                    <td class="cell-txt" style="text-align:center;"><?= htmlspecialchars((string)($r['documento'] ?? '')) ?></td>
+                    <td class="cell-txt" style="text-align:center;"><?= htmlspecialchars((string)($r['timbrado'] ?? '')) ?></td>
+                    <td class="cell-txt"><?= htmlspecialchars((string)($r['razonSocial'] ?? '')) ?></td>
+                    <td class="cell-txt"><?= htmlspecialchars((string)($r['rucNum'] ?? '')) ?></td>
+                    <td class="cell-txt" style="text-align:center;"><?= htmlspecialchars((string)($r['rucDv'] ?? '')) ?></td>
+                    <td class="cell-txt" style="text-align:center;"><?= htmlspecialchars((string)($r['condicion'] ?? '')) ?></td>
+                    <td class="cell-num"><?= (int)round((float)($r['grav10'] ?? 0)) ?></td>
+                    <td class="cell-num"><?= (int)round((float)($r['grav5'] ?? 0)) ?></td>
+                    <td class="cell-num"><?= (int)round((float)($r['iva10'] ?? 0)) ?></td>
+                    <td class="cell-num"><?= (int)round((float)($r['iva5'] ?? 0)) ?></td>
+                    <td class="cell-num"><?= (int)round((float)($r['exentas'] ?? 0)) ?></td>
+                    <td class="cell-num"><?= (int)round((float)($r['total'] ?? 0)) ?></td>
+                </tr>
+                <?php endforeach; endif; ?>
+                <tr>
+                    <td colspan="7" class="tot-lbl">TOTAL GENERAL</td>
+                    <td class="tot-val"><?= (int)round((float)($tot['grav10'] ?? 0)) ?></td>
+                    <td class="tot-val"><?= (int)round((float)($tot['grav5'] ?? 0)) ?></td>
+                    <td class="tot-val"><?= (int)round((float)($tot['iva10'] ?? 0)) ?></td>
+                    <td class="tot-val"><?= (int)round((float)($tot['iva5'] ?? 0)) ?></td>
+                    <td class="tot-val"><?= (int)round((float)($tot['exentas'] ?? 0)) ?></td>
+                    <td class="tot-val"><?= (int)round((float)($tot['total'] ?? 0)) ?></td>
+                </tr>
+            </table>
+        </body>
+        </html>
+        <?php
+        exit;
     }
 
     private static function procesarReporteLibroVentas(

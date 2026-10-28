@@ -24,12 +24,6 @@
                             <p style="margin: 0; font-size: 0.8rem; color: #64748b; font-weight: 500;">Módulo Contabilidad - Reporte de Comprobantes de Ventas / Ingresos</p>
                         </div>
                     </div>
-
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <button type="button" onclick="imprimirReporte()" style="background: #16a34a; color: white; border: none; padding: 0.55rem 1.25rem; border-radius: 10px; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
-                            <i class="ph ph-printer-bold" style="font-size: 1.1rem;"></i> Imprimir Libro Ventas
-                        </button>
-                    </div>
                 </div>
 
                 <!-- Form Controls -->
@@ -48,24 +42,24 @@
                         <span style="width:1px; height:22px; background:#cbd5e1; margin: 0 6px;"></span>
                         <span id="qfMeses" style="display:flex; flex-wrap:wrap; gap:4px;"></span>
                     </div>
-                    <form id="filterForm" onsubmit="event.preventDefault(); cargarLibroVentas();" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) 120px; gap: 1rem; align-items: flex-end;">
+                    <form id="filterForm" onsubmit="event.preventDefault(); cargarLibroVentas();" style="display: flex; flex-wrap: wrap; gap: 0.85rem; align-items: flex-end;">
                         
-                        <div>
+                        <div style="flex: 1 1 150px; min-width: 145px;">
                             <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Fecha Desde</label>
                             <input type="date" id="fechaDesde" th:value="${defFechaDesde}" th:min="${ejerInicio}" th:max="${ejerFinal}" class="form-control" style="height: 42px; border-radius: 8px; font-weight: 600;">
                         </div>
 
-                        <div>
+                        <div style="flex: 1 1 150px; min-width: 145px;">
                             <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Fecha Hasta</label>
                             <input type="date" id="fechaHasta" th:value="${defFechaHasta}" th:min="${ejerInicio}" th:max="${ejerFinal}" class="form-control" style="height: 42px; border-radius: 8px; font-weight: 600;">
                         </div>
 
-                        <div>
+                        <div style="flex: 1.5 1 200px; min-width: 180px;">
                             <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Cliente / Razón Social</label>
                             <input type="text" id="codCliente" placeholder="Buscar cliente..." class="form-control" style="height: 42px; border-radius: 8px; font-weight: 600;">
                         </div>
 
-                        <div>
+                        <div style="flex: 1 1 150px; min-width: 145px;">
                             <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Condición</label>
                             <select id="condicion" class="form-control" style="height: 42px; border-radius: 8px; font-weight: 600;">
                                 <option value="TODOS">TODAS</option>
@@ -74,14 +68,20 @@
                             </select>
                         </div>
 
-                        <div style="display: flex; align-items: center; gap: 8px; height: 42px; padding-bottom: 4px;">
+                        <div style="display: flex; align-items: center; gap: 6px; height: 42px; padding: 0 4px;">
                             <input type="checkbox" id="incluirAnulados" style="width: 18px; height: 18px; accent-color: #16a34a; cursor: pointer;">
-                            <label for="incluirAnulados" style="font-size: 0.82rem; font-weight: 700; color: #334155; cursor: pointer; margin: 0;">Anuladas</label>
+                            <label for="incluirAnulados" style="font-size: 0.82rem; font-weight: 700; color: #334155; cursor: pointer; margin: 0; white-space: nowrap;">Anuladas</label>
                         </div>
 
-                        <div>
-                            <button type="submit" style="width: 100%; height: 42px; background: #0f172a; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
-                                <i class="ph ph-magnifying-glass"></i> Filtrar
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <button type="submit" style="height: 42px; padding: 0 1.15rem; background: #0f172a; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.88rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap;">
+                                <i class="ph ph-magnifying-glass" style="font-size: 1rem;"></i> Filtrar
+                            </button>
+                            <button type="button" onclick="imprimirReporte()" style="height: 42px; padding: 0 1.1rem; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.88rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; transition: all 0.2s;" onmouseover="this.style.background='#0369a1'" onmouseout="this.style.background='#0284c7'">
+                                <i class="ph ph-printer-bold" style="font-size: 1.05rem;"></i> Imprimir
+                            </button>
+                            <button type="button" onclick="exportarExcel()" style="height: 42px; padding: 0 1.1rem; background: #16a34a; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.88rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; transition: all 0.2s;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
+                                <i class="ph ph-file-xls" style="font-size: 1.1rem;"></i> Excel
                             </button>
                         </div>
                     </form>
@@ -317,6 +317,24 @@
             });
 
             window.open(`/app/libro-ventas/print?${params.toString()}`, '_blank');
+        }
+
+        function exportarExcel() {
+            const fechaDesde = document.getElementById('fechaDesde').value;
+            const fechaHasta = document.getElementById('fechaHasta').value;
+            const codCliente = document.getElementById('codCliente').value;
+            const condicion = document.getElementById('condicion').value;
+            const incluirAnulados = document.getElementById('incluirAnulados').checked;
+
+            const params = new URLSearchParams({
+                fechaDesde: fechaDesde,
+                fechaHasta: fechaHasta,
+                codCliente: codCliente,
+                condicion: condicion,
+                incluirAnulados: incluirAnulados
+            });
+
+            window.location.href = `/api/reportes/libro-ventas/excel?${params.toString()}`;
         }
     </script>
     <style>

@@ -1,5 +1,5 @@
 <?php
-$emp = $empresa ?? [];
+$emp = is_array($empresa ?? null) ? $empresa : [];
 $recs = $records ?? [];
 $tot = $totales ?? [
     'grav10' => 0, 'grav5' => 0, 'iva10' => 0, 'iva5' => 0,
@@ -23,6 +23,7 @@ $acum = [
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/images/favicon_cp.png?v=2" />
     <title>LIBRO COMPRAS</title>
     <style>
         @page {
@@ -199,6 +200,9 @@ $acum = [
     <div class="no-print-bar">
         <div><strong style="font-size: 11pt;">Vista Previa de Impresión - Libro Compras</strong></div>
         <div style="display: flex; gap: 10px;">
+            <button type="button" onclick="window.location.href='/api/reportes/libro-compras/excel' + window.location.search" style="background: #16a34a; color: white; border: none; padding: 7px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 9.5pt;">
+                📊 Descargar Excel
+            </button>
             <button type="button" onclick="window.print()" style="background: #0284c7; color: white; border: none; padding: 7px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 9.5pt;">
                 🖨️ Imprimir / Guardar PDF
             </button>

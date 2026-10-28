@@ -55,7 +55,7 @@ class View {
         // 1. Si existe vista nativa PHP (.php), ejecutarla directamente
         $phpFile = $viewsDir . '/' . $viewName . '.php';
         if (is_file($phpFile)) {
-            extract($model, EXTR_SKIP);
+            extract($model, EXTR_OVERWRITE);
             require $phpFile;
             return;
         }
