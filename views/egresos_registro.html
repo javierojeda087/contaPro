@@ -449,7 +449,7 @@
                             </select>
 
                             <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Timbrado :</label>
-                            <input type="text" id="nroTimbrado" class="form-control" placeholder="17865432" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; border: 1.5px solid #cbd5e1;">
+                            <input type="text" id="nroTimbrado" class="form-control" placeholder="17865432" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8); if(this.value.length===8) autocompletarVencimientoPorTimbrado(this.value);" onchange="autocompletarVencimientoPorTimbrado(this.value)" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; border: 1.5px solid #cbd5e1;">
 
                             <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Venc. timb :</label>
                             <input type="date" id="vencTimbrado" class="form-control" onchange="validarFechasComprobanteVencimiento()" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; border: 1.5px solid #cbd5e1;">
@@ -2284,6 +2284,45 @@
             let val = input.value.replace(/\D/g, '');
             if (val.length > 44) val = val.substring(0, 44);
             input.value = val;
+        }
+
+        async function autocompletarVencimientoPorTimbrado(nroTimbRaw) {
+            const nroTimb = String(nroTimbRaw || '').replace(/\D/g, '').trim();
+            if (nroTimb.length < 7) return;
+
+            const vencInput = document.getElementById('vencTimbrado');
+            if (!vencInput) return;
+
+            // 1. Búsqueda instantánea en los egresos ya cargados en memoria
+            if (Array.isArray(allEgresos) && allEgresos.length > 0) {
+                for (let i = allEgresos.length - 1; i >= 0; i--) {
+                    const row = allEgresos[i];
+                    const tRow = String(row.NRO_TIMBRADO || row.nro_timbrado || '').trim();
+                    const vRow = String(row.VENC_TIMBRADO || row.venc_timbrado || '').trim();
+                    if (tRow === nroTimb && vRow && vRow !== '0000-00-00') {
+                        vencInput.value = vRow;
+                        if (typeof validarFechasComprobanteVencimiento === 'function') {
+                            validarFechasComprobanteVencimiento();
+                        }
+                        return;
+                    }
+                }
+            }
+
+            // 2. Consultar en base de datos todo el histórico de co_egresos / co_timbrados
+            try {
+                const res = await fetch('/api/egresos/consultar-timbrado?timbrado=' + encodeURIComponent(nroTimb));
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data && data.status === 'found' && data.vencTimbrado) {
+                    vencInput.value = data.vencTimbrado;
+                    if (typeof validarFechasComprobanteVencimiento === 'function') {
+                        validarFechasComprobanteVencimiento();
+                    }
+                }
+            } catch (e) {
+                console.warn('No se pudo consultar vencimiento de timbrado:', e);
+            }
         }
 
         function parseMonto(val) {

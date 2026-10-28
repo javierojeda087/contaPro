@@ -576,6 +576,69 @@ class MovimientosContablesController {
         }
     }
 
+    public static function apiEgresosConsultarTimbrado(): void {
+        if (!self::requireAuth()) return;
+        $idProp      = TenantContext::idPropietario();
+        $nroTimbrado = preg_replace('/\D/', '', (string)($_GET['timbrado'] ?? $_GET['nroTimbrado'] ?? ''));
+
+        if ($nroTimbrado === '') {
+            View::json(['status' => 'empty']);
+            return;
+        }
+
+        try {
+            // 1. Buscar el último vencimiento registrado con ese timbrado en co_egresos
+            $row = Database::queryForMap(
+                "SELECT DATE_FORMAT(venc_timbrado, '%Y-%m-%d') AS venc_timbrado,
+                        ruc_proveedor, nom_proveedor, cod_proveedor
+                 FROM co_egresos
+                 WHERE id_propietario = ?
+                   AND TRIM(nro_timbrado) = ?
+                   AND venc_timbrado IS NOT NULL
+                   AND DATE_FORMAT(venc_timbrado, '%Y-%m-%d') <> '0000-00-00'
+                 ORDER BY id_egreso DESC
+                 LIMIT 1",
+                [$idProp, $nroTimbrado]
+            );
+
+            if ($row && !empty($row['venc_timbrado'])) {
+                View::json([
+                    'status'       => 'found',
+                    'vencTimbrado' => $row['venc_timbrado'],
+                    'rucProveedor' => $row['ruc_proveedor'] ?? '',
+                    'nomProveedor' => $row['nom_proveedor'] ?? '',
+                    'codProveedor' => $row['cod_proveedor'] ?? '',
+                ]);
+                return;
+            }
+
+            // 2. Fallback: buscar en co_timbrados si existiera allí
+            $timb = Database::queryForMap(
+                "SELECT DATE_FORMAT(fec_vencimiento, '%Y-%m-%d') AS venc_timbrado
+                 FROM co_timbrados
+                 WHERE id_propietario = ?
+                   AND TRIM(nro_timbrado) = ?
+                   AND fec_vencimiento IS NOT NULL
+                   AND DATE_FORMAT(fec_vencimiento, '%Y-%m-%d') <> '0000-00-00'
+                 ORDER BY id_timbrado DESC
+                 LIMIT 1",
+                [$idProp, $nroTimbrado]
+            );
+
+            if ($timb && !empty($timb['venc_timbrado'])) {
+                View::json([
+                    'status'       => 'found',
+                    'vencTimbrado' => $timb['venc_timbrado'],
+                ]);
+                return;
+            }
+
+            View::json(['status' => 'not_found']);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
     public static function apiEgresosSave(): void {
         if (!self::requireAuth()) return;
         $idProp = TenantContext::idPropietario();

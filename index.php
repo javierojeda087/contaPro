@@ -561,6 +561,7 @@ $exactApiRoutes = [
     '/api/sifen/cancelar'                          => [MovimientosContablesController::class, 'apiSifenCancelar'],
     '/api/sifen/consultar-cdc'                     => [MovimientosContablesController::class, 'apiSifenConsultarCdc'],
     '/api/egresos/verificar-cdc'                   => [MovimientosContablesController::class, 'apiVerificarCdc'],
+    '/api/egresos/consultar-timbrado'              => [MovimientosContablesController::class, 'apiEgresosConsultarTimbrado'],
     '/api/egresos/list'                            => [MovimientosContablesController::class, 'apiEgresosList'],
     '/api/egresos/save'                            => [MovimientosContablesController::class, 'apiEgresosSave'],
     '/api/egresos/delete'                          => [MovimientosContablesController::class, 'apiEgresosDelete'],
