@@ -350,6 +350,9 @@ if (preg_match('#^/app/([^/]+)$#', $uri, $m)) {
         'COF12000'              => [ReportesContablesController::class, 'pageFormulario120'],
         'FORMULARIO-120'        => [ReportesContablesController::class, 'pageFormulario120'],
         'FORMULARIO_120'        => [ReportesContablesController::class, 'pageFormulario120'],
+        'CORESCOM'              => [ReportesContablesController::class, 'pageResumenComparativo'],
+        'RESUMEN-COMPARATIVO'   => [ReportesContablesController::class, 'pageResumenComparativo'],
+        'RESUMEN_COMPARATIVO'   => [ReportesContablesController::class, 'pageResumenComparativo'],
     ];
 
     if (isset($formaMap[$upper])) {
@@ -584,6 +587,8 @@ $exactApiRoutes = [
     '/api/formulario-120/obtener'                  => [ReportesContablesController::class, 'apiFormulario120Obtener'],
     '/api/formulario-120/calcular'                 => [ReportesContablesController::class, 'apiFormulario120Calcular'],
     '/api/formulario-120/guardar'                  => [ReportesContablesController::class, 'apiFormulario120Guardar'],
+    '/api/reportes/resumen-comparativo'            => [ReportesContablesController::class, 'apiResumenComparativoData'],
+    '/api/resumen-comparativo/data'                => [ReportesContablesController::class, 'apiResumenComparativoData'],
 ];
 
 if (isset($exactApiRoutes[$uri])) {

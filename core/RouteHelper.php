@@ -74,6 +74,9 @@ class RouteHelper {
         'BSMARANG'              => 'exportar-marangatu',
         'MARANGATU'             => 'exportar-marangatu',
         'COEJERCI'              => 'coejerci',
+        'CORESCOM'              => 'resumen-comparativo',
+        'RESUMEN_COMPARATIVO'   => 'resumen-comparativo',
+        'RESUMEN-COMPARATIVO'   => 'resumen-comparativo',
     ];
 
     public static function getRoute(?string $nomForma): string {

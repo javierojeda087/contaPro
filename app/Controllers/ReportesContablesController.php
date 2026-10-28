@@ -1767,4 +1767,360 @@ class ReportesContablesController {
         echo "\xEF\xBB\xBF" . implode("\r\n", $lines) . "\r\n";
         exit;
     }
+
+    // =========================================================================
+    // 7. RESUMEN COMPARATIVO INGRESOS VS. EGRESOS (CORESCOM)
+    // =========================================================================
+    public static function pageResumenComparativo(): void {
+        if (!self::requireAuth(false)) return;
+        $codEmpresa = TenantContext::empresa();
+        $ejercicio  = EjercicioService::getEjercicio();
+        $empData    = self::fetchEmpresaInfo($codEmpresa, $ejercicio);
+        $rango      = EjercicioService::getRango($codEmpresa, $ejercicio);
+        $def        = EjercicioService::defaultMes($rango);
+
+        self::renderFormPage('resumen_comparativo', [
+            'empresa'       => $empData,
+            'defFechaDesde' => $def[0],
+            'defFechaHasta' => $def[1],
+            'ejerInicio'    => $rango[0],
+            'ejerFinal'     => $rango[1],
+            'ejercicio'     => $ejercicio,
+        ]);
+    }
+
+    public static function apiResumenComparativoData(): void {
+        if (!self::requireAuth()) return;
+        $idProp          = TenantContext::idPropietario();
+        $codEmpresa      = TenantContext::empresa();
+        $ejercicio       = EjercicioService::getEjercicio();
+        $rango           = EjercicioService::getRango($codEmpresa, $ejercicio);
+        $fechaDesde      = EjercicioService::clamp($_GET['fechaDesde'] ?? null, $rango, true);
+        $fechaHasta      = EjercicioService::clamp($_GET['fechaHasta'] ?? null, $rango, false);
+        $regimen         = strtoupper(trim((string)($_GET['regimen'] ?? 'TODOS')));
+        $condicion       = strtoupper(trim((string)($_GET['condicion'] ?? 'TODOS')));
+        $incluirAnulados = isset($_GET['incluirAnulados']) && ($_GET['incluirAnulados'] === 'true' || $_GET['incluirAnulados'] === '1');
+
+        $empresaInfo = self::fetchEmpresaInfo($codEmpresa, $ejercicio);
+
+        // 1. Consultar Ingresos del ejercicio completo para evolucion mensual + filtrar rango para el periodo
+        $sqlIng = "SELECT id_ingreso, DATE_FORMAT(fec_ingreso, '%Y-%m-%d') AS fecha,
+                          nro_factura, serie, nro_timbrado, ruc_cliente AS ruc, nom_cliente AS razon_social,
+                          condicion, regimen, anulada,
+                          COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
+                          COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
+                          COALESCE(exentas, 0) AS exentas, COALESCE(tot_iva, 0) AS tot_iva,
+                          COALESCE(valor_total, 0) AS valor_total
+                   FROM co_ingresos
+                   WHERE id_propietario = ? AND cod_empresa = ?
+                     AND fec_ingreso >= ? AND fec_ingreso <= ?";
+        $paramsIng = [$idProp, $codEmpresa, $rango[0], $rango[1]];
+        if (!$incluirAnulados) {
+            $sqlIng .= " AND (anulada IS NULL OR UPPER(anulada) <> 'S')";
+        }
+        if ($regimen !== '' && $regimen !== 'TODOS') {
+            $sqlIng .= " AND UPPER(TRIM(COALESCE(regimen, ''))) = ?";
+            $paramsIng[] = $regimen;
+        }
+        if ($condicion !== '' && $condicion !== 'TODOS') {
+            $sqlIng .= " AND UPPER(LEFT(TRIM(COALESCE(condicion, 'CON')), 3)) = ?";
+            $paramsIng[] = substr($condicion, 0, 3);
+        }
+        $sqlIng .= " ORDER BY fec_ingreso ASC, id_ingreso ASC";
+
+        // 2. Consultar Egresos del ejercicio completo
+        $sqlEgr = "SELECT id_egreso, DATE_FORMAT(fec_egreso, '%Y-%m-%d') AS fecha,
+                          nro_factura, serie, nro_timbrado, ruc_acreedor AS ruc, nom_acreedor AS razon_social,
+                          condicion, regimen, anulada,
+                          COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
+                          COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
+                          COALESCE(exentas, 0) AS exentas, COALESCE(tot_iva, 0) AS tot_iva,
+                          COALESCE(valor_total, 0) AS valor_total
+                   FROM co_egresos
+                   WHERE id_propietario = ? AND cod_empresa = ?
+                     AND fec_egreso >= ? AND fec_egreso <= ?";
+        $paramsEgr = [$idProp, $codEmpresa, $rango[0], $rango[1]];
+        if (!$incluirAnulados) {
+            $sqlEgr .= " AND (anulada IS NULL OR UPPER(anulada) <> 'S')";
+        }
+        if ($regimen !== '' && $regimen !== 'TODOS') {
+            $sqlEgr .= " AND UPPER(TRIM(COALESCE(regimen, ''))) = ?";
+            $paramsEgr[] = $regimen;
+        }
+        if ($condicion !== '' && $condicion !== 'TODOS') {
+            $sqlEgr .= " AND UPPER(LEFT(TRIM(COALESCE(condicion, 'CON')), 3)) = ?";
+            $paramsEgr[] = substr($condicion, 0, 3);
+        }
+        $sqlEgr .= " ORDER BY fec_egreso ASC, id_egreso ASC";
+
+        $rowsIng = Database::queryForList($sqlIng, $paramsIng);
+        $rowsEgr = Database::queryForList($sqlEgr, $paramsEgr);
+
+        $nombresMes = [
+            1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+            5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
+            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
+        ];
+        $porMes = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $porMes[$m] = [
+                'mes'        => $m,
+                'nombreMes'  => $nombresMes[$m],
+                'cantIng'    => 0,
+                'ingGrav10'  => 0.0,
+                'ingIva10'   => 0.0,
+                'ingGrav5'   => 0.0,
+                'ingIva5'    => 0.0,
+                'ingExentas' => 0.0,
+                'ingIva'     => 0.0,
+                'ingTotal'   => 0.0,
+                'cantEgr'    => 0,
+                'egrGrav10'  => 0.0,
+                'egrIva10'   => 0.0,
+                'egrGrav5'   => 0.0,
+                'egrIva5'    => 0.0,
+                'egrExentas' => 0.0,
+                'egrIva'     => 0.0,
+                'egrTotal'   => 0.0,
+                'diferencia' => 0.0,
+                'saldoIva'   => 0.0,
+            ];
+        }
+
+        $totIng = [
+            'cant' => 0, 'grav10' => 0.0, 'iva10' => 0.0, 'grav5' => 0.0, 'iva5' => 0.0,
+            'exentas' => 0.0, 'totIva' => 0.0, 'baseImp' => 0.0, 'total' => 0.0,
+            'contado' => 0.0, 'credito' => 0.0,
+        ];
+        $totEgr = [
+            'cant' => 0, 'grav10' => 0.0, 'iva10' => 0.0, 'grav5' => 0.0, 'iva5' => 0.0,
+            'exentas' => 0.0, 'totIva' => 0.0, 'baseImp' => 0.0, 'total' => 0.0,
+            'contado' => 0.0, 'credito' => 0.0,
+        ];
+
+        $porFechaMap = [];
+        $movimientos = [];
+
+        $initFecha = function (string $fec) use (&$porFechaMap): void {
+            if (!isset($porFechaMap[$fec])) {
+                $diaMes = strlen($fec) >= 10 ? (substr($fec, 8, 2) . '/' . substr($fec, 5, 2) . '/' . substr($fec, 0, 4)) : $fec;
+                $porFechaMap[$fec] = [
+                    'fecha'      => $fec,
+                    'diaMes'     => $diaMes,
+                    'cantIng'    => 0,
+                    'ingGrav10'  => 0.0,
+                    'ingGrav5'   => 0.0,
+                    'ingExentas' => 0.0,
+                    'ingIva'     => 0.0,
+                    'ingTotal'   => 0.0,
+                    'cantEgr'    => 0,
+                    'egrGrav10'  => 0.0,
+                    'egrGrav5'   => 0.0,
+                    'egrExentas' => 0.0,
+                    'egrIva'     => 0.0,
+                    'egrTotal'   => 0.0,
+                    'diferencia' => 0.0,
+                    'saldoIva'   => 0.0,
+                ];
+            }
+        };
+
+        foreach ($rowsIng as $r) {
+            $fec = (string)($r['fecha'] ?? '');
+            $anulada = strcasecmp((string)($r['anulada'] ?? 'N'), 'S') === 0;
+            $g10 = (float)$r['grav10'];
+            $i10 = (float)$r['iva10'];
+            $g5  = (float)$r['grav5'];
+            $i5  = (float)$r['iva5'];
+            $ex  = (float)$r['exentas'];
+            $iva = ($i10 + $i5) > 0 ? ($i10 + $i5) : (float)$r['tot_iva'];
+            $tot = (float)$r['valor_total'];
+            $mesNum = strlen($fec) >= 7 ? (int)substr($fec, 5, 2) : 0;
+
+            if (!$anulada && isset($porMes[$mesNum])) {
+                $porMes[$mesNum]['cantIng']++;
+                $porMes[$mesNum]['ingGrav10']  += $g10;
+                $porMes[$mesNum]['ingIva10']   += $i10;
+                $porMes[$mesNum]['ingGrav5']   += $g5;
+                $porMes[$mesNum]['ingIva5']    += $i5;
+                $porMes[$mesNum]['ingExentas'] += $ex;
+                $porMes[$mesNum]['ingIva']     += $iva;
+                $porMes[$mesNum]['ingTotal']   += $tot;
+            }
+
+            if ($fec >= $fechaDesde && $fec <= $fechaHasta) {
+                $nroFactura = (string)($r['nro_factura'] ?? '');
+                $serie      = trim((string)($r['serie'] ?? ''));
+                $doc        = ($serie !== '' && !str_contains($nroFactura, '-')) ? ($serie . '-' . $nroFactura) : $nroFactura;
+                $doc        = MovimientosContablesController::formatNroFactura($doc);
+                $cond       = strtoupper(trim((string)($r['condicion'] ?? 'CON')));
+                $esCre      = str_starts_with($cond, 'CRE');
+
+                if (!$anulada) {
+                    $totIng['cant']++;
+                    $totIng['grav10']  += $g10;
+                    $totIng['iva10']   += $i10;
+                    $totIng['grav5']   += $g5;
+                    $totIng['iva5']    += $i5;
+                    $totIng['exentas'] += $ex;
+                    $totIng['totIva']  += $iva;
+                    $totIng['baseImp'] += ($g10 + $g5);
+                    $totIng['total']   += $tot;
+                    if ($esCre) $totIng['credito'] += $tot;
+                    else $totIng['contado'] += $tot;
+
+                    $initFecha($fec);
+                    $porFechaMap[$fec]['cantIng']++;
+                    $porFechaMap[$fec]['ingGrav10']  += $g10;
+                    $porFechaMap[$fec]['ingGrav5']   += $g5;
+                    $porFechaMap[$fec]['ingExentas'] += $ex;
+                    $porFechaMap[$fec]['ingIva']     += $iva;
+                    $porFechaMap[$fec]['ingTotal']   += $tot;
+                }
+
+                $movimientos[] = [
+                    'fecha'       => $fec,
+                    'diaMes'      => strlen($fec) >= 10 ? (substr($fec, 8, 2) . '-' . substr($fec, 5, 2)) : $fec,
+                    'tipo'        => 'INGRESO',
+                    'documento'   => $doc,
+                    'timbrado'    => (string)($r['nro_timbrado'] ?? ''),
+                    'ruc'         => (string)($r['ruc'] ?? ''),
+                    'razonSocial' => (string)($r['razon_social'] ?? ''),
+                    'condicion'   => $esCre ? 'CRE' : 'CON',
+                    'regimen'     => (string)($r['regimen'] ?? ''),
+                    'grav10'      => $g10,
+                    'iva10'       => $i10,
+                    'grav5'       => $g5,
+                    'iva5'        => $i5,
+                    'exentas'     => $ex,
+                    'totIva'      => $iva,
+                    'total'       => $tot,
+                    'anulada'     => $anulada,
+                ];
+            }
+        }
+
+        foreach ($rowsEgr as $r) {
+            $fec = (string)($r['fecha'] ?? '');
+            $anulada = strcasecmp((string)($r['anulada'] ?? 'N'), 'S') === 0;
+            $g10 = (float)$r['grav10'];
+            $i10 = (float)$r['iva10'];
+            $g5  = (float)$r['grav5'];
+            $i5  = (float)$r['iva5'];
+            $ex  = (float)$r['exentas'];
+            $iva = ($i10 + $i5) > 0 ? ($i10 + $i5) : (float)$r['tot_iva'];
+            $tot = (float)$r['valor_total'];
+            $mesNum = strlen($fec) >= 7 ? (int)substr($fec, 5, 2) : 0;
+
+            if (!$anulada && isset($porMes[$mesNum])) {
+                $porMes[$mesNum]['cantEgr']++;
+                $porMes[$mesNum]['egrGrav10']  += $g10;
+                $porMes[$mesNum]['egrIva10']   += $i10;
+                $porMes[$mesNum]['egrGrav5']   += $g5;
+                $porMes[$mesNum]['egrIva5']    += $i5;
+                $porMes[$mesNum]['egrExentas'] += $ex;
+                $porMes[$mesNum]['egrIva']     += $iva;
+                $porMes[$mesNum]['egrTotal']   += $tot;
+            }
+
+            if ($fec >= $fechaDesde && $fec <= $fechaHasta) {
+                $nroFactura = (string)($r['nro_factura'] ?? '');
+                $serie      = trim((string)($r['serie'] ?? ''));
+                $doc        = ($serie !== '' && !str_contains($nroFactura, '-')) ? ($serie . '-' . $nroFactura) : $nroFactura;
+                $doc        = MovimientosContablesController::formatNroFactura($doc);
+                $cond       = strtoupper(trim((string)($r['condicion'] ?? 'CON')));
+                $esCre      = str_starts_with($cond, 'CRE');
+
+                if (!$anulada) {
+                    $totEgr['cant']++;
+                    $totEgr['grav10']  += $g10;
+                    $totEgr['iva10']   += $i10;
+                    $totEgr['grav5']   += $g5;
+                    $totEgr['iva5']    += $i5;
+                    $totEgr['exentas'] += $ex;
+                    $totEgr['totIva']  += $iva;
+                    $totEgr['baseImp'] += ($g10 + $g5);
+                    $totEgr['total']   += $tot;
+                    if ($esCre) $totEgr['credito'] += $tot;
+                    else $totEgr['contado'] += $tot;
+
+                    $initFecha($fec);
+                    $porFechaMap[$fec]['cantEgr']++;
+                    $porFechaMap[$fec]['egrGrav10']  += $g10;
+                    $porFechaMap[$fec]['egrGrav5']   += $g5;
+                    $porFechaMap[$fec]['egrExentas'] += $ex;
+                    $porFechaMap[$fec]['egrIva']     += $iva;
+                    $porFechaMap[$fec]['egrTotal']   += $tot;
+                }
+
+                $movimientos[] = [
+                    'fecha'       => $fec,
+                    'diaMes'      => strlen($fec) >= 10 ? (substr($fec, 8, 2) . '-' . substr($fec, 5, 2)) : $fec,
+                    'tipo'        => 'EGRESO',
+                    'documento'   => $doc,
+                    'timbrado'    => (string)($r['nro_timbrado'] ?? ''),
+                    'ruc'         => (string)($r['ruc'] ?? ''),
+                    'razonSocial' => (string)($r['razon_social'] ?? ''),
+                    'condicion'   => $esCre ? 'CRE' : 'CON',
+                    'regimen'     => (string)($r['regimen'] ?? ''),
+                    'grav10'      => $g10,
+                    'iva10'       => $i10,
+                    'grav5'       => $g5,
+                    'iva5'        => $i5,
+                    'exentas'     => $ex,
+                    'totIva'      => $iva,
+                    'total'       => $tot,
+                    'anulada'     => $anulada,
+                ];
+            }
+        }
+
+        foreach ($porMes as $m => &$pm) {
+            $pm['diferencia'] = $pm['ingTotal'] - $pm['egrTotal'];
+            $pm['saldoIva']   = $pm['ingIva'] - $pm['egrIva'];
+        }
+        unset($pm);
+
+        ksort($porFechaMap);
+        foreach ($porFechaMap as &$pf) {
+            $pf['diferencia'] = $pf['ingTotal'] - $pf['egrTotal'];
+            $pf['saldoIva']   = $pf['ingIva'] - $pf['egrIva'];
+        }
+        unset($pf);
+
+        usort($movimientos, function (array $a, array $b): int {
+            $cmp = strcmp($a['fecha'], $b['fecha']);
+            if ($cmp !== 0) return $cmp;
+            return strcmp($a['documento'], $b['documento']);
+        });
+
+        $resultadoNeto = $totIng['total'] - $totEgr['total'];
+        $saldoIva      = $totIng['totIva'] - $totEgr['totIva'];
+        $margenPct     = $totIng['total'] > 0 ? round(($resultadoNeto / $totIng['total']) * 100, 2) : 0.0;
+
+        View::json([
+            'status'      => 'success',
+            'empresa'     => $empresaInfo,
+            'ejercicio'   => $ejercicio,
+            'fechaDesde'  => $fechaDesde,
+            'fechaHasta'  => $fechaHasta,
+            'totales'     => [
+                'ingresos'   => $totIng,
+                'egresos'    => $totEgr,
+                'diferencia' => [
+                    'resultadoNeto' => $resultadoNeto,
+                    'base10'        => $totIng['grav10'] - $totEgr['grav10'],
+                    'iva10'         => $totIng['iva10'] - $totEgr['iva10'],
+                    'base5'         => $totIng['grav5'] - $totEgr['grav5'],
+                    'iva5'          => $totIng['iva5'] - $totEgr['iva5'],
+                    'exentas'       => $totIng['exentas'] - $totEgr['exentas'],
+                    'saldoIva'      => $saldoIva,
+                    'margenPct'     => $margenPct,
+                ],
+            ],
+            'porMes'      => array_values($porMes),
+            'porFecha'    => array_values($porFechaMap),
+            'movimientos' => $movimientos,
+        ]);
+    }
 }

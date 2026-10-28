@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Contabilidad - Resumen Comparativo Ingresos vs. Egresos')}">
+</head>
+<body style="background-color: #f8fafc; color: #1e293b;">
+
+    <!-- Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="main-content">
+        <div th:replace="~{fragments/layout :: navbar('Resumen Comparativo')}"></div>
+
+        <div class="content-area" style="padding: 1.5rem;">
+
+            <style>
+                .qf-btn {
+                    background: #ffffff;
+                    border: 1px solid #cbd5e1;
+                    color: #334155;
+                    padding: 4px 10px;
+                    border-radius: 7px;
+                    font-size: 0.74rem;
+                    font-weight: 700;
+                    cursor: pointer;
+                    transition: all 0.15s;
+                }
+                .qf-btn:hover {
+                    background: #f1f5f9;
+                    border-color: #94a3b8;
+                }
+                .qf-btn.active {
+                    background: #0f172a;
+                    color: #ffffff;
+                    border-color: #0f172a;
+                }
+                .rc-tab-btn {
+                    border: none;
+                    background: transparent;
+                    padding: 0.65rem 1.25rem;
+                    border-radius: 10px;
+                    font-size: 0.86rem;
+                    font-weight: 800;
+                    color: #64748b;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .rc-tab-btn:hover {
+                    color: #0f172a;
+                    background: rgba(15, 23, 42, 0.05);
+                }
+                .rc-tab-btn.active {
+                    background: #0f172a;
+                    color: #ffffff;
+                    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
+                }
+                .tipo-pill-btn {
+                    border: 1px solid #cbd5e1;
+                    background: #ffffff;
+                    color: #475569;
+                    padding: 5px 12px;
+                    border-radius: 8px;
+                    font-size: 0.76rem;
+                    font-weight: 800;
+                    cursor: pointer;
+                    transition: all 0.15s;
+                }
+                .tipo-pill-btn.active {
+                    background: #0284c7;
+                    color: #ffffff;
+                    border-color: #0284c7;
+                }
+                @media print {
+                    .no-print, .sidebar, .top-navbar {
+                        display: none !important;
+                    }
+                    .main-content {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+                }
+            </style>
+
+            <!-- Filter Toolbar Card -->
+            <div class="card" style="background: #ffffff; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; margin-bottom: 1.25rem; overflow: hidden;">
+                <div style="padding: 1.15rem 1.5rem; border-bottom: 1px solid #f1f5f9; background: #ffffff; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, #dcfce7 0%, #e0f2fe 100%); color: #0f766e; display: flex; align-items: center; justify-content: center; font-size: 1.35rem;">
+                            <i class="ph ph-scales"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0f172a;">Resumen Comparativo: Ingresos vs. Egresos</h3>
+                            <p style="margin: 0; font-size: 0.8rem; color: #64748b; font-weight: 500;">
+                                Contabilidad &gt; Reportes · Análisis de Flujo Operativo, Base Imponible y Liquidación Técnica de IVA
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Selector de Pestañas + Botón Imprimir -->
+                    <div class="no-print" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <div style="background: #f1f5f9; padding: 4px; border-radius: 12px; display: inline-flex; gap: 4px; border: 1px solid #e2e8f0;">
+                            <button type="button" id="tabBtnListado" class="rc-tab-btn active" onclick="cambiarTabComparativo('listado')">
+                                <i class="ph ph-table" style="font-size: 1.05rem;"></i> Listado Comparativo
+                            </button>
+                            <button type="button" id="tabBtnGraficos" class="rc-tab-btn" onclick="cambiarTabComparativo('graficos')">
+                                <i class="ph ph-chart-bar" style="font-size: 1.05rem;"></i> Gráficos Comparativos
+                            </button>
+                        </div>
+
+                        <button type="button" onclick="window.print()" style="background: #0284c7; color: white; border: none; padding: 0.6rem 1.15rem; border-radius: 10px; font-weight: 700; font-size: 0.86rem; display: flex; align-items: center; gap: 7px; cursor: pointer; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.22);">
+                            <i class="ph ph-printer-bold" style="font-size: 1.05rem;"></i> Imprimir
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Form Controls -->
+                <div class="no-print" style="padding: 1.15rem 1.5rem; background: #fafafa;">
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 0.9rem;">
+                        <span style="font-size: 0.72rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-right: 4px;">
+                            <i class="ph ph-lightning" style="color:#16a34a;"></i> Rápido · Ejercicio <span id="lblEjercicio" th:text="${ejercicio}">2026</span>:
+                        </span>
+                        <button type="button" class="qf-btn" data-qf="hoy">Hoy</button>
+                        <button type="button" class="qf-btn" data-qf="mes">Este mes</button>
+                        <button type="button" class="qf-btn" data-qf="mesAnt">Mes anterior</button>
+                        <button type="button" class="qf-btn" data-qf="trim">Trimestre</button>
+                        <button type="button" class="qf-btn" data-qf="anio">Todo el ejercicio</button>
+                        <span style="width:1px; height:22px; background:#cbd5e1; margin: 0 6px;"></span>
+                        <span id="qfMeses" style="display:flex; flex-wrap:wrap; gap:4px;"></span>
+                    </div>
+
+                    <form id="filterForm" onsubmit="event.preventDefault(); cargarResumenComparativo();" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)) 130px; gap: 0.9rem; align-items: flex-end;">
+                        <div>
+                            <label style="display: block; font-size: 0.73rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.3rem;">Fecha Desde</label>
+                            <input type="date" id="fechaDesde" th:value="${defFechaDesde}" th:min="${ejerInicio}" th:max="${ejerFinal}" class="form-control" style="height: 40px; border-radius: 8px; font-weight: 600;">
+                        </div>
+
+                        <div>
+                            <label style="display: block; font-size: 0.73rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.3rem;">Fecha Hasta</label>
+                            <input type="date" id="fechaHasta" th:value="${defFechaHasta}" th:min="${ejerInicio}" th:max="${ejerFinal}" class="form-control" style="height: 40px; border-radius: 8px; font-weight: 600;">
+                        </div>
+
+                        <div>
+                            <label style="display: block; font-size: 0.73rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.3rem;">Régimen</label>
+                            <select id="regimen" class="form-control" style="height: 40px; border-radius: 8px; font-weight: 600;">
+                                <option value="TODOS">TODOS LOS REGÍMENES</option>
+                                <option value="IVA">IVA</option>
+                                <option value="IRE">IRE</option>
+                                <option value="IRP">IRP</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label style="display: block; font-size: 0.73rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.3rem;">Condición</label>
+                            <select id="condicion" class="form-control" style="height: 40px; border-radius: 8px; font-weight: 600;">
+                                <option value="TODOS">TODAS (CON / CRE)</option>
+                                <option value="CON">CONTADO (CON)</option>
+                                <option value="CRE">CRÉDITO (CRE)</option>
+                            </select>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 8px; height: 40px; padding-bottom: 4px;">
+                            <input type="checkbox" id="incluirAnulados" style="width: 17px; height: 17px; accent-color: #0284c7; cursor: pointer;">
+                            <label for="incluirAnulados" style="font-size: 0.8rem; font-weight: 700; color: #334155; cursor: pointer; margin: 0;">Incluir anuladas</label>
+                        </div>
+
+                        <div>
+                            <button type="submit" style="width: 100%; height: 40px; background: #0f172a; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.88rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
+                                <i class="ph ph-magnifying-glass"></i> Actualizar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Executive KPI Cards Summary (Visible in both tabs) -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                <!-- Total Ingresos -->
+                <div style="background: #ffffff; border-radius: 14px; padding: 1.15rem 1.25rem; border: 1px solid #bbf7d0; border-left: 5px solid #16a34a; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size: 0.73rem; font-weight: 800; color: #15803d; text-transform: uppercase;">Total Ingresos (Ventas)</span>
+                        <span id="kpiCantIng" style="font-size: 0.72rem; font-weight: 700; background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 99px;">0 comp.</span>
+                    </div>
+                    <div id="kpiTotalIng" style="font-size: 1.4rem; font-weight: 900; color: #15803d; margin-top: 6px;">Gs. 0</div>
+                    <div id="kpiSubIng" style="font-size: 0.75rem; color: #64748b; margin-top: 4px; font-weight: 600;">Base Imp.: Gs. 0</div>
+                </div>
+
+                <!-- Total Egresos -->
+                <div style="background: #ffffff; border-radius: 14px; padding: 1.15rem 1.25rem; border: 1px solid #fecdd3; border-left: 5px solid #e11d48; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size: 0.73rem; font-weight: 800; color: #be123c; text-transform: uppercase;">Total Egresos (Compras)</span>
+                        <span id="kpiCantEgr" style="font-size: 0.72rem; font-weight: 700; background: #ffe4e6; color: #9f1239; padding: 2px 8px; border-radius: 99px;">0 comp.</span>
+                    </div>
+                    <div id="kpiTotalEgr" style="font-size: 1.4rem; font-weight: 900; color: #be123c; margin-top: 6px;">Gs. 0</div>
+                    <div id="kpiSubEgr" style="font-size: 0.75rem; color: #64748b; margin-top: 4px; font-weight: 600;">Base Imp.: Gs. 0</div>
+                </div>
+
+                <!-- Resultado Neto -->
+                <div id="cardResultadoNeto" style="background: #ffffff; border-radius: 14px; padding: 1.15rem 1.25rem; border: 1px solid #e2e8f0; border-left: 5px solid #0284c7; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size: 0.73rem; font-weight: 800; color: #475569; text-transform: uppercase;">Resultado Neto (Ing − Egr)</span>
+                        <span id="kpiMargenPct" style="font-size: 0.72rem; font-weight: 800; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 99px;">0%</span>
+                    </div>
+                    <div id="kpiResultadoNeto" style="font-size: 1.4rem; font-weight: 900; color: #0f172a; margin-top: 6px;">Gs. 0</div>
+                    <div id="kpiEstadoResultado" style="font-size: 0.75rem; color: #64748b; margin-top: 4px; font-weight: 700;">Sin diferencia</div>
+                </div>
+
+                <!-- Liquidación Técnica IVA -->
+                <div style="background: #ffffff; border-radius: 14px; padding: 1.15rem 1.25rem; border: 1px solid #ddd6fe; border-left: 5px solid #7c3aed; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size: 0.73rem; font-weight: 800; color: #6d28d9; text-transform: uppercase;">Saldo Técnico IVA</span>
+                        <span id="kpiEstadoIvaBadge" style="font-size: 0.7rem; font-weight: 800; background: #ede9fe; color: #5b21b6; padding: 2px 8px; border-radius: 99px;">Equilibrado</span>
+                    </div>
+                    <div id="kpiSaldoIva" style="font-size: 1.4rem; font-weight: 900; color: #6d28d9; margin-top: 6px;">Gs. 0</div>
+                    <div id="kpiSubIva" style="font-size: 0.74rem; color: #64748b; margin-top: 4px; font-weight: 600;">Débito: Gs. 0 | Crédito: Gs. 0</div>
+                </div>
+            </div>
+
+            <!-- ================================================================== -->
+            <!-- PESTAÑA 1: LISTADO COMPARATIVO                                     -->
+            <!-- ================================================================== -->
+            <div id="panelListado">
+                <!-- 1.1 Matriz Comparativa por Concepto Impositivo -->
+                <div class="card" style="background: #ffffff; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; margin-bottom: 1.5rem; overflow: hidden;">
+                    <div style="padding: 1rem 1.4rem; border-bottom: 1px solid #e2e8f0; background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="font-weight: 800; font-size: 0.95rem; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                            <i class="ph ph-Exclude" style="color: #0284c7; font-size: 1.15rem;"></i>
+                            1. Cuadro Comparativo por Tasas e Impuestos (Período Seleccionado)
+                        </div>
+                        <span id="lblRangoActivo" style="font-size: 0.78rem; font-weight: 700; color: #475569;"></span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table" style="width: 100%; margin: 0; border-collapse: collapse; font-size: 0.86rem;">
+                            <thead style="background: #f1f5f9; border-bottom: 2px solid #e2e8f0; color: #334155; font-weight: 800; text-transform: uppercase; font-size: 0.74rem;">
+                                <tr>
+                                    <th style="padding: 11px 16px;">Concepto / Rubro</th>
+                                    <th style="padding: 11px 16px; text-align: right; color: #15803d;">Ingresos (Ventas)</th>
+                                    <th style="padding: 11px 16px; text-align: right; color: #be123c;">Egresos (Compras)</th>
+                                    <th style="padding: 11px 16px; text-align: right;">Diferencia (Ing − Egr)</th>
+                                    <th style="padding: 11px 16px; text-align: center;">Relación %</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyComparativoRubros"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 1.2 Resumen Comparativo Mensual del Ejercicio -->
+                <div class="card" style="background: #ffffff; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; margin-bottom: 1.5rem; overflow: hidden;">
+                    <div style="padding: 1rem 1.4rem; border-bottom: 1px solid #e2e8f0; background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="font-weight: 800; font-size: 0.95rem; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                            <i class="ph ph-calendar" style="color: #0f766e; font-size: 1.15rem;"></i>
+                            2. Resumen Mensual Comparativo del Ejercicio (<span th:text="${ejercicio}">2026</span>)
+                        </div>
+                        <span style="font-size: 0.76rem; color: #64748b; font-weight: 600;">Enero a Diciembre</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table" style="width: 100%; margin: 0; border-collapse: collapse; font-size: 0.84rem;">
+                            <thead style="background: #f1f5f9; border-bottom: 2px solid #e2e8f0; color: #334155; font-weight: 800; text-transform: uppercase; font-size: 0.72rem;">
+                                <tr>
+                                    <th style="padding: 10px 14px;">Mes</th>
+                                    <th style="padding: 10px 12px; text-align: center;">Comp. Ing.</th>
+                                    <th style="padding: 10px 14px; text-align: right; color: #15803d;">Total Ingresos</th>
+                                    <th style="padding: 10px 14px; text-align: right; color: #15803d;">IVA Débito</th>
+                                    <th style="padding: 10px 12px; text-align: center;">Comp. Egr.</th>
+                                    <th style="padding: 10px 14px; text-align: right; color: #be123c;">Total Egresos</th>
+                                    <th style="padding: 10px 14px; text-align: right; color: #be123c;">IVA Crédito</th>
+                                    <th style="padding: 10px 14px; text-align: right;">Resultado Neto</th>
+                                    <th style="padding: 10px 14px; text-align: right;">Saldo IVA Mes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyComparativoMensual"></tbody>
+                            <tfoot id="tfootComparativoMensual" style="background: #f8fafc; font-weight: 800; border-top: 2px solid #cbd5e1;"></tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 1.3 Listado Unificado de Comprobantes (Ingresos y Egresos) -->
+                <div class="card" style="background: #ffffff; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; overflow: hidden;">
+                    <div style="padding: 1rem 1.4rem; border-bottom: 1px solid #e2e8f0; background: #f8fafc; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <div style="font-weight: 800; font-size: 0.95rem; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                            <i class="ph ph-list-bullets" style="color: #2563eb; font-size: 1.15rem;"></i>
+                            3. Listado Detallado de Comprobantes del Período (<span id="lblCantMovimientos">0</span> registros)
+                        </div>
+                        <div class="no-print" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <button type="button" class="tipo-pill-btn active" data-tipo="TODOS" onclick="filtrarTipoMov('TODOS', this)">Todos</button>
+                            <button type="button" class="tipo-pill-btn" data-tipo="INGRESO" onclick="filtrarTipoMov('INGRESO', this)">Solo Ingresos</button>
+                            <button type="button" class="tipo-pill-btn" data-tipo="EGRESO" onclick="filtrarTipoMov('EGRESO', this)">Solo Egresos</button>
+                            <input type="text" id="buscarTextoMov" oninput="renderTablaMovimientos()" placeholder="Buscar RUC, razón social o factura..." class="form-control" style="width: 240px; height: 34px; border-radius: 8px; font-size: 0.8rem; font-weight: 600;">
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table" style="width: 100%; margin: 0; border-collapse: collapse; font-size: 0.83rem;">
+                            <thead style="background: #f1f5f9; border-bottom: 2px solid #e2e8f0; color: #334155; font-weight: 800; text-transform: uppercase; font-size: 0.72rem;">
+                                <tr>
+                                    <th style="padding: 10px 12px; text-align: center;">Fecha</th>
+                                    <th style="padding: 10px 12px; text-align: center;">Tipo</th>
+                                    <th style="padding: 10px 12px;">Documento</th>
+                                    <th style="padding: 10px 12px;">RUC</th>
+                                    <th style="padding: 10px 12px;">Cliente / Proveedor</th>
+                                    <th style="padding: 10px 10px; text-align: center;">Cond.</th>
+                                    <th style="padding: 10px 12px; text-align: right;">Grav. 10%</th>
+                                    <th style="padding: 10px 12px; text-align: right;">Grav. 5%</th>
+                                    <th style="padding: 10px 12px; text-align: right;">Exentas</th>
+                                    <th style="padding: 10px 12px; text-align: right;">Total IVA</th>
+                                    <th style="padding: 10px 14px; text-align: right;">Total Comprobante</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyMovimientos"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================================================================== -->
+            <!-- PESTAÑA 2: GRÁFICOS COMPARATIVOS                                   -->
+            <!-- ================================================================== -->
+            <div id="panelGraficos" style="display: none;">
+                <!-- Fila Superior de Gráficos: Comparativa Directa + Liquidación IVA + Tasas -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.25rem; margin-bottom: 1.25rem;">
+                    <!-- Gráfico 1: Balance Operativo Ingresos vs Egresos & IVA -->
+                    <div style="background: #ffffff; border-radius: 16px; padding: 1.35rem; border: 1px solid #e2e8f0; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
+                        <div style="font-size: 0.92rem; font-weight: 800; color: #0f172a; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 8px;">
+                            <i class="ph ph-chart-bar-horizontal" style="color: #16a34a; font-size: 1.15rem;"></i>
+                            Balance Operativo y Fiscal del Período
+                        </div>
+                        <div style="font-size: 0.76rem; color: #64748b; margin-bottom: 1.1rem;">Comparación proporcional entre Ingresos, Egresos e IVA</div>
+                        <div id="chartBalanceOperativo"></div>
+                    </div>
+
+                    <!-- Gráfico 2: Comparativa por Tasas Impositivas (10%, 5%, Exentas) -->
+                    <div style="background: #ffffff; border-radius: 16px; padding: 1.35rem; border: 1px solid #e2e8f0; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
+                        <div style="font-size: 0.92rem; font-weight: 800; color: #0f172a; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 8px;">
+                            <i class="ph ph-chart-pie-slice" style="color: #0284c7; font-size: 1.15rem;"></i>
+                            Composición por Tasas (10% · 5% · Exentas · Contado/Crédito)
+                        </div>
+                        <div style="font-size: 0.76rem; color: #64748b; margin-bottom: 1.1rem;">Desglose comparativo de bases gravadas y modalidad</div>
+                        <div id="chartTasasComparativas"></div>
+                    </div>
+                </div>
+
+                <!-- Gráfico 3: Evolución Anual Comparativa por Mes (Ene - Dic) -->
+                <div style="background: #ffffff; border-radius: 16px; padding: 1.4rem; border: 1px solid #e2e8f0; box-shadow: 0 4px 16px rgba(0,0,0,0.04); margin-bottom: 1.25rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
+                        <div>
+                            <div style="font-size: 0.96rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                                <i class="ph ph-trend-up" style="color: #0f766e; font-size: 1.2rem;"></i>
+                                Evolución Mensual Comparativa del Ejercicio (<span th:text="${ejercicio}">2026</span>)
+                            </div>
+                            <div style="font-size: 0.77rem; color: #64748b;">Comparativa mes a mes de Ingresos vs. Egresos de todo el año</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 14px; font-size: 0.78rem; font-weight: 800;">
+                            <span style="display: inline-flex; align-items: center; gap: 6px; color: #15803d;">
+                                <span style="width: 12px; height: 12px; border-radius: 3px; background: linear-gradient(180deg, #22c55e, #15803d); display: inline-block;"></span> Ingresos
+                            </span>
+                            <span style="display: inline-flex; align-items: center; gap: 6px; color: #be123c;">
+                                <span style="width: 12px; height: 12px; border-radius: 3px; background: linear-gradient(180deg, #fb7185, #be123c); display: inline-block;"></span> Egresos
+                            </span>
+                        </div>
+                    </div>
+                    <div id="chartEvolucionMensual" style="overflow-x: auto; padding-bottom: 6px;"></div>
+                </div>
+
+                <!-- Gráfico 4: Evolución por Fecha del Período Seleccionado (Ancho completo abajo) -->
+                <div style="background: #ffffff; border-radius: 16px; padding: 1.4rem; border: 1px solid #e2e8f0; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
+                        <div>
+                            <div style="font-size: 0.96rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                                <i class="ph ph-calendar-check" style="color: #2563eb; font-size: 1.2rem;"></i>
+                                Evolución Diaria por Fecha (Período Filtrado)
+                            </div>
+                            <div style="font-size: 0.77rem; color: #64748b;">Comparativa por día de operación entre Ingresos y Egresos en el rango seleccionado</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 14px; font-size: 0.78rem; font-weight: 800;">
+                            <span style="display: inline-flex; align-items: center; gap: 6px; color: #15803d;">
+                                <span style="width: 12px; height: 12px; border-radius: 3px; background: #16a34a; display: inline-block;"></span> Ingresos
+                            </span>
+                            <span style="display: inline-flex; align-items: center; gap: 6px; color: #be123c;">
+                                <span style="width: 12px; height: 12px; border-radius: 3px; background: #e11d48; display: inline-block;"></span> Egresos
+                            </span>
+                        </div>
+                    </div>
+                    <div id="chartEvolucionPorFecha" style="overflow-x: auto; padding-bottom: 6px;"></div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div th:replace="~{fragments/layout :: scripts}"></div>
+
+    <script th:inline="javascript">
+        const EJER_INICIO = /*[[${ejerInicio}]]*/ '2026-01-01';
+        const EJER_FINAL  = /*[[${ejerFinal}]]*/ '2026-12-31';
+        const EJERCICIO   = /*[[${ejercicio}]]*/ '2026';
+
+        let lastDataComparativo = null;
+        let filtroTipoMovActual = 'TODOS';
+        let tabActivaComparativo = 'listado';
+
+        function fmtGs(val) {
+            const n = Math.round(Number(val) || 0);
+            return n.toLocaleString('es-PY');
+        }
+
+        function fmtGsSigned(val) {
+            const n = Math.round(Number(val) || 0);
+            if (n > 0) return '+' + n.toLocaleString('es-PY');
+            return n.toLocaleString('es-PY');
+        }
+
+        function fmtCompact(val) {
+            const n = Math.abs(Math.round(Number(val) || 0));
+            if (n === 0) return '0';
+            if (n >= 1000000000) return (n / 1000000000).toFixed(1).replace('.0', '') + 'B';
+            if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.0', '') + 'M';
+            if (n >= 1000) return Math.round(n / 1000) + 'k';
+            return n.toLocaleString('es-PY');
+        }
+
+        function cambiarTabComparativo(tab) {
+            tabActivaComparativo = tab;
+            const pListado  = document.getElementById('panelListado');
+            const pGraficos = document.getElementById('panelGraficos');
+            const bListado  = document.getElementById('tabBtnListado');
+            const bGraficos = document.getElementById('tabBtnGraficos');
+
+            if (tab === 'graficos') {
+                pListado.style.display  = 'none';
+                pGraficos.style.display = 'block';
+                bListado.classList.remove('active');
+                bGraficos.classList.add('active');
+                if (lastDataComparativo) {
+                    renderGraficosComparativos(lastDataComparativo);
+                }
+            } else {
+                pListado.style.display  = 'block';
+                pGraficos.style.display = 'none';
+                bListado.classList.add('active');
+                bGraficos.classList.remove('active');
+            }
+        }
+
+        function initQuickFilters() {
+            const mesesCortos = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            const cont = document.getElementById('qfMeses');
+            const anio = parseInt(EJERCICIO, 10) || new Date().getFullYear();
+
+            cont.innerHTML = mesesCortos.map((m, idx) =>
+                `<button type="button" class="qf-btn" data-mes="${idx + 1}">${m}</button>`
+            ).join('');
+
+            const pad = n => String(n).padStart(2, '0');
+            const setRange = (d1, d2, activeBtn) => {
+                document.getElementById('fechaDesde').value = d1;
+                document.getElementById('fechaHasta').value = d2;
+                document.querySelectorAll('.qf-btn').forEach(b => b.classList.remove('active'));
+                if (activeBtn) activeBtn.classList.add('active');
+                cargarResumenComparativo();
+            };
+
+            cont.querySelectorAll('button[data-mes]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const m = parseInt(btn.getAttribute('data-mes'), 10);
+                    const lastDay = new Date(anio, m, 0).getDate();
+                    setRange(`${anio}-${pad(m)}-01`, `${anio}-${pad(m)}-${pad(lastDay)}`, btn);
+                });
+            });
+
+            document.querySelectorAll('.qf-btn[data-qf]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const qf = btn.getAttribute('data-qf');
+                    const hoy = new Date();
+                    const mActual = hoy.getMonth() + 1;
+                    if (qf === 'hoy') {
+                        const f = `${anio}-${pad(mActual)}-${pad(hoy.getDate())}`;
+                        setRange(f, f, btn);
+                    } else if (qf === 'mes') {
+                        const last = new Date(anio, mActual, 0).getDate();
+                        setRange(`${anio}-${pad(mActual)}-01`, `${anio}-${pad(mActual)}-${pad(last)}`, btn);
+                    } else if (qf === 'mesAnt') {
+                        const mAnt = mActual > 1 ? mActual - 1 : 1;
+                        const last = new Date(anio, mAnt, 0).getDate();
+                        setRange(`${anio}-${pad(mAnt)}-01`, `${anio}-${pad(mAnt)}-${pad(last)}`, btn);
+                    } else if (qf === 'trim') {
+                        const mIni = Math.max(1, mActual - 2);
+                        const last = new Date(anio, mActual, 0).getDate();
+                        setRange(`${anio}-${pad(mIni)}-01`, `${anio}-${pad(mActual)}-${pad(last)}`, btn);
+                    } else if (qf === 'anio') {
+                        setRange(`${anio}-01-01`, `${anio}-12-31`, btn);
+                    }
+                });
+            });
+        }
+
+        async function cargarResumenComparativo() {
+            const fechaDesde      = document.getElementById('fechaDesde').value;
+            const fechaHasta      = document.getElementById('fechaHasta').value;
+            const regimen         = document.getElementById('regimen').value;
+            const condicion       = document.getElementById('condicion').value;
+            const incluirAnulados = document.getElementById('incluirAnulados').checked;
+
+            const params = new URLSearchParams({
+                fechaDesde,
+                fechaHasta,
+                regimen,
+                condicion,
+                incluirAnulados: incluirAnulados ? 'true' : 'false'
+            });
+
+            try {
+                const resp = await fetch('/api/reportes/resumen-comparativo?' + params.toString());
+                const data = await resp.json();
+                if (!resp.ok || data.status === 'error') {
+                    console.error('Error al cargar resumen comparativo:', data);
+                    return;
+                }
+                lastDataComparativo = data;
+                renderKpis(data);
+                renderCuadroRubros(data);
+                renderTablaMensual(data);
+                renderTablaMovimientos();
+                if (tabActivaComparativo === 'graficos') {
+                    renderGraficosComparativos(data);
+                }
+            } catch (err) {
+                console.error('Error de red en resumen comparativo:', err);
+            }
+        }
+
+        function renderKpis(data) {
+            const ing = data.totales.ingresos;
+            const egr = data.totales.egresos;
+            const dif = data.totales.diferencia;
+
+            document.getElementById('lblRangoActivo').textContent = `Período: ${data.fechaDesde} al ${data.fechaHasta}`;
+
+            document.getElementById('kpiCantIng').textContent  = `${ing.cant} comp.`;
+            document.getElementById('kpiTotalIng').textContent = `Gs. ${fmtGs(ing.total)}`;
+            document.getElementById('kpiSubIng').textContent   = `Base Imp.: Gs. ${fmtGs(ing.baseImp)} | Exentas: Gs. ${fmtGs(ing.exentas)}`;
+
+            document.getElementById('kpiCantEgr').textContent  = `${egr.cant} comp.`;
+            document.getElementById('kpiTotalEgr').textContent = `Gs. ${fmtGs(egr.total)}`;
+            document.getElementById('kpiSubEgr').textContent   = `Base Imp.: Gs. ${fmtGs(egr.baseImp)} | Exentas: Gs. ${fmtGs(egr.exentas)}`;
+
+            const elRes     = document.getElementById('kpiResultadoNeto');
+            const elEstado  = document.getElementById('kpiEstadoResultado');
+            const elMargen  = document.getElementById('kpiMargenPct');
+            const cardRes   = document.getElementById('cardResultadoNeto');
+
+            elRes.textContent    = `Gs. ${fmtGsSigned(dif.resultadoNeto)}`;
+            elMargen.textContent = `${dif.margenPct}% margen`;
+
+            if (dif.resultadoNeto > 0) {
+                elRes.style.color          = '#15803d';
+                cardRes.style.borderLeft   = '5px solid #16a34a';
+                elEstado.textContent       = 'Superávit operativo (Ingresos > Egresos)';
+                elEstado.style.color       = '#15803d';
+                elMargen.style.background  = '#dcfce7';
+                elMargen.style.color       = '#166534';
+            } else if (dif.resultadoNeto < 0) {
+                elRes.style.color          = '#be123c';
+                cardRes.style.borderLeft   = '5px solid #e11d48';
+                elEstado.textContent       = 'Déficit operativo (Egresos > Ingresos)';
+                elEstado.style.color       = '#be123c';
+                elMargen.style.background  = '#ffe4e6';
+                elMargen.style.color       = '#9f1239';
+            } else {
+                elRes.style.color          = '#0f172a';
+                cardRes.style.borderLeft   = '5px solid #0284c7';
+                elEstado.textContent       = 'Equilibrio operativo';
+                elEstado.style.color       = '#64748b';
+            }
+
+            const elSaldoIva = document.getElementById('kpiSaldoIva');
+            const elBadgeIva = document.getElementById('kpiEstadoIvaBadge');
+            const elSubIva   = document.getElementById('kpiSubIva');
+
+            elSaldoIva.textContent = `Gs. ${fmtGs(Math.abs(dif.saldoIva))}`;
+            elSubIva.textContent   = `Débito: Gs. ${fmtGs(ing.totIva)} | Crédito: Gs. ${fmtGs(egr.totIva)}`;
+
+            if (dif.saldoIva > 0) {
+                elBadgeIva.textContent      = 'A favor del Fisco (A pagar)';
+                elBadgeIva.style.background = '#fef3c7';
+                elBadgeIva.style.color      = '#b45309';
+                elSaldoIva.style.color      = '#b45309';
+            } else if (dif.saldoIva < 0) {
+                elBadgeIva.textContent      = 'A favor del Contribuyente';
+                elBadgeIva.style.background = '#dcfce7';
+                elBadgeIva.style.color      = '#15803d';
+                elSaldoIva.style.color      = '#15803d';
+            } else {
+                elBadgeIva.textContent      = 'Sin saldo técnico';
+                elBadgeIva.style.background = '#ede9fe';
+                elBadgeIva.style.color      = '#5b21b6';
+                elSaldoIva.style.color      = '#6d28d9';
+            }
+        }
+
+        function renderCuadroRubros(data) {
+            const ing = data.totales.ingresos;
+            const egr = data.totales.egresos;
+
+            const filas = [
+                { label: 'Base Gravada 10%', ing: ing.grav10, egr: egr.grav10, bold: false },
+                { label: 'Impuesto IVA 10% (Débito vs. Crédito)', ing: ing.iva10, egr: egr.iva10, bold: false },
+                { label: 'Base Gravada 5%', ing: ing.grav5, egr: egr.grav5, bold: false },
+                { label: 'Impuesto IVA 5% (Débito vs. Crédito)', ing: ing.iva5, egr: egr.iva5, bold: false },
+                { label: 'Operaciones Exentas / No Alcanzadas', ing: ing.exentas, egr: egr.exentas, bold: false },
+                { label: 'Total Impuesto IVA (10% + 5%)', ing: ing.totIva, egr: egr.totIva, bold: true, bg: '#faf5ff' },
+                { label: 'Operaciones al Contado (CON)', ing: ing.contado, egr: egr.contado, bold: false },
+                { label: 'Operaciones a Crédito (CRE)', ing: ing.credito, egr: egr.credito, bold: false },
+                { label: 'TOTAL GENERAL (VALOR COMPROBANTES)', ing: ing.total, egr: egr.total, bold: true, bg: '#f8fafc' }
+            ];
+
+            const tbody = document.getElementById('tbodyComparativoRubros');
+            tbody.innerHTML = filas.map(f => {
+                const dif = f.ing - f.egr;
+                const suma = f.ing + f.egr;
+                const pctIng = suma > 0 ? Math.round((f.ing / suma) * 100) : 50;
+                const pctEgr = suma > 0 ? (100 - pctIng) : 50;
+                const difColor = dif > 0 ? '#15803d' : (dif < 0 ? '#be123c' : '#475569');
+                const fw = f.bold ? '800' : '600';
+
+                return `
+                    <tr style="border-bottom: 1px solid #f1f5f9; background: ${f.bg || '#ffffff'}; font-weight: ${fw};">
+                        <td style="padding: 10px 16px; color: #0f172a;">${f.label}</td>
+                        <td style="padding: 10px 16px; text-align: right; color: #15803d; font-weight: 700;">Gs. ${fmtGs(f.ing)}</td>
+                        <td style="padding: 10px 16px; text-align: right; color: #be123c; font-weight: 700;">Gs. ${fmtGs(f.egr)}</td>
+                        <td style="padding: 10px 16px; text-align: right; color: ${difColor}; font-weight: 800;">Gs. ${fmtGsSigned(dif)}</td>
+                        <td style="padding: 10px 16px; width: 200px;">
+                            <div style="display: flex; align-items: center; gap: 6px; font-size: 0.72rem; font-weight: 800;">
+                                <span style="color:#15803d; min-width:32px; text-align:right;">${suma > 0 ? pctIng + '%' : '0%'}</span>
+                                <div style="flex:1; height: 8px; background: #f1f5f9; border-radius: 99px; overflow: hidden; display: flex;">
+                                    <div style="width: ${suma > 0 ? pctIng : 0}%; background: #16a34a;"></div>
+                                    <div style="width: ${suma > 0 ? pctEgr : 0}%; background: #e11d48;"></div>
+                                </div>
+                                <span style="color:#be123c; min-width:32px;">${suma > 0 ? pctEgr + '%' : '0%'}</span>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderTablaMensual(data) {
+            const meses = data.porMes || [];
+            const tbody = document.getElementById('tbodyComparativoMensual');
+            const tfoot = document.getElementById('tfootComparativoMensual');
+
+            let sumCantIng = 0, sumIng = 0, sumIvaIng = 0;
+            let sumCantEgr = 0, sumEgr = 0, sumIvaEgr = 0;
+
+            tbody.innerHTML = meses.map(m => {
+                sumCantIng += m.cantIng;
+                sumIng     += m.ingTotal;
+                sumIvaIng  += m.ingIva;
+                sumCantEgr += m.cantEgr;
+                sumEgr     += m.egrTotal;
+                sumIvaEgr  += m.egrIva;
+
+                const difColor = m.diferencia > 0 ? '#15803d' : (m.diferencia < 0 ? '#be123c' : '#64748b');
+                const ivaColor = m.saldoIva > 0 ? '#b45309' : (m.saldoIva < 0 ? '#15803d' : '#64748b');
+                const tieneMov = (m.cantIng + m.cantEgr) > 0;
+
+                return `
+                    <tr style="border-bottom: 1px solid #f1f5f9; opacity: ${tieneMov ? '1' : '0.55'};">
+                        <td style="padding: 9px 14px; font-weight: 800; color: #0f172a;">${m.nombreMes}</td>
+                        <td style="padding: 9px 12px; text-align: center; font-weight: 700; color: #475569;">${m.cantIng}</td>
+                        <td style="padding: 9px 14px; text-align: right; font-weight: 700; color: #15803d;">${fmtGs(m.ingTotal)}</td>
+                        <td style="padding: 9px 14px; text-align: right; color: #166534;">${fmtGs(m.ingIva)}</td>
+                        <td style="padding: 9px 12px; text-align: center; font-weight: 700; color: #475569;">${m.cantEgr}</td>
+                        <td style="padding: 9px 14px; text-align: right; font-weight: 700; color: #be123c;">${fmtGs(m.egrTotal)}</td>
+                        <td style="padding: 9px 14px; text-align: right; color: #9f1239;">${fmtGs(m.egrIva)}</td>
+                        <td style="padding: 9px 14px; text-align: right; font-weight: 800; color: ${difColor};">${fmtGsSigned(m.diferencia)}</td>
+                        <td style="padding: 9px 14px; text-align: right; font-weight: 800; color: ${ivaColor};">${fmtGsSigned(m.saldoIva)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const totDif = sumIng - sumEgr;
+            const totIva = sumIvaIng - sumIvaEgr;
+            tfoot.innerHTML = `
+                <tr>
+                    <td style="padding: 11px 14px; color: #0f172a;">TOTAL ANUAL EJERCICIO</td>
+                    <td style="padding: 11px 12px; text-align: center;">${sumCantIng}</td>
+                    <td style="padding: 11px 14px; text-align: right; color: #15803d;">Gs. ${fmtGs(sumIng)}</td>
+                    <td style="padding: 11px 14px; text-align: right; color: #166534;">Gs. ${fmtGs(sumIvaIng)}</td>
+                    <td style="padding: 11px 12px; text-align: center;">${sumCantEgr}</td>
+                    <td style="padding: 11px 14px; text-align: right; color: #be123c;">Gs. ${fmtGs(sumEgr)}</td>
+                    <td style="padding: 11px 14px; text-align: right; color: #9f1239;">Gs. ${fmtGs(sumIvaEgr)}</td>
+                    <td style="padding: 11px 14px; text-align: right; color: ${totDif >= 0 ? '#15803d' : '#be123c'};">Gs. ${fmtGsSigned(totDif)}</td>
+                    <td style="padding: 11px 14px; text-align: right; color: ${totIva >= 0 ? '#b45309' : '#15803d'};">Gs. ${fmtGsSigned(totIva)}</td>
+                </tr>
+            `;
+        }
+
+        function filtrarTipoMov(tipo, btn) {
+            filtroTipoMovActual = tipo;
+            document.querySelectorAll('.tipo-pill-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            renderTablaMovimientos();
+        }
+
+        function renderTablaMovimientos() {
+            const tbody = document.getElementById('tbodyMovimientos');
+            if (!lastDataComparativo) return;
+
+            const q = (document.getElementById('buscarTextoMov').value || '').trim().toUpperCase();
+            const movs = (lastDataComparativo.movimientos || []).filter(m => {
+                if (filtroTipoMovActual !== 'TODOS' && m.tipo !== filtroTipoMovActual) return false;
+                if (q !== '') {
+                    const txt = `${m.documento} ${m.ruc} ${m.razonSocial} ${m.timbrado}`.toUpperCase();
+                    if (!txt.includes(q)) return false;
+                }
+                return true;
+            });
+
+            document.getElementById('lblCantMovimientos').textContent = movs.length;
+
+            if (movs.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="11" style="padding: 2.5rem; text-align: center; color: #94a3b8; font-weight: 600;">
+                            No se encontraron comprobantes para los filtros seleccionados.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = movs.map(m => {
+                const esIng = m.tipo === 'INGRESO';
+                const badgeBg = esIng ? '#dcfce7' : '#ffe4e6';
+                const badgeColor = esIng ? '#15803d' : '#be123c';
+                const montoColor = esIng ? '#15803d' : '#be123c';
+                const rowStyle = m.anulada ? 'text-decoration: line-through; opacity: 0.55;' : '';
+
+                return `
+                    <tr style="border-bottom: 1px solid #f1f5f9; ${rowStyle}">
+                        <td style="padding: 9px 12px; text-align: center; font-weight: 700; color: #475569;">${m.diaMes}</td>
+                        <td style="padding: 9px 12px; text-align: center;">
+                            <span style="background: ${badgeBg}; color: ${badgeColor}; font-size: 0.7rem; font-weight: 800; padding: 3px 8px; border-radius: 99px;">
+                                ${m.tipo}
+                            </span>
+                        </td>
+                        <td style="padding: 9px 12px; font-weight: 700; color: #0f172a; font-family: monospace;">${m.documento || '-'}</td>
+                        <td style="padding: 9px 12px; color: #334155; font-weight: 600;">${m.ruc || '-'}</td>
+                        <td style="padding: 9px 12px; color: #1e293b; font-weight: 600;">${m.razonSocial || '-'}</td>
+                        <td style="padding: 9px 10px; text-align: center; font-weight: 700; color: #475569;">${m.condicion}</td>
+                        <td style="padding: 9px 12px; text-align: right;">${fmtGs(m.grav10)}</td>
+                        <td style="padding: 9px 12px; text-align: right;">${fmtGs(m.grav5)}</td>
+                        <td style="padding: 9px 12px; text-align: right;">${fmtGs(m.exentas)}</td>
+                        <td style="padding: 9px 12px; text-align: right; font-weight: 700;">${fmtGs(m.totIva)}</td>
+                        <td style="padding: 9px 14px; text-align: right; font-weight: 800; color: ${montoColor};">
+                            ${esIng ? '+' : '-'} ${fmtGs(m.total)}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderGraficosComparativos(data) {
+            const ing = data.totales.ingresos;
+            const egr = data.totales.egresos;
+            const dif = data.totales.diferencia;
+
+            // 1. Gráfico Balance Operativo y Fiscal
+            const maxOp = Math.max(ing.total, egr.total, 1);
+            const pctIngOp = Math.round((ing.total / maxOp) * 100);
+            const pctEgrOp = Math.round((egr.total / maxOp) * 100);
+
+            const maxIva = Math.max(ing.totIva, egr.totIva, 1);
+            const pctDeb = Math.round((ing.totIva / maxIva) * 100);
+            const pctCre = Math.round((egr.totIva / maxIva) * 100);
+
+            document.getElementById('chartBalanceOperativo').innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 14px;">
+                    <div>
+                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:800; margin-bottom:4px;">
+                            <span style="color:#15803d;">Total Ingresos (${ing.cant} comp.)</span>
+                            <span style="color:#15803d;">Gs. ${fmtGs(ing.total)}</span>
+                        </div>
+                        <div style="height: 22px; background: #f1f5f9; border-radius: 8px; overflow: hidden;">
+                            <div style="width: ${pctIngOp}%; height: 100%; background: linear-gradient(90deg, #22c55e, #15803d); border-radius: 8px;"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:800; margin-bottom:4px;">
+                            <span style="color:#be123c;">Total Egresos (${egr.cant} comp.)</span>
+                            <span style="color:#be123c;">Gs. ${fmtGs(egr.total)}</span>
+                        </div>
+                        <div style="height: 22px; background: #f1f5f9; border-radius: 8px; overflow: hidden;">
+                            <div style="width: ${pctEgrOp}%; height: 100%; background: linear-gradient(90deg, #fb7185, #be123c); border-radius: 8px;"></div>
+                        </div>
+                    </div>
+
+                    <div style="height:1px; background:#e2e8f0; margin: 2px 0;"></div>
+
+                    <div>
+                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:800; margin-bottom:4px;">
+                            <span style="color:#0369a1;">IVA Débito Fiscal (Ventas)</span>
+                            <span style="color:#0369a1;">Gs. ${fmtGs(ing.totIva)}</span>
+                        </div>
+                        <div style="height: 18px; background: #f1f5f9; border-radius: 8px; overflow: hidden;">
+                            <div style="width: ${pctDeb}%; height: 100%; background: linear-gradient(90deg, #38bdf8, #0284c7); border-radius: 8px;"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:800; margin-bottom:4px;">
+                            <span style="color:#7c3aed;">IVA Crédito Fiscal (Compras)</span>
+                            <span style="color:#7c3aed;">Gs. ${fmtGs(egr.totIva)}</span>
+                        </div>
+                        <div style="height: 18px; background: #f1f5f9; border-radius: 8px; overflow: hidden;">
+                            <div style="width: ${pctCre}%; height: 100%; background: linear-gradient(90deg, #a78bfa, #7c3aed); border-radius: 8px;"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // 2. Gráfico Tasas Comparativas
+            const paresTasas = [
+                { label: 'Gravadas 10%', ing: ing.grav10, egr: egr.grav10 },
+                { label: 'Gravadas 5%',  ing: ing.grav5,  egr: egr.grav5 },
+                { label: 'Exentas',      ing: ing.exentas, egr: egr.exentas },
+                { label: 'Contado (CON)', ing: ing.contado, egr: egr.contado },
+                { label: 'Crédito (CRE)', ing: ing.credito, egr: egr.credito }
+            ];
+
+            document.getElementById('chartTasasComparativas').innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 11px;">
+                    ${paresTasas.map(p => {
+                        const tot = p.ing + p.egr;
+                        const wIng = tot > 0 ? Math.round((p.ing / tot) * 100) : 0;
+                        const wEgr = tot > 0 ? (100 - wIng) : 0;
+                        return `
+                            <div>
+                                <div style="display:flex; justify-content:space-between; font-size:0.76rem; font-weight:700; margin-bottom:3px;">
+                                    <span style="color:#15803d;">Ing: Gs. ${fmtGs(p.ing)}</span>
+                                    <span style="color:#0f172a; font-weight:800;">${p.label}</span>
+                                    <span style="color:#be123c;">Egr: Gs. ${fmtGs(p.egr)}</span>
+                                </div>
+                                <div style="height: 14px; background: #f1f5f9; border-radius: 99px; overflow: hidden; display: flex;">
+                                    <div style="width:${wIng}%; background:#16a34a;" title="Ingresos ${wIng}%"></div>
+                                    <div style="width:${wEgr}%; background:#e11d48;" title="Egresos ${wEgr}%"></div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+
+            // 3. Gráfico Evolución Mensual del Ejercicio (12 meses, barras agrupadas con monto arriba)
+            const meses = data.porMes || [];
+            const maxMesVal = Math.max(...meses.map(m => Math.max(m.ingTotal, m.egrTotal)), 1);
+
+            document.getElementById('chartEvolucionMensual').innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(12, minmax(72px, 1fr)); gap: 10px; align-items: end; min-height: 245px; padding-top: 28px;">
+                    ${meses.map(m => {
+                        const hIng = m.ingTotal > 0 ? Math.max(6, Math.round((m.ingTotal / maxMesVal) * 165)) : 2;
+                        const hEgr = m.egrTotal > 0 ? Math.max(6, Math.round((m.egrTotal / maxMesVal) * 165)) : 2;
+                        return `
+                            <div style="display:flex; flex-direction:column; align-items:center;">
+                                <div style="display:flex; align-items:flex-end; justify-content:center; gap:4px; height: 195px; width:100%;">
+                                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:flex-end; flex:1;">
+                                        <span style="font-size:0.65rem; font-weight:800; color:#15803d; margin-bottom:3px; white-space:nowrap;">${m.ingTotal > 0 ? fmtCompact(m.ingTotal) : ''}</span>
+                                        <div style="width:100%; max-width:24px; height:${hIng}px; background:linear-gradient(180deg,#22c55e,#15803d); border-radius:5px 5px 0 0;" title="${m.nombreMes} - Ingresos: Gs. ${fmtGs(m.ingTotal)}"></div>
+                                    </div>
+                                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:flex-end; flex:1;">
+                                        <span style="font-size:0.65rem; font-weight:800; color:#be123c; margin-bottom:3px; white-space:nowrap;">${m.egrTotal > 0 ? fmtCompact(m.egrTotal) : ''}</span>
+                                        <div style="width:100%; max-width:24px; height:${hEgr}px; background:linear-gradient(180deg,#fb7185,#be123c); border-radius:5px 5px 0 0;" title="${m.nombreMes} - Egresos: Gs. ${fmtGs(m.egrTotal)}"></div>
+                                    </div>
+                                </div>
+                                <div style="margin-top:6px; font-size:0.74rem; font-weight:800; color:#334155;">${m.nombreMes.substring(0, 3)}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+
+            // 4. Gráfico Evolución por Fecha del Período Filtrado
+            const fechas = data.porFecha || [];
+            const contFecha = document.getElementById('chartEvolucionPorFecha');
+            if (fechas.length === 0) {
+                contFecha.innerHTML = `<div style="padding: 2rem; text-align: center; color: #94a3b8; font-weight: 600;">Sin movimientos registrados en el rango de fechas seleccionado.</div>`;
+                return;
+            }
+
+            const maxDiaVal = Math.max(...fechas.map(f => Math.max(f.ingTotal, f.egrTotal)), 1);
+            contFecha.innerHTML = `
+                <div style="display: flex; align-items: flex-end; gap: 12px; min-height: 235px; padding: 26px 8px 6px 8px;">
+                    ${fechas.map(f => {
+                        const hIng = f.ingTotal > 0 ? Math.max(6, Math.round((f.ingTotal / maxDiaVal) * 160)) : 2;
+                        const hEgr = f.egrTotal > 0 ? Math.max(6, Math.round((f.egrTotal / maxDiaVal) * 160)) : 2;
+                        const labelCorto = f.fecha.length >= 10 ? (f.fecha.substring(8, 10) + '/' + f.fecha.substring(5, 7)) : f.fecha;
+                        return `
+                            <div style="display:flex; flex-direction:column; align-items:center; min-width: 58px; flex: 1;">
+                                <div style="display:flex; align-items:flex-end; justify-content:center; gap:4px; height: 188px; width:100%;">
+                                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:flex-end; flex:1;">
+                                        <span style="font-size:0.64rem; font-weight:800; color:#15803d; margin-bottom:3px; white-space:nowrap;">${f.ingTotal > 0 ? fmtCompact(f.ingTotal) : ''}</span>
+                                        <div style="width:100%; max-width:22px; height:${hIng}px; background:#16a34a; border-radius:5px 5px 0 0;" title="${f.diaMes} - Ingresos: Gs. ${fmtGs(f.ingTotal)}"></div>
+                                    </div>
+                                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:flex-end; flex:1;">
+                                        <span style="font-size:0.64rem; font-weight:800; color:#be123c; margin-bottom:3px; white-space:nowrap;">${f.egrTotal > 0 ? fmtCompact(f.egrTotal) : ''}</span>
+                                        <div style="width:100%; max-width:22px; height:${hEgr}px; background:#e11d48; border-radius:5px 5px 0 0;" title="${f.diaMes} - Egresos: Gs. ${fmtGs(f.egrTotal)}"></div>
+                                    </div>
+                                </div>
+                                <div style="margin-top:6px; font-size:0.72rem; font-weight:800; color:#475569;">${labelCorto}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initQuickFilters();
+            cargarResumenComparativo();
+        });
+    </script>
+</body>
+</html>

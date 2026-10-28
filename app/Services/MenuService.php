@@ -168,6 +168,25 @@ class MenuService {
                     'route'    => 'accesos_grupos',
                 ];
             }
+
+            if (isset($modulosMap['CO'])) {
+                $hasCorescom = false;
+                foreach ($modulosMap['CO']['reportes'] as $repItem) {
+                    if (($repItem['nomForma'] ?? '') === 'CORESCOM') {
+                        $hasCorescom = true;
+                        break;
+                    }
+                }
+                if (!$hasCorescom) {
+                    $modulosMap['CO']['reportes'][] = [
+                        'nomForma' => 'CORESCOM',
+                        'itemMenu' => 'Resumen Comparativo',
+                        'tipo'     => 'R',
+                        'titulo'   => 'Resumen Comparativo',
+                        'route'    => RouteHelper::getRoute('CORESCOM'),
+                    ];
+                }
+            }
         }
 
         // Asegurar acceso a SuperAdmin de Planes y Propietarios si el usuario es SuperAdmin
