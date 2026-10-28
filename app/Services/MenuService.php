@@ -29,6 +29,30 @@ class MenuService {
             "SELECT COALESCE(NULLIF(TRIM(cod_grupo), ''), 'CONTA') FROM usuarios WHERE id_propietario = ? AND UPPER(TRIM(cod_usuario)) = ? LIMIT 1",
             [$propId, $cleanUser]
         ) ?? TenantContext::grupo())));
+        if ($cleanUser === 'CONTA') {
+            $userGrupo = 'CONADM';
+        }
+
+        // Asegurar que la forma CORESCOM (Resumen Comparativo) exista en formas y accesos_grupos para el grupo de CONTA
+        $pIdInt = (int)$propId;
+        Database::execute(
+            "INSERT INTO formas (id_propietario, cod_modulo, nom_forma, titulo, mostrar_en_menu, tipo, orden_en_menu)
+             SELECT $pIdInt, 'CO', 'CORESCOM', 'Resumen Comparativo', 'S', 'R', 7
+             FROM DUAL
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM formas WHERE id_propietario = $pIdInt AND UPPER(TRIM(nom_forma)) = 'CORESCOM'
+             )",
+            true
+        );
+        Database::execute(
+            "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
+             SELECT $pIdInt, 'CONADM', 'CO', 'CORESCOM', 'S', 'S', 'S', 'S', 'Resumen Comparativo', 'S'
+             FROM DUAL
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM accesos_grupos WHERE id_propietario = $pIdInt AND UPPER(TRIM(cod_grupo)) = 'CONADM' AND UPPER(TRIM(nom_forma)) = 'CORESCOM'
+             )",
+            true
+        );
 
         $sql = "SELECT m.cod_modulo,
                        m.descripcion AS modulo_desc,
@@ -168,24 +192,25 @@ class MenuService {
                     'route'    => 'accesos_grupos',
                 ];
             }
+        }
 
-            if (isset($modulosMap['CO'])) {
-                $hasCorescom = false;
-                foreach ($modulosMap['CO']['reportes'] as $repItem) {
-                    if (($repItem['nomForma'] ?? '') === 'CORESCOM') {
-                        $hasCorescom = true;
-                        break;
-                    }
+        // Asegurar acceso a Resumen Comparativo (CORESCOM) en Contabilidad > Reportes para el grupo del usuario CONTA (CONADM / CONTA)
+        if (in_array($userGrupo, ['CONADM', 'CONTA', 'CONTAM', 'CONTAP'], true) && isset($modulosMap['CO'])) {
+            $hasCorescom = false;
+            foreach ($modulosMap['CO']['reportes'] as $repItem) {
+                if (($repItem['nomForma'] ?? '') === 'CORESCOM') {
+                    $hasCorescom = true;
+                    break;
                 }
-                if (!$hasCorescom) {
-                    $modulosMap['CO']['reportes'][] = [
-                        'nomForma' => 'CORESCOM',
-                        'itemMenu' => 'Resumen Comparativo',
-                        'tipo'     => 'R',
-                        'titulo'   => 'Resumen Comparativo',
-                        'route'    => RouteHelper::getRoute('CORESCOM'),
-                    ];
-                }
+            }
+            if (!$hasCorescom) {
+                $modulosMap['CO']['reportes'][] = [
+                    'nomForma' => 'CORESCOM',
+                    'itemMenu' => 'Resumen Comparativo',
+                    'tipo'     => 'R',
+                    'titulo'   => 'Resumen Comparativo',
+                    'route'    => RouteHelper::getRoute('CORESCOM'),
+                ];
             }
         }
 

@@ -1791,6 +1791,7 @@ class ReportesContablesController {
 
     public static function apiResumenComparativoData(): void {
         if (!self::requireAuth()) return;
+        try {
         $idProp          = TenantContext::idPropietario();
         $codEmpresa      = TenantContext::empresa();
         $ejercicio       = EjercicioService::getEjercicio();
@@ -1830,8 +1831,8 @@ class ReportesContablesController {
 
         // 2. Consultar Egresos del ejercicio completo
         $sqlEgr = "SELECT id_egreso, DATE_FORMAT(fec_egreso, '%Y-%m-%d') AS fecha,
-                          nro_factura, serie, nro_timbrado, ruc_acreedor AS ruc, nom_acreedor AS razon_social,
-                          condicion, regimen, anulada,
+                          nro_factura, serie, nro_timbrado, ruc_proveedor AS ruc, nom_proveedor AS razon_social,
+                          condicion, regimen, CASE WHEN UPPER(COALESCE(estado, 'A')) = 'I' THEN 'S' ELSE 'N' END AS anulada,
                           COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
                           COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
                           COALESCE(exentas, 0) AS exentas, COALESCE(tot_iva, 0) AS tot_iva,
@@ -1841,7 +1842,7 @@ class ReportesContablesController {
                      AND fec_egreso >= ? AND fec_egreso <= ?";
         $paramsEgr = [$idProp, $codEmpresa, $rango[0], $rango[1]];
         if (!$incluirAnulados) {
-            $sqlEgr .= " AND (anulada IS NULL OR UPPER(anulada) <> 'S')";
+            $sqlEgr .= " AND (estado IS NULL OR UPPER(estado) <> 'I')";
         }
         if ($regimen !== '' && $regimen !== 'TODOS') {
             $sqlEgr .= " AND UPPER(TRIM(COALESCE(regimen, ''))) = ?";
@@ -2122,5 +2123,11 @@ class ReportesContablesController {
             'porFecha'    => array_values($porFechaMap),
             'movimientos' => $movimientos,
         ]);
+        } catch (\Throwable $e) {
+            View::json([
+                'status'  => 'error',
+                'message' => 'Error en resumen comparativo: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }
