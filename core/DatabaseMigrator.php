@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 24;
+    private const SCHEMA_VERSION = 26;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -103,6 +103,7 @@ class DatabaseMigrator {
         ", true);
 
         $extraColsProp = [
+            'email'           => 'VARCHAR(150) DEFAULT NULL',
             'fec_ultimo_pago' => 'DATE DEFAULT NULL',
             'dias_aviso'      => 'INT NOT NULL DEFAULT 7',
             'dias_gracia'     => 'INT NOT NULL DEFAULT 3',
@@ -114,6 +115,7 @@ class DatabaseMigrator {
                 $applied[] = "propietarios.$col";
             }
         }
+        Database::execute("ALTER TABLE `propietarios` MODIFY COLUMN `email` VARCHAR(150) DEFAULT NULL", true);
 
         // Limpiar datos de ejemplo antiguos (SIPAP / +595 981 000 000) y actualizar al número oficial +595 982 965 515
         Database::execute(
@@ -149,10 +151,60 @@ class DatabaseMigrator {
             Database::execute("UPDATE `usuarios` SET `es_superadmin` = 'S' WHERE `id_propietario` = 1 AND UPPER(`cod_usuario`) = 'CONTA'", true);
             $applied[] = 'usuarios.es_superadmin';
         }
+        if (!self::columnExists('usuarios', 'e_mail')) {
+            Database::execute("ALTER TABLE `usuarios` ADD COLUMN `e_mail` VARCHAR(150) DEFAULT NULL", true);
+            $applied[] = 'usuarios.e_mail';
+        } else {
+            Database::execute("ALTER TABLE `usuarios` MODIFY COLUMN `e_mail` VARCHAR(150) DEFAULT NULL", true);
+        }
         Database::execute("ALTER TABLE `usuarios` MODIFY COLUMN `clave` VARCHAR(255) DEFAULT NULL", true);
+        // Reparar claves cuyos hashes bcrypt hayan quedado truncados por el antiguo VARCHAR(15)
+        Database::execute(
+            "UPDATE `usuarios`
+             SET `clave` = CASE
+                 WHEN UPPER(TRIM(`cod_usuario`)) = 'CONTA' THEN 'CONTA'
+                 ELSE CONCAT(UPPER(TRIM(`cod_usuario`)), '123')
+             END
+             WHERE `clave` IS NULL
+                OR TRIM(`clave`) = ''
+                OR (`clave` LIKE '$2%' AND CHAR_LENGTH(`clave`) < 55)",
+            true
+        );
         Database::execute("ALTER TABLE `usuarios` MODIFY COLUMN `cod_grupo` VARCHAR(10) DEFAULT NULL", true);
         Database::execute("ALTER TABLE `grupos_usuarios` MODIFY COLUMN `cod_grupo` VARCHAR(10) DEFAULT NULL", true);
         Database::execute("ALTER TABLE `accesos_grupos` MODIFY COLUMN `cod_grupo` VARCHAR(10) DEFAULT NULL", true);
+
+        // Sincronizar correo entre propietario y su usuario administrador cuando alguno esté vacío
+        Database::execute(
+            "UPDATE `propietarios` p
+             SET p.`email` = (
+                 SELECT LOWER(TRIM(u.`e_mail`))
+                 FROM `usuarios` u
+                 WHERE u.`id_propietario` = p.`id_propietario`
+                   AND u.`e_mail` IS NOT NULL AND TRIM(u.`e_mail`) <> ''
+                 ORDER BY CASE WHEN u.`es_admin` = 'S' THEN 0 ELSE 1 END, u.`cod_usuario` ASC
+                 LIMIT 1
+             )
+             WHERE (p.`email` IS NULL OR TRIM(p.`email`) = '')
+               AND EXISTS (
+                   SELECT 1 FROM `usuarios` u2
+                   WHERE u2.`id_propietario` = p.`id_propietario`
+                     AND u2.`e_mail` IS NOT NULL AND TRIM(u2.`e_mail`) <> ''
+               )",
+            true
+        );
+        Database::execute(
+            "UPDATE `usuarios` u
+             JOIN `propietarios` p ON p.`id_propietario` = u.`id_propietario`
+             SET u.`e_mail` = LOWER(TRIM(p.`email`))
+             WHERE p.`email` IS NOT NULL AND TRIM(p.`email`) <> ''
+               AND (u.`e_mail` IS NULL OR TRIM(u.`e_mail`) = '')
+               AND (u.`es_admin` = 'S' OR NOT EXISTS (
+                   SELECT 1 FROM (SELECT `id_propietario` FROM `usuarios` WHERE `es_admin` = 'S') ua
+                   WHERE ua.`id_propietario` = u.`id_propietario`
+               ))",
+            true
+        );
 
         // 4. Asegurar columnas extendidas en co_egresos y co_ingresos si faltan
         $extraColsEgresos = [

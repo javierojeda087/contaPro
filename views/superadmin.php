@@ -743,8 +743,14 @@
                             <input type="text" id="propRuc" class="form-control fw-bold" placeholder="8000000-1">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold small">Correo Electrónico</label>
-                            <input type="email" id="propEmail" class="form-control" placeholder="cliente@correo.com">
+                            <label class="form-label fw-bold small">Correo Electrónico (Recuperación de Clave) *</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-success"><i class="ph ph-envelope-simple"></i></span>
+                                <input type="email" id="propEmail" class="form-control fw-semibold" required placeholder="propietario@correo.com">
+                            </div>
+                            <div class="form-text" style="font-size: 0.72rem; color: #15803d;">
+                                <i class="ph ph-check-circle"></i> Vinculado al propietario y su usuario administrador para recuperación de contraseña
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold small">Teléfono / WhatsApp</label>
@@ -1187,9 +1193,12 @@
                     </td>
                     <td>
                         <div class="fw-bold text-dark" style="font-size: 0.84rem;">${escHtml(pr.ruc || 'Sin RUC')}</div>
-                        <div class="small text-muted" style="font-size: 0.76rem;">
-                            ${pr.email ? `<span>${escHtml(pr.email)}</span>` : ''}
-                            ${pr.telefono ? `<span class="ms-1 text-secondary">• ${escHtml(pr.telefono)}</span>` : ''}
+                        <div class="mt-1 d-flex align-items-center gap-1 flex-wrap" style="font-size: 0.76rem;">
+                            ${pr.email
+                                ? `<span class="sa-pill sa-pill-green" style="font-size: 0.71rem; padding: 2px 8px;" title="Correo vinculado para recuperación de contraseña"><i class="ph ph-envelope-simple"></i> ${escHtml(pr.email)}</span>`
+                                : `<span class="sa-pill sa-pill-amber" style="font-size: 0.71rem; padding: 2px 8px;" title="Edite el propietario para vincular un correo de recuperación"><i class="ph ph-warning-circle"></i> Sin correo vinculado</span>`
+                            }
+                            ${pr.telefono ? `<span class="text-secondary small">• ${escHtml(pr.telefono)}</span>` : ''}
                         </div>
                     </td>
                     <td>
@@ -1405,11 +1414,25 @@
         }
 
         async function guardarPropietario() {
+            const nombreVal = (document.getElementById('propNombre').value || '').trim();
+            const emailVal = (document.getElementById('propEmail').value || '').trim().toLowerCase();
+
+            if (!nombreVal) {
+                showAlert('El nombre del propietario es obligatorio.', 'warning');
+                document.getElementById('propNombre').focus();
+                return;
+            }
+            if (!emailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+                showAlert('Debe ingresar un correo electrónico válido para vincular al propietario (necesario para recuperación de contraseña).', 'warning');
+                document.getElementById('propEmail').focus();
+                return;
+            }
+
             const body = new URLSearchParams({
                 idPropietario: document.getElementById('propId').value,
-                nombrePropietario: document.getElementById('propNombre').value,
+                nombrePropietario: nombreVal,
                 ruc: document.getElementById('propRuc').value,
-                email: document.getElementById('propEmail').value,
+                email: emailVal,
                 telefono: document.getElementById('propTelefono').value,
                 idPlan: document.getElementById('propIdPlan').value,
                 maxContribuyentes: document.getElementById('propMaxContrib').value,

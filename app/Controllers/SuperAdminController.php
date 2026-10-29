@@ -47,6 +47,11 @@ class SuperAdminController {
 
         $propsRaw = Database::queryForList(
             "SELECT p.*,
+                    COALESCE(NULLIF(TRIM(p.email), ''), (
+                        SELECT u.e_mail FROM usuarios u
+                        WHERE u.id_propietario = p.id_propietario AND u.e_mail IS NOT NULL AND TRIM(u.e_mail) <> ''
+                        ORDER BY u.es_admin DESC, u.cod_usuario ASC LIMIT 1
+                    )) AS email,
                     COALESCE(pl.nombre_plan, 'Plan Básico') AS nombre_plan,
                     COALESCE(pl.cod_grupo, 'CONTA') AS cod_grupo_plan,
                     COALESCE(pl.precio_mensual, 0) AS precio_mensual,
@@ -178,7 +183,7 @@ class SuperAdminController {
         $idProp      = (int)($_POST['idPropietario'] ?? 0);
         $nombre      = mb_strtoupper(trim((string)($_POST['nombrePropietario'] ?? '')), 'UTF-8');
         $ruc         = trim((string)($_POST['ruc'] ?? ''));
-        $email       = trim((string)($_POST['email'] ?? ''));
+        $email       = strtolower(trim((string)($_POST['email'] ?? '')));
         $telefono    = trim((string)($_POST['telefono'] ?? ''));
         $idPlan      = max(1, (int)($_POST['idPlan'] ?? 1));
         $maxContrib  = max(1, (int)($_POST['maxContribuyentes'] ?? 5));
@@ -193,6 +198,22 @@ class SuperAdminController {
 
         if ($nombre === '') {
             return ['status' => 'error', 'message' => 'El nombre del propietario es obligatorio.'];
+        }
+
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return ['status' => 'error', 'message' => 'Debe indicar un correo electrónico válido para el propietario (requerido para recuperación de contraseña).'];
+        }
+
+        $dupEmailProp = Database::queryForMap(
+            "SELECT id_propietario, nombre_propietario FROM propietarios
+             WHERE LOWER(TRIM(COALESCE(email, ''))) = ? AND id_propietario <> ? LIMIT 1",
+            [$email, $idProp]
+        );
+        if ($dupEmailProp) {
+            return [
+                'status'  => 'error',
+                'message' => "El correo '{$email}' ya está vinculado al Propietario #{$dupEmailProp['id_propietario']} ({$dupEmailProp['nombre_propietario']}). Ingrese un correo único para este propietario.",
+            ];
         }
 
         $grupoPlan = TenantContext::obtenerGrupoPorPlan($idPlan);
@@ -230,7 +251,8 @@ class SuperAdminController {
             [$grupoPlan, $idProp]
         );
 
-        // Crear o actualizar usuario administrador del propietario si se indicó
+        // Crear o actualizar usuario administrador del propietario y vincularle el correo del propietario
+        Database::execute("ALTER TABLE `usuarios` MODIFY COLUMN `clave` VARCHAR(255) DEFAULT NULL", true);
         if ($adminUser !== '') {
             $grupoUsuarioAdmin = ($adminUser === 'CONTA') ? 'CONADM' : $grupoPlan;
             $uExist = Database::queryForMap(
@@ -240,30 +262,44 @@ class SuperAdminController {
             if ($uExist) {
                 if ($adminClave !== '') {
                     Database::update(
-                        "UPDATE usuarios SET clave = ?, estado = 'A', cod_grupo = ?, es_admin = 'S'
+                        "UPDATE usuarios SET clave = ?, estado = 'A', cod_grupo = ?, es_admin = 'S', e_mail = ?, telefono = COALESCE(NULLIF(?, ''), telefono)
                          WHERE id_propietario = ? AND UPPER(TRIM(cod_usuario)) = ?",
-                        [AuthController::hashPassword($adminClave), $grupoUsuarioAdmin, $idProp, $adminUser]
+                        [AuthController::hashPassword($adminClave), $grupoUsuarioAdmin, $email, $telefono, $idProp, $adminUser]
                     );
                 } else {
                     Database::update(
-                        "UPDATE usuarios SET cod_grupo = ? WHERE id_propietario = ? AND UPPER(TRIM(cod_usuario)) = ?",
-                        [$grupoUsuarioAdmin, $idProp, $adminUser]
+                        "UPDATE usuarios SET cod_grupo = ?, e_mail = ?, telefono = COALESCE(NULLIF(?, ''), telefono)
+                         WHERE id_propietario = ? AND UPPER(TRIM(cod_usuario)) = ?",
+                        [$grupoUsuarioAdmin, $email, $telefono, $idProp, $adminUser]
                     );
                 }
             } else {
                 $claveRaw   = $adminClave !== '' ? $adminClave : $adminUser . '123';
                 $claveFinal = AuthController::hashPassword($claveRaw);
                 Database::update(
-                    "INSERT INTO usuarios (id_propietario, cod_usuario, clave, estado, cod_grupo, cod_empresa, cod_sucursal, nombre, es_admin, es_superadmin)
-                     VALUES (?, ?, ?, 'A', ?, '1', '01', ?, 'S', 'N')",
-                    [$idProp, $adminUser, $claveFinal, $grupoUsuarioAdmin, $nombre]
+                    "INSERT INTO usuarios (id_propietario, cod_usuario, alias, clave, estado, cod_grupo, cod_empresa, cod_sucursal, nombre, e_mail, telefono, es_admin, es_superadmin)
+                     VALUES (?, ?, ?, ?, 'A', ?, '1', '01', ?, ?, ?, 'S', 'N')",
+                    [$idProp, $adminUser, $adminUser, $claveFinal, $grupoUsuarioAdmin, $nombre, $email, $telefono ?: null]
+                );
+            }
+        } else {
+            // Sincronizar correo con el usuario administrador principal del propietario
+            $primaryUser = (string)(Database::queryForValue(
+                "SELECT cod_usuario FROM usuarios WHERE id_propietario = ? ORDER BY es_admin DESC, cod_usuario ASC LIMIT 1",
+                [$idProp]
+            ) ?? '');
+            if ($primaryUser !== '') {
+                Database::update(
+                    "UPDATE usuarios SET e_mail = ?, telefono = COALESCE(NULLIF(?, ''), telefono)
+                     WHERE id_propietario = ? AND UPPER(TRIM(cod_usuario)) = ?",
+                    [$email, $telefono, $idProp, strtoupper(trim($primaryUser))]
                 );
             }
         }
 
         return [
             'status'  => 'success',
-            'message' => 'Propietario #' . $idProp . ' (' . $nombre . ') guardado y asignado al grupo ' . $grupoPlan . '.'
+            'message' => 'Propietario #' . $idProp . ' (' . $nombre . ') guardado con correo ' . $email . ' y asignado al grupo ' . $grupoPlan . '.'
         ];
     }
 
