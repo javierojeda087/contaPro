@@ -312,12 +312,6 @@ class View {
             </div>
 
             <div class="user-info">
-                <?php if ($esSuperAdmin): ?>
-                <a href="/app/superadmin" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; text-decoration: none; padding: 6px 13px; border-radius: 8px; font-size: 0.78rem; font-weight: 800; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(2,132,199,0.3);">
-                    <i class="ph ph-crown" style="font-size: 1rem;"></i> SuperAdmin Planes
-                </a>
-                <?php endif; ?>
-
                 <div style="background: rgba(22, 163, 74, 0.08); border: 1px solid rgba(22, 163, 74, 0.25); padding: 6px 14px; border-radius: 8px; font-size: 0.8rem; color: #15803d; font-weight: 700; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onclick="openGlobalSearchModal()">
                     <i class="ph ph-magnifying-glass" style="font-size: 0.95rem;"></i> Buscar (Ctrl+F2)
                 </div>
