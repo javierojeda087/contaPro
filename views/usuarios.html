@@ -142,7 +142,10 @@
                         <!-- 2. CÓDIGO DE USUARIO / ALIAS -->
                         <div style="display: grid; grid-template-columns: 140px 1fr; align-items: center; gap: 1rem;">
                             <label for="alias" style="font-weight: 600; color: #334155; font-size: 0.9rem;">Cód. Usuario : <span style="color:#dc2626">*</span></label>
-                            <input type="text" id="alias" class="form-control" required placeholder="Ej: JPEREZ o CONTA" style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.55rem 0.85rem; font-size: 0.92rem; width: 100%; text-transform: uppercase; font-weight: 600; letter-spacing: 0.03em;">
+                            <div>
+                                <input type="text" id="alias" class="form-control" required placeholder="Ej: JPEREZ o CONTA (Solo MAYÚSCULAS)" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9_.\-]/g, '')" style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.55rem 0.85rem; font-size: 0.92rem; width: 100%; text-transform: uppercase; font-weight: 600; letter-spacing: 0.03em;">
+                                <div style="font-size: 0.74rem; color: #64748b; margin-top: 3px;">Solo letras en MAYÚSCULAS y números, sin espacios.</div>
+                            </div>
                         </div>
 
                         <!-- 3. CONTRASEÑA (CLAVE) -->
@@ -196,13 +199,13 @@
                                 <!-- Nombre -->
                                 <div style="display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: 0.75rem;">
                                     <label for="nombre" style="font-size: 0.85rem; color: #475569; font-weight: 600;">Nombre(s) :</label>
-                                    <input type="text" id="nombre" class="form-control" placeholder="Nombre(s)" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.45rem 0.65rem; font-size: 0.88rem; width: 100%;">
+                                    <input type="text" id="nombre" class="form-control" placeholder="NOMBRE(S)" oninput="this.value = this.value.toUpperCase()" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.45rem 0.65rem; font-size: 0.88rem; width: 100%; text-transform: uppercase;">
                                 </div>
 
                                 <!-- Apellido -->
                                 <div style="display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: 0.75rem;">
                                     <label for="apellido" style="font-size: 0.85rem; color: #475569; font-weight: 600;">Apellido(s) :</label>
-                                    <input type="text" id="apellido" class="form-control" placeholder="Apellido(s)" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.45rem 0.65rem; font-size: 0.88rem; width: 100%;">
+                                    <input type="text" id="apellido" class="form-control" placeholder="APELLIDO(S)" oninput="this.value = this.value.toUpperCase()" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.45rem 0.65rem; font-size: 0.88rem; width: 100%; text-transform: uppercase;">
                                 </div>
 
                                 <!-- Correo -->
@@ -394,9 +397,9 @@
 
             let html = '';
             list.forEach(u => {
-                const cod = u.codUsuario || '';
-                const alias = u.alias || cod;
-                const personaNombre = u.nombrePersona || u.nombre || '—';
+                const cod = String(u.codUsuario || '').toUpperCase();
+                const alias = String(u.alias || cod).toUpperCase();
+                const personaNombre = String(u.nombrePersona || u.nombre || '—').toUpperCase();
                 const codPersonaBadge = u.codPersona ? `<span style="font-size: 0.75rem; background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; margin-right: 6px; font-weight: 600;">#${u.codPersona}</span>` : '';
                 const email = u.email || u.e_mail || '';
                 const telefono = u.telefono || '';
@@ -582,14 +585,15 @@
             // Autocompletar datos personales en sección de detalles
             if (p.documento) document.getElementById('ci').value = p.documento;
             
-            // Desglosar nombre/apellido si es posible
+            // Desglosar nombre/apellido si es posible (siempre en MAYÚSCULAS)
             if (p.nombre) {
-                const parts = p.nombre.split(',');
+                const nomUp = String(p.nombre).toUpperCase();
+                const parts = nomUp.split(',');
                 if (parts.length === 2) {
                     document.getElementById('apellido').value = parts[0].trim();
                     document.getElementById('nombre').value = parts[1].trim();
                 } else {
-                    document.getElementById('nombre').value = p.nombre;
+                    document.getElementById('nombre').value = nomUp.trim();
                 }
             }
             if (p.email) document.getElementById('email').value = p.email;
@@ -716,7 +720,7 @@
 
                 // Cargar datos básicos de usuario
                 const codeUp = (u.codUsuario || u.alias || '').toUpperCase();
-                document.getElementById('alias').value = u.alias || u.codUsuario || '';
+                document.getElementById('alias').value = (u.alias || u.codUsuario || '').toUpperCase();
                 const selGrupo = document.getElementById('codGrupo');
                 selGrupo.value = codeUp === 'CONTA' ? 'CONADM' : (u.codGrupo || defaultGrupoPlan || 'CONTA');
                 selGrupo.disabled = true;
@@ -731,8 +735,8 @@
 
                 // Cargar datos personales
                 document.getElementById('ci').value = u.ci || '';
-                document.getElementById('nombre').value = u.nombre || '';
-                document.getElementById('apellido').value = u.apellido || '';
+                document.getElementById('nombre').value = (u.nombre || '').toUpperCase();
+                document.getElementById('apellido').value = (u.apellido || '').toUpperCase();
                 document.getElementById('email').value = u.email || u.e_mail || '';
                 
                 let tel = u.telefono || '';
@@ -768,16 +772,20 @@
             e.preventDefault();
 
             const action = document.getElementById('actionType').value;
-            const origCod = document.getElementById('origCodUsuario').value;
-            const alias = document.getElementById('alias').value.trim().toUpperCase();
+            const origCod = document.getElementById('origCodUsuario').value.trim().toUpperCase();
+            const aliasInput = document.getElementById('alias');
+            aliasInput.value = aliasInput.value.trim().toUpperCase().replace(/[^A-Z0-9_.\-]/g, '');
+            const alias = aliasInput.value;
             const codPersona = document.getElementById('codPersona').value.trim();
-            const codGrupo = document.getElementById('codGrupo').value || 'CONTA';
+            const codGrupo = (document.getElementById('codGrupo').value || 'CONTA').trim().toUpperCase();
             const clave = document.getElementById('clave').value;
             const esAdmin = document.getElementById('esAdmin').checked ? 'S' : 'N';
 
             const ci = document.getElementById('ci').value.trim();
-            const nombre = document.getElementById('nombre').value.trim();
-            const apellido = document.getElementById('apellido').value.trim();
+            const nombre = document.getElementById('nombre').value.trim().toUpperCase();
+            const apellido = document.getElementById('apellido').value.trim().toUpperCase();
+            document.getElementById('nombre').value = nombre;
+            document.getElementById('apellido').value = apellido;
             const email = document.getElementById('email').value.trim();
             
             let rawTel = document.getElementById('telefono').value.trim();
@@ -786,8 +794,9 @@
             const sexo = document.getElementById('sexo').value;
             const fecNacimiento = document.getElementById('fecNacimiento').value;
 
-            if (!alias) {
-                Swal.fire('Atención', 'El campo Cód. Usuario / Alias es obligatorio.', 'warning');
+            if (!alias || !/^[A-Z0-9_.\-]+$/.test(alias)) {
+                Swal.fire('Atención', 'El Cód. Usuario / Nombre de Usuario es obligatorio y debe estar únicamente en MAYÚSCULAS y sin espacios.', 'warning');
+                aliasInput.focus();
                 return;
             }
 

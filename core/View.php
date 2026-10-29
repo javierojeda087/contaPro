@@ -432,10 +432,16 @@ HTML;
         $vencFmt   = (string)($plan['fec_vencimiento_fmt'] ?? '');
         $precioGs  = number_format((float)($plan['precio_mensual'] ?? 0), 0, ',', '.');
 
-        $waText = "¡Hola! Deseo renovar mi suscripción de ContaPro"
-                . ($propNom !== '' ? " (Cuenta: {$propNom})" : "")
-                . " - {$planNom} (Gs. {$precioGs}/mes, vencimiento: {$vencFmt}).";
-        $waUrl  = htmlspecialchars("https://wa.me/595982965515?text=" . rawurlencode($waText));
+        if (!empty($plan['whatsapp_url'])) {
+            $waUrl = htmlspecialchars((string)$plan['whatsapp_url']);
+        } else {
+            $sysCfg = TenantContext::getSystemConfig();
+            $waPhone = $sysCfg['whatsapp_soporte'] ?? '+595 982 965 515';
+            $waText = "¡Hola! Deseo renovar mi suscripción de ContaPro"
+                    . ($propNom !== '' ? " (Cuenta: {$propNom})" : "")
+                    . " - {$planNom} (Gs. {$precioGs}/mes, vencimiento: {$vencFmt}).";
+            $waUrl  = htmlspecialchars(TenantContext::formatWhatsappLink($waPhone, $waText));
+        }
 
         return <<<HTML
         <div style="width: 100%; max-width: 1200px; background: {$bg}; border: 1px solid {$border}; border-left: 6px solid {$border}; border-radius: 12px; padding: 12px 18px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">

@@ -602,11 +602,21 @@ class AdminController {
     public static function apiUsuariosList(): void {
         if (!self::requireAuth()) return;
         $idProp = TenantContext::idPropietario();
-        $sql = "SELECT u.cod_usuario AS codUsuario,
-                       COALESCE(u.alias, u.cod_usuario) AS alias,
+        // Asegurar que todos los usuarios creados estén normalizados en MAYÚSCULAS en la base de datos
+        Database::execute(
+            "UPDATE `usuarios`
+             SET `cod_usuario` = UPPER(TRIM(`cod_usuario`)),
+                 `alias`       = UPPER(TRIM(COALESCE(NULLIF(TRIM(`alias`), ''), `cod_usuario`))),
+                 `nombre`      = CASE WHEN `nombre` IS NOT NULL THEN UPPER(TRIM(`nombre`)) ELSE NULL END,
+                 `apellido`    = CASE WHEN `apellido` IS NOT NULL THEN UPPER(TRIM(`apellido`)) ELSE NULL END
+             WHERE `id_propietario` = " . (int)$idProp,
+            true
+        );
+        $sql = "SELECT UPPER(TRIM(u.cod_usuario)) AS codUsuario,
+                       UPPER(TRIM(COALESCE(NULLIF(TRIM(u.alias), ''), u.cod_usuario))) AS alias,
                        COALESCE(u.ci, p.ci) AS ci,
-                       COALESCE(u.nombre, p.nombre) AS nombre,
-                       u.apellido AS apellido,
+                       UPPER(TRIM(COALESCE(u.nombre, p.nombre))) AS nombre,
+                       UPPER(TRIM(u.apellido)) AS apellido,
                        COALESCE(u.telefono, p.telefono, (
                            SELECT tp.num_telefono FROM telef_personas tp
                            WHERE tp.id_propietario = u.id_propietario AND tp.cod_persona = u.cod_persona LIMIT 1
@@ -615,8 +625,8 @@ class AdminController {
                        u.es_admin AS esAdmin,
                        u.fec_nacimiento AS fecNacimiento,
                        u.cod_persona AS codPersona,
-                       p.nombre AS nombrePersona,
-                       u.cod_grupo AS codGrupo,
+                       UPPER(TRIM(p.nombre)) AS nombrePersona,
+                       UPPER(TRIM(u.cod_grupo)) AS codGrupo,
                        g.descripcion AS descGrupo,
                        u.cod_empresa AS codEmpresa,
                        e.descripcion AS descEmpresa,
@@ -630,7 +640,7 @@ class AdminController {
                 LEFT JOIN empresas e ON e.id_propietario = u.id_propietario AND e.cod_empresa = u.cod_empresa
                 LEFT JOIN sucursales s ON s.id_propietario = u.id_propietario AND s.cod_empresa = u.cod_empresa AND s.cod_sucursal = u.cod_sucursal
                 WHERE u.id_propietario = ?
-                ORDER BY u.cod_usuario";
+                ORDER BY UPPER(TRIM(u.cod_usuario))";
         View::json(Database::queryForList($sql, [$idProp]));
     }
 
@@ -638,25 +648,25 @@ class AdminController {
         if (!self::requireAuth()) return;
         $idProp = TenantContext::idPropietario();
         $key = strtoupper(trim(urldecode($codUsuario)));
-        $sql = "SELECT u.cod_usuario AS codUsuario,
-                       COALESCE(u.alias, u.cod_usuario) AS alias,
+        $sql = "SELECT UPPER(TRIM(u.cod_usuario)) AS codUsuario,
+                       UPPER(TRIM(COALESCE(NULLIF(TRIM(u.alias), ''), u.cod_usuario))) AS alias,
                        COALESCE(u.ci, p.ci) AS ci,
-                       COALESCE(u.nombre, p.nombre) AS nombre,
-                       u.apellido AS apellido,
+                       UPPER(TRIM(COALESCE(u.nombre, p.nombre))) AS nombre,
+                       UPPER(TRIM(u.apellido)) AS apellido,
                        COALESCE(u.telefono, p.telefono) AS telefono,
                        u.sexo AS sexo,
                        u.es_admin AS esAdmin,
                        u.fec_nacimiento AS fecNacimiento,
                        u.cod_persona AS codPersona,
-                       p.nombre AS nombrePersona,
-                       u.cod_grupo AS codGrupo,
+                       UPPER(TRIM(p.nombre)) AS nombrePersona,
+                       UPPER(TRIM(u.cod_grupo)) AS codGrupo,
                        u.cod_empresa AS codEmpresa,
                        u.cod_sucursal AS codSucursal,
                        u.estado AS estado,
                        COALESCE(u.e_mail, p.email) AS email
                 FROM usuarios u
                 LEFT JOIN personas p ON p.id_propietario = u.id_propietario AND p.cod_persona = u.cod_persona
-                WHERE u.id_propietario = ? AND (UPPER(u.cod_usuario) = ? OR UPPER(u.alias) = ?)
+                WHERE u.id_propietario = ? AND (UPPER(TRIM(u.cod_usuario)) = ? OR UPPER(TRIM(u.alias)) = ?)
                 LIMIT 1";
         $row = Database::queryForMap($sql, [$idProp, $key, $key]);
         if ($row) {
@@ -671,14 +681,14 @@ class AdminController {
         $idProp = TenantContext::idPropietario();
         $in = self::getInput();
 
-        $codUsuario    = trim((string)($in['codUsuario'] ?? ''));
-        $alias         = trim((string)($in['alias'] ?? ''));
+        $codUsuario    = mb_strtoupper(trim((string)($in['codUsuario'] ?? '')), 'UTF-8');
+        $alias         = mb_strtoupper(trim((string)($in['alias'] ?? '')), 'UTF-8');
         $ci            = trim((string)($in['ci'] ?? ''));
-        $nombre        = trim((string)($in['nombre'] ?? ''));
-        $apellido      = trim((string)($in['apellido'] ?? ''));
-        $email         = trim((string)($in['email'] ?? ''));
+        $nombre        = mb_strtoupper(trim((string)($in['nombre'] ?? '')), 'UTF-8');
+        $apellido      = mb_strtoupper(trim((string)($in['apellido'] ?? '')), 'UTF-8');
+        $email         = strtolower(trim((string)($in['email'] ?? '')));
         $telefono      = trim((string)($in['telefono'] ?? ''));
-        $sexo          = trim((string)($in['sexo'] ?? ''));
+        $sexo          = strtoupper(trim((string)($in['sexo'] ?? '')));
         $esAdmin       = trim((string)($in['esAdmin'] ?? 'N'));
         $fecNacimiento = trim((string)($in['fecNacimiento'] ?? ''));
         $clave         = trim((string)($in['clave'] ?? ''));
@@ -687,12 +697,15 @@ class AdminController {
         $codSucursal   = trim((string)($in['codSucursal'] ?? '1')) ?: '1';
         $estado        = strtoupper(trim((string)($in['estado'] ?? 'A'))) ?: 'A';
 
-        $userCode = $alias !== '' ? $alias : $codUsuario;
-        if ($userCode === '') {
-            View::json(['status' => 'error', 'message' => 'El Alias o Código de Usuario es obligatorio.']);
+        $userCodeUp = $alias !== '' ? $alias : $codUsuario;
+        if ($userCodeUp === '') {
+            View::json(['status' => 'error', 'message' => 'El Nombre / Código de Usuario es obligatorio (en MAYÚSCULAS).']);
             return;
         }
-        $userCodeUp = strtoupper($userCode);
+        if (!preg_match('/^[A-Z0-9_.\-]+$/', $userCodeUp)) {
+            View::json(['status' => 'error', 'message' => 'El Nombre / Código de Usuario debe contener solo letras en MAYÚSCULAS y números, sin espacios.']);
+            return;
+        }
         // Regla: Al crear un nuevo usuario, pertenece al grupo correspondiente al Plan del Propietario
         // (Plan Básico -> CONTA, Plan Medio -> CONTAM, Plan Pro -> CONTAP), excepto el usuario CONTA que pertenece a CONADM.
         $grupoPorPlan = TenantContext::obtenerGrupoPorPropietario($idProp);
@@ -711,11 +724,11 @@ class AdminController {
 
         // Verificar que el código de usuario no exista globalmente (para evitar colisión en login)
         $cnt = (int)Database::queryForValue(
-            "SELECT COUNT(*) FROM usuarios WHERE UPPER(cod_usuario) = ? OR UPPER(alias) = ?",
+            "SELECT COUNT(*) FROM usuarios WHERE UPPER(TRIM(cod_usuario)) = ? OR UPPER(TRIM(alias)) = ?",
             [$userCodeUp, $userCodeUp]
         );
         if ($cnt > 0) {
-            View::json(['status' => 'error', 'message' => 'El usuario o alias ya está en uso. Elija otro código.']);
+            View::json(['status' => 'error', 'message' => "El usuario o alias '{$userCodeUp}' ya está en uso. Elija otro código en MAYÚSCULAS."]);
             return;
         }
 
@@ -730,6 +743,8 @@ class AdminController {
         }
 
         try {
+            Database::execute("ALTER TABLE `usuarios` MODIFY COLUMN `clave` VARCHAR(255) DEFAULT NULL", true);
+
             // Asegurar que el grupo exista para este propietario en grupos_usuarios y accesos_grupos
             $existeGrp = (int)Database::queryForValue(
                 "SELECT COUNT(*) FROM grupos_usuarios WHERE id_propietario = ? AND UPPER(TRIM(cod_grupo)) = ?",
@@ -768,7 +783,7 @@ class AdminController {
                 );
             }
 
-            $fullNom = trim($nombre . ' ' . $apellido);
+            $fullNom = mb_strtoupper(trim($nombre . ' ' . $apellido), 'UTF-8');
             $assignedPersona = $codPersona !== '' ? $codPersona : PersonaService::syncPersonaData(null, $fullNom ?: $userCodeUp, $ci, 'CI', null, $telefono, $email);
 
             Database::update(
@@ -778,7 +793,7 @@ class AdminController {
                     cod_grupo, cod_empresa, cod_sucursal, estado
                  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 [
-                    $idProp, $userCodeUp, $alias !== '' ? strtoupper($alias) : $userCodeUp,
+                    $idProp, $userCodeUp, $userCodeUp,
                     $ci ?: null, $nombre ?: null, $apellido ?: null, $email ?: null,
                     $telefono ?: null, $sexo ?: null,
                     ($esAdmin === 'true' || strtoupper($esAdmin) === 'S') ? 'S' : 'N',
@@ -787,7 +802,7 @@ class AdminController {
                 ]
             );
 
-            View::json(['status' => 'success', 'message' => "Usuario guardado exitosamente en el grupo {$codGrupo} ({$plan['nombre_plan']})."]);
+            View::json(['status' => 'success', 'message' => "Usuario {$userCodeUp} guardado exitosamente en el grupo {$codGrupo} ({$plan['nombre_plan']})."]);
         } catch (\Throwable $e) {
             View::json(['status' => 'error', 'message' => 'Error al insertar usuario: ' . $e->getMessage()]);
         }
@@ -798,24 +813,31 @@ class AdminController {
         $idProp = TenantContext::idPropietario();
         $in = self::getInput();
 
-        $key           = strtoupper(trim((string)($in['codUsuario'] ?? '')));
-        $alias         = trim((string)($in['alias'] ?? ''));
+        $key           = mb_strtoupper(trim((string)($in['codUsuario'] ?? '')), 'UTF-8');
+        $alias         = mb_strtoupper(trim((string)($in['alias'] ?? '')), 'UTF-8');
         $ci            = trim((string)($in['ci'] ?? ''));
-        $nombre        = trim((string)($in['nombre'] ?? ''));
-        $apellido      = trim((string)($in['apellido'] ?? ''));
-        $email         = trim((string)($in['email'] ?? ''));
+        $nombre        = mb_strtoupper(trim((string)($in['nombre'] ?? '')), 'UTF-8');
+        $apellido      = mb_strtoupper(trim((string)($in['apellido'] ?? '')), 'UTF-8');
+        $email         = strtolower(trim((string)($in['email'] ?? '')));
         $telefono      = trim((string)($in['telefono'] ?? ''));
-        $sexo          = trim((string)($in['sexo'] ?? ''));
+        $sexo          = strtoupper(trim((string)($in['sexo'] ?? '')));
         $esAdmin       = trim((string)($in['esAdmin'] ?? 'N'));
         $fecNacimiento = trim((string)($in['fecNacimiento'] ?? ''));
         $clave         = trim((string)($in['clave'] ?? ''));
         $codPersona    = trim((string)($in['codPersona'] ?? ''));
+
+        $aliasUp = $alias !== '' ? $alias : $key;
+        if ($aliasUp === '' || !preg_match('/^[A-Z0-9_.\-]+$/', $aliasUp)) {
+            View::json(['status' => 'error', 'message' => 'El Nombre / Código de Usuario debe contener solo letras en MAYÚSCULAS y números, sin espacios.']);
+            return;
+        }
+
         $grupoDefecto  = TenantContext::obtenerGrupoPorPropietario($idProp);
         if ($grupoDefecto === 'CONADM' && $key !== 'CONTA') {
             $grupoDefecto = 'CONTA';
         }
         $codGrupo      = strtoupper(trim((string)($in['codGrupo'] ?? $grupoDefecto))) ?: $grupoDefecto;
-        if ($key === 'CONTA' || strtoupper($alias) === 'CONTA') {
+        if ($key === 'CONTA' || $aliasUp === 'CONTA') {
             $codGrupo = 'CONADM';
         } elseif (!self::isConadm()) {
             // Si quien edita no es CONADM, mantiene el grupo del plan del propietario
@@ -828,19 +850,19 @@ class AdminController {
         try {
             if ($codPersona === '') {
                 $codPersona = (string)(Database::queryForValue(
-                    "SELECT cod_persona FROM usuarios WHERE id_propietario = ? AND (UPPER(cod_usuario) = ? OR UPPER(alias) = ?) LIMIT 1",
+                    "SELECT cod_persona FROM usuarios WHERE id_propietario = ? AND (UPPER(TRIM(cod_usuario)) = ? OR UPPER(TRIM(alias)) = ?) LIMIT 1",
                     [$idProp, $key, $key]
                 ) ?? '');
             }
 
             Database::update(
                 "UPDATE usuarios SET
-                    alias = ?, ci = ?, nombre = ?, apellido = ?, e_mail = ?, telefono = ?,
+                    cod_usuario = ?, alias = ?, ci = ?, nombre = ?, apellido = ?, e_mail = ?, telefono = ?,
                     sexo = ?, es_admin = ?, fec_nacimiento = ?, cod_persona = ?, estado = ?,
                     cod_grupo = ?, cod_empresa = ?, cod_sucursal = ?
-                 WHERE id_propietario = ? AND (UPPER(cod_usuario) = ? OR UPPER(alias) = ?)",
+                 WHERE id_propietario = ? AND (UPPER(TRIM(cod_usuario)) = ? OR UPPER(TRIM(alias)) = ?)",
                 [
-                    $alias !== '' ? strtoupper($alias) : $key,
+                    $aliasUp, $aliasUp,
                     $ci ?: null, $nombre ?: null, $apellido ?: null, $email ?: null, $telefono ?: null,
                     $sexo ?: null, ($esAdmin === 'true' || strtoupper($esAdmin) === 'S') ? 'S' : 'N',
                     $fecNacimiento ?: null, $codPersona ?: null, $estado,
@@ -850,13 +872,14 @@ class AdminController {
             );
 
             if ($clave !== '') {
+                Database::execute("ALTER TABLE `usuarios` MODIFY COLUMN `clave` VARCHAR(255) DEFAULT NULL", true);
                 Database::update(
-                    "UPDATE usuarios SET clave = ? WHERE id_propietario = ? AND (UPPER(cod_usuario) = ? OR UPPER(alias) = ?)",
-                    [AuthController::hashPassword($clave), $idProp, $key, $key]
+                    "UPDATE usuarios SET clave = ? WHERE id_propietario = ? AND (UPPER(TRIM(cod_usuario)) = ? OR UPPER(TRIM(alias)) = ?)",
+                    [AuthController::hashPassword($clave), $idProp, $aliasUp, $aliasUp]
                 );
             }
 
-            View::json(['status' => 'success', 'message' => 'Usuario actualizado exitosamente.']);
+            View::json(['status' => 'success', 'message' => "Usuario {$aliasUp} actualizado exitosamente."]);
         } catch (\Throwable $e) {
             View::json(['status' => 'error', 'message' => 'Error al actualizar usuario: ' . $e->getMessage()]);
         }
@@ -1132,16 +1155,24 @@ class AdminController {
         if (!self::requireConadm()) return;
 
         try {
-            // 1. Todos los usuarios creados en el sistema con su grupo real y plan del propietario
+            // 1. Asegurar que todos los usuarios creados en el sistema estén en MAYÚSCULAS y consultarlos con su grupo real y plan del propietario
+            Database::execute(
+                "UPDATE `usuarios`
+                 SET `cod_usuario` = UPPER(TRIM(`cod_usuario`)),
+                     `alias`       = UPPER(TRIM(COALESCE(NULLIF(TRIM(`alias`), ''), `cod_usuario`))),
+                     `nombre`      = CASE WHEN `nombre` IS NOT NULL THEN UPPER(TRIM(`nombre`)) ELSE NULL END,
+                     `apellido`    = CASE WHEN `apellido` IS NOT NULL THEN UPPER(TRIM(`apellido`)) ELSE NULL END",
+                true
+            );
             $usuarios = Database::queryForList(
                 "SELECT u.id_propietario AS idPropietario,
-                        COALESCE(pr.nombre_propietario, CONCAT('PROPIETARIO #', u.id_propietario)) AS nombrePropietario,
+                        UPPER(TRIM(COALESCE(pr.nombre_propietario, CONCAT('PROPIETARIO #', u.id_propietario)))) AS nombrePropietario,
                         COALESCE(pl.nombre_plan, 'Plan Básico') AS nombrePlan,
                         COALESCE(pl.codigo_plan, 'BASICO') AS codigoPlan,
                         COALESCE(NULLIF(TRIM(pl.cod_grupo), ''), 'CONTA') AS codGrupoPlan,
-                        u.cod_usuario AS codUsuario,
-                        COALESCE(u.alias, u.cod_usuario) AS alias,
-                        COALESCE(p.nombre, NULLIF(TRIM(CONCAT_WS(' ', u.nombre, u.apellido)), ''), u.cod_usuario) AS nombrePersona,
+                        UPPER(TRIM(u.cod_usuario)) AS codUsuario,
+                        UPPER(TRIM(COALESCE(NULLIF(TRIM(u.alias), ''), u.cod_usuario))) AS alias,
+                        UPPER(TRIM(COALESCE(p.nombre, NULLIF(TRIM(CONCAT_WS(' ', u.nombre, u.apellido)), ''), u.cod_usuario))) AS nombrePersona,
                         COALESCE(u.ci, p.ci, '') AS ci,
                         COALESCE(u.e_mail, p.email, '') AS email,
                         COALESCE(u.telefono, p.telefono, '') AS telefono,

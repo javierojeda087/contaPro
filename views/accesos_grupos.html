@@ -626,8 +626,8 @@
             filtered.forEach((u, idx) => {
                 const cod = (u.codUsuario || '').trim().toUpperCase();
                 const idProp = u.idPropietario || 1;
-                const nombre = u.nombrePersona || cod;
-                const propNombre = u.nombrePropietario || ('PROPIETARIO #' + idProp);
+                const nombre = String(u.nombrePersona || cod).trim().toUpperCase();
+                const propNombre = String(u.nombrePropietario || ('PROPIETARIO #' + idProp)).trim().toUpperCase();
                 const planNombre = u.nombrePlan || 'Plan Básico';
                 const codGrupoPlan = (u.codGrupoPlan || 'CONTA').toUpperCase();
                 const grupoActual = cod === 'CONTA' ? 'CONADM' : ((u.codGrupo || codGrupoPlan).trim().toUpperCase());

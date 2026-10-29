@@ -225,9 +225,15 @@
             <img src="/images/logo_contapro.png" alt="ContaPro - Sistema Contable & ERP" style="max-width: 200px; width: 100%; height: auto; display: block; margin: 0 auto 1.25rem auto;">
         </div>
 
-        <div id="errorMsgStep1" class="error-msg" style="display: none;">
-            <i class="ph ph-warning-circle" style="font-size: 1.2rem;"></i>
-            <span id="errorMsgStep1Text"></span>
+        <div id="errorMsgStep1" class="error-msg" style="display: none; flex-direction: column; align-items: stretch; gap: 10px;">
+            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                <i class="ph ph-warning-circle" style="font-size: 1.25rem; flex-shrink: 0; margin-top: 1px;"></i>
+                <span id="errorMsgStep1Text" style="flex: 1; line-height: 1.45;"></span>
+            </div>
+            <a id="errorMsgStep1Whatsapp" href="#" target="_blank" rel="noopener noreferrer" style="display: none; background: linear-gradient(135deg, #25d366, #16a34a); color: #ffffff; text-decoration: none; padding: 9px 14px; border-radius: 10px; font-weight: 800; font-size: 0.84rem; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35); transition: all 0.2s;">
+                <i class="ph ph-whatsapp-logo" style="font-size: 1.2rem;"></i>
+                <span id="errorMsgStep1WhatsappText">Contactar por WhatsApp para regularizar</span>
+            </a>
         </div>
 
         <form id="loginForm" onsubmit="validarStep1(event)" autocomplete="off">
@@ -235,7 +241,7 @@
                 <label for="username">Usuario</label>
                 <div class="input-container">
                     <i class="ph ph-user input-icon"></i>
-                    <input type="text" id="username" name="username" class="form-control-custom" autocomplete="off" required placeholder="Ingrese su usuario">
+                    <input type="text" id="username" name="username" class="form-control-custom" autocomplete="off" required placeholder="INGRESE SU USUARIO" oninput="this.value = this.value.toUpperCase().replace(/\s+/g, '')" style="text-transform: uppercase;">
                 </div>
             </div>
             <div class="form-group">
@@ -395,13 +401,17 @@
             e.preventDefault();
             const errDiv = document.getElementById('errorMsgStep1');
             const errText = document.getElementById('errorMsgStep1Text');
+            const errWaBtn = document.getElementById('errorMsgStep1Whatsapp');
+            const errWaText = document.getElementById('errorMsgStep1WhatsappText');
             errDiv.style.display = 'none';
+            if (errWaBtn) errWaBtn.style.display = 'none';
 
             const btn = document.getElementById('btnStep1');
             btn.disabled = true;
             btn.innerHTML = '<i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite;"></i> Verificando...';
 
-            const user = document.getElementById('username').value.trim();
+            const user = document.getElementById('username').value.trim().toUpperCase();
+            document.getElementById('username').value = user;
             const pass = document.getElementById('password').value;
 
             try {
@@ -422,6 +432,14 @@
                     await cargarStep2(result.defaultEmpresa, result.defaultSucursal);
                 } else {
                     errText.innerText = result.message || 'Usuario o contraseña incorrectos.';
+                    if (errWaBtn && result.whatsappUrl) {
+                        errWaBtn.href = result.whatsappUrl;
+                        if (errWaText) {
+                            const lbl = result.whatsappLabel || 'Contactar por WhatsApp';
+                            errWaText.innerText = result.whatsappPhone ? `${lbl} (${result.whatsappPhone})` : lbl;
+                        }
+                        errWaBtn.style.display = 'inline-flex';
+                    }
                     errDiv.style.display = 'flex';
                     btn.disabled = false;
                     btn.innerHTML = '<i class="ph ph-sign-in" style="font-size: 1.2rem;"></i> INGRESAR AL SISTEMA';

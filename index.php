@@ -210,6 +210,10 @@ if ($uri === '/api/superadmin/propietario/toggle-estado' && $method === 'POST') 
     View::json(SuperAdminController::toggleEstadoPropietario());
     exit;
 }
+if ($uri === '/api/superadmin/config/save' && $method === 'POST') {
+    View::json(SuperAdminController::saveConfiguracion());
+    exit;
+}
 if ($uri === '/api/superadmin/migrar-bd' && $method === 'POST') {
     if (!TenantContext::esSuperAdmin()) {
         View::json(['status' => 'error', 'message' => 'No autorizado'], 403);

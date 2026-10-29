@@ -490,9 +490,15 @@
                         <button type="button" class="sa-tab-btn" id="tabBtnPagos" onclick="cambiarVistaSeccion('pagos')">
                             <i class="ph ph-receipt"></i> Historial de Pagos <span class="sa-tab-count" id="tabCountPagos">0</span>
                         </button>
+                        <button type="button" class="sa-tab-btn" id="tabBtnConfig" onclick="cambiarVistaSeccion('config')">
+                            <i class="ph ph-whatsapp-logo"></i> WhatsApp y Avisos
+                        </button>
                     </div>
 
                     <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" class="sa-btn sa-btn-ghost" onclick="cambiarVistaSeccion('config')" title="Configurar número de WhatsApp y mensajes de suspensión/renovación">
+                            <i class="ph ph-whatsapp-logo" style="color: #16a34a; font-size: 1.05rem;"></i> Configurar WhatsApp
+                        </button>
                         <button type="button" class="sa-btn sa-btn-ghost" onclick="abrirModalPlan()">
                             <i class="ph ph-plus-circle" style="color: #0284c7; font-size: 1rem;"></i> Nuevo Plan
                         </button>
@@ -625,6 +631,96 @@
                     </div>
                 </div>
 
+                <!-- 6. PANEL DE CONFIGURACIÓN DE WHATSAPP Y AVISOS DE SUSCRIPCIÓN -->
+                <div class="sa-card" id="secConfiguracion">
+                    <div class="sa-card-header">
+                        <div class="sa-card-title-wrap">
+                            <div class="sa-card-icon" style="background: #dcfce7; color: #16a34a;">
+                                <i class="ph ph-whatsapp-logo"></i>
+                            </div>
+                            <div>
+                                <h3 class="sa-card-title">Configuración de WhatsApp Oficial y Avisos de Renovación / Suspensión</h3>
+                                <p class="sa-card-subtitle">Defina el número de contacto, el mensaje de bloqueo en Login y el botón directo a WhatsApp</p>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <a id="btnTestWhatsappConfig" href="https://wa.me/595982965515" target="_blank" rel="noopener noreferrer" class="sa-btn sa-btn-ghost" style="border-color: #86efac; color: #15803d;">
+                                <i class="ph ph-whatsapp-logo" style="font-size: 1.05rem; color: #16a34a;"></i> Probar Enlace WhatsApp
+                            </a>
+                            <button type="button" class="sa-btn sa-btn-primary" onclick="guardarConfiguracionSistema()">
+                                <i class="ph ph-floppy-disk" style="font-size: 1rem;"></i> Guardar Configuración
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="padding: 22px 24px;">
+                        <div class="row g-4 align-items-start">
+                            <div class="col-lg-7">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold small text-dark">
+                                            <i class="ph ph-whatsapp-logo text-success"></i> Número de WhatsApp Oficial (Administración)
+                                        </label>
+                                        <input type="text" id="cfgWhatsappSoporte" class="form-control fw-bold border-success" placeholder="+595 982 965 515" oninput="onChangeCfgWhatsapp()">
+                                        <div class="form-text" style="font-size: 0.73rem;">
+                                            Se utiliza en el botón de WhatsApp del Login, alertas de vencimiento y página de planes.
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold small text-dark">
+                                            <i class="ph ph-cursor-click text-primary"></i> Texto del Botón Directo a WhatsApp
+                                        </label>
+                                        <input type="text" id="cfgTextoBotonWa" class="form-control fw-bold" placeholder="Contactar por WhatsApp para regularizar" oninput="actualizarPreviewConfigWa()">
+                                        <div class="form-text" style="font-size: 0.73rem;">
+                                            Texto del botón verde que aparece debajo del aviso en el Login.
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <label class="form-label fw-bold small text-dark m-0">
+                                                <i class="ph ph-chat-centered-text text-danger"></i> Mensaje de Contacto para Renovación / Suspensión
+                                            </label>
+                                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none fw-bold" style="font-size: 0.74rem; color: #15803d;" onclick="RestaurarMensajePorDefectoWa()">
+                                                <i class="ph ph-arrows-clockwise"></i> Usar plantilla con número actual
+                                            </button>
+                                        </div>
+                                        <input type="text" id="cfgMensajeRenovacion" class="form-control fw-semibold" placeholder="Contactar al WhatsApp +595 982 965 515 para renovar su suscripción." oninput="actualizarPreviewConfigWa()">
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="form-check" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px 10px 36px;">
+                                            <input class="form-check-input" type="checkbox" id="cfgAplicarATodos" checked>
+                                            <label class="form-check-label small fw-bold text-dark" for="cfgAplicarATodos">
+                                                Actualizar este número y mensaje en todos los propietarios existentes
+                                            </label>
+                                            <div class="text-muted" style="font-size: 0.72rem;">
+                                                Reemplaza el mensaje de renovación de los propietarios actuales para que todos muestren el nuevo número de inmediato.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-5">
+                                <div class="small fw-bold text-uppercase text-muted mb-2" style="font-size: 0.72rem; letter-spacing: 0.04em;">
+                                    Vista Previa en Pantalla de Login (Cuenta Suspendida / Vencida)
+                                </div>
+                                <div style="background: #fef2f2; color: #b91c1c; padding: 14px 16px; border-radius: 12px; border: 1px solid #fecaca; display: flex; flex-direction: column; gap: 10px;">
+                                    <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.84rem; font-weight: 600; line-height: 1.45;">
+                                        <i class="ph ph-warning-circle" style="font-size: 1.2rem; flex-shrink: 0; margin-top: 1px;"></i>
+                                        <span id="cfgPreviewTextoAlerta">
+                                            Cuenta Suspendida: La cuenta del propietario se encuentra suspendida. Contacte a la administración de ContaPro para regularizar su servicio. — Contactar al WhatsApp +595 982 965 515 para renovar su suscripción.
+                                        </span>
+                                    </div>
+                                    <a id="cfgPreviewBtnWa" href="https://wa.me/595982965515" target="_blank" rel="noopener noreferrer" style="background: linear-gradient(135deg, #25d366, #16a34a); color: #ffffff; text-decoration: none; padding: 9px 14px; border-radius: 10px; font-weight: 800; font-size: 0.83rem; display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
+                                        <i class="ph ph-whatsapp-logo" style="font-size: 1.15rem;"></i>
+                                        <span id="cfgPreviewBtnWaText">Contactar por WhatsApp para regularizar (+595 982 965 515)</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </main>
@@ -736,7 +832,7 @@
                     <div class="row g-3">
                         <div class="col-md-7">
                             <label class="form-label fw-bold small">Nombre del Propietario / Estudio Contable *</label>
-                            <input type="text" id="propNombre" class="form-control text-uppercase fw-bold" placeholder="EJ: ESTUDIO CONTABLE PEREZ">
+                            <input type="text" id="propNombre" class="form-control text-uppercase fw-bold" oninput="this.value = this.value.toUpperCase()" placeholder="EJ: ESTUDIO CONTABLE PEREZ">
                         </div>
                         <div class="col-md-5">
                             <label class="form-label fw-bold small">RUC / CI</label>
@@ -809,8 +905,8 @@
                                 </div>
                                 <div class="row g-3">
                                     <div class="col-md-6">
-                                        <label class="form-label fw-bold small mb-1">Código de Usuario (Login)</label>
-                                        <input type="text" id="propAdminUser" class="form-control text-uppercase fw-bold bg-white" placeholder="EJ: JUAN">
+                                        <label class="form-label fw-bold small mb-1">Código de Usuario (Login - Solo MAYÚSCULAS)</label>
+                                        <input type="text" id="propAdminUser" class="form-control text-uppercase fw-bold bg-white" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9_.\-]/g, '')" placeholder="EJ: JUAN">
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label fw-bold small mb-1">Contraseña</label>
@@ -905,6 +1001,7 @@
         let listaPropietarios = [];
         let listaPagos = [];
         let listaGrupos = [];
+        let configSistema = {};
         let modalPlanObj, modalPropObj, modalRenovarObj;
 
         function escHtml(str) {
@@ -957,6 +1054,19 @@
             document.getElementById('tabCountPlanes').textContent = listaPlanes.length;
             document.getElementById('tabCountPagos').textContent = listaPagos.length;
 
+            configSistema = data.config || {};
+            const inpWa = document.getElementById('cfgWhatsappSoporte');
+            const inpMsg = document.getElementById('cfgMensajeRenovacion');
+            const inpBtn = document.getElementById('cfgTextoBotonWa');
+            if (inpWa) inpWa.value = configSistema.whatsapp_soporte || '+595 982 965 515';
+            if (inpMsg) inpMsg.value = configSistema.mensaje_renovacion || `Contactar al WhatsApp ${inpWa?.value || '+595 982 965 515'} para renovar su suscripción.`;
+            if (inpBtn) inpBtn.value = configSistema.texto_boton_whatsapp || 'Contactar por WhatsApp para regularizar';
+            const propMsgInput = document.getElementById('propMensajePago');
+            if (propMsgInput) {
+                propMsgInput.placeholder = `Ej: ${inpMsg?.value || 'Contactar al WhatsApp +595 982 965 515 para renovar su suscripción.'}`;
+            }
+            actualizarPreviewConfigWa();
+
             renderKPIs();
             renderPlanes();
             renderPropietarios();
@@ -968,27 +1078,41 @@
             const secProp = document.getElementById('secPropietarios');
             const secPlanes = document.getElementById('secPlanes');
             const secPagos = document.getElementById('secPagos');
+            const secCfg = document.getElementById('secConfiguracion');
 
             if (sec === 'propietarios') {
                 document.getElementById('tabBtnProp').classList.add('active');
                 secProp.style.display = '';
                 secPlanes.style.display = 'none';
                 secPagos.style.display = 'none';
+                if (secCfg) secCfg.style.display = 'none';
             } else if (sec === 'planes') {
                 document.getElementById('tabBtnPlanes').classList.add('active');
                 secProp.style.display = 'none';
                 secPlanes.style.display = '';
                 secPagos.style.display = 'none';
+                if (secCfg) secCfg.style.display = 'none';
             } else if (sec === 'pagos') {
                 document.getElementById('tabBtnPagos').classList.add('active');
                 secProp.style.display = 'none';
                 secPlanes.style.display = 'none';
                 secPagos.style.display = '';
+                if (secCfg) secCfg.style.display = 'none';
+            } else if (sec === 'config') {
+                document.getElementById('tabBtnConfig')?.classList.add('active');
+                secProp.style.display = 'none';
+                secPlanes.style.display = 'none';
+                secPagos.style.display = 'none';
+                if (secCfg) {
+                    secCfg.style.display = '';
+                    secCfg.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
             } else {
                 document.getElementById('tabBtnAll').classList.add('active');
                 secProp.style.display = '';
                 secPlanes.style.display = '';
                 secPagos.style.display = '';
+                if (secCfg) secCfg.style.display = '';
             }
         }
 
@@ -1198,7 +1322,10 @@
                                 ? `<span class="sa-pill sa-pill-green" style="font-size: 0.71rem; padding: 2px 8px;" title="Correo vinculado para recuperación de contraseña"><i class="ph ph-envelope-simple"></i> ${escHtml(pr.email)}</span>`
                                 : `<span class="sa-pill sa-pill-amber" style="font-size: 0.71rem; padding: 2px 8px;" title="Edite el propietario para vincular un correo de recuperación"><i class="ph ph-warning-circle"></i> Sin correo vinculado</span>`
                             }
-                            ${pr.telefono ? `<span class="text-secondary small">• ${escHtml(pr.telefono)}</span>` : ''}
+                            ${pr.telefono && String(pr.telefono).replace(/\D+/g, '').length >= 6
+                                ? `<a href="https://wa.me/${normalizarDigitosWa(pr.telefono)}?text=${encodeURIComponent('¡Hola ' + (pr.nombre_propietario || '') + '! Nos comunicamos desde la administración de ContaPro.')}" target="_blank" rel="noopener noreferrer" class="sa-pill sa-pill-green text-decoration-none" style="font-size: 0.71rem; padding: 2px 8px;" title="Enviar mensaje de WhatsApp a este propietario"><i class="ph ph-whatsapp-logo"></i> ${escHtml(pr.telefono)}</a>`
+                                : (pr.telefono ? `<span class="text-secondary small">• ${escHtml(pr.telefono)}</span>` : '')
+                            }
                         </div>
                     </td>
                     <td>
@@ -1414,11 +1541,16 @@
         }
 
         async function guardarPropietario() {
-            const nombreVal = (document.getElementById('propNombre').value || '').trim();
+            const propIdVal = (document.getElementById('propId').value || '').trim();
+            const nombreVal = (document.getElementById('propNombre').value || '').trim().toUpperCase();
+            document.getElementById('propNombre').value = nombreVal;
             const emailVal = (document.getElementById('propEmail').value || '').trim().toLowerCase();
+            const adminUserInput = document.getElementById('propAdminUser');
+            const adminUserVal = (adminUserInput.value || '').trim().toUpperCase().replace(/[^A-Z0-9_.\-]/g, '');
+            adminUserInput.value = adminUserVal;
 
             if (!nombreVal) {
-                showAlert('El nombre del propietario es obligatorio.', 'warning');
+                showAlert('El nombre del propietario es obligatorio (en MAYÚSCULAS).', 'warning');
                 document.getElementById('propNombre').focus();
                 return;
             }
@@ -1427,9 +1559,19 @@
                 document.getElementById('propEmail').focus();
                 return;
             }
+            if ((!propIdVal || Number(propIdVal) <= 0) && (!adminUserVal || !/^[A-Z0-9_.\-]+$/.test(adminUserVal))) {
+                showAlert('El código de usuario del administrador es obligatorio y debe estar solo en MAYÚSCULAS y sin espacios.', 'warning');
+                adminUserInput.focus();
+                return;
+            }
+            if (adminUserVal && !/^[A-Z0-9_.\-]+$/.test(adminUserVal)) {
+                showAlert('El código de usuario debe contener solo letras en MAYÚSCULAS y números, sin espacios.', 'warning');
+                adminUserInput.focus();
+                return;
+            }
 
             const body = new URLSearchParams({
-                idPropietario: document.getElementById('propId').value,
+                idPropietario: propIdVal,
                 nombrePropietario: nombreVal,
                 ruc: document.getElementById('propRuc').value,
                 email: emailVal,
@@ -1442,7 +1584,7 @@
                 diasGracia: document.getElementById('propDiasGracia').value,
                 mensajePago: document.getElementById('propMensajePago').value,
                 estado: document.getElementById('propEstado').value,
-                adminUser: document.getElementById('propAdminUser').value,
+                adminUser: adminUserVal,
                 adminClave: document.getElementById('propAdminClave').value
             });
             const res = await fetch('/api/superadmin/propietario/save', { method: 'POST', body });
@@ -1527,6 +1669,91 @@
                 cargarDatosSuperAdmin();
             } else {
                 showAlert(json.message || 'No se pudo cambiar el estado', 'error');
+            }
+        }
+
+        function normalizarDigitosWa(phone) {
+            let digits = String(phone || '').replace(/\D+/g, '');
+            if (!digits) return '595982965515';
+            if (digits.startsWith('09') && digits.length === 10) {
+                return '595' + digits.slice(1);
+            }
+            if (digits.startsWith('9') && digits.length === 9) {
+                return '595' + digits;
+            }
+            return digits;
+        }
+
+        function onChangeCfgWhatsapp() {
+            const waVal = (document.getElementById('cfgWhatsappSoporte')?.value || '').trim();
+            const msgInput = document.getElementById('cfgMensajeRenovacion');
+            if (msgInput) {
+                const curMsg = msgInput.value || '';
+                if (!curMsg || curMsg.startsWith('Contactar al WhatsApp ')) {
+                    msgInput.value = `Contactar al WhatsApp ${waVal || '+595 982 965 515'} para renovar su suscripción.`;
+                }
+            }
+            actualizarPreviewConfigWa();
+        }
+
+        function RestaurarMensajePorDefectoWa() {
+            const waVal = (document.getElementById('cfgWhatsappSoporte')?.value || '').trim() || '+595 982 965 515';
+            const msgInput = document.getElementById('cfgMensajeRenovacion');
+            if (msgInput) {
+                msgInput.value = `Contactar al WhatsApp ${waVal} para renovar su suscripción.`;
+            }
+            actualizarPreviewConfigWa();
+        }
+
+        function actualizarPreviewConfigWa() {
+            const waVal = (document.getElementById('cfgWhatsappSoporte')?.value || '').trim() || '+595 982 965 515';
+            const msgVal = (document.getElementById('cfgMensajeRenovacion')?.value || '').trim() || `Contactar al WhatsApp ${waVal} para renovar su suscripción.`;
+            const btnTextVal = (document.getElementById('cfgTextoBotonWa')?.value || '').trim() || 'Contactar por WhatsApp para regularizar';
+
+            const digits = normalizarDigitosWa(waVal);
+            const waHref = `https://wa.me/${digits}?text=${encodeURIComponent('¡Hola! Mi cuenta de ContaPro se encuentra suspendida y deseo regularizar mi suscripción.')}`;
+
+            const prevTexto = document.getElementById('cfgPreviewTextoAlerta');
+            if (prevTexto) {
+                prevTexto.textContent = `Cuenta Suspendida: La cuenta del propietario se encuentra suspendida. Contacte a la administración de ContaPro para regularizar su servicio. — ${msgVal}`;
+            }
+
+            const prevBtn = document.getElementById('cfgPreviewBtnWa');
+            if (prevBtn) prevBtn.href = waHref;
+
+            const prevBtnTxt = document.getElementById('cfgPreviewBtnWaText');
+            if (prevBtnTxt) prevBtnTxt.textContent = `${btnTextVal} (${waVal})`;
+
+            const testBtn = document.getElementById('btnTestWhatsappConfig');
+            if (testBtn) testBtn.href = waHref;
+        }
+
+        async function guardarConfiguracionSistema() {
+            const waVal = (document.getElementById('cfgWhatsappSoporte')?.value || '').trim();
+            const msgVal = (document.getElementById('cfgMensajeRenovacion')?.value || '').trim();
+            const btnTextVal = (document.getElementById('cfgTextoBotonWa')?.value || '').trim();
+            const aplicarTodos = document.getElementById('cfgAplicarATodos')?.checked ? 'S' : 'N';
+
+            if (!waVal || waVal.replace(/\D+/g, '').length < 6) {
+                showAlert('Ingrese un número de WhatsApp válido (ej: +595 982 965 515).', 'warning');
+                document.getElementById('cfgWhatsappSoporte')?.focus();
+                return;
+            }
+
+            const body = new URLSearchParams({
+                whatsappSoporte: waVal,
+                mensajeRenovacion: msgVal,
+                textoBotonWhatsapp: btnTextVal,
+                aplicarATodos: aplicarTodos
+            });
+
+            const res = await fetch('/api/superadmin/config/save', { method: 'POST', body });
+            const json = await res.json();
+            if (json.status === 'success') {
+                showToast(json.message || 'Configuración de WhatsApp guardada');
+                cargarDatosSuperAdmin();
+            } else {
+                showAlert(json.message || 'Error al guardar la configuración', 'error');
             }
         }
     </script>

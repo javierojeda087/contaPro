@@ -498,8 +498,9 @@
                     $precioAntFmt = number_format($precioAnt, 0, ',', '.');
                     $ahorroFmt    = number_format($ahorroGs, 0, ',', '.');
 
+                    $waDigitsLanding = \Core\TenantContext::normalizeWhatsappDigits((string)(($sysConfig['whatsapp_soporte'] ?? '') ?: '+595 982 965 515'));
                     $msgPlan = "¡Hola! Estoy interesado en el " . ($pl['nombre_plan'] ?? 'Plan') . " de ContaPro (" . ($tieneDesc ? "Oferta {$precioFmt} Gs/mes, antes {$precioAntFmt} Gs" : "{$precioFmt} Gs/mes") . " - hasta " . (int)$pl['max_contribuyentes'] . " contribuyentes y " . (int)$pl['max_usuarios'] . " usuarios). ¿Me podrían brindar más información para habilitar mi cuenta?";
-                    $waPlanUrl = "https://wa.me/595982965515?text=" . rawurlencode($msgPlan);
+                    $waPlanUrl = "https://wa.me/{$waDigitsLanding}?text=" . rawurlencode($msgPlan);
                 ?>
                 <div class="plan-card <?= $isPopular ? 'popular' : '' ?> <?= $tieneDesc ? 'has-discount' : '' ?>">
                     <?php if ($isPopular): ?>
@@ -561,8 +562,9 @@
     </footer>
 
     <?php
+        $waDigitsFloat = \Core\TenantContext::normalizeWhatsappDigits((string)(($sysConfig['whatsapp_soporte'] ?? '') ?: '+595 982 965 515'));
         $waDefaultMsg = "¡Hola! Estoy visitando la web de ContaPro y me gustaría recibir más información sobre el Sistema Contable en la Nube y sus planes.";
-        $waDefaultUrl = "https://wa.me/595982965515?text=" . rawurlencode($waDefaultMsg);
+        $waDefaultUrl = "https://wa.me/{$waDigitsFloat}?text=" . rawurlencode($waDefaultMsg);
     ?>
     <a href="<?= htmlspecialchars($waDefaultUrl) ?>" target="_blank" rel="noopener" class="float-wa" title="Contactar por WhatsApp"><i class="ph ph-whatsapp-logo"></i></a>
 

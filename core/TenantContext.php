@@ -161,6 +161,67 @@ class TenantContext {
         return self::enrichSubscriptionInfo($row);
     }
 
+    private static ?array $sysConfigCache = null;
+
+    /**
+     * Obtiene la configuración global de contacto/WhatsApp y avisos de suscripción
+     */
+    public static function getSystemConfig(bool $forceRefresh = false): array {
+        if (self::$sysConfigCache !== null && !$forceRefresh) {
+            return self::$sysConfigCache;
+        }
+
+        $defaults = [
+            'whatsapp_soporte'     => '+595 982 965 515',
+            'mensaje_renovacion'   => 'Contactar al WhatsApp +595 982 965 515 para renovar su suscripción.',
+            'texto_boton_whatsapp' => 'Contactar por WhatsApp para regularizar',
+        ];
+
+        try {
+            $rows = Database::queryForList("SELECT clave, valor FROM configuracion_sistema");
+            foreach ($rows as $r) {
+                $k = trim((string)($r['clave'] ?? ''));
+                $v = trim((string)($r['valor'] ?? ''));
+                if ($k !== '' && $v !== '') {
+                    $defaults[$k] = $v;
+                }
+            }
+        } catch (\Throwable $ignored) {}
+
+        $defaults['whatsapp_digits'] = self::normalizeWhatsappDigits($defaults['whatsapp_soporte']);
+        self::$sysConfigCache = $defaults;
+        return $defaults;
+    }
+
+    /**
+     * Normaliza un número telefónico a formato numérico internacional de WhatsApp (ej: 595982965515)
+     */
+    public static function normalizeWhatsappDigits(string $phone): string {
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+        if ($digits === '') {
+            return '595982965515';
+        }
+        if (str_starts_with($digits, '09') && strlen($digits) === 10) {
+            return '595' . substr($digits, 1);
+        }
+        if (str_starts_with($digits, '9') && strlen($digits) === 9) {
+            return '595' . $digits;
+        }
+        return $digits;
+    }
+
+    /**
+     * Construye el enlace directo https://wa.me/ con mensaje pre-cargado
+     */
+    public static function formatWhatsappLink(string $phone, string $message = ''): string {
+        $digits = self::normalizeWhatsappDigits($phone);
+        $url = 'https://wa.me/' . $digits;
+        if (trim($message) !== '') {
+            $url .= '?text=' . rawurlencode($message);
+        }
+        return $url;
+    }
+
     /**
      * Calcula días restantes, semáforo de suscripción y textos de aviso de pago para un propietario
      */
@@ -171,6 +232,7 @@ class TenantContext {
         $diasGracia = isset($row['dias_gracia']) ? max(0, (int)$row['dias_gracia']) : 3;
         $planNombre = (string)($row['nombre_plan'] ?? 'Plan Básico');
         $precioGs   = number_format((float)($row['precio_mensual'] ?? 0), 0, ',', '.');
+        $propNombre = trim((string)($row['nombre_propietario'] ?? ''));
 
         $diasRestantes = null;
         $fecVencFmt    = 'Sin vencimiento';
@@ -233,14 +295,32 @@ class TenantContext {
             $textoAviso        = "Su suscripción al {$planNombre} venció el {$fecVencFmt} (hace {$diasVencido} días). Por favor registre su pago para reactivar el servicio.";
         }
 
+        $sysCfg         = self::getSystemConfig();
+        $waPhone        = $sysCfg['whatsapp_soporte'] ?? '+595 982 965 515';
+        $defaultMsgPago = $sysCfg['mensaje_renovacion'] ?? ('Contactar al WhatsApp ' . $waPhone . ' para renovar su suscripción.');
+        $waBtnLabel     = $sysCfg['texto_boton_whatsapp'] ?? 'Contactar por WhatsApp para regularizar';
+
         $msgPago = trim((string)($row['mensaje_pago'] ?? ''));
-        if ($msgPago === '' || stripos($msgPago, 'SIPAP') !== false || stripos($msgPago, '981 000') !== false || stripos($msgPago, 'Ita') !== false) {
-            $msgPago = 'Contactar al WhatsApp +595 982 965 515 para renovar su suscripción.';
+        if (
+            $msgPago === ''
+            || stripos($msgPago, 'SIPAP') !== false
+            || stripos($msgPago, '981 000') !== false
+            || stripos($msgPago, 'Ita') !== false
+            || $msgPago === 'Contactar al WhatsApp +595 982 965 515 para renovar su suscripción.'
+        ) {
+            $msgPago = $defaultMsgPago;
         }
         $row['mensaje_pago'] = $msgPago;
 
         if ($mostrarAviso) {
             $textoAviso .= ' — ' . $msgPago;
+        }
+
+        $cuentaLabel = $propNombre !== '' ? " (Cuenta: {$propNombre})" : '';
+        if ($estadoSuscripcion === 'SUSPENDIDO') {
+            $waMsg = "¡Hola! Mi cuenta de ContaPro{$cuentaLabel} se encuentra suspendida y deseo regularizar mi suscripción ({$planNombre}).";
+        } else {
+            $waMsg = "¡Hola! Deseo renovar mi suscripción de ContaPro{$cuentaLabel} - {$planNombre} (Gs. {$precioGs}/mes, vencimiento: {$fecVencFmt}).";
         }
 
         $row['fec_vencimiento_fmt']       = $fecVencFmt;
@@ -253,6 +333,9 @@ class TenantContext {
         $row['titulo_aviso_pago']         = $tituloAviso;
         $row['texto_aviso_pago']          = $textoAviso;
         $row['bloqueado_por_vencimiento'] = $bloqueado;
+        $row['whatsapp_soporte']          = $waPhone;
+        $row['whatsapp_label']            = $waBtnLabel;
+        $row['whatsapp_url']              = self::formatWhatsappLink($waPhone, $waMsg);
 
         return $row;
     }

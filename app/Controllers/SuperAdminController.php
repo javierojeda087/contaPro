@@ -30,6 +30,20 @@ class SuperAdminController {
     public static function getData(): array {
         self::checkAccess();
 
+        // Asegurar que todos los usuarios creados y propietarios estén en MAYÚSCULAS
+        Database::execute(
+            "UPDATE `usuarios`
+             SET `cod_usuario` = UPPER(TRIM(`cod_usuario`)),
+                 `alias`       = UPPER(TRIM(COALESCE(NULLIF(TRIM(`alias`), ''), `cod_usuario`))),
+                 `nombre`      = CASE WHEN `nombre` IS NOT NULL THEN UPPER(TRIM(`nombre`)) ELSE NULL END,
+                 `apellido`    = CASE WHEN `apellido` IS NOT NULL THEN UPPER(TRIM(`apellido`)) ELSE NULL END",
+            true
+        );
+        Database::execute(
+            "UPDATE `propietarios` SET `nombre_propietario` = UPPER(TRIM(`nombre_propietario`)) WHERE `nombre_propietario` IS NOT NULL",
+            true
+        );
+
         $planes = Database::queryForList("SELECT * FROM planes ORDER BY orden, id_plan");
         $grupos = Database::queryForList(
             "SELECT UPPER(TRIM(cod_grupo)) AS cod_grupo, MAX(descripcion) AS descripcion
@@ -57,8 +71,8 @@ class SuperAdminController {
                     COALESCE(pl.precio_mensual, 0) AS precio_mensual,
                     (SELECT COUNT(*) FROM empresas e WHERE e.id_propietario = p.id_propietario) AS usados_contribuyentes,
                     (SELECT COUNT(*) FROM usuarios u WHERE u.id_propietario = p.id_propietario) AS usados_usuarios,
-                    (SELECT GROUP_CONCAT(u.cod_usuario SEPARATOR ', ') FROM usuarios u WHERE u.id_propietario = p.id_propietario) AS usuarios_lista,
-                    (SELECT u.cod_usuario FROM usuarios u WHERE u.id_propietario = p.id_propietario ORDER BY u.es_admin DESC LIMIT 1) AS primer_usuario
+                    (SELECT GROUP_CONCAT(UPPER(TRIM(u.cod_usuario)) SEPARATOR ', ') FROM usuarios u WHERE u.id_propietario = p.id_propietario) AS usuarios_lista,
+                    (SELECT UPPER(TRIM(u.cod_usuario)) FROM usuarios u WHERE u.id_propietario = p.id_propietario ORDER BY u.es_admin DESC LIMIT 1) AS primer_usuario
              FROM propietarios p
              LEFT JOIN planes pl ON pl.id_plan = p.id_plan
              ORDER BY p.id_propietario ASC"
@@ -87,6 +101,7 @@ class SuperAdminController {
             'grupos'       => $grupos,
             'propietarios' => $props,
             'pagos'        => $pagos,
+            'config'       => TenantContext::getSystemConfig(true),
         ];
     }
 
@@ -197,7 +212,11 @@ class SuperAdminController {
         $adminClave  = trim((string)($_POST['adminClave'] ?? ''));
 
         if ($nombre === '') {
-            return ['status' => 'error', 'message' => 'El nombre del propietario es obligatorio.'];
+            return ['status' => 'error', 'message' => 'El nombre del propietario es obligatorio (en MAYÚSCULAS).'];
+        }
+
+        if ($adminUser !== '' && !preg_match('/^[A-Z0-9_.\-]+$/', $adminUser)) {
+            return ['status' => 'error', 'message' => 'El código de usuario debe contener solo letras en MAYÚSCULAS y números, sin espacios.'];
         }
 
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -380,5 +399,70 @@ class SuperAdminController {
 
         $msg = $nuevoEstado === 'A' ? 'Cuenta de propietario REACTIVADA.' : 'Cuenta de propietario SUSPENDIDA.';
         return ['status' => 'success', 'message' => $msg];
+    }
+
+    /**
+     * Guarda la configuración general de WhatsApp y avisos de suscripción/renovación
+     */
+    public static function saveConfiguracion(): array {
+        self::checkAccess();
+
+        $whatsappSoporte    = trim((string)($_POST['whatsappSoporte'] ?? ''));
+        $mensajeRenovacion  = trim((string)($_POST['mensajeRenovacion'] ?? ''));
+        $textoBotonWhatsapp = trim((string)($_POST['textoBotonWhatsapp'] ?? ''));
+        $aplicarATodos      = strtoupper(trim((string)($_POST['aplicarATodos'] ?? 'S'))) === 'S';
+
+        if ($whatsappSoporte === '' || strlen(preg_replace('/\D+/', '', $whatsappSoporte)) < 6) {
+            return ['status' => 'error', 'message' => 'Ingrese un número de WhatsApp válido (ej: +595 982 965 515).'];
+        }
+
+        if ($mensajeRenovacion === '') {
+            $mensajeRenovacion = 'Contactar al WhatsApp ' . $whatsappSoporte . ' para renovar su suscripción.';
+        }
+        if ($textoBotonWhatsapp === '') {
+            $textoBotonWhatsapp = 'Contactar por WhatsApp para regularizar';
+        }
+
+        Database::execute("
+            CREATE TABLE IF NOT EXISTS `configuracion_sistema` (
+              `clave` VARCHAR(60) NOT NULL,
+              `valor` TEXT DEFAULT NULL,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`clave`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ", true);
+
+        $settings = [
+            'whatsapp_soporte'     => $whatsappSoporte,
+            'mensaje_renovacion'   => $mensajeRenovacion,
+            'texto_boton_whatsapp' => $textoBotonWhatsapp,
+        ];
+
+        foreach ($settings as $k => $v) {
+            Database::update(
+                "INSERT INTO configuracion_sistema (clave, valor) VALUES (?, ?)
+                 ON DUPLICATE KEY UPDATE valor = VALUES(valor)",
+                [$k, $v]
+            );
+        }
+
+        if ($aplicarATodos) {
+            Database::update(
+                "UPDATE propietarios SET mensaje_pago = ?",
+                [$mensajeRenovacion]
+            );
+        } else {
+            Database::update(
+                "UPDATE propietarios SET mensaje_pago = ?
+                 WHERE mensaje_pago IS NULL OR TRIM(mensaje_pago) = '' OR mensaje_pago LIKE 'Contactar al WhatsApp %'",
+                [$mensajeRenovacion]
+            );
+        }
+
+        return [
+            'status'  => 'success',
+            'message' => 'Configuración de WhatsApp (' . $whatsappSoporte . ') y mensaje de renovación actualizados correctamente.',
+            'config'  => TenantContext::getSystemConfig(true),
+        ];
     }
 }

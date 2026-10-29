@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 26;
+    private const SCHEMA_VERSION = 29;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -125,6 +125,28 @@ class DatabaseMigrator {
             true
         );
 
+        // 2a. Asegurar tabla configuracion_sistema (WhatsApp y parámetros generales de avisos/cobranzas)
+        Database::execute("
+            CREATE TABLE IF NOT EXISTS `configuracion_sistema` (
+              `clave` VARCHAR(60) NOT NULL,
+              `valor` TEXT DEFAULT NULL,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`clave`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ", true);
+
+        $defaultSysCfg = [
+            'whatsapp_soporte'     => '+595 982 965 515',
+            'mensaje_renovacion'   => 'Contactar al WhatsApp +595 982 965 515 para renovar su suscripción.',
+            'texto_boton_whatsapp' => 'Contactar por WhatsApp para regularizar',
+        ];
+        foreach ($defaultSysCfg as $cfgKey => $cfgVal) {
+            Database::execute(
+                "INSERT IGNORE INTO `configuracion_sistema` (`clave`, `valor`) VALUES (" . Database::getConnection()->quote($cfgKey) . ", " . Database::getConnection()->quote($cfgVal) . ")",
+                true
+            );
+        }
+
         // 2b. Asegurar tabla pagos_propietarios (Historial de Pagos y Renovaciones de Suscripción)
         Database::execute("
             CREATE TABLE IF NOT EXISTS `pagos_propietarios` (
@@ -173,6 +195,28 @@ class DatabaseMigrator {
         Database::execute("ALTER TABLE `usuarios` MODIFY COLUMN `cod_grupo` VARCHAR(10) DEFAULT NULL", true);
         Database::execute("ALTER TABLE `grupos_usuarios` MODIFY COLUMN `cod_grupo` VARCHAR(10) DEFAULT NULL", true);
         Database::execute("ALTER TABLE `accesos_grupos` MODIFY COLUMN `cod_grupo` VARCHAR(10) DEFAULT NULL", true);
+
+        // Normalizar siempre en MAYÚSCULAS los códigos/nombres de usuario, personas vinculadas y nombres de propietarios
+        Database::execute(
+            "UPDATE `usuarios`
+             SET `cod_usuario` = UPPER(TRIM(`cod_usuario`)),
+                 `alias`       = UPPER(TRIM(COALESCE(NULLIF(TRIM(`alias`), ''), `cod_usuario`))),
+                 `nombre`      = CASE WHEN `nombre` IS NOT NULL THEN UPPER(TRIM(`nombre`)) ELSE NULL END,
+                 `apellido`    = CASE WHEN `apellido` IS NOT NULL THEN UPPER(TRIM(`apellido`)) ELSE NULL END,
+                 `cod_grupo`   = UPPER(TRIM(COALESCE(`cod_grupo`, 'CONTA')))",
+            true
+        );
+        Database::execute(
+            "UPDATE `personas` p
+             JOIN `usuarios` u ON u.`id_propietario` = p.`id_propietario` AND u.`cod_persona` = p.`cod_persona`
+             SET p.`nombre` = UPPER(TRIM(p.`nombre`))
+             WHERE p.`nombre` IS NOT NULL",
+            true
+        );
+        Database::execute(
+            "UPDATE `propietarios` SET `nombre_propietario` = UPPER(TRIM(`nombre_propietario`)) WHERE `nombre_propietario` IS NOT NULL",
+            true
+        );
 
         // Sincronizar correo entre propietario y su usuario administrador cuando alguno esté vacío
         Database::execute(

@@ -158,7 +158,8 @@ class AuthController {
         } catch (\Throwable $e) {
             $planes = [];
         }
-        View::render('landing', ['planes' => $planes]);
+        $sysConfig = TenantContext::getSystemConfig();
+        View::render('landing', ['planes' => $planes, 'sysConfig' => $sysConfig]);
     }
 
     public static function showLogin(): void {
@@ -232,19 +233,23 @@ class AuthController {
 
         if (!$esSuper) {
             $subInfo = TenantContext::enrichSubscriptionInfo([
-                'estado'          => $uInfo['estado_prop'] ?? 'A',
-                'fec_vencimiento' => $uInfo['fec_vencimiento'] ?? null,
-                'dias_aviso'      => $uInfo['dias_aviso'] ?? 7,
-                'dias_gracia'     => $uInfo['dias_gracia'] ?? 3,
-                'nombre_plan'     => $uInfo['nombre_plan'] ?? 'Plan Básico',
-                'precio_mensual'  => $uInfo['precio_mensual'] ?? 0,
-                'mensaje_pago'    => $uInfo['mensaje_pago'] ?? null,
+                'nombre_propietario' => $uInfo['nombre_propietario'] ?? ('PROPIETARIO #' . $propId),
+                'estado'             => $uInfo['estado_prop'] ?? 'A',
+                'fec_vencimiento'    => $uInfo['fec_vencimiento'] ?? null,
+                'dias_aviso'         => $uInfo['dias_aviso'] ?? 7,
+                'dias_gracia'        => $uInfo['dias_gracia'] ?? 3,
+                'nombre_plan'        => $uInfo['nombre_plan'] ?? 'Plan Básico',
+                'precio_mensual'     => $uInfo['precio_mensual'] ?? 0,
+                'mensaje_pago'       => $uInfo['mensaje_pago'] ?? null,
             ]);
 
             if (!empty($subInfo['bloqueado_por_vencimiento'])) {
                 return [
-                    'status'  => 'error',
-                    'message' => ($subInfo['titulo_aviso_pago'] ? $subInfo['titulo_aviso_pago'] . ': ' : '') . $subInfo['texto_aviso_pago'],
+                    'status'        => 'error',
+                    'message'       => ($subInfo['titulo_aviso_pago'] ? $subInfo['titulo_aviso_pago'] . ': ' : '') . $subInfo['texto_aviso_pago'],
+                    'whatsappUrl'   => $subInfo['whatsapp_url'] ?? '',
+                    'whatsappPhone' => $subInfo['whatsapp_soporte'] ?? '',
+                    'whatsappLabel' => $subInfo['whatsapp_label'] ?? 'Contactar por WhatsApp',
                 ];
             }
         }
