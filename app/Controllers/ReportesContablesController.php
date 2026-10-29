@@ -908,6 +908,9 @@ class ReportesContablesController {
         if (!self::requireAuth(false)) return;
         $idProp     = TenantContext::idPropietario();
         $codEmpresa = TenantContext::empresa();
+        $ejercicio  = EjercicioService::getEjercicio();
+        $rango      = EjercicioService::getRango($codEmpresa, $ejercicio);
+        $def        = EjercicioService::defaultMes($rango);
         $emp = Database::queryForMap(
             "SELECT descripcion, ruc_empresa FROM empresas WHERE id_propietario = ? AND cod_empresa = ? LIMIT 1",
             [$idProp, $codEmpresa]
@@ -918,8 +921,11 @@ class ReportesContablesController {
             'tituloForma'     => 'Exportar a Marangatu (RG 90/2021)',
             'empresaRuc'      => (string)($emp['ruc_empresa'] ?? '5555-7'),
             'empresaNombre'   => (string)($emp['descripcion'] ?? 'CONTRIBUYENTE DEMOSTRATIVO'),
-            'firstDayOfMonth' => date('Y-m-01'),
-            'currentDate'     => date('Y-m-d'),
+            'firstDayOfMonth' => $def[0],
+            'currentDate'     => $def[1],
+            'ejerInicio'      => $rango[0],
+            'ejerFinal'       => $rango[1],
+            'ejercicio'       => $ejercicio,
         ]);
     }
 

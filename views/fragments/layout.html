@@ -394,13 +394,113 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            min-width: 0;
         }
 
         .page-title {
             margin: 0;
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             font-weight: 800;
             color: #0f172a;
+            white-space: nowrap;
+        }
+
+        /* BCP USD/PYG Navbar Ticker */
+        .bcp-navbar-ticker {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: #0d131f;
+            border: 1px solid #1e293b;
+            border-bottom: 2px solid #0ea5e9;
+            border-radius: 8px;
+            padding: 5px 13px;
+            height: 40px;
+            color: #f8fafc;
+            box-shadow: 0 3px 10px rgba(15, 23, 42, 0.14);
+            white-space: nowrap;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .bcp-ticker-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: #38bdf8;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .bcp-bill-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 12px;
+            background: #22c55e;
+            border: 1px solid #16a34a;
+            border-radius: 2px;
+            color: #052e16;
+            font-size: 0.58rem;
+            font-weight: 900;
+            line-height: 1;
+        }
+        .bcp-rate-item {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 5px;
+        }
+        .bcp-rate-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: #94a3b8;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .bcp-rate-val {
+            font-size: 0.92rem;
+            font-weight: 900;
+            color: #ffffff;
+            letter-spacing: 0.01em;
+        }
+        .bcp-rate-time {
+            font-size: 0.66rem;
+            font-weight: 600;
+            color: #94a3b8;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+        .bcp-detail-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 9px;
+            border: 1px solid #334155;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.03);
+            color: #e2e8f0;
+            font-size: 0.64rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+        .bcp-detail-btn:hover {
+            background: #1e293b;
+            border-color: #38bdf8;
+            color: #38bdf8;
+        }
+        @media (max-width: 1480px) {
+            .bcp-rate-time {
+                display: none;
+            }
+        }
+        @media (max-width: 1220px) {
+            .bcp-detail-btn {
+                display: none;
+            }
         }
 
         /* User Info Section */
@@ -834,6 +934,24 @@
                     <i class="ph ph-list" style="font-size: 1.25rem;"></i>
                 </button>
             </div>
+            <div id="bcpNavbarTicker" class="bcp-navbar-ticker" title="Tipo de Cambio Referencial Fluctuante - Banco Central del Paraguay">
+                <span class="bcp-ticker-badge">
+                    <span class="bcp-bill-icon">$</span>
+                    <span>BCP &middot; USD/PYG</span>
+                </span>
+                <span class="bcp-rate-item">
+                    <span class="bcp-rate-label">COMPRA:</span>
+                    <strong class="bcp-rate-val" id="bcpNavbarCompra">GS. ---</strong>
+                </span>
+                <span class="bcp-rate-item">
+                    <span class="bcp-rate-label">VENTA:</span>
+                    <strong class="bcp-rate-val" id="bcpNavbarVenta">GS. ---</strong>
+                </span>
+                <span class="bcp-rate-time" id="bcpNavbarFechaHora">CARGANDO...</span>
+                <a href="https://www.bcp.gov.py/webapps/web/cotizacion/referencial-fluctuante" target="_blank" rel="noopener noreferrer" class="bcp-detail-btn">
+                    VER DETALLE &#8599;
+                </a>
+            </div>
             <h2 class="page-title" th:if="${pageTitle != null and pageTitle != 'Inicio' and pageTitle != 'inicio'}" th:text="${pageTitle}"></h2>
         </div>
 
@@ -1169,6 +1287,50 @@
                     group.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 }
             }
+
+            (function initBcpNavbarTicker() {
+                const CACHE_KEY = 'contapro_bcp_ticker_v1';
+                const elCompra = document.getElementById('bcpNavbarCompra');
+                const elVenta = document.getElementById('bcpNavbarVenta');
+                const elFechaHora = document.getElementById('bcpNavbarFechaHora');
+                if (!elCompra || !elVenta) return;
+
+                function renderTicker(data) {
+                    if (!data || !data.compraFormatted || !data.ventaFormatted) return;
+                    elCompra.textContent = 'GS. ' + data.compraFormatted;
+                    elVenta.textContent = 'GS. ' + data.ventaFormatted;
+                    if (elFechaHora) {
+                        const hora = data.hora || '13:00';
+                        const fecha = data.fechaText || '';
+                        elFechaHora.textContent = fecha ? (hora + ' · ' + fecha) : hora;
+                    }
+                }
+
+                try {
+                    const cachedRaw = sessionStorage.getItem(CACHE_KEY);
+                    if (cachedRaw) {
+                        const cached = JSON.parse(cachedRaw);
+                        if (cached && cached.data) {
+                            renderTicker(cached.data);
+                            if (cached.ts && (Date.now() - cached.ts) < 600000) {
+                                return;
+                            }
+                        }
+                    }
+                } catch (e) {}
+
+                fetch('/api/cotizaciones/bcp-actual')
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data && data.status === 'success') {
+                            renderTicker(data);
+                            try {
+                                sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: data }));
+                            } catch (e) {}
+                        }
+                    })
+                    .catch(() => {});
+            })();
         </script>
     </div>
 

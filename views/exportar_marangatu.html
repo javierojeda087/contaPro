@@ -1,129 +1,146 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Sistema - Exportar a Marangatu (RG 90/2021)')}">
+<head th:replace="~{fragments/layout :: head('Contabilidad - Exportar a Marangatu (RG 90/2021)')}">
 </head>
-<body style="background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-    
+<body style="background-color: #f1f5f9; color: #1e293b;">
+
     <!-- Sidebar -->
     <div th:replace="~{fragments/layout :: sidebar}"></div>
 
     <main class="main-content">
         <div th:replace="~{fragments/layout :: navbar('Exportar a Marangatu (RG 90/2021)')}"></div>
 
-        <div class="content-area" style="padding: 20px;">
+        <div class="content-area" style="padding: 1.5rem;">
 
-            <!-- Header Sub-Bar / Status Info (Matching exact user screenshot) -->
-            <div style="background: #1e293b; color: #f8fafc; padding: 10px 16px; border-radius: 8px 8px 0 0; font-size: 0.85rem; font-weight: 500; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0284c7;">
-                <div>
-                    <strong>Exportar a Marangatu(RG 90/2021)</strong> | 
-                    <span style="color: #94a3b8;">Contribuyente:</span> <span th:text="${empresaRuc + ' - ' + empresaNombre}">5555-7 - CONTRIBUYENTE DEMOSTRATIVO</span> | 
-                    <span style="color: #94a3b8;">Configuración:</span> IRE-GENERAL/IRACIS / CENTRAL / <span th:text="${#strings.substring(currentDate, 0, 4)}">2026</span>
+            <!-- Tarjeta Principal Adaptada al Diseño del Sistema -->
+            <div class="card" style="height: auto !important; background: #ffffff; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; overflow: hidden;">
+
+                <!-- Cabecera de la Tarjeta -->
+                <div style="padding: 1.15rem 1.5rem; border-bottom: 1px solid #f1f5f9; background: #ffffff; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 42px; height: 42px; border-radius: 10px; background: #dcfce7; color: #16a34a; display: flex; align-items: center; justify-content: center; font-size: 1.35rem;">
+                            <i class="ph ph-file-zip"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0f172a;">Exportar a Marangatu (RG 90/2021)</h3>
+                            <p style="margin: 0; font-size: 0.8rem; color: #64748b; font-weight: 500;">Módulo Contabilidad - Generación de archivo .ZIP reglamentario para registro de comprobantes en DNIT</p>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 6px 12px; font-size: 0.8rem; color: #334155; font-weight: 600;">
+                            <span style="color: #64748b;">Contribuyente:</span>
+                            <strong style="color: #0f172a;" th:text="${empresaRuc + ' - ' + empresaNombre}">5555-7 - CONTRIBUYENTE</strong>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Main Export Form Card -->
-            <div style="background: #ffffff; padding: 28px 32px; border: 1px solid #cbd5e1; border-top: none; border-radius: 0 0 8px 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); max-width: 900px; margin: 0 auto;">
-                
+                <!-- Cuerpo del Formulario -->
                 <form id="marangatuForm" method="GET" action="/api/marangatu/exportar-zip">
-                    
-                    <!-- Date Inputs Grid -->
-                    <div class="row g-4 mb-4">
-                        <div class="col-md-6">
-                            <div style="position: relative;">
-                                <label for="fechaInicial" style="font-size: 0.82rem; font-weight: 600; color: #0284c7; background: #ffffff; padding: 0 6px; position: absolute; top: -10px; left: 12px; z-index: 2;">
-                                    Fecha Inicial
+                    <div style="padding: 1.25rem 1.5rem; background: #fafafa; border-bottom: 1px solid #f1f5f9;">
+                        <!-- Filtros rápidos de período -->
+                        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 1rem;">
+                            <span style="font-size: 0.72rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-right: 4px;">
+                                <i class="ph ph-lightning" style="color:#16a34a;"></i> Rápido · Ejercicio <span th:text="${ejercicio}">2026</span>:
+                            </span>
+                            <button type="button" class="qf-btn" data-qf="hoy">Hoy</button>
+                            <button type="button" class="qf-btn" data-qf="ayer">Ayer</button>
+                            <button type="button" class="qf-btn active" data-qf="mes">Este mes</button>
+                            <button type="button" class="qf-btn" data-qf="mesAnt">Mes anterior</button>
+                            <button type="button" class="qf-btn" data-qf="trim">Trimestre</button>
+                            <button type="button" class="qf-btn" data-qf="anio">Todo el ejercicio</button>
+                            <span style="width:1px; height:22px; background:#cbd5e1; margin: 0 6px;"></span>
+                            <span id="qfMeses" style="display:flex; flex-wrap:wrap; gap:4px;"></span>
+                        </div>
+
+                        <!-- Rango de Fechas -->
+                        <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;">
+                            <div style="flex: 1 1 200px; max-width: 260px;">
+                                <label for="fechaInicial" style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Fecha Inicial</label>
+                                <input type="date" id="fechaInicial" name="fechaInicial" th:value="${firstDayOfMonth}" th:min="${ejerInicio}" th:max="${ejerFinal}" class="form-control" style="height: 42px; border-radius: 8px; font-weight: 600;">
+                            </div>
+
+                            <div style="flex: 1 1 200px; max-width: 260px;">
+                                <label for="fechaFinal" style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Fecha Final</label>
+                                <input type="date" id="fechaFinal" name="fechaFinal" th:value="${currentDate}" th:min="${ejerInicio}" th:max="${ejerFinal}" class="form-control" style="height: 42px; border-radius: 8px; font-weight: 600;">
+                            </div>
+
+                            <div>
+                                <button type="submit" style="height: 42px; padding: 0 1.4rem; background: #16a34a; color: #ffffff; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; box-shadow: 0 2px 6px rgba(22,163,74,0.25); transition: all 0.2s;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
+                                    <i class="ph ph-file-zip" style="font-size: 1.15rem;"></i> Exportar Archivo (.ZIP)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Opciones de Movimientos y Documentos -->
+                    <div style="padding: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem;">
+
+                        <!-- Movimientos de Ingresos / Ventas -->
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; padding-bottom: 0.65rem; border-bottom: 1px solid #e2e8f0;">
+                                <i class="ph ph-trend-up" style="color: #16a34a; font-size: 1.15rem;"></i>
+                                <span style="font-size: 0.82rem; font-weight: 800; color: #0f172a; text-transform: uppercase;">Movimientos de Ingresos / Ventas</span>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: #1e293b;">
+                                    <input type="checkbox" id="chkVentas" name="ventas" value="true" checked style="width: 18px; height: 18px; accent-color: #16a34a; cursor: pointer;">
+                                    Ventas (Comprobantes de Ingresos)
                                 </label>
-                                <input type="date" id="fechaInicial" name="fechaInicial" th:value="${firstDayOfMonth}" 
-                                       class="form-control" style="border: 1.5px solid #0284c7; border-radius: 6px; padding: 10px 14px; font-weight: 500;">
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div style="position: relative;">
-                                <label for="fechaFinal" style="font-size: 0.82rem; font-weight: 600; color: #0284c7; background: #ffffff; padding: 0 6px; position: absolute; top: -10px; left: 12px; z-index: 2;">
-                                    Fecha Final
+                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: #1e293b;">
+                                    <input type="checkbox" id="chkOtrosIngresos" name="otrosIngresos" value="true" checked style="width: 18px; height: 18px; accent-color: #16a34a; cursor: pointer;">
+                                    Otros Ingresos
                                 </label>
-                                <input type="date" id="fechaFinal" name="fechaFinal" th:value="${currentDate}" 
-                                       class="form-control" style="border: 1.5px solid #0284c7; border-radius: 6px; padding: 10px 14px; font-weight: 500;">
+                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: #1e293b;">
+                                    <input type="checkbox" id="chkRecibosCobro" name="recibosCobro" value="true" checked style="width: 18px; height: 18px; accent-color: #16a34a; cursor: pointer;">
+                                    Recibos de Cobro
+                                </label>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Movimientos Contables Section -->
-                    <div class="mb-4" style="border-top: 1px solid #e2e8f0; padding-top: 20px;">
-                        <h6 style="font-weight: 700; color: #475569; margin-bottom: 16px; font-size: 0.95rem;">
-                            Movimientos Contables
-                        </h6>
-
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="form-check" style="margin-bottom: 12px;">
-                                    <input class="form-check-input" type="checkbox" id="chkVentas" name="ventas" value="true" checked style="width: 18px; height: 18px; cursor: pointer;">
-                                    <label class="form-check-label" for="chkVentas" style="font-weight: 600; color: #334155; margin-left: 6px; font-size: 0.9rem; cursor: pointer;">
-                                        Ventas
-                                    </label>
-                                </div>
-                                <div class="form-check" style="margin-bottom: 12px;">
-                                    <input class="form-check-input" type="checkbox" id="chkOtrosIngresos" name="otrosIngresos" value="true" checked style="width: 18px; height: 18px; cursor: pointer;">
-                                    <label class="form-check-label" for="chkOtrosIngresos" style="font-weight: 600; color: #334155; margin-left: 6px; font-size: 0.9rem; cursor: pointer;">
-                                        Otros Ingresos
-                                    </label>
-                                </div>
-                                <div class="form-check" style="margin-bottom: 12px;">
-                                    <input class="form-check-input" type="checkbox" id="chkRecibosCobro" name="recibosCobro" value="true" checked style="width: 18px; height: 18px; cursor: pointer;">
-                                    <label class="form-check-label" for="chkRecibosCobro" style="font-weight: 600; color: #334155; margin-left: 6px; font-size: 0.9rem; cursor: pointer;">
-                                        Recibos de Cobro
-                                    </label>
-                                </div>
+                        <!-- Movimientos de Egresos / Compras -->
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; padding-bottom: 0.65rem; border-bottom: 1px solid #e2e8f0;">
+                                <i class="ph ph-shopping-cart" style="color: #0284c7; font-size: 1.15rem;"></i>
+                                <span style="font-size: 0.82rem; font-weight: 800; color: #0f172a; text-transform: uppercase;">Movimientos de Egresos / Compras</span>
                             </div>
 
-                            <div class="col-md-6">
-                                <div class="form-check" style="margin-bottom: 12px;">
-                                    <input class="form-check-input" type="checkbox" id="chkCompras" name="compras" value="true" checked style="width: 18px; height: 18px; cursor: pointer;">
-                                    <label class="form-check-label" for="chkCompras" style="font-weight: 600; color: #334155; margin-left: 6px; font-size: 0.9rem; cursor: pointer;">
-                                        Compras
-                                    </label>
-                                </div>
-                                <div class="form-check" style="margin-bottom: 12px;">
-                                    <input class="form-check-input" type="checkbox" id="chkOtrosEgresos" name="otrosEgresos" value="true" checked style="width: 18px; height: 18px; cursor: pointer;">
-                                    <label class="form-check-label" for="chkOtrosEgresos" style="font-weight: 600; color: #334155; margin-left: 6px; font-size: 0.9rem; cursor: pointer;">
-                                        Otros Egresos
-                                    </label>
-                                </div>
-                                <div class="form-check" style="margin-bottom: 12px;">
-                                    <input class="form-check-input" type="checkbox" id="chkRecibosPago" name="recibosPago" value="true" checked style="width: 18px; height: 18px; cursor: pointer;">
-                                    <label class="form-check-label" for="chkRecibosPago" style="font-weight: 600; color: #334155; margin-left: 6px; font-size: 0.9rem; cursor: pointer;">
-                                        Recibos de Pago
-                                    </label>
-                                </div>
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: #1e293b;">
+                                    <input type="checkbox" id="chkCompras" name="compras" value="true" checked style="width: 18px; height: 18px; accent-color: #0284c7; cursor: pointer;">
+                                    Compras (Comprobantes de Egresos)
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: #1e293b;">
+                                    <input type="checkbox" id="chkOtrosEgresos" name="otrosEgresos" value="true" checked style="width: 18px; height: 18px; accent-color: #0284c7; cursor: pointer;">
+                                    Otros Egresos
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: #1e293b;">
+                                    <input type="checkbox" id="chkRecibosPago" name="recibosPago" value="true" checked style="width: 18px; height: 18px; accent-color: #0284c7; cursor: pointer;">
+                                    Recibos de Pago
+                                </label>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Documentos Relacionados Section -->
-                    <div class="mb-4" style="border-top: 1px solid #e2e8f0; padding-top: 20px;">
-                        <h6 style="font-weight: 700; color: #475569; margin-bottom: 16px; font-size: 0.95rem;">
-                            Documentos Relacionados
-                        </h6>
+                        <!-- Documentos Relacionados -->
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; padding-bottom: 0.65rem; border-bottom: 1px solid #e2e8f0;">
+                                <i class="ph ph-files" style="color: #6d28d9; font-size: 1.15rem;"></i>
+                                <span style="font-size: 0.82rem; font-weight: 800; color: #0f172a; text-transform: uppercase;">Documentos Relacionados</span>
+                            </div>
 
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="chkIncluirExentas" name="incluirExentas" value="true" checked style="width: 18px; height: 18px; cursor: pointer;">
-                            <label class="form-check-label" for="chkIncluirExentas" style="font-weight: 600; color: #334155; margin-left: 6px; font-size: 0.9rem; cursor: pointer;">
-                                Incluir Documentos con Exentas
-                            </label>
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: #1e293b;">
+                                    <input type="checkbox" id="chkIncluirExentas" name="incluirExentas" value="true" checked style="width: 18px; height: 18px; accent-color: #16a34a; cursor: pointer;">
+                                    Incluir Documentos con Exentas
+                                </label>
+                                <p style="margin: 4px 0 0 0; font-size: 0.78rem; color: #64748b;">
+                                    El archivo generado cumple con la estructura de columnas tabuladas exigida por la RG 90/2021 para su importación directa en el sistema Marangatu.
+                                </p>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Export Action Button -->
-                    <div class="text-center mt-5">
-                        <button type="submit" class="btn" 
-                                style="background: #e2e8f0; color: #1e293b; border: 1px solid #cbd5e1; padding: 10px 24px; border-radius: 6px; font-weight: 700; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s;"
-                                onmouseover="this.style.background='#dbeafe'; this.style.borderColor='#93c5fd'; this.style.color='#1e40af';" 
-                                onmouseout="this.style.background='#e2e8f0'; this.style.borderColor='#cbd5e1'; this.style.color='#1e293b';">
-                            <i class="ph ph-file-zip" style="font-size: 1.2rem; color: #0284c7;"></i> Exportar Archivo
-                        </button>
                     </div>
-
                 </form>
 
             </div>
@@ -131,9 +148,79 @@
         </div>
     </main>
 
-    <!-- Scripts Section -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .qf-btn {
+            background: #ffffff; color: #334155; border: 1px solid #cbd5e1;
+            border-radius: 999px; padding: 4px 11px; font-size: 0.75rem;
+            font-weight: 700; cursor: pointer; transition: all 0.15s;
+        }
+        .qf-btn:hover { background: #dcfce7; border-color: #16a34a; color: #15803d; }
+        .qf-btn.active { background: #16a34a; border-color: #16a34a; color: #ffffff; }
+    </style>
+
+    <script th:inline="javascript">
+        const EJER_INICIO = /*[[${ejerInicio}]]*/ '2026-01-01';
+        const EJER_FINAL  = /*[[${ejerFinal}]]*/  '2026-12-31';
+        const EJER_ANIO   = parseInt(EJER_INICIO.substring(0, 4), 10);
+
+        function pad2(n) { return String(n).padStart(2, '0'); }
+        function ymd(y, m, d) { return `${y}-${pad2(m)}-${pad2(d)}`; }
+        function lastDay(y, m) { return new Date(y, m, 0).getDate(); }
+        function clampEjer(s) {
+            if (s < EJER_INICIO) return EJER_INICIO;
+            if (s > EJER_FINAL) return EJER_FINAL;
+            return s;
+        }
+        function setRange(d1, d2, activeBtn) {
+            document.getElementById('fechaInicial').value = clampEjer(d1);
+            document.getElementById('fechaFinal').value = clampEjer(d2);
+            document.querySelectorAll('.qf-btn').forEach(b => b.classList.remove('active'));
+            if (activeBtn) activeBtn.classList.add('active');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const mesesNombres = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            const cont = document.getElementById('qfMeses');
+            if (cont) {
+                mesesNombres.forEach((nom, idx) => {
+                    const m = idx + 1;
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'qf-btn';
+                    b.textContent = nom;
+                    b.addEventListener('click', () => setRange(ymd(EJER_ANIO, m, 1), ymd(EJER_ANIO, m, lastDay(EJER_ANIO, m)), b));
+                    cont.appendChild(b);
+                });
+            }
+
+            document.querySelectorAll('.qf-btn[data-qf]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const t = btn.getAttribute('data-qf');
+                    const now = new Date();
+                    const curM = now.getMonth() + 1;
+                    const curD = now.getDate();
+                    if (t === 'hoy') {
+                        const d = ymd(EJER_ANIO, curM, curD);
+                        setRange(d, d, btn);
+                    } else if (t === 'ayer') {
+                        const y = new Date(EJER_ANIO, curM - 1, curD - 1);
+                        const d = ymd(y.getFullYear(), y.getMonth() + 1, y.getDate());
+                        setRange(d, d, btn);
+                    } else if (t === 'mes') {
+                        setRange(ymd(EJER_ANIO, curM, 1), ymd(EJER_ANIO, curM, lastDay(EJER_ANIO, curM)), btn);
+                    } else if (t === 'mesAnt') {
+                        const pm = curM > 1 ? curM - 1 : 1;
+                        setRange(ymd(EJER_ANIO, pm, 1), ymd(EJER_ANIO, pm, lastDay(EJER_ANIO, pm)), btn);
+                    } else if (t === 'trim') {
+                        const qStart = Math.floor((curM - 1) / 3) * 3 + 1;
+                        const qEnd = qStart + 2;
+                        setRange(ymd(EJER_ANIO, qStart, 1), ymd(EJER_ANIO, qEnd, lastDay(EJER_ANIO, qEnd)), btn);
+                    } else if (t === 'anio') {
+                        setRange(EJER_INICIO, EJER_FINAL, btn);
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>

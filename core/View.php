@@ -288,6 +288,24 @@ class View {
                         <i class="ph ph-list" style="font-size: 1.25rem;"></i>
                     </button>
                 </div>
+                <div id="bcpNavbarTicker" class="bcp-navbar-ticker" title="Tipo de Cambio Referencial Fluctuante - Banco Central del Paraguay">
+                    <span class="bcp-ticker-badge">
+                        <span class="bcp-bill-icon">$</span>
+                        <span>BCP &middot; USD/PYG</span>
+                    </span>
+                    <span class="bcp-rate-item">
+                        <span class="bcp-rate-label">COMPRA:</span>
+                        <strong class="bcp-rate-val" id="bcpNavbarCompra">GS. ---</strong>
+                    </span>
+                    <span class="bcp-rate-item">
+                        <span class="bcp-rate-label">VENTA:</span>
+                        <strong class="bcp-rate-val" id="bcpNavbarVenta">GS. ---</strong>
+                    </span>
+                    <span class="bcp-rate-time" id="bcpNavbarFechaHora">CARGANDO...</span>
+                    <a href="https://www.bcp.gov.py/webapps/web/cotizacion/referencial-fluctuante" target="_blank" rel="noopener noreferrer" class="bcp-detail-btn">
+                        VER DETALLE &#8599;
+                    </a>
+                </div>
                 <?php if ($pageTitle !== '' && strtolower($pageTitle) !== 'inicio'): ?>
                     <h2 class="page-title"><?= htmlspecialchars($pageTitle) ?></h2>
                 <?php endif; ?>

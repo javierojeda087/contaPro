@@ -553,6 +553,7 @@ $exactApiRoutes = [
     '/api/cotizaciones/save'                       => [DefinicionesContablesController::class, 'apiCotizacionesGuardarLote'],
     '/api/cotizaciones/cargar-dnit'                => [DefinicionesContablesController::class, 'apiCotizacionesCargarDnit'],
     '/api/cotizaciones/bcp-online'                 => [DefinicionesContablesController::class, 'apiCotizacionesCargarDnit'],
+    '/api/cotizaciones/bcp-actual'                 => [DefinicionesContablesController::class, 'apiCotizacionBcpActual'],
 
     // Plan de Cuentas
     '/api/plan-cuentas/list'                       => [DefinicionesContablesController::class, 'apiPlanCuentasList'],
