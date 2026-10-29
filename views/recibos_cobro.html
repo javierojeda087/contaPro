@@ -224,11 +224,17 @@
                         <!-- Fila 2: Talonario | Nro. [001] [001] [15] | Serie [A] | Anulado [ ] -->
                         <div style="display: grid; grid-template-columns: 110px 1.25fr 55px auto 55px 78px auto; gap: 8px; align-items: center; margin-bottom: 14px;">
                             <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Talonario :</label>
-                            <select id="talonarioRecibo" class="form-control" onchange="alCambiarTalonarioRecibo()"
-                                    style="border-radius: 6px; font-size: 0.9rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; color: #0f172a; background: #f8fafc;">
-                                <option value="RECIBO DE COBRO [001-001]" data-est="001" data-pto="001">RECIBO DE COBRO [001-001]</option>
-                                <option value="RECIBO DE COBRO [001-002]" data-est="001" data-pto="002">RECIBO DE COBRO [001-002]</option>
-                            </select>
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <select id="talonarioRecibo" class="form-control" onchange="alCambiarTalonarioRecibo()"
+                                        style="flex: 1; border-radius: 6px; font-size: 0.9rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; color: #0f172a; background: #f8fafc;">
+                                    <option value="RECIBO DE COBRO [001-001]" data-est="001" data-pto="001">RECIBO DE COBRO [001-001]</option>
+                                    <option value="RECIBO DE COBRO [001-002]" data-est="001" data-pto="002">RECIBO DE COBRO [001-002]</option>
+                                </select>
+                                <button type="button" onclick="agregarNuevoTalonarioRapido()" title="Agregar nuevo Talonario ( también disponible en Contabilidad > Definiciones > Timbrados )"
+                                        style="height: 38px; width: 38px; border-radius: 6px; border: 1.5px solid #cbd5e1; background: #f8fafc; color: #0284c7; font-weight: 800; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;">
+                                    <i class="ph-bold ph-plus"></i>
+                                </button>
+                            </div>
 
                             <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Nro. :</label>
                             <div style="display: flex; gap: 6px; align-items: center;">
@@ -485,6 +491,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             inicializarFiltroPeriodoRecibos();
             cargarMonedasRecibo();
+            cargarTalonariosRecibo();
             cargarRecibos();
 
             document.addEventListener('keydown', function(e) {
@@ -758,6 +765,120 @@
             if (lblCli) {
                 lblCli.innerText = nomCli ? `${rucCli} - ${nomCli}` : '(Sin seleccionar)';
             }
+        }
+
+        async function cargarTalonariosRecibo(seleccionarValor = '') {
+            try {
+                const res = await fetch('/api/timbrados/list');
+                const json = await res.json();
+                const sel = document.getElementById('talonarioRecibo');
+                if (!sel) return;
+                const currentVal = seleccionarValor || sel.value;
+                const items = (json && json.status === 'success' && Array.isArray(json.data)) ? json.data : [];
+                const reciboTimbrados = items.filter(t => {
+                    const tip = String(t.TIP_DOC || t.tip_doc || '').trim().toUpperCase();
+                    return tip === 'REC' || tip.includes('RECIBO');
+                });
+
+                const mapOpciones = new Map();
+                mapOpciones.set('001-001', { label: 'RECIBO DE COBRO [001-001]', est: '001', pto: '001' });
+                mapOpciones.set('001-002', { label: 'RECIBO DE COBRO [001-002]', est: '001', pto: '002' });
+
+                reciboTimbrados.forEach(t => {
+                    const est = String(t.COD_ESTABLECIMIENTO || t.cod_establecimiento || '001').padStart(3, '0');
+                    const pto = String(t.COD_PUNTO_EXPEDICION || t.cod_punto_expedicion || '001').padStart(3, '0');
+                    const key = `${est}-${pto}`;
+                    const label = `RECIBO DE COBRO [${est}-${pto}]`;
+                    mapOpciones.set(key, { label, est, pto });
+                });
+
+                sel.innerHTML = '';
+                mapOpciones.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.label;
+                    opt.textContent = v.label;
+                    opt.dataset.est = v.est;
+                    opt.dataset.pto = v.pto;
+                    sel.appendChild(opt);
+                });
+
+                if (currentVal && Array.from(sel.options).some(o => o.value === currentVal)) {
+                    sel.value = currentVal;
+                }
+            } catch (ignored) {}
+        }
+
+        async function agregarNuevoTalonarioRapido() {
+            const { value: formValues } = await Swal.fire({
+                title: 'Nuevo Talonario de Recibo de Cobro',
+                html: `
+                    <div style="text-align:left; font-size:0.88rem;">
+                        <p style="color:#475569; margin-bottom:12px;">Se registrará también en <strong>Contabilidad &gt; Definiciones &gt; Timbrados</strong> con Tipo de Doc. <code>REC - RECIBO</code>.</p>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                            <div>
+                                <label style="font-weight:700; display:block; margin-bottom:4px;">Establecimiento</label>
+                                <input id="swalTalEst" class="form-control text-center" maxlength="3" value="001" style="font-weight:800;">
+                            </div>
+                            <div>
+                                <label style="font-weight:700; display:block; margin-bottom:4px;">Punto de Expedición</label>
+                                <input id="swalTalPto" class="form-control text-center" maxlength="3" value="003" style="font-weight:800;">
+                            </div>
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                            <div>
+                                <label style="font-weight:700; display:block; margin-bottom:4px;">Nro. Inicial</label>
+                                <input id="swalTalIni" type="number" class="form-control" value="1">
+                            </div>
+                            <div>
+                                <label style="font-weight:700; display:block; margin-bottom:4px;">Nro. Final</label>
+                                <input id="swalTalFin" type="number" class="form-control" value="500">
+                            </div>
+                        </div>
+                    </div>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Guardar Talonario',
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => {
+                    const est = (document.getElementById('swalTalEst').value.replace(/\D/g, '') || '1').padStart(3, '0');
+                    const pto = (document.getElementById('swalTalPto').value.replace(/\D/g, '') || '1').padStart(3, '0');
+                    const ini = parseInt(document.getElementById('swalTalIni').value || '1', 10) || 1;
+                    const fin = parseInt(document.getElementById('swalTalFin').value || '500', 10) || 500;
+                    return { est, pto, ini, fin };
+                }
+            });
+
+            if (!formValues) return;
+            try {
+                const hoy = new Date().toISOString().slice(0, 10);
+                const r = await fetch('/api/timbrados/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        nroTimbrado: '00000000',
+                        tipoTimbrado: 'Pre-impreso',
+                        codEstablecimiento: formValues.est,
+                        codPuntoExpedicion: formValues.pto,
+                        fecInicio: hoy,
+                        fecVencimiento: '2099-12-31',
+                        tipDoc: 'REC',
+                        nroInicial: formValues.ini,
+                        nroFinal: formValues.fin,
+                        controlaCorrelatividad: 'S',
+                        deFacturacion: 'N',
+                        darDeBaja: 'N'
+                    })
+                });
+                const j = await r.json();
+                const nuevoLabel = `RECIBO DE COBRO [${formValues.est}-${formValues.pto}]`;
+                await cargarTalonariosRecibo(nuevoLabel);
+                document.getElementById('talonarioRecibo').value = nuevoLabel;
+                alCambiarTalonarioRecibo();
+                if (j.status === 'success') {
+                    Swal.fire({ icon: 'success', title: 'Talonario creado', text: nuevoLabel, timer: 1400, showConfirmButton: false });
+                }
+            } catch (e) {}
         }
 
         function alCambiarTalonarioRecibo() {

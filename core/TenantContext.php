@@ -300,6 +300,10 @@ class TenantContext {
 
         // Asegurar explícitamente que LIQ (LIQUIDACION DE SALARIO) y su Tipo de Ingreso estén presentes en el nuevo Propietario
         try {
+            Database::execute("ALTER TABLE `co_tipos_comprobantes` MODIFY COLUMN `descripcion` VARCHAR(100) DEFAULT NULL", true);
+            Database::execute("ALTER TABLE `co_tipos_comprobantes` MODIFY COLUMN `tip_comprobante` VARCHAR(10) DEFAULT NULL", true);
+            Database::execute("ALTER TABLE `co_tipos_comprobantes` MODIFY COLUMN `usuario_reg` VARCHAR(50) DEFAULT NULL", true);
+
             $cntLiq = (int)Database::queryForValue(
                 "SELECT COUNT(*) FROM `co_tipos_comprobantes`
                  WHERE `id_propietario` = ?

@@ -1926,14 +1926,24 @@
                     const select = document.getElementById('tipDoc');
                     const currentVal = select.value;
                     select.innerHTML = '';
+                    let hasLiq = false;
                     json.data.forEach(item => {
-                        const val = item.TIP_COMPROBANTE || item.tip_comprobante;
-                        const desc = item.DESCRIPCION || item.descripcion || val;
+                        const val = String(item.TIP_COMPROBANTE || item.tip_comprobante || '').trim();
+                        const desc = String(item.DESCRIPCION || item.descripcion || val).trim();
+                        if (val.toUpperCase() === 'LIQ' || desc.toUpperCase().includes('LIQUIDAC')) {
+                            hasLiq = true;
+                        }
                         const opt = document.createElement('option');
                         opt.value = val;
                         opt.text = desc;
                         select.appendChild(opt);
                     });
+                    if (!hasLiq && String(modulo || '').toUpperCase().includes('INGRESO')) {
+                        const optLiq = document.createElement('option');
+                        optLiq.value = 'LIQ';
+                        optLiq.text = 'LIQUIDACION DE SALARIO';
+                        select.appendChild(optLiq);
+                    }
                     if (currentVal && Array.from(select.options).some(o => o.value === currentVal)) {
                         select.value = currentVal;
                     }

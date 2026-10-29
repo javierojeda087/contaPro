@@ -1151,8 +1151,13 @@ class DefinicionesContablesController {
         $usuario = TenantContext::usuario();
         $payload = self::getInput();
 
+        $tipDoc      = trim((string)($payload['tipDoc'] ?? 'FAC')) ?: 'FAC';
+        $esRecibo    = strtoupper($tipDoc) === 'REC' || str_contains(strtoupper($tipDoc), 'RECIBO');
         $nroTimbrado = trim((string)($payload['nroTimbrado'] ?? ''));
-        if ($nroTimbrado === '' || !preg_match('/^\d{8}$/', $nroTimbrado)) {
+        if ($esRecibo && $nroTimbrado === '') {
+            $nroTimbrado = '00000000';
+        }
+        if (!$esRecibo && ($nroTimbrado === '' || !preg_match('/^\d{8}$/', $nroTimbrado))) {
             View::json(['status' => 'error', 'message' => 'El Número de Timbrado debe contener exactamente 8 dígitos numéricos.']);
             return;
         }
@@ -1162,7 +1167,6 @@ class DefinicionesContablesController {
         $codPuntoExpedicion     = trim((string)($payload['codPuntoExpedicion'] ?? '001')) ?: '001';
         $fecInicio              = trim((string)($payload['fecInicio'] ?? '')) ?: null;
         $fecVencimiento         = trim((string)($payload['fecVencimiento'] ?? '')) ?: null;
-        $tipDoc                 = trim((string)($payload['tipDoc'] ?? 'FAC')) ?: 'FAC';
         $nroInicial             = (int)($payload['nroInicial'] ?? 1);
         $nroFinal               = (int)($payload['nroFinal'] ?? 0);
         $controlaCorrelatividad = (!empty($payload['controlaCorrelatividad']) && $payload['controlaCorrelatividad'] !== 'N') ? 'S' : 'N';
@@ -1248,12 +1252,19 @@ class DefinicionesContablesController {
             );
         }
 
-        // Asegurar que LIQ (LIQUIDACION DE SALARIO) exista siempre en INGRESOS para el propietario actual
+        // Asegurar que LIQ (LIQUIDACION DE SALARIO) y REC (RECIBO) existan siempre en co_tipos_comprobantes para el propietario actual
         try {
+            // Ampliar columna descripcion (originalmente varchar(20), insuficiente para 'LIQUIDACION DE SALARIO' de 22 caracteres)
+            Database::execute("ALTER TABLE co_tipos_comprobantes MODIFY COLUMN descripcion VARCHAR(100) DEFAULT NULL", true);
+            Database::execute("ALTER TABLE co_tipos_comprobantes MODIFY COLUMN tip_comprobante VARCHAR(10) DEFAULT NULL", true);
+            Database::execute("ALTER TABLE co_tipos_comprobantes MODIFY COLUMN usuario_reg VARCHAR(50) DEFAULT NULL", true);
+
             Database::update(
                 "UPDATE co_tipos_comprobantes
                  SET tip_comprobante = 'LIQ', descripcion = 'LIQUIDACION DE SALARIO', tipo = 'INGRESOS'
-                 WHERE id_propietario = ? AND UPPER(TRIM(tip_comprobante)) IN ('LIQUIDACION DE SALARIO', 'LIQUIDACIÓN DE SALARIO')",
+                 WHERE id_propietario = ?
+                   AND (UPPER(TRIM(tip_comprobante)) IN ('LIQUIDACION DE SALARIO', 'LIQUIDACIÓN DE SALARIO')
+                        OR UPPER(TRIM(descripcion)) LIKE 'LIQUIDAC%SALARIO%')",
                 [$idProp]
             );
             $cntLiq = (int)Database::queryForValue(
@@ -1293,7 +1304,7 @@ class DefinicionesContablesController {
             if ($modulo !== '') {
                 $modUpper = strtoupper($modulo);
                 if ($modUpper === 'INGRESOS' || $modUpper === 'ING') {
-                    $sql .= "AND (UPPER(tipo) IN ('INGRESOS', 'AMBOS') OR UPPER(cod_modulo) IN ('INGRESOS', 'VT', 'CC', 'AMBOS') OR tipo IS NULL) ";
+                    $sql .= "AND (UPPER(tipo) IN ('INGRESOS', 'AMBOS') OR UPPER(cod_modulo) IN ('INGRESOS', 'ST', 'VT', 'CC', 'AMBOS') OR tipo IS NULL) ";
                 } elseif ($modUpper === 'EGRESOS' || $modUpper === 'EGR') {
                     $sql .= "AND (UPPER(tipo) IN ('EGRESOS', 'AMBOS') OR UPPER(cod_modulo) IN ('EGRESOS', 'CM', 'CP', 'AMBOS') OR tipo IS NULL) ";
                 } else {
@@ -1325,6 +1336,8 @@ class DefinicionesContablesController {
         $idProp = TenantContext::idPropietario();
         $usuario = TenantContext::usuario();
         $payload = self::getInput();
+
+        Database::execute("ALTER TABLE co_tipos_comprobantes MODIFY COLUMN descripcion VARCHAR(100) DEFAULT NULL", true);
 
         $tipComprobante = trim((string)($payload['tipComprobante'] ?? ''));
         $descripcion    = trim((string)($payload['descripcion'] ?? ''));

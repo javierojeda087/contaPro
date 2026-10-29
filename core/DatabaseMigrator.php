@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 22;
+    private const SCHEMA_VERSION = 23;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -508,10 +508,16 @@ class DatabaseMigrator {
         );
 
         // 9. Registrar LIQ -> LIQUIDACION DE SALARIO en co_tipos_comprobantes (Ingresos) para todos los propietarios
+        // Ampliar columna descripcion (originalmente varchar(20), y 'LIQUIDACION DE SALARIO' tiene 22 caracteres)
+        Database::execute("ALTER TABLE `co_tipos_comprobantes` MODIFY COLUMN `descripcion` VARCHAR(100) DEFAULT NULL", true);
+        Database::execute("ALTER TABLE `co_tipos_comprobantes` MODIFY COLUMN `tip_comprobante` VARCHAR(10) DEFAULT NULL", true);
+        Database::execute("ALTER TABLE `co_tipos_comprobantes` MODIFY COLUMN `usuario_reg` VARCHAR(50) DEFAULT NULL", true);
+
         Database::execute(
             "UPDATE `co_tipos_comprobantes`
              SET `tip_comprobante` = 'LIQ', `descripcion` = 'LIQUIDACION DE SALARIO', `tipo` = 'INGRESOS'
-             WHERE UPPER(TRIM(`tip_comprobante`)) IN ('LIQUIDACION DE SALARIO', 'LIQUIDACIÓN DE SALARIO')",
+             WHERE UPPER(TRIM(`tip_comprobante`)) IN ('LIQUIDACION DE SALARIO', 'LIQUIDACIÓN DE SALARIO')
+                OR UPPER(TRIM(`descripcion`)) LIKE 'LIQUIDAC%SALARIO%'",
             true
         );
         Database::execute(
