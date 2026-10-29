@@ -1991,6 +1991,10 @@ class MovimientosContablesController {
               `valor_otras_facturas` decimal(15,2) DEFAULT NULL,
               `total_facturas` decimal(15,2) DEFAULT NULL,
               `diferencia` decimal(15,2) DEFAULT NULL,
+              `concepto` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `metodo_pago` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `nro_cheque` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `banco` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
               `observacion` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
               `estado` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT 'A',
               `usuario_reg` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -1999,6 +2003,17 @@ class MovimientosContablesController {
               KEY `idx_co_recibos_cobro_prop` (`id_propietario`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ", true);
+
+        foreach ([
+            'concepto'    => "varchar(150) DEFAULT NULL",
+            'metodo_pago' => "varchar(100) DEFAULT NULL",
+            'nro_cheque'  => "varchar(50) DEFAULT NULL",
+            'banco'       => "varchar(100) DEFAULT NULL",
+        ] as $colName => $colDef) {
+            if (!\Core\DatabaseMigrator::columnExists('co_recibos_cobro', $colName)) {
+                Database::execute("ALTER TABLE `co_recibos_cobro` ADD COLUMN `$colName` $colDef", true);
+            }
+        }
 
         Database::execute("
             CREATE TABLE IF NOT EXISTS `co_recibos_cobro_det` (
@@ -2210,6 +2225,10 @@ class MovimientosContablesController {
                            COALESCE(c.valor_otras_facturas, 0) AS valor_otras_facturas,
                            COALESCE(c.total_facturas, 0) AS total_facturas,
                            COALESCE(c.diferencia, 0) AS diferencia,
+                           COALESCE(c.concepto, '') AS concepto,
+                           COALESCE(c.metodo_pago, '') AS metodo_pago,
+                           COALESCE(c.nro_cheque, '') AS nro_cheque,
+                           COALESCE(c.banco, '') AS banco,
                            c.observacion,
                            COALESCE(c.estado, 'A') AS estado,
                            c.usuario_reg,
@@ -2276,6 +2295,10 @@ class MovimientosContablesController {
                         COALESCE(valor_otras_facturas, 0) AS valor_otras_facturas,
                         COALESCE(total_facturas, 0) AS total_facturas,
                         COALESCE(diferencia, 0) AS diferencia,
+                        COALESCE(concepto, '') AS concepto,
+                        COALESCE(metodo_pago, '') AS metodo_pago,
+                        COALESCE(nro_cheque, '') AS nro_cheque,
+                        COALESCE(banco, '') AS banco,
                         observacion, COALESCE(estado, 'A') AS estado, usuario_reg,
                         DATE_FORMAT(fec_reg, '%d/%m/%Y %H:%i') AS fec_reg_fmt
                  FROM co_recibos_cobro
@@ -2347,9 +2370,39 @@ class MovimientosContablesController {
                 }
             }
 
-            $talonario = trim((string)($payload['talonario'] ?? 'RECIBO DE COBRO [001-001]')) ?: 'RECIBO DE COBRO [001-001]';
-            $est       = str_pad(trim((string)($payload['codEstablecimiento'] ?? '001')) ?: '001', 3, '0', STR_PAD_LEFT);
-            $pto       = str_pad(trim((string)($payload['codPuntoExpedicion'] ?? '001')) ?: '001', 3, '0', STR_PAD_LEFT);
+            $talonario = trim((string)($payload['talonario'] ?? ''));
+            $est       = str_pad(trim((string)($payload['codEstablecimiento'] ?? '')) ?: '001', 3, '0', STR_PAD_LEFT);
+            $pto       = str_pad(trim((string)($payload['codPuntoExpedicion'] ?? '')) ?: '001', 3, '0', STR_PAD_LEFT);
+
+            if ($talonario === '') {
+                View::json([
+                    'status'  => 'error',
+                    'message' => 'Debe seleccionar un Talonario / Timbrado de tipo RECIBO previamente creado en Definiciones > Timbrados.'
+                ]);
+                return;
+            }
+
+            $timbradoRecRow = Database::queryForMap(
+                "SELECT id_timbrado, nro_inicial, nro_final, controla_correlatividad
+                 FROM co_timbrados
+                 WHERE id_propietario = ? AND cod_empresa = ?
+                   AND (UPPER(TRIM(tip_doc)) = 'REC' OR UPPER(TRIM(tip_doc)) LIKE '%RECIBO%')
+                   AND COALESCE(dar_de_baja, 'N') <> 'S'
+                   AND LPAD(TRIM(COALESCE(cod_establecimiento, '001')), 3, '0') = ?
+                   AND LPAD(TRIM(COALESCE(cod_punto_expedicion, '001')), 3, '0') = ?
+                 ORDER BY id_timbrado DESC
+                 LIMIT 1",
+                [$idProp, $empresa, $est, $pto]
+            );
+
+            if (!$timbradoRecRow) {
+                View::json([
+                    'status'  => 'error',
+                    'message' => "El Talonario [{$est}-{$pto}] no está registrado en Timbrados (Tipo de Doc: REC - RECIBO). Por favor créelo primero en Contabilidad > Definiciones > Timbrados o con el botón (+) junto a Talonario."
+                ]);
+                return;
+            }
+
             $rawNro    = trim((string)($payload['nroRecibo'] ?? ''));
             if ($rawNro === '') {
                 View::json(['status' => 'error', 'message' => 'Debe indicar el Número de Recibo.']);
@@ -2357,8 +2410,21 @@ class MovimientosContablesController {
             }
             if (str_contains($rawNro, '-')) {
                 $nroRecibo = self::formatNroFactura($rawNro);
+                $partesSeq = explode('-', $nroRecibo);
+                $numSecuencial = (int)end($partesSeq);
             } else {
-                $nroRecibo = "{$est}-{$pto}-" . str_pad(preg_replace('/\D/', '', $rawNro) ?: '1', 7, '0', STR_PAD_LEFT);
+                $numSecuencial = (int)(preg_replace('/\D/', '', $rawNro) ?: '1');
+                $nroRecibo = "{$est}-{$pto}-" . str_pad((string)$numSecuencial, 7, '0', STR_PAD_LEFT);
+            }
+
+            $nroIniTimb = (int)($timbradoRecRow['nro_inicial'] ?? 0);
+            $nroFinTimb = (int)($timbradoRecRow['nro_final'] ?? 0);
+            if ($nroFinTimb > 0 && ($numSecuencial < $nroIniTimb || $numSecuencial > $nroFinTimb)) {
+                View::json([
+                    'status'  => 'error',
+                    'message' => "El número de recibo ({$numSecuencial}) está fuera del rango habilitado en el Talonario [{$est}-{$pto}] ({$nroIniTimb} al {$nroFinTimb})."
+                ]);
+                return;
             }
 
             $serie   = substr(strtoupper(trim((string)($payload['serie'] ?? ''))), 0, 10);
@@ -2405,6 +2471,10 @@ class MovimientosContablesController {
                 $valorTotal = $totalFacturas;
             }
             $diferencia  = $valorTotal - $totalFacturas;
+            $concepto    = isset($payload['concepto']) ? substr(trim((string)$payload['concepto']), 0, 150) : null;
+            $metodoPago  = isset($payload['metodoPago']) ? substr(trim((string)$payload['metodoPago']), 0, 100) : null;
+            $nroCheque   = isset($payload['nroCheque']) ? substr(trim((string)$payload['nroCheque']), 0, 50) : null;
+            $banco       = isset($payload['banco']) ? substr(trim((string)$payload['banco']), 0, 100) : null;
             $observacion = isset($payload['observacion']) ? trim((string)$payload['observacion']) : null;
 
             if ($idRecibo === null) {
@@ -2414,14 +2484,15 @@ class MovimientosContablesController {
                         cod_establecimiento, cod_punto_expedicion, nro_recibo, serie, fec_recibo,
                         cod_cliente, nom_cliente, ruc_cliente, tip_doc_cliente,
                         cod_moneda, tasa_cambio, valor_total, valor_otras_facturas, total_facturas,
-                        diferencia, observacion, estado, usuario_reg, fec_reg
-                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'A', ?, NOW())",
+                        diferencia, concepto, metodo_pago, nro_cheque, banco, observacion,
+                        estado, usuario_reg, fec_reg
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'A', ?, NOW())",
                     [
                         $idProp, $empresa, $tipDoc, $anulada, $talonario,
                         $est, $pto, $nroRecibo, $serie ?: null, $fecRecibo,
                         $codCliente ?: null, $nomCliente, $rucCliente, $tipDocCli,
                         $codMoneda, $tasaCambio, $valorTotal, $valorOtrasFacturas, $totalFacturas,
-                        $diferencia, $observacion, $usuario
+                        $diferencia, $concepto ?: null, $metodoPago ?: null, $nroCheque ?: null, $banco ?: null, $observacion, $usuario
                     ]
                 );
                 $msg = "Recibo de Cobro N° {$nroRecibo} registrado con éxito (#{$savedId}).";
@@ -2433,7 +2504,7 @@ class MovimientosContablesController {
                         serie = ?, fec_recibo = ?, cod_cliente = ?, nom_cliente = ?,
                         ruc_cliente = ?, tip_doc_cliente = ?, cod_moneda = ?, tasa_cambio = ?,
                         valor_total = ?, valor_otras_facturas = ?, total_facturas = ?,
-                        diferencia = ?, observacion = ?
+                        diferencia = ?, concepto = ?, metodo_pago = ?, nro_cheque = ?, banco = ?, observacion = ?
                      WHERE id_propietario = ? AND id_recibo = ? AND cod_empresa = ?",
                     [
                         $tipDoc, $anulada, $talonario,
@@ -2441,7 +2512,7 @@ class MovimientosContablesController {
                         $serie ?: null, $fecRecibo, $codCliente ?: null, $nomCliente,
                         $rucCliente, $tipDocCli, $codMoneda, $tasaCambio,
                         $valorTotal, $valorOtrasFacturas, $totalFacturas,
-                        $diferencia, $observacion,
+                        $diferencia, $concepto ?: null, $metodoPago ?: null, $nroCheque ?: null, $banco ?: null, $observacion,
                         $idProp, $idRecibo, $empresa
                     ]
                 );
@@ -2504,6 +2575,50 @@ class MovimientosContablesController {
         } catch (\Throwable $e) {
             View::json(['status' => 'error', 'message' => 'Error al eliminar recibo de cobro: ' . $e->getMessage()]);
         }
+    }
+
+    public static function pagePrintReciboCobro(): void {
+        if (!self::requireAuth(false)) return;
+        self::ensureRecibosCobroTables();
+        $idProp   = TenantContext::idPropietario();
+        $empresa  = TenantContext::empresa();
+        $idRecibo = (int)($_GET['id'] ?? $_GET['idRecibo'] ?? 0);
+
+        $recibo = Database::queryForMap(
+            "SELECT * FROM co_recibos_cobro WHERE id_propietario = ? AND cod_empresa = ? AND id_recibo = ? LIMIT 1",
+            [$idProp, $empresa, $idRecibo]
+        );
+        if (!$recibo) {
+            http_response_code(404);
+            echo '<h3 style="font-family:sans-serif;text-align:center;margin-top:50px;">Recibo de Cobro no encontrado</h3>';
+            return;
+        }
+
+        $detalles = Database::queryForList(
+            "SELECT * FROM co_recibos_cobro_det
+             WHERE id_propietario = ? AND cod_empresa = ? AND id_recibo = ?
+             ORDER BY id_detalle ASC",
+            [$idProp, $empresa, $idRecibo]
+        );
+
+        $empCfg = self::getEmpresaSifenConfig($idProp, $empresa);
+        $actividadDesc = trim((string)(Database::queryForValue(
+            "SELECT descripcion FROM co_actividades
+             WHERE id_propietario = ? AND cod_empresa = ? AND COALESCE(estado, 'A') = 'A'
+             ORDER BY CASE WHEN por_defecto = 'S' THEN 0 ELSE 1 END, cod_actividad ASC
+             LIMIT 1",
+            [$idProp, $empresa]
+        ) ?? ''));
+        if ($actividadDesc === '') {
+            $actividadDesc = trim((string)($empCfg['actividad'] ?? 'Actividades Profesionales, Científicas y Técnicas'));
+        }
+
+        View::render('recibo_cobro_print', [
+            'recibo'    => $recibo,
+            'detalles'  => $detalles,
+            'empresa'   => $empCfg,
+            'actividad' => $actividadDesc,
+        ]);
     }
 
     // =========================================================================
@@ -2839,6 +2954,10 @@ class MovimientosContablesController {
                         COALESCE(valor_otras_facturas, 0) AS valor_otras_facturas,
                         COALESCE(total_facturas, 0) AS total_facturas,
                         COALESCE(diferencia, 0) AS diferencia,
+                        COALESCE(concepto, '') AS concepto,
+                        COALESCE(metodo_pago, '') AS metodo_pago,
+                        COALESCE(nro_cheque, '') AS nro_cheque,
+                        COALESCE(banco, '') AS banco,
                         observacion, COALESCE(estado, 'A') AS estado, usuario_reg,
                         DATE_FORMAT(fec_reg, '%d/%m/%Y %H:%i') AS fec_reg_fmt
                  FROM co_recibos_pago

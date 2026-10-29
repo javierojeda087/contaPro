@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 23;
+    private const SCHEMA_VERSION = 24;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -643,6 +643,10 @@ class DatabaseMigrator {
             'anulada'     => "varchar(1) DEFAULT 'N'",
             'serie'       => "varchar(10) DEFAULT NULL",
             'cod_empresa' => "varchar(20) DEFAULT NULL",
+            'concepto'    => "varchar(150) DEFAULT NULL",
+            'metodo_pago' => "varchar(100) DEFAULT NULL",
+            'nro_cheque'  => "varchar(50) DEFAULT NULL",
+            'banco'       => "varchar(100) DEFAULT NULL",
         ];
         foreach ($colsRecCab as $cName => $cDef) {
             if (!self::columnExists('co_recibos_cobro', $cName)) {

@@ -31,6 +31,9 @@
                         <button type="button" class="btn" onclick="eliminarReciboSeleccionado()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #ef4444; height: 38px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 0.2s;" onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#fca5a5'" onmouseout="this.style.background='white'; this.style.borderColor='#cbd5e1'">
                             <i class="ph ph-trash" style="font-size: 1.15rem;"></i> Eliminar
                         </button>
+                        <button type="button" class="btn" onclick="imprimirReciboSeleccionado()" style="background: #eff6ff; border: 1.5px solid #93c5fd; font-weight: 800; font-size: 0.88rem; color: #1d4ed8; height: 38px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 0.2s;" onmouseover="this.style.background='#dbeafe'; this.style.borderColor='#3b82f6'" onmouseout="this.style.background='#eff6ff'; this.style.borderColor='#93c5fd'">
+                            <i class="ph ph-printer" style="font-size: 1.15rem;"></i> Imprimir Recibo
+                        </button>
                     </div>
 
                     <!-- Periodo & Search Controls -->
@@ -131,11 +134,12 @@
                                 <th style="padding: 13px 14px;">Facturas Crédito Relacionadas</th>
                                 <th style="padding: 13px 12px; text-align: center;">Mon.</th>
                                 <th style="padding: 13px 16px; text-align: right;">Valor Total</th>
+                                <th style="padding: 13px 12px; text-align: center;">Imprimir</th>
                             </tr>
                         </thead>
                         <tbody id="tablaRecibosBody">
                             <tr>
-                                <td colspan="9" class="text-center py-5 text-muted">
+                                <td colspan="10" class="text-center py-5 text-muted">
                                     <i class="ph ph-spinner-gap" style="font-size: 2rem; animation: spin 1s linear infinite;"></i>
                                     <div class="mt-2" style="font-size: 0.92rem; font-weight: 600;">Cargando recibos de cobro...</div>
                                 </td>
@@ -147,6 +151,7 @@
                                     Total General de Recibos Activos (<span id="footCantRecibos" style="color: #16a34a;">0</span>):
                                 </td>
                                 <td class="text-end" style="padding: 11px 16px; font-family: monospace; font-size: 0.96rem; color: #15803d; background: #dcfce7;" id="footTotalCobrado">0</td>
+                                <td style="background: #dcfce7;"></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -227,8 +232,7 @@
                             <div style="display: flex; gap: 6px; align-items: center;">
                                 <select id="talonarioRecibo" class="form-control" onchange="alCambiarTalonarioRecibo()"
                                         style="flex: 1; border-radius: 6px; font-size: 0.9rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; color: #0f172a; background: #f8fafc;">
-                                    <option value="RECIBO DE COBRO [001-001]" data-est="001" data-pto="001">RECIBO DE COBRO [001-001]</option>
-                                    <option value="RECIBO DE COBRO [001-002]" data-est="001" data-pto="002">RECIBO DE COBRO [001-002]</option>
+                                    <option value="">-- Sin Talonario / Timbrado registrado --</option>
                                 </select>
                                 <button type="button" onclick="agregarNuevoTalonarioRapido()" title="Agregar nuevo Talonario ( también disponible en Contabilidad > Definiciones > Timbrados )"
                                         style="height: 38px; width: 38px; border-radius: 6px; border: 1.5px solid #cbd5e1; background: #f8fafc; color: #0284c7; font-weight: 800; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;">
@@ -291,10 +295,31 @@
                             </div>
                         </div>
 
-                        <!-- Fila 5: Observación -->
+                        <!-- Fila 5: Concepto y Datos de Pago para Impresión del Recibo de Dinero -->
+                        <div style="display: grid; grid-template-columns: 110px 1fr 125px 1fr; gap: 8px; align-items: center; margin-bottom: 12px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.86rem; color: #334155;">Concepto :</label>
+                            <input type="text" id="conceptoRecibo" class="form-control" placeholder="HONORARIOS" value="HONORARIOS"
+                                   style="border-radius: 6px; font-size: 0.88rem; height: 36px; padding: 4px 10px; font-weight: 700; text-transform: uppercase; border: 1.5px solid #cbd5e1; background: #f8fafc;">
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.86rem; color: #334155;">Método Pago :</label>
+                            <input type="text" id="metodoPagoRecibo" class="form-control" placeholder="EFECTIVO / TRANSFERENCIA / CHEQUE"
+                                   style="border-radius: 6px; font-size: 0.88rem; height: 36px; padding: 4px 10px; font-weight: 700; text-transform: uppercase; border: 1.5px solid #cbd5e1; background: #f8fafc;">
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 110px 1fr 125px 1fr; gap: 8px; align-items: center; margin-bottom: 12px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.86rem; color: #334155;">N.º Cheque :</label>
+                            <input type="text" id="nroChequeRecibo" class="form-control" placeholder="Opcional..."
+                                   style="border-radius: 6px; font-size: 0.88rem; height: 36px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; background: #f8fafc;">
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.86rem; color: #334155;">Banco :</label>
+                            <input type="text" id="bancoRecibo" class="form-control" placeholder="Opcional..."
+                                   style="border-radius: 6px; font-size: 0.88rem; height: 36px; padding: 4px 10px; font-weight: 700; text-transform: uppercase; border: 1.5px solid #cbd5e1; background: #f8fafc;">
+                        </div>
+
+                        <!-- Fila 6: Observación / Descripción del Recibo -->
                         <div style="display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: start;">
                             <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155; padding-top: 8px;">Observación :</label>
-                            <textarea id="observacionRecibo" rows="3" placeholder="Detalle u observaciones del recibo de cobro..."
+                            <textarea id="observacionRecibo" rows="2" placeholder="Ej: HONORARIO MES DE AGOSTO 2026 (aparece en Descripción al imprimir el Recibo de Dinero)..."
                                       style="width: 100%; border-radius: 6px; border: 1.5px solid #cbd5e1; padding: 8px 12px; font-size: 0.9rem; font-weight: 600; color: #1e293b; resize: vertical;"></textarea>
                         </div>
 
@@ -394,13 +419,17 @@
                 </form>
             </div>
 
-            <!-- Pie de Modal (Cancelar / Guardar) -->
+            <!-- Pie de Modal (Cancelar / Guardar / Guardar e Imprimir) -->
             <div style="background: #f1f5f9; border-top: 1px solid #cbd5e1; padding: 12px 24px; display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0;">
                 <button type="button" class="btn" onclick="cerrarModalRecibo()"
                         style="background: white; border: 1.5px solid #94a3b8; font-weight: 700; font-size: 0.88rem; color: #1e293b; padding: 7px 20px; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
                     <i class="ph ph-x" style="font-size: 1rem;"></i> Cancelar
                 </button>
-                <button type="button" class="btn" onclick="guardarReciboCobro()"
+                <button type="button" class="btn" onclick="guardarReciboCobro(true)"
+                        style="background: #ffffff; border: 1.5px solid #0284c7; font-weight: 800; font-size: 0.88rem; color: #0284c7; padding: 7px 18px; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
+                    <i class="ph ph-printer" style="font-size: 1.08rem;"></i> Guardar e Imprimir
+                </button>
+                <button type="button" class="btn" onclick="guardarReciboCobro(false)"
                         style="background: linear-gradient(135deg, #3b82f6, #2563eb); border: 1px solid #1d4ed8; font-weight: 800; font-size: 0.9rem; color: white; padding: 7px 24px; border-radius: 6px; display: flex; align-items: center; gap: 6px; box-shadow: 0 3px 10px rgba(37,99,235,0.3);">
                     <i class="ph ph-check-bold" style="font-size: 1.05rem;"></i> Guardar
                 </button>
@@ -660,7 +689,7 @@
             if (!data || data.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="9" class="text-center py-5 text-muted">
+                        <td colspan="10" class="text-center py-5 text-muted">
                             <i class="ph ph-receipt" style="font-size: 2.2rem; display: block; margin-bottom: 6px; color: #94a3b8;"></i>
                             No se encontraron recibos de cobro en el periodo seleccionado.
                         </td>
@@ -717,6 +746,12 @@
                         <td style="padding: 10px 14px; color: #1e40af; font-weight: 700; font-size: 0.82rem;">${facs}</td>
                         <td style="padding: 10px 12px; text-align: center; font-weight: 800; color: #475569;">${monTag}</td>
                         <td style="padding: 10px 16px; text-align: right; font-weight: 800; color: #15803d; font-family: monospace;">${vTot.toLocaleString('es-PY')}</td>
+                        <td style="padding: 8px 12px; text-align: center;">
+                            <button type="button" onclick="event.stopPropagation(); imprimirReciboPorId(${idRec})" title="Imprimir Recibo de Dinero"
+                                    style="background: #eff6ff; border: 1px solid #93c5fd; color: #1d4ed8; border-radius: 6px; padding: 4px 10px; font-weight: 700; font-size: 0.78rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                                <i class="ph ph-printer" style="font-size: 1rem;"></i> Imprimir
+                            </button>
+                        </td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -767,48 +802,81 @@
             }
         }
 
+        let listTalonariosReciboCache = [];
+
         async function cargarTalonariosRecibo(seleccionarValor = '') {
             try {
                 const res = await fetch('/api/timbrados/list');
                 const json = await res.json();
                 const sel = document.getElementById('talonarioRecibo');
-                if (!sel) return;
+                if (!sel) return 0;
                 const currentVal = seleccionarValor || sel.value;
                 const items = (json && json.status === 'success' && Array.isArray(json.data)) ? json.data : [];
                 const reciboTimbrados = items.filter(t => {
                     const tip = String(t.TIP_DOC || t.tip_doc || '').trim().toUpperCase();
-                    return tip === 'REC' || tip.includes('RECIBO');
+                    const baja = String(t.DAR_DE_BAJA || t.dar_de_baja || 'N').trim().toUpperCase();
+                    return (tip === 'REC' || tip.includes('RECIBO')) && baja !== 'S';
                 });
 
+                listTalonariosReciboCache = reciboTimbrados;
                 const mapOpciones = new Map();
-                mapOpciones.set('001-001', { label: 'RECIBO DE COBRO [001-001]', est: '001', pto: '001' });
-                mapOpciones.set('001-002', { label: 'RECIBO DE COBRO [001-002]', est: '001', pto: '002' });
 
                 reciboTimbrados.forEach(t => {
                     const est = String(t.COD_ESTABLECIMIENTO || t.cod_establecimiento || '001').padStart(3, '0');
                     const pto = String(t.COD_PUNTO_EXPEDICION || t.cod_punto_expedicion || '001').padStart(3, '0');
                     const key = `${est}-${pto}`;
                     const label = `RECIBO DE COBRO [${est}-${pto}]`;
-                    mapOpciones.set(key, { label, est, pto });
+                    mapOpciones.set(key, {
+                        label,
+                        est,
+                        pto,
+                        ini: parseInt(t.NRO_INICIAL || t.nro_inicial || '1', 10) || 1,
+                        fin: parseInt(t.NRO_FINAL || t.nro_final || '0', 10) || 0
+                    });
                 });
 
                 sel.innerHTML = '';
+                if (mapOpciones.size === 0) {
+                    const optEmpty = document.createElement('option');
+                    optEmpty.value = '';
+                    optEmpty.textContent = '-- Sin Talonario de Recibo registrado (clic en + para crear) --';
+                    sel.appendChild(optEmpty);
+                    document.getElementById('recEst').value = '';
+                    document.getElementById('recPto').value = '';
+                    document.getElementById('recNro').value = '';
+                    return 0;
+                }
+
                 mapOpciones.forEach(v => {
                     const opt = document.createElement('option');
                     opt.value = v.label;
                     opt.textContent = v.label;
                     opt.dataset.est = v.est;
                     opt.dataset.pto = v.pto;
+                    opt.dataset.ini = String(v.ini);
+                    opt.dataset.fin = String(v.fin);
                     sel.appendChild(opt);
                 });
 
                 if (currentVal && Array.from(sel.options).some(o => o.value === currentVal)) {
                     sel.value = currentVal;
+                } else {
+                    sel.selectedIndex = 0;
                 }
-            } catch (ignored) {}
+                const selOpt = sel.options[sel.selectedIndex];
+                if (selOpt && selOpt.dataset.est) {
+                    document.getElementById('recEst').value = selOpt.dataset.est;
+                    document.getElementById('recPto').value = selOpt.dataset.pto;
+                }
+                return mapOpciones.size;
+            } catch (ignored) {
+                return 0;
+            }
         }
 
         async function agregarNuevoTalonarioRapido() {
+            const nextPtoNum = (listTalonariosReciboCache.length || 0) + 1;
+            const defaultPto = String(nextPtoNum).padStart(3, '0');
             const { value: formValues } = await Swal.fire({
                 title: 'Nuevo Talonario de Recibo de Cobro',
                 html: `
@@ -821,7 +889,7 @@
                             </div>
                             <div>
                                 <label style="font-weight:700; display:block; margin-bottom:4px;">Punto de Expedición</label>
-                                <input id="swalTalPto" class="form-control text-center" maxlength="3" value="003" style="font-weight:800;">
+                                <input id="swalTalPto" class="form-control text-center" maxlength="3" value="${defaultPto}" style="font-weight:800;">
                             </div>
                         </div>
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
@@ -884,25 +952,34 @@
         function alCambiarTalonarioRecibo() {
             const sel = document.getElementById('talonarioRecibo');
             const opt = sel?.options[sel.selectedIndex];
-            if (opt) {
+            if (opt && opt.value) {
                 document.getElementById('recEst').value = opt.dataset.est || '001';
                 document.getElementById('recPto').value = opt.dataset.pto || '001';
-            }
-            if (!document.getElementById('idRecibo').value) {
-                sugerirSiguienteNroRecibo();
+                if (!document.getElementById('idRecibo').value) {
+                    sugerirSiguienteNroRecibo();
+                }
+            } else {
+                document.getElementById('recEst').value = '';
+                document.getElementById('recPto').value = '';
+                document.getElementById('recNro').value = '';
             }
         }
 
         function formatearEstPtoRecibo() {
             const estEl = document.getElementById('recEst');
             const ptoEl = document.getElementById('recPto');
-            if (estEl) estEl.value = (estEl.value.replace(/\D/g, '') || '1').padStart(3, '0');
-            if (ptoEl) ptoEl.value = (ptoEl.value.replace(/\D/g, '') || '1').padStart(3, '0');
+            if (estEl && estEl.value.trim()) estEl.value = (estEl.value.replace(/\D/g, '') || '1').padStart(3, '0');
+            if (ptoEl && ptoEl.value.trim()) ptoEl.value = (ptoEl.value.replace(/\D/g, '') || '1').padStart(3, '0');
         }
 
         function sugerirSiguienteNroRecibo() {
-            const est = document.getElementById('recEst')?.value || '001';
-            const pto = document.getElementById('recPto')?.value || '001';
+            const talonVal = document.getElementById('talonarioRecibo')?.value || '';
+            const est = document.getElementById('recEst')?.value || '';
+            const pto = document.getElementById('recPto')?.value || '';
+            if (!talonVal || !est || !pto) {
+                document.getElementById('recNro').value = '';
+                return;
+            }
             fetch(`/api/recibos-cobro/siguiente-nro?est=${encodeURIComponent(est)}&pto=${encodeURIComponent(pto)}`)
                 .then(r => r.json())
                 .then(res => {
@@ -913,7 +990,7 @@
                 .catch(() => {});
         }
 
-        function abrirModalNuevoRecibo() {
+        async function abrirModalNuevoRecibo() {
             selectedIdRecibo = null;
             detalleFacturasRecibo = [];
             document.getElementById('idRecibo').value = '';
@@ -922,10 +999,6 @@
             document.getElementById('rucClienteRecibo').value = '';
             document.getElementById('tipDocClienteRecibo').value = 'RUC';
             document.getElementById('nomClienteRecibo').value = '';
-            document.getElementById('talonarioRecibo').value = 'RECIBO DE COBRO [001-001]';
-            document.getElementById('recEst').value = '001';
-            document.getElementById('recPto').value = '001';
-            document.getElementById('recNro').value = '1';
             document.getElementById('serieRecibo').value = '';
             document.getElementById('chkAnuladoRecibo').checked = false;
             document.getElementById('fecRecibo').valueAsDate = new Date();
@@ -935,17 +1008,40 @@
             document.getElementById('valorOtrasFacturasRecibo').value = '0';
             document.getElementById('totalFacturasRecibo').value = '0';
             document.getElementById('diferenciaRecibo').value = '0';
+            document.getElementById('conceptoRecibo').value = 'HONORARIOS';
+            document.getElementById('metodoPagoRecibo').value = '';
+            document.getElementById('nroChequeRecibo').value = '';
+            document.getElementById('bancoRecibo').value = '';
             document.getElementById('observacionRecibo').value = '';
             document.getElementById('infoUsuarioReg').innerText = '-';
             document.getElementById('infoFecReg').innerText = '-';
             document.getElementById('infoEstadoRecibo').innerText = 'NUEVO REGISTRO';
 
-            sugerirSiguienteNroRecibo();
+            const cantTalonarios = await cargarTalonariosRecibo();
+            if (cantTalonarios > 0) {
+                sugerirSiguienteNroRecibo();
+            }
             renderTablaDetalleFacturas();
             cambiarTabRecibo('encabezado');
 
             document.getElementById('reciboModalOverlay').style.display = 'flex';
-            setTimeout(() => document.getElementById('rucClienteRecibo')?.focus(), 100);
+            if (cantTalonarios === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Sin Talonario de Recibo registrado',
+                    html: 'No tenés ningún Talonario / Timbrado con Tipo de Documento <b>REC - RECIBO</b> creado en esta empresa.<br><br>¿Deseás crear el Talonario ahora mismo?',
+                    showCancelButton: true,
+                    confirmButtonText: 'Crear Talonario ahora',
+                    cancelButtonText: 'Más tarde',
+                    confirmButtonColor: '#0284c7'
+                }).then(r => {
+                    if (r.isConfirmed) {
+                        agregarNuevoTalonarioRapido();
+                    }
+                });
+            } else {
+                setTimeout(() => document.getElementById('rucClienteRecibo')?.focus(), 100);
+            }
         }
 
         function abrirModalEditarRecibo() {
@@ -989,6 +1085,10 @@
                     document.getElementById('tasaCambioRecibo').value = d.TASA_CAMBIO || 1;
                     document.getElementById('valorTotalRecibo').value = formatMilesRecibo(d.VALOR_TOTAL || 0);
                     document.getElementById('valorOtrasFacturasRecibo').value = formatMilesRecibo(d.VALOR_OTRAS_FACTURAS || 0);
+                    document.getElementById('conceptoRecibo').value = d.CONCEPTO || 'HONORARIOS';
+                    document.getElementById('metodoPagoRecibo').value = d.METODO_PAGO || '';
+                    document.getElementById('nroChequeRecibo').value = d.NRO_CHEQUE || '';
+                    document.getElementById('bancoRecibo').value = d.BANCO || '';
                     document.getElementById('observacionRecibo').value = d.OBSERVACION || '';
 
                     document.getElementById('infoUsuarioReg').innerText = d.USUARIO_REG || '-';
@@ -1415,14 +1515,43 @@
         }
 
         // =====================================================================
-        // GUARDAR Y ELIMINAR RECIBO DE COBRO
+        // GUARDAR, IMPRIMIR Y ELIMINAR RECIBO DE COBRO
         // =====================================================================
-        function guardarReciboCobro() {
+        function imprimirReciboPorId(idRecibo) {
+            if (!idRecibo) return;
+            window.open(`/app/recibos-cobro/print?id=${encodeURIComponent(idRecibo)}`, '_blank');
+        }
+
+        function imprimirReciboSeleccionado() {
+            if (!selectedIdRecibo) {
+                Swal.fire('Atención', 'Seleccione un recibo de cobro de la tabla para imprimir.', 'warning');
+                return;
+            }
+            imprimirReciboPorId(selectedIdRecibo);
+        }
+
+        function guardarReciboCobro(imprimirDespues = false) {
             const rucCliente = document.getElementById('rucClienteRecibo').value.trim();
             const nomCliente = document.getElementById('nomClienteRecibo').value.trim();
+            const talonario  = document.getElementById('talonarioRecibo').value.trim();
             const nroSimple  = document.getElementById('recNro').value.trim();
             const fecRecibo  = document.getElementById('fecRecibo').value.trim();
 
+            if (!talonario || listTalonariosReciboCache.length === 0) {
+                cambiarTabRecibo('encabezado');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Talonario no registrado',
+                    html: 'Debe tener creado un <b>Talonario / Timbrado</b> de tipo <code>REC - RECIBO</code> antes de guardar el recibo.<br><br>Puede crearlo desde el botón <b>(+)</b> junto a Talonario o en <b>Contabilidad &gt; Definiciones &gt; Timbrados</b>.',
+                    showCancelButton: true,
+                    confirmButtonText: 'Crear Talonario (+)',
+                    cancelButtonText: 'Cerrar',
+                    confirmButtonColor: '#0284c7'
+                }).then(r => {
+                    if (r.isConfirmed) agregarNuevoTalonarioRapido();
+                });
+                return;
+            }
             if (!rucCliente || !nomCliente) {
                 cambiarTabRecibo('encabezado');
                 Swal.fire('Campos requeridos', 'Debe ingresar un Cliente válido (RUC y Razón Social).', 'warning');
@@ -1441,6 +1570,16 @@
 
             const est = (document.getElementById('recEst').value || '001').padStart(3, '0');
             const pto = (document.getElementById('recPto').value || '001').padStart(3, '0');
+            const existeTalon = listTalonariosReciboCache.some(t => {
+                const tEst = String(t.COD_ESTABLECIMIENTO || t.cod_establecimiento || '001').padStart(3, '0');
+                const tPto = String(t.COD_PUNTO_EXPEDICION || t.cod_punto_expedicion || '001').padStart(3, '0');
+                return tEst === est && tPto === pto;
+            });
+            if (!existeTalon) {
+                cambiarTabRecibo('encabezado');
+                Swal.fire('Talonario no válido', `El punto de expedición [${est}-${pto}] no está registrado como Timbrado de tipo RECIBO. Créelo primero con el botón (+) o en Definiciones > Timbrados.`, 'warning');
+                return;
+            }
             const nroRecibo = `${est}-${pto}-${nroSimple.padStart(7, '0')}`;
 
             const payload = {
@@ -1461,6 +1600,10 @@
                 tasaCambio:          document.getElementById('tasaCambioRecibo').value || 1,
                 valorTotal:          parseMontoRecibo(document.getElementById('valorTotalRecibo').value),
                 valorOtrasFacturas:  parseMontoRecibo(document.getElementById('valorOtrasFacturasRecibo').value),
+                concepto:            (document.getElementById('conceptoRecibo')?.value || 'HONORARIOS').trim().toUpperCase(),
+                metodoPago:          (document.getElementById('metodoPagoRecibo')?.value || '').trim().toUpperCase(),
+                nroCheque:           (document.getElementById('nroChequeRecibo')?.value || '').trim(),
+                banco:               (document.getElementById('bancoRecibo')?.value || '').trim().toUpperCase(),
                 observacion:         document.getElementById('observacionRecibo').value.trim(),
                 detalles:            detalleFacturasRecibo
             };
@@ -1475,6 +1618,9 @@
                 if (res.status === 'success') {
                     cerrarModalRecibo();
                     cargarRecibos();
+                    if (imprimirDespues && res.idRecibo) {
+                        imprimirReciboPorId(res.idRecibo);
+                    }
                     Swal.fire({
                         icon: 'success',
                         title: 'Recibo Guardado',

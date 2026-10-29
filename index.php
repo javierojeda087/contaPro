@@ -259,6 +259,10 @@ if ($uri === '/app/kude/print' || $uri === '/kude/print') {
     MovimientosContablesController::pagePrintKude();
     exit;
 }
+if ($uri === '/app/recibos-cobro/print' || $uri === '/recibos_cobro/print' || $uri === '/recibos-cobro/print') {
+    MovimientosContablesController::pagePrintReciboCobro();
+    exit;
+}
 
 // ============================================================================
 // RUTAS DE VISTAS /app/{forma}
