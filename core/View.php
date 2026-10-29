@@ -276,6 +276,8 @@ class View {
         $avatarChar    = mb_strtoupper(mb_substr(trim($nombrePersona ?: $usuario), 0, 1, 'UTF-8'), 'UTF-8');
         $roleText      = $empresaDesc . ($sucursalDesc ? ' - ' . $sucursalDesc : '') . ($ejercicio ? ' | Ejercicio: ' . $ejercicio : '');
 
+        $cleanTitle = trim((string)preg_replace('/\s*\([A-Z0-9_]+\)\s*$/', '', $pageTitle));
+
         ob_start();
         ?>
         <header class="top-navbar">
@@ -306,19 +308,16 @@ class View {
                         VER DETALLE &#8599;
                     </a>
                 </div>
-                <?php if ($pageTitle !== '' && strtolower($pageTitle) !== 'inicio'): ?>
-                    <h2 class="page-title"><?= htmlspecialchars($pageTitle) ?></h2>
-                <?php endif; ?>
             </div>
 
             <div class="user-info">
-                <div style="background: rgba(22, 163, 74, 0.08); border: 1px solid rgba(22, 163, 74, 0.25); padding: 6px 14px; border-radius: 8px; font-size: 0.8rem; color: #15803d; font-weight: 700; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onclick="openGlobalSearchModal()">
-                    <i class="ph ph-magnifying-glass" style="font-size: 0.95rem;"></i> Buscar (Ctrl+F2)
+                <div style="background: rgba(22, 163, 74, 0.08); border: 1px solid rgba(22, 163, 74, 0.25); padding: 5px 11px; border-radius: 8px; font-size: 0.78rem; color: #15803d; font-weight: 700; display: flex; align-items: center; gap: 5px; cursor: pointer; transition: all 0.2s; white-space: nowrap;" onclick="openGlobalSearchModal()">
+                    <i class="ph ph-magnifying-glass" style="font-size: 0.92rem;"></i> Buscar (Ctrl+F2)
                 </div>
 
                 <?php if ($ejercicio !== ''): ?>
-                <div style="background: #f0fdf4; border: 1px solid #86efac; padding: 6px 14px; border-radius: 8px; font-size: 0.8rem; color: #15803d; font-weight: 700; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                    <i class="ph ph-calendar-blank" style="font-size: 1.05rem; color: #16a34a;"></i>
+                <div style="background: #f0fdf4; border: 1px solid #86efac; padding: 5px 11px; border-radius: 8px; font-size: 0.78rem; color: #15803d; font-weight: 700; display: flex; align-items: center; gap: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); white-space: nowrap;">
+                    <i class="ph ph-calendar-blank" style="font-size: 1rem; color: #16a34a;"></i>
                     <span>Ejercicio: <strong><?= htmlspecialchars($ejercicio) ?></strong></span>
                 </div>
                 <?php endif; ?>
@@ -338,6 +337,14 @@ class View {
             </div>
             <?php echo self::extractGlobalSearchModal(); ?>
         </header>
+        <?php if ($cleanTitle !== '' && mb_strtolower($cleanTitle, 'UTF-8') !== 'inicio'): ?>
+        <div class="page-title-bar">
+            <div class="page-title-inner">
+                <span class="page-title-accent"></span>
+                <h2 class="page-title"><?= htmlspecialchars($cleanTitle) ?></h2>
+            </div>
+        </div>
+        <?php endif; ?>
         <?php
         return ob_get_clean();
     }
