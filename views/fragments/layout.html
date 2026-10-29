@@ -174,8 +174,22 @@
         }
 
         .sidebar-toggle-btn:hover {
-            background: rgba(22, 163, 74, 0.12);
-            color: var(--primary-color);
+            background: rgba(22, 163, 74, 0.12) !important;
+            color: var(--primary-color) !important;
+            border-color: #86efac !important;
+        }
+
+        .navbar-collapsed-brand {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding-right: 14px;
+            margin-right: 4px;
+            border-right: 1px solid var(--border-color);
+        }
+
+        body.sidebar-collapsed .navbar-collapsed-brand {
+            display: flex;
         }
 
         .sidebar-nav-container {
@@ -507,10 +521,13 @@
 
     <!-- Left Sidebar Fragment -->
     <aside th:fragment="sidebar" id="appSidebar" class="app-sidebar">
-        <div class="sidebar-brand" style="padding: 0 0.8rem; justify-content: center;">
-            <a href="/menu" class="brand-logo" style="display: flex; align-items: center; justify-content: center; width: 100%;">
-                <img th:src="@{/images/logo_contapro.png}" alt="ContaPro - Sistema Contable" style="height: 48px; max-width: 100%; width: auto; object-fit: contain;">
+        <div class="sidebar-brand" style="padding: 0 0.85rem; justify-content: space-between; gap: 8px;">
+            <a href="/menu" class="brand-logo" style="display: flex; align-items: center; justify-content: center; flex: 1; min-width: 0;">
+                <img th:src="@{/images/logo_contapro.png}" alt="ContaPro - Sistema Contable" style="height: 44px; max-width: 100%; width: auto; object-fit: contain;">
             </a>
+            <button type="button" class="sidebar-toggle-btn" onclick="toggleSidebarCollapse()" title="Ocultar menú lateral" style="width: 36px; height: 36px; border: 1px solid #cbd5e1; background: #f8fafc; color: #0f172a; border-radius: 8px; flex-shrink: 0;">
+                <i class="ph ph-list" style="font-size: 1.25rem;"></i>
+            </button>
         </div>
 
         <!-- Buscador Integrado Estilo Marangatu -->
@@ -646,7 +663,11 @@
                 function toggleSidebarCollapse() {
                     const sidebar = document.getElementById('appSidebar');
                     if (sidebar) {
-                        sidebar.classList.toggle('collapsed');
+                        const isCollapsed = sidebar.classList.toggle('collapsed');
+                        document.body.classList.toggle('sidebar-collapsed', isCollapsed);
+                        try {
+                            localStorage.setItem('contapro_sidebar_collapsed', isCollapsed ? '1' : '0');
+                        } catch (e) {}
                     }
                 }
 
@@ -654,6 +675,10 @@
                     const sidebar = document.getElementById('appSidebar');
                     if (sidebar) {
                         sidebar.classList.remove('collapsed');
+                        document.body.classList.remove('sidebar-collapsed');
+                        try {
+                            localStorage.setItem('contapro_sidebar_collapsed', '0');
+                        } catch (e) {}
                     }
                     const group = document.getElementById('mod-group-' + codModulo);
                     if (group) {
@@ -665,6 +690,16 @@
             }
 
             document.addEventListener('DOMContentLoaded', function() {
+                try {
+                    if (localStorage.getItem('contapro_sidebar_collapsed') === '1') {
+                        const sb = document.getElementById('appSidebar');
+                        if (sb) {
+                            sb.classList.add('collapsed');
+                            document.body.classList.add('sidebar-collapsed');
+                        }
+                    }
+                } catch (e) {}
+
                 const currentPath = window.location.pathname.toLowerCase();
                 let matchedItem = null;
                 const items = document.querySelectorAll('#inlineSidebarAccordionList .sidebar-item');
@@ -791,6 +826,14 @@
     <!-- Top Navbar Fragment -->
     <header th:fragment="navbar(pageTitle)" class="top-navbar">
         <div class="top-navbar-left">
+            <div class="navbar-collapsed-brand">
+                <a href="/menu" style="display: flex; align-items: center; text-decoration: none;">
+                    <img th:src="@{/images/logo_contapro.png}" alt="ContaPro" style="height: 40px; width: auto; object-fit: contain;">
+                </a>
+                <button type="button" class="sidebar-toggle-btn" onclick="toggleSidebarCollapse()" title="Mostrar menú lateral" style="width: 36px; height: 36px; border: 1px solid #cbd5e1; background: #f8fafc; color: #0f172a; border-radius: 8px; flex-shrink: 0;">
+                    <i class="ph ph-list" style="font-size: 1.25rem;"></i>
+                </button>
+            </div>
             <h2 class="page-title" th:if="${pageTitle != null and pageTitle != 'Inicio' and pageTitle != 'inicio'}" th:text="${pageTitle}"></h2>
         </div>
 
@@ -1102,7 +1145,11 @@
             function toggleSidebarCollapse() {
                 const sidebar = document.getElementById('appSidebar');
                 if (sidebar) {
-                    sidebar.classList.toggle('collapsed');
+                    const isCollapsed = sidebar.classList.toggle('collapsed');
+                    document.body.classList.toggle('sidebar-collapsed', isCollapsed);
+                    try {
+                        localStorage.setItem('contapro_sidebar_collapsed', isCollapsed ? '1' : '0');
+                    } catch (e) {}
                 }
             }
 
@@ -1110,6 +1157,10 @@
                 const sidebar = document.getElementById('appSidebar');
                 if (sidebar) {
                     sidebar.classList.remove('collapsed');
+                    document.body.classList.remove('sidebar-collapsed');
+                    try {
+                        localStorage.setItem('contapro_sidebar_collapsed', '0');
+                    } catch (e) {}
                 }
                 const group = document.getElementById('mod-group-' + codModulo);
                 if (group) {

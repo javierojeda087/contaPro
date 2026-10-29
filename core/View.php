@@ -187,10 +187,13 @@ class View {
         ob_start();
         ?>
         <aside id="appSidebar" class="app-sidebar">
-            <div class="sidebar-brand" style="padding: 0 0.8rem; justify-content: center;">
-                <a href="/menu" class="brand-logo" style="display: flex; align-items: center; justify-content: center; width: 100%;">
-                    <img src="/images/logo_contapro.png" alt="ContaPro - Sistema Contable" style="height: 48px; max-width: 100%; width: auto; object-fit: contain;">
+            <div class="sidebar-brand" style="padding: 0 0.85rem; justify-content: space-between; gap: 8px;">
+                <a href="/menu" class="brand-logo" style="display: flex; align-items: center; justify-content: center; flex: 1; min-width: 0;">
+                    <img src="/images/logo_contapro.png" alt="ContaPro - Sistema Contable" style="height: 44px; max-width: 100%; width: auto; object-fit: contain;">
                 </a>
+                <button type="button" class="sidebar-toggle-btn" onclick="toggleSidebarCollapse()" title="Ocultar menú lateral" style="width: 36px; height: 36px; border: 1px solid #cbd5e1; background: #f8fafc; color: #0f172a; border-radius: 8px; flex-shrink: 0;">
+                    <i class="ph ph-list" style="font-size: 1.25rem;"></i>
+                </button>
             </div>
 
             <div style="padding: 10px 12px; background: #334155; border-bottom: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;">
@@ -277,6 +280,14 @@ class View {
         ?>
         <header class="top-navbar">
             <div class="top-navbar-left">
+                <div class="navbar-collapsed-brand">
+                    <a href="/menu" style="display: flex; align-items: center; text-decoration: none;">
+                        <img src="/images/logo_contapro.png" alt="ContaPro" style="height: 40px; width: auto; object-fit: contain;">
+                    </a>
+                    <button type="button" class="sidebar-toggle-btn" onclick="toggleSidebarCollapse()" title="Mostrar menú lateral" style="width: 36px; height: 36px; border: 1px solid #cbd5e1; background: #f8fafc; color: #0f172a; border-radius: 8px; flex-shrink: 0;">
+                        <i class="ph ph-list" style="font-size: 1.25rem;"></i>
+                    </button>
+                </div>
                 <?php if ($pageTitle !== '' && strtolower($pageTitle) !== 'inicio'): ?>
                     <h2 class="page-title"><?= htmlspecialchars($pageTitle) ?></h2>
                 <?php endif; ?>
