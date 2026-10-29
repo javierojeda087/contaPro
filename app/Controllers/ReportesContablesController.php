@@ -2466,18 +2466,18 @@ class ReportesContablesController {
         $anioPeriodo = strlen($fechaHasta) >= 4 ? substr($fechaHasta, 0, 4) : $ejercicio;
 
         // 1. Consultar Ingresos del rango
-        $sqlIng = "SELECT tip_doc, tip_ingreso,
+        $sqlIng = "SELECT id_ingreso, tip_doc,
                           COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
                           COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
                           COALESCE(exentas, 0) AS exentas, COALESCE(tot_iva, 0) AS tot_iva,
                           COALESCE(valor_total, 0) AS valor_total,
-                          COALESCE(anulada, 'N') AS anulada, COALESCE(estado, 'A') AS estado
+                          COALESCE(anulada, 'N') AS anulada
                    FROM co_ingresos
                    WHERE id_propietario = ? AND cod_empresa = ?
                      AND fec_ingreso >= ? AND fec_ingreso <= ?";
         $paramsIng = [$idProp, $codEmpresa, $fechaDesde, $fechaHasta];
         if (!$incluirAnulados) {
-            $sqlIng .= " AND (anulada IS NULL OR UPPER(anulada) <> 'S') AND (estado IS NULL OR UPPER(estado) <> 'I')";
+            $sqlIng .= " AND (anulada IS NULL OR UPPER(anulada) <> 'S')";
         }
         $rowsIng = Database::queryForList($sqlIng, $paramsIng);
 
@@ -2486,7 +2486,7 @@ class ReportesContablesController {
         $cantIngresos       = 0;
 
         foreach ($rowsIng as $r) {
-            $anulada = strcasecmp((string)($r['anulada'] ?? 'N'), 'S') === 0 || strcasecmp((string)($r['estado'] ?? 'A'), 'I') === 0;
+            $anulada = strcasecmp((string)($r['anulada'] ?? 'N'), 'S') === 0;
             if ($anulada) continue;
 
             $tot = (float)($r['valor_total'] ?? 0);
@@ -2513,27 +2513,41 @@ class ReportesContablesController {
             $cantIngresos++;
         }
 
+        // Mapas auxiliares opcionales en PHP (evita problemas de collation en JOIN SQL)
+        $mapTiposEgreso = [];
+        $mapClasifGasto = [];
+        try {
+            foreach (Database::queryForList("SELECT cod_tipo, descripcion FROM co_tipos_egreso WHERE id_propietario = ?", [$idProp]) as $te) {
+                $k1 = trim((string)($te['cod_tipo'] ?? ''));
+                $k2 = (string)(int)((float)($te['cod_tipo'] ?? 0));
+                $desc = strtoupper(trim((string)($te['descripcion'] ?? '')));
+                if ($k1 !== '') $mapTiposEgreso[$k1] = $desc;
+                if ($k2 !== '') $mapTiposEgreso[$k2] = $desc;
+            }
+        } catch (\Throwable $ignored) {}
+        try {
+            foreach (Database::queryForList("SELECT cod_clasificacion, descripcion FROM co_clasificacion_gasto WHERE id_propietario = ?", [$idProp]) as $cg) {
+                $k1 = trim((string)($cg['cod_clasificacion'] ?? ''));
+                $k2 = (string)(int)((float)($cg['cod_clasificacion'] ?? 0));
+                $desc = strtoupper(trim((string)($cg['descripcion'] ?? '')));
+                if ($k1 !== '') $mapClasifGasto[$k1] = $desc;
+                if ($k2 !== '') $mapClasifGasto[$k2] = $desc;
+            }
+        } catch (\Throwable $ignored) {}
+
         // 2. Consultar Egresos del rango
-        $sqlEgr = "SELECT e.tip_doc, e.tip_egreso, e.clasificacion_gasto, e.observacion,
-                          te.descripcion AS desc_tipo_egreso,
-                          cg.descripcion AS desc_clasificacion,
-                          COALESCE(e.grav10, 0) AS grav10, COALESCE(e.iva10, 0) AS iva10,
-                          COALESCE(e.grav5, 0) AS grav5, COALESCE(e.iva5, 0) AS iva5,
-                          COALESCE(e.exentas, 0) AS exentas, COALESCE(e.tot_iva, 0) AS tot_iva,
-                          COALESCE(e.valor_total, 0) AS valor_total,
-                          COALESCE(e.estado, 'A') AS estado
-                   FROM co_egresos e
-                   LEFT JOIN co_tipos_egreso te
-                     ON te.id_propietario = e.id_propietario
-                    AND CAST(te.cod_tipo AS CHAR) = TRIM(COALESCE(e.tip_egreso, ''))
-                   LEFT JOIN co_clasificacion_gasto cg
-                     ON cg.id_propietario = e.id_propietario
-                    AND CAST(cg.cod_clasificacion AS CHAR) = TRIM(COALESCE(e.clasificacion_gasto, ''))
-                   WHERE e.id_propietario = ? AND e.cod_empresa = ?
-                     AND e.fec_egreso >= ? AND e.fec_egreso <= ?";
+        $sqlEgr = "SELECT id_egreso, tip_doc, tip_egreso, clasificacion_gasto, observacion,
+                          COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
+                          COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
+                          COALESCE(exentas, 0) AS exentas, COALESCE(tot_iva, 0) AS tot_iva,
+                          COALESCE(valor_total, 0) AS valor_total,
+                          COALESCE(estado, 'A') AS estado
+                   FROM co_egresos
+                   WHERE id_propietario = ? AND cod_empresa = ?
+                     AND fec_egreso >= ? AND fec_egreso <= ?";
         $paramsEgr = [$idProp, $codEmpresa, $fechaDesde, $fechaHasta];
         if (!$incluirAnulados) {
-            $sqlEgr .= " AND (e.estado IS NULL OR UPPER(e.estado) <> 'I')";
+            $sqlEgr .= " AND (estado IS NULL OR UPPER(estado) <> 'I')";
         }
         $rowsEgr = Database::queryForList($sqlEgr, $paramsEgr);
 
@@ -2566,11 +2580,14 @@ class ReportesContablesController {
             $tipDoc = strtoupper(trim((string)($r['tip_doc'] ?? 'FAC')));
             $sign   = ($tipDoc === 'NCR') ? -1.0 : 1.0;
 
+            $codTe = trim((string)($r['tip_egreso'] ?? ''));
+            $codCg = trim((string)($r['clasificacion_gasto'] ?? ''));
+            $descTe = $mapTiposEgreso[$codTe] ?? '';
+            $descCg = $mapClasifGasto[$codCg] ?? '';
+
             $textoClasif = strtoupper(
-                trim((string)($r['tip_egreso'] ?? '')) . ' ' .
-                trim((string)($r['desc_tipo_egreso'] ?? '')) . ' ' .
-                trim((string)($r['clasificacion_gasto'] ?? '')) . ' ' .
-                trim((string)($r['desc_clasificacion'] ?? '')) . ' ' .
+                $codTe . ' ' . $descTe . ' ' .
+                $codCg . ' ' . $descCg . ' ' .
                 trim((string)($r['observacion'] ?? ''))
             );
 
