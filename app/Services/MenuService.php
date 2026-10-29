@@ -33,7 +33,7 @@ class MenuService {
             $userGrupo = 'CONADM';
         }
 
-        // Asegurar que la forma CORESCOM (Resumen Comparativo) exista en formas y accesos_grupos para el grupo de CONTA
+        // Asegurar que las formas CORESCOM y BSFORMAS existan en formas y accesos_grupos para el grupo de CONTA
         $pIdInt = (int)$propId;
         Database::execute(
             "INSERT INTO formas (id_propietario, cod_modulo, nom_forma, titulo, mostrar_en_menu, tipo, orden_en_menu)
@@ -50,6 +50,42 @@ class MenuService {
              FROM DUAL
              WHERE NOT EXISTS (
                  SELECT 1 FROM accesos_grupos WHERE id_propietario = $pIdInt AND UPPER(TRIM(cod_grupo)) = 'CONADM' AND UPPER(TRIM(nom_forma)) = 'CORESCOM'
+             )",
+            true
+        );
+        Database::execute(
+            "INSERT INTO formas (id_propietario, cod_modulo, nom_forma, titulo, descripcion, esta, mostrar_en_menu, cod_modulo_menu, tipo, orden_en_menu)
+             SELECT $pIdInt, 'AD', 'BSFORMAS', 'Formas del Sistema', 'FORMULARIOS DEL SISTEMA', 'A', 'S', 'AD', 'D', 6
+             FROM DUAL
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM formas WHERE id_propietario = $pIdInt AND UPPER(TRIM(nom_forma)) = 'BSFORMAS'
+             )",
+            true
+        );
+        Database::execute(
+            "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
+             SELECT $pIdInt, 'CONADM', 'AD', 'BSFORMAS', 'S', 'S', 'S', 'S', 'Formas del Sistema', 'S'
+             FROM DUAL
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM accesos_grupos WHERE id_propietario = $pIdInt AND UPPER(TRIM(cod_grupo)) = 'CONADM' AND UPPER(TRIM(nom_forma)) = 'BSFORMAS'
+             )",
+            true
+        );
+        Database::execute(
+            "INSERT INTO formas (id_propietario, cod_modulo, nom_forma, titulo, descripcion, esta, mostrar_en_menu, cod_modulo_menu, tipo, orden_en_menu)
+             SELECT $pIdInt, 'CO', 'CORESIRP', 'Resumen IRP', 'RESUMEN DE IMPUESTO A LA RENTA PERSONAL', 'A', 'S', 'CO', 'R', 8
+             FROM DUAL
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM formas WHERE id_propietario = $pIdInt AND UPPER(TRIM(nom_forma)) = 'CORESIRP'
+             )",
+            true
+        );
+        Database::execute(
+            "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
+             SELECT $pIdInt, 'CONADM', 'CO', 'CORESIRP', 'S', 'S', 'S', 'S', 'Resumen IRP', 'S'
+             FROM DUAL
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM accesos_grupos WHERE id_propietario = $pIdInt AND UPPER(TRIM(cod_grupo)) = 'CONADM' AND UPPER(TRIM(nom_forma)) = 'CORESIRP'
              )",
             true
         );
@@ -116,8 +152,8 @@ class MenuService {
             if ($nomForma === '' || in_array($nomForma, self::$FORMAS_EXCLUIDAS, true)) {
                 continue;
             }
-            // Solo el grupo CONADM tiene acceso al formulario Accesos Grupos (BSGRPUSU)
-            if ($nomForma === 'BSGRPUSU' && $userGrupo !== 'CONADM') {
+            // Solo el grupo CONADM tiene acceso a los formularios Accesos Grupos (BSGRPUSU) y Formas del Sistema (BSFORMAS)
+            if (in_array($nomForma, ['BSGRPUSU', 'BSFORMAS'], true) && $userGrupo !== 'CONADM') {
                 continue;
             }
 
@@ -192,15 +228,34 @@ class MenuService {
                     'route'    => 'accesos_grupos',
                 ];
             }
+            $hasBsformas = false;
+            foreach ($modulosMap['AD']['definiciones'] as $defItem) {
+                if (($defItem['nomForma'] ?? '') === 'BSFORMAS') {
+                    $hasBsformas = true;
+                    break;
+                }
+            }
+            if (!$hasBsformas) {
+                $modulosMap['AD']['definiciones'][] = [
+                    'nomForma' => 'BSFORMAS',
+                    'itemMenu' => 'Formas del Sistema',
+                    'tipo'     => 'D',
+                    'titulo'   => 'Formas del Sistema',
+                    'route'    => 'formas',
+                ];
+            }
         }
 
-        // Asegurar acceso a Resumen Comparativo (CORESCOM) en Contabilidad > Reportes para el grupo del usuario CONTA (CONADM / CONTA)
+        // Asegurar acceso a Resumen Comparativo (CORESCOM) y Resumen IRP (CORESIRP) en Contabilidad > Reportes
         if (in_array($userGrupo, ['CONADM', 'CONTA', 'CONTAM', 'CONTAP'], true) && isset($modulosMap['CO'])) {
             $hasCorescom = false;
+            $hasCoresirp = false;
             foreach ($modulosMap['CO']['reportes'] as $repItem) {
                 if (($repItem['nomForma'] ?? '') === 'CORESCOM') {
                     $hasCorescom = true;
-                    break;
+                }
+                if (($repItem['nomForma'] ?? '') === 'CORESIRP') {
+                    $hasCoresirp = true;
                 }
             }
             if (!$hasCorescom) {
@@ -210,6 +265,15 @@ class MenuService {
                     'tipo'     => 'R',
                     'titulo'   => 'Resumen Comparativo',
                     'route'    => RouteHelper::getRoute('CORESCOM'),
+                ];
+            }
+            if (!$hasCoresirp) {
+                $modulosMap['CO']['reportes'][] = [
+                    'nomForma' => 'CORESIRP',
+                    'itemMenu' => 'Resumen IRP',
+                    'tipo'     => 'R',
+                    'titulo'   => 'Resumen IRP',
+                    'route'    => RouteHelper::getRoute('CORESIRP'),
                 ];
             }
         }

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sistema - ' + ${formaTitulo})}">
+</head>
+<body style="background-color: #f8fafc; color: #1e293b;">
+
+    <!-- Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="main-content">
+        <div th:replace="~{fragments/layout :: navbar(${formaTitulo})}"></div>
+
+        <div class="content-area" style="padding: 1.5rem;">
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 1.25rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="width: 48px; height: 48px; border-radius: 12px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                            <i class="ph ph-app-window"></i>
+                        </div>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-family: monospace; font-size: 0.78rem; font-weight: 800; background: #f1f5f9; color: #334155; padding: 2px 8px; border-radius: 5px;" th:text="${formaNom}">FORMA</span>
+                                <span style="font-size: 0.78rem; font-weight: 700; color: #16a34a; background: #f0fdf4; padding: 2px 8px; border-radius: 5px;" th:text="'Módulo ' + ${formaModulo}">Módulo</span>
+                            </div>
+                            <h2 style="margin: 4px 0 0 0; font-size: 1.25rem; font-weight: 800; color: #0f172a;" th:text="${formaTitulo}">Título del Formulario</h2>
+                            <p style="margin: 2px 0 0 0; font-size: 0.85rem; color: #64748b;" th:text="${formaDesc}">Descripción del formulario</p>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 8px;">
+                        <a href="/app/formas" style="background: #f8fafc; border: 1px solid #cbd5e1; color: #334155; text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.84rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="ph ph-pencil-simple"></i> Editar en Formas (ABM)
+                        </a>
+                        <a href="/app/accesos_grupos" style="background: #16a34a; color: #ffffff; text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.84rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="ph ph-shield-check"></i> Permisos en Accesos Grupos
+                        </a>
+                    </div>
+                </div>
+
+                <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 2rem; text-align: center; color: #475569;">
+                    <i class="ph ph-check-circle" style="font-size: 2.4rem; color: #16a34a; margin-bottom: 0.5rem;"></i>
+                    <h4 style="margin: 0.4rem 0; font-size: 1.02rem; font-weight: 700; color: #0f172a;">
+                        Formulario registrado y vinculado al menú correctamente
+                    </h4>
+                    <p style="margin: 0 auto; max-width: 620px; font-size: 0.88rem; color: #64748b;">
+                        Este formulario ya se encuentra activo en la tabla <code>formas</code> y en el menú del sistema según los permisos de <code>accesos_grupos</code>.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

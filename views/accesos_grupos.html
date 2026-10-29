@@ -77,6 +77,9 @@
                         <button type="button" id="tabBtnPermisos" onclick="switchTab('permisos')" style="padding: 0.55rem 1.15rem; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 600; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; gap: 7px;">
                             <i class="ph ph-sliders-horizontal"></i> Permisos de Pantallas por Grupo
                         </button>
+                        <a href="/app/formas" style="padding: 0.55rem 1.15rem; border-radius: 8px; border: 1px solid #2563eb; background: #eff6ff; color: #1d4ed8; font-weight: 700; font-size: 0.88rem; text-decoration: none; display: flex; align-items: center; gap: 7px;">
+                            <i class="ph ph-browsers"></i> ABM Formas (Crear Nuevo Formulario)
+                        </a>
                     </div>
 
                     <div style="font-size: 0.8rem; color: #334155; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 6px 12px; border-radius: 8px;">
@@ -735,7 +738,7 @@
                 const nomForma = (f.nomForma || '').toUpperCase();
                 const codModulo = (f.codModulo || 'CO').toUpperCase();
                 const titulo = f.titulo || nomForma;
-                const isOnlyConadm = (nomForma === 'BSGRPUSU');
+                const isOnlyConadm = ['BSGRPUSU', 'BSFORMAS'].includes(nomForma);
 
                 const acc = allAccesos.find(a =>
                     (a.codGrupo || '').toUpperCase() === codGrupo &&
@@ -827,7 +830,7 @@
 
         function setFilaPermiso(nomForma, estado) {
             const row = document.querySelector(`.perm-row[data-forma="${nomForma}"]`);
-            if (!row || nomForma === 'BSGRPUSU') return;
+            if (!row || ['BSGRPUSU', 'BSFORMAS'].includes(nomForma)) return;
             row.querySelectorAll('input[type="checkbox"]').forEach(chk => {
                 if (!chk.disabled) chk.checked = estado;
             });
@@ -837,7 +840,7 @@
             document.querySelectorAll('.perm-row').forEach(row => {
                 if (row.style.display === 'none') return;
                 const forma = row.getAttribute('data-forma');
-                if (forma === 'BSGRPUSU') return;
+                if (['BSGRPUSU', 'BSFORMAS'].includes(forma)) return;
                 row.querySelectorAll('input[type="checkbox"]').forEach(chk => {
                     if (!chk.disabled) chk.checked = estado;
                 });

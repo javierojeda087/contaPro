@@ -239,6 +239,14 @@ if ($uri === '/api/reportes/libro-ventas/excel' || $uri === '/app/libro-ventas/e
     ReportesContablesController::exportarExcelLibroVentas();
     exit;
 }
+if ($uri === '/app/resumen-irp/print' || $uri === '/resumen_irp/print' || $uri === '/reportes/resumen-irp/imprimir') {
+    ReportesContablesController::printResumenIrp();
+    exit;
+}
+if ($uri === '/api/reportes/resumen-irp/excel' || $uri === '/app/resumen-irp/excel' || $uri === '/reportes/resumen-irp/excel') {
+    ReportesContablesController::exportarExcelResumenIrp();
+    exit;
+}
 if ($uri === '/app/formulario-120/print' || $uri === '/formulario_120/print') {
     ReportesContablesController::printFormulario120();
     exit;
@@ -271,6 +279,8 @@ if (preg_match('#^/app/([^/]+)$#', $uri, $m)) {
         'CO_ACTIVIDADES'        => [AdminController::class, 'pageActividades'],
         'BSUSUARI'              => [AdminController::class, 'pageUsuarios'],
         'USUARIOS'              => [AdminController::class, 'pageUsuarios'],
+        'BSFORMAS'              => [AdminController::class, 'pageFormas'],
+        'FORMAS'                => [AdminController::class, 'pageFormas'],
         'BSGRPUSU'              => [AdminController::class, 'pageAccesosGrupos'],
         'ACCESOS_GRUPOS'        => [AdminController::class, 'pageAccesosGrupos'],
         'ACCESOS-GRUPOS'        => [AdminController::class, 'pageAccesosGrupos'],
@@ -361,6 +371,9 @@ if (preg_match('#^/app/([^/]+)$#', $uri, $m)) {
         'CORESCOM'              => [ReportesContablesController::class, 'pageResumenComparativo'],
         'RESUMEN-COMPARATIVO'   => [ReportesContablesController::class, 'pageResumenComparativo'],
         'RESUMEN_COMPARATIVO'   => [ReportesContablesController::class, 'pageResumenComparativo'],
+        'CORESIRP'              => [ReportesContablesController::class, 'pageResumenIrp'],
+        'RESUMEN-IRP'           => [ReportesContablesController::class, 'pageResumenIrp'],
+        'RESUMEN_IRP'           => [ReportesContablesController::class, 'pageResumenIrp'],
     ];
 
     if (isset($formaMap[$upper])) {
@@ -383,6 +396,37 @@ if (preg_match('#^/app/([^/]+)$#', $uri, $m)) {
             'nomEmpresa' => TenantContext::nomEmpresa(),
             'ejercicio'  => TenantContext::ejercicio(),
             'modulos'    => $menu,
+        ]);
+        exit;
+    }
+
+    // Fallback para formularios creados dinámicamente en la tabla `formas` que aún no tengan vista personalizada
+    $formaRow = \Core\Database::queryForRow(
+        "SELECT nom_forma, cod_modulo, titulo, descripcion, tipo
+         FROM formas
+         WHERE UPPER(TRIM(nom_forma)) = ?
+         ORDER BY CASE WHEN id_propietario = ? THEN 0 ELSE 1 END, id_propietario ASC
+         LIMIT 1",
+        [$upper, TenantContext::idPropietario()]
+    );
+    if ($formaRow) {
+        if (!TenantContext::check()) {
+            header('Location: /login');
+            exit;
+        }
+        $menu = \App\Services\MenuService::obtenerMenuPorUsuario(TenantContext::usuario(), TenantContext::grupo());
+        View::renderTemplate('forma_generica', [
+            'usuario'        => TenantContext::usuario(),
+            'empresa'        => TenantContext::empresa(),
+            'sucursal'       => TenantContext::sucursal(),
+            'nomEmpresa'     => TenantContext::nomEmpresa(),
+            'ejercicio'      => TenantContext::ejercicio(),
+            'modulos'        => $menu,
+            'formaNom'       => strtoupper(trim((string)($formaRow['nom_forma'] ?? $upper))),
+            'formaTitulo'    => trim((string)($formaRow['titulo'] ?? $upper)),
+            'formaDesc'      => trim((string)($formaRow['descripcion'] ?? '')),
+            'formaModulo'    => strtoupper(trim((string)($formaRow['cod_modulo'] ?? 'CO'))),
+            'formaTipo'      => strtoupper(trim((string)($formaRow['tipo'] ?? 'D'))),
         ]);
         exit;
     }
@@ -428,12 +472,15 @@ $exactApiRoutes = [
     '/api/usuarios/grupos'              => [AdminController::class, 'apiUsuariosGrupos'],
     '/api/usuarios/change-password'     => [AdminController::class, 'apiUsuariosChangePassword'],
 
-    // Accesos Grupos (Exclusivo CONADM)
+    // Accesos Grupos y Formas (Exclusivo CONADM)
     '/api/accesos-grupos/data'              => [AdminController::class, 'apiAccesosGruposData'],
     '/api/accesos-grupos/asignar-usuario'   => [AdminController::class, 'apiAccesosGruposAsignarUsuario'],
     '/api/accesos-grupos/guardar-permisos'  => [AdminController::class, 'apiAccesosGruposGuardarPermisos'],
     '/api/accesos-grupos/guardar-grupo'     => [AdminController::class, 'apiAccesosGruposGuardarGrupo'],
     '/api/accesos-grupos/eliminar-grupo'    => [AdminController::class, 'apiAccesosGruposEliminarGrupo'],
+    '/api/formas/list'                      => [AdminController::class, 'apiFormasList'],
+    '/api/formas/save'                      => [AdminController::class, 'apiFormasSave'],
+    '/api/formas/delete'                    => [AdminController::class, 'apiFormasDelete'],
 
     // Backup
     '/api/backup/opciones'              => [AdminController::class, 'apiBackupOpciones'],
@@ -598,6 +645,8 @@ $exactApiRoutes = [
     '/api/formulario-120/guardar'                  => [ReportesContablesController::class, 'apiFormulario120Guardar'],
     '/api/reportes/resumen-comparativo'            => [ReportesContablesController::class, 'apiResumenComparativoData'],
     '/api/resumen-comparativo/data'                => [ReportesContablesController::class, 'apiResumenComparativoData'],
+    '/api/reportes/resumen-irp'                    => [ReportesContablesController::class, 'apiResumenIrpData'],
+    '/api/reportes/resumen-irp/data'               => [ReportesContablesController::class, 'apiResumenIrpData'],
 ];
 
 if (isset($exactApiRoutes[$uri])) {

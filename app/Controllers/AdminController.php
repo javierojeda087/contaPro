@@ -86,6 +86,10 @@ class AdminController {
         if (!self::requireConadm(false)) return;
         self::renderFormPage('accesos_grupos');
     }
+    public static function pageFormas(): void {
+        if (!self::requireConadm(false)) return;
+        self::renderFormPage('formas');
+    }
     public static function pageCambiarClave(): void   { self::renderFormPage('cambiar_clave'); }
     public static function pageBackup(): void         { self::renderFormPage('backup'); }
 
@@ -1214,6 +1218,15 @@ class AdminController {
                 true
             );
             Database::execute(
+                "INSERT INTO formas (id_propietario, cod_modulo, nom_forma, titulo, descripcion, mostrar_en_menu, tipo, orden_en_menu)
+                 SELECT 1, 'AD', 'BSFORMAS', 'Formas del Sistema', 'ABM de Formularios y Pantallas del Menú', 'S', 'D', 3
+                 FROM DUAL
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM formas WHERE id_propietario = 1 AND UPPER(TRIM(nom_forma)) = 'BSFORMAS'
+                 )",
+                true
+            );
+            Database::execute(
                 "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
                  SELECT 1, 'CONADM', 'CO', 'CORESCOM', 'S', 'S', 'S', 'S', 'Resumen Comparativo', 'S'
                  FROM DUAL
@@ -1222,11 +1235,40 @@ class AdminController {
                  )",
                 true
             );
+            Database::execute(
+                "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
+                 SELECT 1, 'CONADM', 'AD', 'BSFORMAS', 'S', 'S', 'S', 'S', 'Formas del Sistema', 'S'
+                 FROM DUAL
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM accesos_grupos WHERE id_propietario = 1 AND UPPER(TRIM(cod_grupo)) = 'CONADM' AND UPPER(TRIM(nom_forma)) = 'BSFORMAS'
+                 )",
+                true
+            );
+            Database::execute(
+                "INSERT INTO formas (id_propietario, cod_modulo, nom_forma, titulo, descripcion, mostrar_en_menu, tipo, orden_en_menu)
+                 SELECT 1, 'CO', 'CORESIRP', 'Resumen IRP', 'RESUMEN DE IMPUESTO A LA RENTA PERSONAL', 'S', 'R', 8
+                 FROM DUAL
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM formas WHERE id_propietario = 1 AND UPPER(TRIM(nom_forma)) = 'CORESIRP'
+                 )",
+                true
+            );
+            Database::execute(
+                "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
+                 SELECT 1, 'CONADM', 'CO', 'CORESIRP', 'S', 'S', 'S', 'S', 'Resumen IRP', 'S'
+                 FROM DUAL
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM accesos_grupos WHERE id_propietario = 1 AND UPPER(TRIM(cod_grupo)) = 'CONADM' AND UPPER(TRIM(nom_forma)) = 'CORESIRP'
+                 )",
+                true
+            );
             $formas = Database::queryForList(
                 "SELECT UPPER(TRIM(f.cod_modulo)) AS codModulo,
                         UPPER(TRIM(f.nom_forma)) AS nomForma,
                         COALESCE(MAX(f.titulo), MAX(f.nom_forma)) AS titulo,
+                        COALESCE(MAX(f.descripcion), '') AS descripcion,
                         COALESCE(MAX(f.tipo), 'D') AS tipo,
+                        COALESCE(MAX(f.mostrar_en_menu), 'S') AS mostrarEnMenu,
                         COALESCE(MAX(f.orden_en_menu), 99) AS ordenMenu
                  FROM formas f
                  WHERE f.id_propietario = 1
@@ -1378,8 +1420,8 @@ class AdminController {
                 $itemMenu  = trim((string)($p['itemMenu'] ?? $nomForma));
                 if ($nomForma === '') continue;
 
-                // Regla estricta: solo CONADM puede tener acceso a BSGRPUSU (Accesos Grupos)
-                if ($nomForma === 'BSGRPUSU' && $codGrupo !== 'CONADM') {
+                // Regla estricta: solo CONADM puede tener acceso a BSGRPUSU (Accesos Grupos) y BSFORMAS (Formas del Sistema)
+                if (in_array($nomForma, ['BSGRPUSU', 'BSFORMAS'], true) && $codGrupo !== 'CONADM') {
                     continue;
                 }
 
@@ -1406,20 +1448,22 @@ class AdminController {
                 }
             }
 
-            // Si es CONADM, garantizar que siempre mantenga acceso a BSGRPUSU
+            // Si es CONADM, garantizar que siempre mantenga acceso a BSGRPUSU y BSFORMAS
             if ($codGrupo === 'CONADM') {
                 foreach ($propRows as $pr) {
                     $pid = (int)($pr['id_prop'] ?? 1);
-                    $has = (int)Database::queryForValue(
-                        "SELECT COUNT(*) FROM accesos_grupos WHERE id_propietario = ? AND UPPER(TRIM(cod_grupo)) = 'CONADM' AND UPPER(TRIM(nom_forma)) = 'BSGRPUSU'",
-                        [$pid]
-                    );
-                    if ($has === 0) {
-                        Database::update(
-                            "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
-                             VALUES (?, 'CONADM', 'AD', 'BSGRPUSU', 'S', 'S', 'S', 'S', 'Accesos Grupos', 'S')",
-                            [$pid]
+                    foreach ([['BSGRPUSU', 'Accesos Grupos'], ['BSFORMAS', 'Formas del Sistema']] as $fAdmin) {
+                        $has = (int)Database::queryForValue(
+                            "SELECT COUNT(*) FROM accesos_grupos WHERE id_propietario = ? AND UPPER(TRIM(cod_grupo)) = 'CONADM' AND UPPER(TRIM(nom_forma)) = ?",
+                            [$pid, $fAdmin[0]]
                         );
+                        if ($has === 0) {
+                            Database::update(
+                                "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
+                                 VALUES (?, 'CONADM', 'AD', ?, 'S', 'S', 'S', 'S', ?, 'S')",
+                                [$pid, $fAdmin[0], $fAdmin[1]]
+                            );
+                        }
                     }
                 }
             }
@@ -1474,14 +1518,14 @@ class AdminController {
                         "INSERT INTO grupos_usuarios (id_propietario, cod_grupo, descripcion, ind_clave_sin_caducidad) VALUES (?, ?, ?, 'S')",
                         [$pid, $codGrupo, $descripcion]
                     );
-                    // Copiar accesos base desde el grupo plantilla elegido (sin BSGRPUSU salvo que sea CONADM)
+                    // Copiar accesos base desde el grupo plantilla elegido (sin BSGRPUSU ni BSFORMAS salvo que sea CONADM)
                     Database::update(
                         "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
                          SELECT ?, ?, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu
                          FROM accesos_grupos
                          WHERE id_propietario = 1
                            AND UPPER(TRIM(cod_grupo)) = ?
-                           AND UPPER(TRIM(nom_forma)) <> 'BSGRPUSU'",
+                           AND UPPER(TRIM(nom_forma)) NOT IN ('BSGRPUSU', 'BSFORMAS')",
                         [$pid, $codGrupo, $clonarDesdeGrupo]
                     );
                 }
@@ -1557,7 +1601,7 @@ class AdminController {
             return;
         }
         $pat = '%' . $q . '%';
-        $extraFilter = self::isConadm() ? "" : " AND UPPER(TRIM(f.nom_forma)) <> 'BSGRPUSU' ";
+        $extraFilter = self::isConadm() ? "" : " AND UPPER(TRIM(f.nom_forma)) NOT IN ('BSGRPUSU', 'BSFORMAS') ";
         $sql = "SELECT DISTINCT f.nom_forma AS nomForma,
                        COALESCE(f.titulo, a.item_menu, f.nom_forma) AS titulo,
                        f.cod_modulo AS codModulo
@@ -1569,6 +1613,225 @@ class AdminController {
                 ORDER BY f.nom_forma
                 LIMIT 10";
         View::json(Database::queryForList($sql, [$pat, $pat, $pat]));
+    }
+
+    // =========================================================================
+    // API FORMAS DEL SISTEMA (/api/formas/*) - ABM DE TABLA FORMAS
+    // =========================================================================
+    public static function apiFormasList(): void {
+        if (!self::requireConadm()) return;
+        try {
+            $formas = Database::queryForList(
+                "SELECT UPPER(TRIM(f.cod_modulo)) AS codModulo,
+                        UPPER(TRIM(f.nom_forma)) AS nomForma,
+                        COALESCE(MAX(f.titulo), MAX(f.nom_forma)) AS titulo,
+                        COALESCE(MAX(f.descripcion), '') AS descripcion,
+                        COALESCE(MAX(f.tipo), 'D') AS tipo,
+                        COALESCE(MAX(f.mostrar_en_menu), 'S') AS mostrarEnMenu,
+                        COALESCE(MAX(f.orden_en_menu), 10) AS ordenMenu,
+                        (SELECT GROUP_CONCAT(DISTINCT UPPER(TRIM(a.cod_grupo)) ORDER BY a.cod_grupo SEPARATOR ', ')
+                         FROM accesos_grupos a
+                         WHERE a.id_propietario = 1
+                           AND UPPER(TRIM(a.nom_forma)) = UPPER(TRIM(f.nom_forma))
+                           AND COALESCE(a.mostrar_en_menu, 'S') = 'S') AS gruposConAcceso
+                 FROM formas f
+                 WHERE f.id_propietario = 1
+                   AND f.nom_forma IS NOT NULL AND TRIM(f.nom_forma) <> ''
+                 GROUP BY UPPER(TRIM(f.cod_modulo)), UPPER(TRIM(f.nom_forma))
+                 ORDER BY CASE WHEN UPPER(TRIM(f.cod_modulo)) = 'AD' THEN 1 ELSE 2 END, ordenMenu ASC, nomForma ASC"
+            );
+
+            $grupos = Database::queryForList(
+                "SELECT UPPER(TRIM(cod_grupo)) AS codGrupo, MAX(descripcion) AS descripcion
+                 FROM grupos_usuarios
+                 WHERE cod_grupo IS NOT NULL AND TRIM(cod_grupo) <> ''
+                 GROUP BY UPPER(TRIM(cod_grupo))
+                 ORDER BY CASE
+                     WHEN UPPER(TRIM(cod_grupo)) = 'CONADM' THEN 1
+                     WHEN UPPER(TRIM(cod_grupo)) = 'CONTA' THEN 2
+                     WHEN UPPER(TRIM(cod_grupo)) = 'CONTAM' THEN 3
+                     WHEN UPPER(TRIM(cod_grupo)) = 'CONTAP' THEN 4
+                     ELSE 5
+                 END, UPPER(TRIM(cod_grupo))"
+            );
+
+            View::json([
+                'status' => 'success',
+                'formas' => $formas,
+                'grupos' => $grupos,
+            ]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al listar formas: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiFormasSave(): void {
+        if (!self::requireConadm()) return;
+        $in = self::getInput();
+
+        $nomForma      = substr(strtoupper(preg_replace('/[^A-Z0-9_]/i', '', trim((string)($in['nomForma'] ?? '')))), 0, 8);
+        $codModulo     = strtoupper(trim((string)($in['codModulo'] ?? 'CO')));
+        if (!in_array($codModulo, ['AD', 'CO'], true)) {
+            $codModulo = 'CO';
+        }
+        $titulo        = trim((string)($in['titulo'] ?? ''));
+        $descripcion   = trim((string)($in['descripcion'] ?? ''));
+        $tipo          = strtoupper(trim((string)($in['tipo'] ?? 'D')));
+        if (!in_array($tipo, ['D', 'M', 'C', 'R'], true)) {
+            $tipo = 'D';
+        }
+        $mostrarEnMenu = (strtoupper(trim((string)($in['mostrarEnMenu'] ?? 'S'))) === 'N') ? 'N' : 'S';
+        $ordenMenu     = (int)($in['ordenMenu'] ?? 10);
+        if ($ordenMenu <= 0) $ordenMenu = 10;
+
+        // Grupos seleccionados opcionalmente para dar acceso inmediato en accesos_grupos
+        $gruposAcceso  = $in['gruposAcceso'] ?? null;
+        if (is_string($gruposAcceso)) {
+            $gruposAcceso = json_decode($gruposAcceso, true);
+        }
+
+        if ($nomForma === '' || $titulo === '') {
+            View::json(['status' => 'error', 'message' => 'El Código de Forma (máx. 8 caracteres) y el Título son obligatorios.']);
+            return;
+        }
+
+        try {
+            $propRows = Database::queryForList(
+                "SELECT DISTINCT id_prop FROM (
+                     SELECT id_propietario AS id_prop FROM propietarios
+                     UNION
+                     SELECT id_propietario AS id_prop FROM formas
+                     UNION
+                     SELECT id_propietario AS id_prop FROM grupos_usuarios
+                     UNION
+                     SELECT 1 AS id_prop
+                 ) t"
+            );
+
+            $existe = (int)Database::queryForValue(
+                "SELECT COUNT(*) FROM formas WHERE UPPER(TRIM(nom_forma)) = ?",
+                [$nomForma]
+            );
+
+            if ($existe > 0) {
+                Database::update(
+                    "UPDATE formas
+                     SET cod_modulo = ?,
+                         cod_modulo_menu = ?,
+                         titulo = ?,
+                         descripcion = ?,
+                         tipo = ?,
+                         mostrar_en_menu = ?,
+                         orden_en_menu = ?,
+                         esta = 'A'
+                     WHERE UPPER(TRIM(nom_forma)) = ?",
+                    [$codModulo, $codModulo, $titulo, $descripcion ?: $titulo, $tipo, $mostrarEnMenu, $ordenMenu, $nomForma]
+                );
+
+                // Sincronizar también el módulo e item_menu en accesos_grupos donde ya esté asignada
+                Database::update(
+                    "UPDATE accesos_grupos
+                     SET cod_modulo = ?, item_menu = ?
+                     WHERE UPPER(TRIM(nom_forma)) = ?",
+                    [$codModulo, $titulo, $nomForma]
+                );
+            } else {
+                foreach ($propRows as $pr) {
+                    $pid = (int)($pr['id_prop'] ?? 1);
+                    Database::update(
+                        "INSERT INTO formas (
+                             id_propietario, cod_modulo, cod_modulo_menu, nom_forma,
+                             titulo, descripcion, esta, mostrar_en_menu, tipo, orden_en_menu
+                         ) VALUES (?, ?, ?, ?, ?, ?, 'A', ?, ?, ?)",
+                        [$pid, $codModulo, $codModulo, $nomForma, $titulo, $descripcion ?: $titulo, $mostrarEnMenu, $tipo, $ordenMenu]
+                    );
+                }
+            }
+
+            // Si se envió la lista de grupos con acceso desde el formulario ABM de Formas, sincronizar en accesos_grupos
+            if (is_array($gruposAcceso)) {
+                $gruposLimpios = array_values(array_unique(array_filter(array_map(
+                    fn($g) => strtoupper(trim((string)$g)),
+                    $gruposAcceso
+                ))));
+
+                if (in_array($nomForma, ['BSGRPUSU', 'BSFORMAS'], true)) {
+                    $gruposLimpios = ['CONADM'];
+                }
+
+                // Eliminar accesos de grupos no marcados para esta forma
+                if (empty($gruposLimpios)) {
+                    Database::update("DELETE FROM accesos_grupos WHERE UPPER(TRIM(nom_forma)) = ?", [$nomForma]);
+                } else {
+                    $placeholders = implode(',', array_fill(0, count($gruposLimpios), '?'));
+                    $delParams = array_merge([$nomForma], $gruposLimpios);
+                    Database::update(
+                        "DELETE FROM accesos_grupos WHERE UPPER(TRIM(nom_forma)) = ? AND UPPER(TRIM(cod_grupo)) NOT IN ($placeholders)",
+                        $delParams
+                    );
+
+                    foreach ($gruposLimpios as $grp) {
+                        foreach ($propRows as $pr) {
+                            $pid = (int)($pr['id_prop'] ?? 1);
+                            $cntAcc = (int)Database::queryForValue(
+                                "SELECT COUNT(*) FROM accesos_grupos WHERE id_propietario = ? AND UPPER(TRIM(cod_grupo)) = ? AND UPPER(TRIM(nom_forma)) = ?",
+                                [$pid, $grp, $nomForma]
+                            );
+                            if ($cntAcc > 0) {
+                                Database::update(
+                                    "UPDATE accesos_grupos
+                                     SET cod_modulo = ?, item_menu = ?, mostrar_en_menu = 'S', puede_consultar = 'S'
+                                     WHERE id_propietario = ? AND UPPER(TRIM(cod_grupo)) = ? AND UPPER(TRIM(nom_forma)) = ?",
+                                    [$codModulo, $titulo, $pid, $grp, $nomForma]
+                                );
+                            } else {
+                                Database::update(
+                                    "INSERT INTO accesos_grupos (
+                                         id_propietario, cod_grupo, cod_modulo, nom_forma,
+                                         puede_insertar, puede_borrar, puede_actualizar, puede_consultar,
+                                         item_menu, mostrar_en_menu
+                                     ) VALUES (?, ?, ?, ?, 'S', 'S', 'S', 'S', ?, 'S')",
+                                    [$pid, $grp, $codModulo, $nomForma, $titulo]
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            View::json([
+                'status'  => 'success',
+                'message' => $existe > 0
+                    ? "Formulario {$nomForma} ({$titulo}) actualizado correctamente."
+                    : "Formulario {$nomForma} ({$titulo}) creado correctamente.",
+            ]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al guardar la forma: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiFormasDelete(): void {
+        if (!self::requireConadm()) return;
+        $in = self::getInput();
+        $nomForma = strtoupper(trim((string)($in['nomForma'] ?? '')));
+
+        if ($nomForma === '') {
+            View::json(['status' => 'error', 'message' => 'Debe indicar el código de la forma a eliminar.']);
+            return;
+        }
+
+        if (in_array($nomForma, ['BSGRPUSU', 'BSFORMAS'], true)) {
+            View::json(['status' => 'error', 'message' => "La forma {$nomForma} es crítica para la administración del sistema y no puede eliminarse."]);
+            return;
+        }
+
+        try {
+            Database::update("DELETE FROM accesos_grupos WHERE UPPER(TRIM(nom_forma)) = ?", [$nomForma]);
+            Database::update("DELETE FROM formas WHERE UPPER(TRIM(nom_forma)) = ?", [$nomForma]);
+            View::json(['status' => 'success', 'message' => "Formulario {$nomForma} eliminado de formas y accesos_grupos."]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al eliminar la forma: ' . $e->getMessage()]);
+        }
     }
 }
 

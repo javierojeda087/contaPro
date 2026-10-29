@@ -15,6 +15,8 @@ class RouteHelper {
         'BSBACKUP'              => 'backup',
         'BACKUP'                => 'backup',
         'BSUSUARI'              => 'usuarios',
+        'BSFORMAS'              => 'formas',
+        'FORMAS'                => 'formas',
         'BSGRPUSU'              => 'accesos_grupos',
         'ACCESOS_GRUPOS'        => 'accesos_grupos',
         'ACCESOS-GRUPOS'        => 'accesos_grupos',
@@ -77,6 +79,9 @@ class RouteHelper {
         'CORESCOM'              => 'resumen-comparativo',
         'RESUMEN_COMPARATIVO'   => 'resumen-comparativo',
         'RESUMEN-COMPARATIVO'   => 'resumen-comparativo',
+        'CORESIRP'              => 'resumen-irp',
+        'RESUMEN_IRP'           => 'resumen-irp',
+        'RESUMEN-IRP'           => 'resumen-irp',
     ];
 
     public static function getRoute(?string $nomForma): string {

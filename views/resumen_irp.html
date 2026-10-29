@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Contabilidad - Resumen IRP')}">
+</head>
+<body style="background-color: #f1f5f9; color: #1e293b;">
+
+    <!-- Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="main-content">
+        <div th:replace="~{fragments/layout :: navbar('Resumen IRP')}"></div>
+
+        <div class="content-area" style="padding: 1.5rem;">
+
+            <!-- Filter Toolbar Card -->
+            <div class="card no-print" style="height: auto !important; background: #ffffff; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; margin-bottom: 1.5rem; overflow: hidden;">
+                <div style="padding: 1.15rem 1.5rem; border-bottom: 1px solid #f1f5f9; background: #ffffff; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 40px; height: 40px; border-radius: 10px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+                            <i class="ph ph-calculator"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0f172a;">Resumen IRP</h3>
+                            <p style="margin: 0; font-size: 0.8rem; color: #64748b; font-weight: 500;">Módulo Contabilidad - Resumen de Impuesto a la Renta Personal</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Controls -->
+                <div style="padding: 1.15rem 1.5rem; background: #fafafa;">
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 1rem;">
+                        <span style="font-size: 0.72rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-right: 4px;">
+                            <i class="ph ph-lightning" style="color:#16a34a;"></i> Rápido · Ejercicio <span th:text="${ejercicio}">2026</span>:
+                        </span>
+                        <button type="button" class="qf-btn active" data-qf="anio">Todo el ejercicio</button>
+                        <button type="button" class="qf-btn" data-qf="mes">Este mes</button>
+                        <button type="button" class="qf-btn" data-qf="mesAnt">Mes anterior</button>
+                        <button type="button" class="qf-btn" data-qf="trim">Trimestre</button>
+                        <span style="width:1px; height:22px; background:#cbd5e1; margin: 0 6px;"></span>
+                        <span id="qfMeses" style="display:flex; flex-wrap:wrap; gap:4px;"></span>
+                    </div>
+                    <form id="filterForm" onsubmit="event.preventDefault(); cargarResumenIrp();" style="display: flex; flex-wrap: wrap; gap: 0.85rem; align-items: flex-end;">
+                        <div style="flex: 1 1 170px; max-width: 220px;">
+                            <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Fecha Desde</label>
+                            <input type="date" id="fechaDesde" th:value="${defFechaDesde}" th:min="${ejerInicio}" th:max="${ejerFinal}" class="form-control" style="height: 42px; border-radius: 8px; font-weight: 600;">
+                        </div>
+
+                        <div style="flex: 1 1 170px; max-width: 220px;">
+                            <label style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Fecha Hasta</label>
+                            <input type="date" id="fechaHasta" th:value="${defFechaHasta}" th:min="${ejerInicio}" th:max="${ejerFinal}" class="form-control" style="height: 42px; border-radius: 8px; font-weight: 600;">
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 6px; height: 42px; padding: 0 4px;">
+                            <input type="checkbox" id="incluirAnulados" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                            <label for="incluirAnulados" style="font-size: 0.82rem; font-weight: 700; color: #334155; cursor: pointer; margin: 0; white-space: nowrap;">Anuladas</label>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <button type="submit" style="height: 42px; padding: 0 1.2rem; background: #0f172a; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.88rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap;">
+                                <i class="ph ph-magnifying-glass" style="font-size: 1rem;"></i> Filtrar
+                            </button>
+                            <button type="button" onclick="imprimirReporte()" style="height: 42px; padding: 0 1.15rem; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.88rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; transition: all 0.2s;" onmouseover="this.style.background='#0369a1'" onmouseout="this.style.background='#0284c7'">
+                                <i class="ph ph-printer-bold" style="font-size: 1.05rem;"></i> Imprimir
+                            </button>
+                            <button type="button" onclick="exportarExcel()" style="height: 42px; padding: 0 1.15rem; background: #16a34a; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.88rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; transition: all 0.2s;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
+                                <i class="ph ph-file-xls" style="font-size: 1.1rem;"></i> Excel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- KPI Cards Summary -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                <div style="background: white; border-radius: 12px; padding: 1.2rem; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Ingresos Deducibles (Sin IVA)</div>
+                    <div id="kpiIngDeducibles" style="font-size: 1.35rem; font-weight: 800; color: #16a34a; margin-top: 4px;">Gs. 0</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.2rem; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Egresos Deducibles (Sin IVA)</div>
+                    <div id="kpiEgrDeducibles" style="font-size: 1.35rem; font-weight: 800; color: #0284c7; margin-top: 4px;">Gs. 0</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.2rem; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Renta Neta Imponible IRP</div>
+                    <div id="kpiMontoBase" style="font-size: 1.35rem; font-weight: 800; color: #0f172a; margin-top: 4px;">Gs. 0</div>
+                </div>
+                <div style="background: white; border-radius: 12px; padding: 1.2rem; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Impuesto IRP a Pagar</div>
+                    <div id="kpiImpuestoPagar" style="font-size: 1.35rem; font-weight: 800; color: #dc2626; margin-top: 4px;">Gs. 0</div>
+                </div>
+            </div>
+
+            <!-- Hoja Oficial de Resumen IRP -->
+            <div style="background: #ffffff; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 4px 16px rgba(0,0,0,0.04); padding: 2rem 2.25rem; font-family: Arial, Helvetica, sans-serif; color: #000000;">
+
+                <!-- Título -->
+                <div style="text-align: center; margin-bottom: 1.4rem;">
+                    <h2 style="margin: 0; font-size: 1.35rem; font-weight: 800; letter-spacing: 0.3px; color: #000;">RESUMEN DE IMPUESTO A LA RENTA PERSONAL</h2>
+                </div>
+
+                <!-- 4 Cuadros de Identificación -->
+                <div style="display: flex; gap: 10px; align-items: stretch; margin-bottom: 1.75rem; flex-wrap: wrap;">
+                    <!-- 1. Identificador del Contribuyente -->
+                    <div style="flex: 3.5; min-width: 280px;">
+                        <div style="font-size: 0.75rem; margin-bottom: 4px; color: #111;">1. Identificador del Contribuyente</div>
+                        <table class="irp-box-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 72%;">RAZÓN SOCIAL/NOMBRES Y APELLIDOS</th>
+                                    <th style="width: 28%;">RUC</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td id="empRazonSocial" style="text-align: left; padding-left: 8px;" th:text="${empresa.descripcion}">CONTRIBUYENTE</td>
+                                    <td id="empRuc" th:text="${empresa.rucEmpresa}">5555-7</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 2. Periodo Fiscal -->
+                    <div style="flex: 1.6; min-width: 170px;">
+                        <div style="font-size: 0.75rem; margin-bottom: 4px; color: #111;">2. Periodo Fiscal</div>
+                        <table class="irp-box-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50%;">DESDE</th>
+                                    <th style="width: 50%;">HASTA</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td id="periodoDesde">-</td>
+                                    <td id="periodoHasta">-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 3. Representante Legal -->
+                    <div style="flex: 2; min-width: 180px;">
+                        <div style="font-size: 0.75rem; margin-bottom: 4px; color: #111;">3. Representante Legal</div>
+                        <table class="irp-box-table">
+                            <thead>
+                                <tr>
+                                    <th>NOMBRES Y APELLIDOS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td id="empRepLegal" th:text="${empresa.repLegal}"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 4. Identificador del Contador -->
+                    <div style="flex: 3; min-width: 240px;">
+                        <div style="font-size: 0.75rem; margin-bottom: 4px; color: #111;">4. Identificador del Contador</div>
+                        <table class="irp-box-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 70%;">NOMBRES Y APELLIDOS</th>
+                                    <th style="width: 30%;">RUC</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td id="empContador" th:text="${empresa.nomContador}"></td>
+                                    <td id="empRucContador" th:text="${empresa.rucContador}"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tabla 1: Resumen de Ingresos y Egresos -->
+                <h4 style="margin: 0 0 0.6rem 0; font-size: 1rem; font-weight: 700; color: #000;">
+                    Resumen de Ingresos y Egresos en <span id="lblAnio1" th:text="${ejercicio}">2026</span>
+                </h4>
+                <table class="irp-main-table" style="margin-bottom: 1.75rem;">
+                    <thead>
+                        <tr>
+                            <th style="width: 58%; text-align: left;">DESCRIPCIÓN</th>
+                            <th style="width: 21%; text-align: center;">IMPORTE</th>
+                            <th style="width: 21%; text-align: center;">DEDUCIBLES ¹</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Total de ingresos</td>
+                            <td class="num" id="tdIngImporte">0</td>
+                            <td class="num" id="tdIngDeducibles">0</td>
+                        </tr>
+                        <tr>
+                            <td>Total de egresos</td>
+                            <td class="num" id="tdEgrImporte">0</td>
+                            <td class="num" id="tdEgrDeducibles">0</td>
+                        </tr>
+                        <tr>
+                            <td>Donaciones, aportes y contribuciones</td>
+                            <td class="num" id="tdDonImporte">0</td>
+                            <td class="num" id="tdDonDeducibles">0</td>
+                        </tr>
+                        <tr class="bold-row">
+                            <td>Saldo al final del periodo</td>
+                            <td class="num" id="tdSaldoImporte">0</td>
+                            <td class="num" id="tdSaldoDeducibles">0</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Tabla 2: Impuesto a la Renta Personal -->
+                <h4 style="margin: 0 0 0.6rem 0; font-size: 1rem; font-weight: 700; color: #000;">
+                    Impuesto a la Renta Personal en <span id="lblAnio2" th:text="${ejercicio}">2026</span>
+                </h4>
+                <table class="irp-main-table" style="margin-bottom: 1.75rem;">
+                    <thead>
+                        <tr>
+                            <th style="width: 79%; text-align: left;">DESCRIPCIÓN</th>
+                            <th style="width: 21%; text-align: center;">IMPORTE IRP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <div style="font-weight: 700; color: #000;">Monto sobre el que se calcula el impuesto a la renta</div>
+                                <div style="font-size: 0.78rem; color: #222; margin-top: 2px;">Aplica si los ingresos deducibles superan Gs. 80.000.000</div>
+                            </td>
+                            <td class="num" id="tdMontoBaseIrp">0</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div style="font-weight: 700; color: #000;">Impuesto al 8%</div>
+                                <div style="font-size: 0.78rem; color: #222; margin-top: 2px;">Aplicable hasta Gs. 50.000.000</div>
+                            </td>
+                            <td class="num" id="tdImpuesto8">0</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div style="font-weight: 700; color: #000;">Impuesto al 9%</div>
+                                <div style="font-size: 0.78rem; color: #222; margin-top: 2px;">De Gs. 50.000.001 a Gs. 150.000.000</div>
+                            </td>
+                            <td class="num" id="tdImpuesto9">0</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div style="font-weight: 700; color: #000;">Impuesto al 10%</div>
+                                <div style="font-size: 0.78rem; color: #222; margin-top: 2px;">Por ingresos mayores a Gs. 150.000.000</div>
+                            </td>
+                            <td class="num" id="tdImpuesto10">0</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Tabla 3: Resumen -->
+                <h4 style="margin: 0 0 0.6rem 0; font-size: 1rem; font-weight: 700; color: #000;">Resumen</h4>
+                <table class="irp-main-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 79%; text-align: left;">DESCRIPCIÓN</th>
+                            <th style="width: 21%; text-align: center;">IMPORTE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="bold-row">
+                            <td>Impuesto a pagar</td>
+                            <td class="num" id="tdImpuestoPagar">0</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+            </div>
+
+        </div>
+    </main>
+
+    <style>
+        .qf-btn {
+            background: #ffffff; color: #334155; border: 1px solid #cbd5e1;
+            border-radius: 999px; padding: 4px 11px; font-size: 0.75rem;
+            font-weight: 700; cursor: pointer; transition: all 0.15s;
+        }
+        .qf-btn:hover { background: #eff6ff; border-color: #2563eb; color: #1d4ed8; }
+        .qf-btn.active { background: #2563eb; border-color: #2563eb; color: #ffffff; }
+
+        .irp-box-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #000;
+        }
+        .irp-box-table th {
+            border: 1px solid #000;
+            padding: 5px 6px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-align: center;
+            background: #ffffff;
+        }
+        .irp-box-table td {
+            border: 1px solid #000;
+            padding: 6px 8px;
+            font-size: 0.78rem;
+            text-align: center;
+            height: 28px;
+        }
+
+        .irp-main-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #222;
+        }
+        .irp-main-table th {
+            background-color: #e5e5e5;
+            border: 1px solid #222;
+            padding: 8px 10px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #000;
+        }
+        .irp-main-table td {
+            border: 1px solid #222;
+            padding: 8px 10px;
+            font-size: 0.83rem;
+            color: #000;
+            vertical-align: middle;
+        }
+        .irp-main-table td.num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+        .irp-main-table tr.bold-row td {
+            font-weight: 700;
+            font-size: 0.86rem;
+        }
+    </style>
+
+    <script th:inline="javascript">
+        const EJER_INICIO = /*[[${ejerInicio}]]*/ '2026-01-01';
+        const EJER_FINAL  = /*[[${ejerFinal}]]*/  '2026-12-31';
+        const EJER_ANIO   = parseInt(EJER_INICIO.substring(0, 4), 10);
+
+        function pad2(n) { return String(n).padStart(2, '0'); }
+        function ymd(y, m, d) { return `${y}-${pad2(m)}-${pad2(d)}`; }
+        function lastDay(y, m) { return new Date(y, m, 0).getDate(); }
+        function clampEjer(s) {
+            if (s < EJER_INICIO) return EJER_INICIO;
+            if (s > EJER_FINAL) return EJER_FINAL;
+            return s;
+        }
+        function setRange(d1, d2, activeBtn) {
+            document.getElementById('fechaDesde').value = clampEjer(d1);
+            document.getElementById('fechaHasta').value = clampEjer(d2);
+            document.querySelectorAll('.qf-btn').forEach(b => b.classList.remove('active'));
+            if (activeBtn) activeBtn.classList.add('active');
+            cargarResumenIrp();
+        }
+        function initQuickFilters() {
+            const mesesNombres = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            const cont = document.getElementById('qfMeses');
+            if (cont) {
+                mesesNombres.forEach((nom, idx) => {
+                    const m = idx + 1;
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'qf-btn';
+                    b.textContent = nom;
+                    b.addEventListener('click', () => setRange(ymd(EJER_ANIO, m, 1), ymd(EJER_ANIO, m, lastDay(EJER_ANIO, m)), b));
+                    cont.appendChild(b);
+                });
+            }
+            document.querySelectorAll('.qf-btn[data-qf]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const t = btn.getAttribute('data-qf');
+                    const now = new Date();
+                    const curM = now.getMonth() + 1;
+                    if (t === 'mes') {
+                        setRange(ymd(EJER_ANIO, curM, 1), ymd(EJER_ANIO, curM, lastDay(EJER_ANIO, curM)), btn);
+                    } else if (t === 'mesAnt') {
+                        const pm = curM > 1 ? curM - 1 : 1;
+                        setRange(ymd(EJER_ANIO, pm, 1), ymd(EJER_ANIO, pm, lastDay(EJER_ANIO, pm)), btn);
+                    } else if (t === 'trim') {
+                        const qStart = Math.floor((curM - 1) / 3) * 3 + 1;
+                        const qEnd = qStart + 2;
+                        setRange(ymd(EJER_ANIO, qStart, 1), ymd(EJER_ANIO, qEnd, lastDay(EJER_ANIO, qEnd)), btn);
+                    } else if (t === 'anio') {
+                        setRange(EJER_INICIO, EJER_FINAL, btn);
+                    }
+                });
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            initQuickFilters();
+            cargarResumenIrp();
+        });
+
+        function formatGs(val) {
+            const n = Math.round(Number(val) || 0);
+            return n.toLocaleString('es-PY');
+        }
+
+        function cargarResumenIrp() {
+            const fDesde = document.getElementById('fechaDesde').value;
+            const fHasta = document.getElementById('fechaHasta').value;
+            const anulados = document.getElementById('incluirAnulados').checked;
+
+            const params = new URLSearchParams({
+                fechaDesde: fDesde,
+                fechaHasta: fHasta,
+                incluirAnulados: anulados
+            });
+
+            fetch(`/api/reportes/resumen-irp?${params.toString()}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'error') return;
+                    const irp = data.irp || {};
+                    const emp = data.empresa || {};
+                    const anio = data.anioPeriodo || EJER_ANIO;
+
+                    document.getElementById('lblAnio1').textContent = anio;
+                    document.getElementById('lblAnio2').textContent = anio;
+                    document.getElementById('periodoDesde').textContent = data.fechaDesdeFmt || fDesde;
+                    document.getElementById('periodoHasta').textContent = data.fechaHastaFmt || fHasta;
+
+                    if (emp.descripcion) document.getElementById('empRazonSocial').textContent = emp.descripcion;
+                    if (emp.rucEmpresa) document.getElementById('empRuc').textContent = emp.rucEmpresa;
+                    document.getElementById('empRepLegal').textContent = emp.repLegal || '';
+                    document.getElementById('empContador').textContent = emp.nomContador || '';
+                    document.getElementById('empRucContador').textContent = emp.rucContador || '';
+
+                    // KPIs
+                    document.getElementById('kpiIngDeducibles').textContent = 'Gs. ' + formatGs(irp.ingresosDeducibles);
+                    document.getElementById('kpiEgrDeducibles').textContent = 'Gs. ' + formatGs(irp.egresosDeducibles);
+                    document.getElementById('kpiMontoBase').textContent = 'Gs. ' + formatGs(irp.montoBaseIrp);
+                    document.getElementById('kpiImpuestoPagar').textContent = 'Gs. ' + formatGs(irp.impuestoAPagar);
+
+                    // Tabla 1
+                    document.getElementById('tdIngImporte').textContent = formatGs(irp.ingresosImporte);
+                    document.getElementById('tdIngDeducibles').textContent = formatGs(irp.ingresosDeducibles);
+                    document.getElementById('tdEgrImporte').textContent = formatGs(irp.egresosImporte);
+                    document.getElementById('tdEgrDeducibles').textContent = formatGs(irp.egresosDeducibles);
+                    document.getElementById('tdDonImporte').textContent = formatGs(irp.donacionesImporte);
+                    document.getElementById('tdDonDeducibles').textContent = formatGs(irp.donacionesDeducibles);
+                    document.getElementById('tdSaldoImporte').textContent = formatGs(irp.saldoImporte);
+                    document.getElementById('tdSaldoDeducibles').textContent = formatGs(irp.saldoDeducibles);
+
+                    // Tabla 2
+                    document.getElementById('tdMontoBaseIrp').textContent = formatGs(irp.montoBaseIrp);
+                    document.getElementById('tdImpuesto8').textContent = formatGs(irp.impuesto8);
+                    document.getElementById('tdImpuesto9').textContent = formatGs(irp.impuesto9);
+                    document.getElementById('tdImpuesto10').textContent = formatGs(irp.impuesto10);
+
+                    // Tabla 3
+                    document.getElementById('tdImpuestoPagar').textContent = formatGs(irp.impuestoAPagar);
+                })
+                .catch(err => console.error(err));
+        }
+
+        function getReportParams() {
+            const fDesde = document.getElementById('fechaDesde').value;
+            const fHasta = document.getElementById('fechaHasta').value;
+            const anulados = document.getElementById('incluirAnulados').checked;
+
+            return new URLSearchParams({
+                fechaDesde: fDesde,
+                fechaHasta: fHasta,
+                incluirAnulados: anulados
+            });
+        }
+
+        function imprimirReporte() {
+            window.open(`/app/resumen-irp/print?${getReportParams().toString()}`, '_blank');
+        }
+
+        function exportarExcel() {
+            window.location.href = `/api/reportes/resumen-irp/excel?${getReportParams().toString()}`;
+        }
+    </script>
+</body>
+</html>

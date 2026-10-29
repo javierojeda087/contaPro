@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 14;
+    private const SCHEMA_VERSION = 16;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -422,6 +422,90 @@ class DatabaseMigrator {
                 $applied[] = "co_formulario_120.$colF";
             }
         }
+
+        // 7. Registrar BSFORMAS (Formas del Sistema) en Administración > Definiciones para CONADM
+        Database::execute(
+            "INSERT INTO `formas` (`id_propietario`, `cod_modulo`, `nom_forma`, `titulo`, `descripcion`, `esta`, `mostrar_en_menu`, `cod_modulo_menu`, `tipo`, `orden_en_menu`)
+             SELECT DISTINCT p.id_prop, 'AD', 'BSFORMAS', 'Formas del Sistema', 'FORMULARIOS DEL SISTEMA', 'A', 'S', 'AD', 'D', 6
+             FROM (
+                 SELECT `id_propietario` AS id_prop FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop FROM `formas`
+                 UNION
+                 SELECT 1 AS id_prop
+             ) p
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM `formas` f
+                 WHERE f.`id_propietario` = p.id_prop AND UPPER(TRIM(f.`nom_forma`)) = 'BSFORMAS'
+             )",
+            true
+        );
+        Database::execute(
+            "INSERT INTO `accesos_grupos` (
+                 `id_propietario`, `cod_grupo`, `cod_modulo`, `nom_forma`,
+                 `puede_insertar`, `puede_borrar`, `puede_actualizar`, `puede_consultar`,
+                 `item_menu`, `mostrar_en_menu`
+             )
+             SELECT DISTINCT p.id_prop, 'CONADM', 'AD', 'BSFORMAS', 'S', 'S', 'S', 'S', 'Formas del Sistema', 'S'
+             FROM (
+                 SELECT `id_propietario` AS id_prop FROM `propietarios`
+                 UNION
+                 SELECT 1 AS id_prop
+             ) p
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM `accesos_grupos` x
+                 WHERE x.`id_propietario` = p.id_prop
+                   AND UPPER(TRIM(x.`cod_grupo`)) = 'CONADM'
+                   AND UPPER(TRIM(x.`nom_forma`)) = 'BSFORMAS'
+             )",
+            true
+        );
+
+        // 8. Registrar CORESIRP (Resumen IRP) en Contabilidad > Reportes
+        Database::execute(
+            "INSERT INTO `formas` (`id_propietario`, `cod_modulo`, `nom_forma`, `titulo`, `descripcion`, `esta`, `mostrar_en_menu`, `cod_modulo_menu`, `tipo`, `orden_en_menu`)
+             SELECT DISTINCT p.id_prop, 'CO', 'CORESIRP', 'Resumen IRP', 'RESUMEN DE IMPUESTO A LA RENTA PERSONAL', 'A', 'S', 'CO', 'R', 8
+             FROM (
+                 SELECT `id_propietario` AS id_prop FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop FROM `formas`
+                 UNION
+                 SELECT 1 AS id_prop
+             ) p
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM `formas` f
+                 WHERE f.`id_propietario` = p.id_prop AND UPPER(TRIM(f.`nom_forma`)) = 'CORESIRP'
+             )",
+            true
+        );
+        Database::execute(
+            "INSERT INTO `accesos_grupos` (
+                 `id_propietario`, `cod_grupo`, `cod_modulo`, `nom_forma`,
+                 `puede_insertar`, `puede_borrar`, `puede_actualizar`, `puede_consultar`,
+                 `item_menu`, `mostrar_en_menu`
+             )
+             SELECT DISTINCT g.id_prop, g.cod_grp, 'CO', 'CORESIRP', 'S', 'S', 'S', 'S', 'Resumen IRP', 'S'
+             FROM (
+                 SELECT `id_propietario` AS id_prop, UPPER(TRIM(`cod_grupo`)) AS cod_grp
+                 FROM `usuarios`
+                 WHERE UPPER(TRIM(`cod_usuario`)) = 'CONTA' AND TRIM(COALESCE(`cod_grupo`, '')) <> ''
+                 UNION
+                 SELECT `id_propietario` AS id_prop, 'CONADM' AS cod_grp FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop, 'CONTA' AS cod_grp FROM `propietarios`
+                 UNION
+                 SELECT 1 AS id_prop, 'CONADM' AS cod_grp
+                 UNION
+                 SELECT 1 AS id_prop, 'CONTA' AS cod_grp
+             ) g
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM `accesos_grupos` x
+                 WHERE x.`id_propietario` = g.id_prop
+                   AND UPPER(TRIM(x.`cod_grupo`)) = g.cod_grp
+                   AND UPPER(TRIM(x.`nom_forma`)) = 'CORESIRP'
+             )",
+            true
+        );
 
         return $applied;
     }
