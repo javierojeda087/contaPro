@@ -57,9 +57,30 @@ class MovimientosContablesController {
         return null;
     }
 
-    public static function formatNroFactura(?string $nroFactura): string {
+    private static function isLiquidacionSalario(?string $tipDoc): bool {
+        if (!$tipDoc) return false;
+        $u = strtoupper(trim($tipDoc));
+        return $u === 'LIQ'
+            || $u === 'LIQUIDACION DE SALARIO'
+            || $u === 'LIQUIDACIÓN DE SALARIO'
+            || (str_contains($u, 'LIQUIDAC') && str_contains($u, 'SALARIO'));
+    }
+
+    public static function formatNroFactura(?string $nroFactura, ?string $tipDoc = null): string {
         if (!$nroFactura || trim($nroFactura) === '') return '';
         $s = trim($nroFactura);
+        if (self::isLiquidacionSalario($tipDoc)) {
+            if (str_contains($s, '-')) {
+                $parts = explode('-', $s);
+                if (count($parts) === 3 && trim($parts[0]) === '001' && trim($parts[1]) === '001') {
+                    return str_pad(trim($parts[2]), 7, '0', STR_PAD_LEFT);
+                }
+            }
+            if (ctype_digit($s)) {
+                return str_pad($s, 7, '0', STR_PAD_LEFT);
+            }
+            return $s;
+        }
         if (str_contains($s, '-')) {
             $parts = explode('-', $s);
             if (count($parts) === 3) {
@@ -132,6 +153,20 @@ class MovimientosContablesController {
 
     public static function pageIngresos(): void {
         self::renderFormPage('ingresos_registro');
+    }
+
+    public static function pageRecibosCobro(): void {
+        self::renderFormPage('recibos_cobro', [
+            'nomForma'    => 'CORECIBO',
+            'tituloForma' => 'Registro de Recibos de Cobro',
+        ]);
+    }
+
+    public static function pageRecibosPago(): void {
+        self::renderFormPage('recibos_pago', [
+            'nomForma'    => 'CORECIBOPAGO',
+            'tituloForma' => 'Registro de Recibos de Pago',
+        ]);
     }
 
     public static function pageAsientos(): void {
@@ -936,6 +971,9 @@ class MovimientosContablesController {
     private static function resolveTipoDocCode(?string $val): string {
         if (!$val || trim($val) === '') return 'FAC';
         $u = strtoupper(trim($val));
+        if (self::isLiquidacionSalario($u)) {
+            return 'LIQ';
+        }
         if ($u === 'FAC' || str_contains($u, 'FACTURA')) {
             if (str_contains($u, 'AUTO')) return 'AUT';
             return 'FAC';
@@ -1316,13 +1354,20 @@ class MovimientosContablesController {
              FROM co_tipos_comprobantes
              WHERE id_propietario IN (?, 1)
                AND COALESCE(estado, 'A') = 'A'
-               AND (UPPER(cod_modulo) = 'INGRESOS' OR UPPER(cod_modulo) = 'AMBOS')
+               AND (UPPER(cod_modulo) IN ('INGRESOS', 'ST', 'VT', 'CC', 'AMBOS') OR UPPER(tipo) IN ('INGRESOS', 'AMBOS'))
              ORDER BY descripcion",
             [$idProp]
         );
         if (empty($list)) {
-            foreach (['Factura', 'Nota de Débito', 'Nota de Crédito', 'Autofactura'] as $d) {
-                $list[] = ['cod' => $d, 'COD' => $d, 'nombre' => $d, 'NOMBRE' => $d];
+            $defaults = [
+                'FAC' => 'FACTURA',
+                'DEB' => 'NOTA DE DEBITO',
+                'NCR' => 'NOTA DE CREDITO',
+                'AUT' => 'AUTOFACTURA',
+                'LIQ' => 'LIQUIDACION DE SALARIO',
+            ];
+            foreach ($defaults as $c => $d) {
+                $list[] = ['cod' => $c, 'COD' => $c, 'nombre' => $d, 'NOMBRE' => $d];
             }
         }
         View::json($list);
@@ -1425,18 +1470,19 @@ class MovimientosContablesController {
         try {
             $cdc       = isset($payload['cdc']) ? trim((string)$payload['cdc']) : null;
             $tipDoc    = self::resolveTipoDocCode((string)($payload['tipDoc'] ?? 'FAC'));
-            $rawReg    = (string)($payload['codRegimen'] ?? $payload['regimen'] ?? '1');
+            $esLiqSal  = self::isLiquidacionSalario($tipDoc);
+            $rawReg    = (string)($payload['codRegimen'] ?? $payload['regimen'] ?? ($esLiqSal ? '2' : '1'));
             $codRegimen = self::resolveRegimenId($rawReg, $idProp);
             $regimen   = (string)$codRegimen;
             $anulada   = (!empty($payload['anulada']) && $payload['anulada'] !== 'N' && $payload['anulada'] !== 'false') ? 'S' : 'N';
             $inutilizado = (!empty($payload['inutilizado']) && $payload['inutilizado'] !== 'N' && $payload['inutilizado'] !== 'false') ? 'S' : 'N';
-            $nroTimbrado = isset($payload['nroTimbrado']) ? trim((string)$payload['nroTimbrado']) : null;
-            $vencTimbrado = self::parseSqlDate((string)($payload['vencTimbrado'] ?? ''));
-            $nroFactura = self::formatNroFactura((string)($payload['nroFactura'] ?? ''));
+            $nroTimbrado = $esLiqSal ? null : (isset($payload['nroTimbrado']) ? trim((string)$payload['nroTimbrado']) : null);
+            $vencTimbrado = $esLiqSal ? null : self::parseSqlDate((string)($payload['vencTimbrado'] ?? ''));
+            $nroFactura = self::formatNroFactura((string)($payload['nroFactura'] ?? ''), $tipDoc);
             $serie      = isset($payload['serie']) ? trim((string)$payload['serie']) : null;
             $fecIngreso = self::parseSqlDate((string)($payload['fecIngreso'] ?? ''));
 
-            if ($fecIngreso && $vencTimbrado && $fecIngreso > $vencTimbrado) {
+            if (!$esLiqSal && $fecIngreso && $vencTimbrado && $fecIngreso > $vencTimbrado) {
                 $f1 = date('d/m/Y', strtotime($fecIngreso));
                 $f2 = date('d/m/Y', strtotime($vencTimbrado));
                 View::json([
@@ -1499,6 +1545,17 @@ class MovimientosContablesController {
             $redondeo   = (float)($payload['redondeo'] ?? 0);
             $valorTotal = (float)($payload['valorTotal'] ?? 0);
             $observacion = isset($payload['observacion']) ? trim((string)$payload['observacion']) : null;
+
+            // LIQUIDACION DE SALARIO no lleva IVA bajo ningún concepto
+            if ($esLiqSal) {
+                $grav10     = 0.0;
+                $iva10      = 0.0;
+                $grav5      = 0.0;
+                $iva5      = 0.0;
+                $totIva     = 0.0;
+                $valorBruto = $exentas + $noGravado;
+                $valorTotal = $valorBruto + $redondeo;
+            }
 
             $idIngreso = !empty($payload['idIngreso']) ? (int)$payload['idIngreso'] : null;
 
@@ -1572,8 +1629,8 @@ class MovimientosContablesController {
             }
 
             // Si se solicita emisión electrónica SIFEN o el timbrado es Electrónico (y no tiene CDC previo)
-            $emitirSifen = !empty($payload['emitirSifen']);
-            if (!$emitirSifen && ($cdc === null || $cdc === '') && $nroTimbrado) {
+            $emitirSifen = !$esLiqSal && !empty($payload['emitirSifen']);
+            if (!$esLiqSal && !$emitirSifen && ($cdc === null || $cdc === '') && $nroTimbrado) {
                 $tipoTimb = (string)(Database::queryForValue(
                     "SELECT tipo_timbrado FROM co_timbrados WHERE id_propietario = ? AND cod_empresa = ? AND nro_timbrado = ? LIMIT 1",
                     [$idProp, $empresa, $nroTimbrado]
@@ -1904,6 +1961,1102 @@ class MovimientosContablesController {
             View::json(['status' => 'success', 'message' => "Asiento Contable N° {$numAsiento} anulado correctamente."]);
         } catch (\Throwable $e) {
             View::json(['status' => 'error', 'message' => 'Error al anular el asiento: ' . $e->getMessage()]);
+        }
+    }
+
+    // =========================================================================
+    // API RECIBOS DE COBRO (/api/recibos-cobro/*)
+    // =========================================================================
+    private static function ensureRecibosCobroTables(): void {
+        Database::execute("
+            CREATE TABLE IF NOT EXISTS `co_recibos_cobro` (
+              `id_propietario` int NOT NULL DEFAULT '1',
+              `id_recibo` bigint NOT NULL AUTO_INCREMENT,
+              `cod_empresa` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `tip_doc` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT 'REC',
+              `anulada` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT 'N',
+              `talonario` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT 'RECIBO DE COBRO [001-001]',
+              `cod_establecimiento` varchar(5) COLLATE utf8mb4_unicode_ci DEFAULT '001',
+              `cod_punto_expedicion` varchar(5) COLLATE utf8mb4_unicode_ci DEFAULT '001',
+              `nro_recibo` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `serie` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `fec_recibo` datetime DEFAULT NULL,
+              `cod_cliente` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `nom_cliente` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `ruc_cliente` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `tip_doc_cliente` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT 'RUC',
+              `cod_moneda` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `tasa_cambio` decimal(12,4) DEFAULT NULL,
+              `valor_total` decimal(15,2) DEFAULT NULL,
+              `valor_otras_facturas` decimal(15,2) DEFAULT NULL,
+              `total_facturas` decimal(15,2) DEFAULT NULL,
+              `diferencia` decimal(15,2) DEFAULT NULL,
+              `observacion` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `estado` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT 'A',
+              `usuario_reg` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `fec_reg` datetime DEFAULT NULL,
+              PRIMARY KEY (`id_recibo`),
+              KEY `idx_co_recibos_cobro_prop` (`id_propietario`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ", true);
+
+        Database::execute("
+            CREATE TABLE IF NOT EXISTS `co_recibos_cobro_det` (
+              `id_detalle` bigint NOT NULL AUTO_INCREMENT,
+              `id_propietario` int NOT NULL DEFAULT '1',
+              `id_recibo` bigint NOT NULL,
+              `cod_empresa` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `id_ingreso` bigint DEFAULT NULL,
+              `tip_doc` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT 'FAC',
+              `nro_timbrado` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `nro_factura` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `serie` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `fec_ingreso` datetime DEFAULT NULL,
+              `valor_total` decimal(15,2) DEFAULT NULL,
+              `saldo` decimal(15,2) DEFAULT NULL,
+              `importe` decimal(15,2) DEFAULT NULL,
+              `estado` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT 'A',
+              `usuario_reg` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `fec_reg` datetime DEFAULT NULL,
+              PRIMARY KEY (`id_detalle`),
+              KEY `idx_co_recibos_cobro_det_prop` (`id_propietario`),
+              KEY `idx_co_recibos_cobro_det_rec` (`id_propietario`, `id_recibo`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ", true);
+    }
+
+    public static function apiRecibosCobroSiguienteNro(): void {
+        if (!self::requireAuth()) return;
+        self::ensureRecibosCobroTables();
+        $idProp  = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $est     = str_pad(trim((string)($_GET['est'] ?? '001')) ?: '001', 3, '0', STR_PAD_LEFT);
+        $pto     = str_pad(trim((string)($_GET['pto'] ?? '001')) ?: '001', 3, '0', STR_PAD_LEFT);
+
+        try {
+            $rows = Database::queryForList(
+                "SELECT nro_recibo FROM co_recibos_cobro
+                 WHERE id_propietario = ? AND cod_empresa = ?
+                   AND COALESCE(cod_establecimiento, '001') = ?
+                   AND COALESCE(cod_punto_expedicion, '001') = ?",
+                [$idProp, $empresa, $est, $pto]
+            );
+            $maxNro = 0;
+            foreach ($rows as $r) {
+                $raw = trim((string)($r['nro_recibo'] ?? ''));
+                if (str_contains($raw, '-')) {
+                    $parts = explode('-', $raw);
+                    $last  = (int)end($parts);
+                } else {
+                    $last  = (int)preg_replace('/\D/', '', $raw);
+                }
+                if ($last > $maxNro) $maxNro = $last;
+            }
+            $sig = $maxNro + 1;
+            View::json([
+                'status'        => 'success',
+                'nroSiguiente'  => $sig,
+                'nroFormateado' => str_pad((string)$sig, 7, '0', STR_PAD_LEFT),
+            ]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'success', 'nroSiguiente' => 1, 'nroFormateado' => '0000001']);
+        }
+    }
+
+    public static function apiRecibosCobroFacturasPendientes(): void {
+        if (!self::requireAuth()) return;
+        self::ensureRecibosCobroTables();
+        $idProp       = TenantContext::idPropietario();
+        $empresa      = TenantContext::empresa();
+        $rucCliente   = trim((string)($_GET['rucCliente'] ?? ''));
+        $codCliente   = trim((string)($_GET['codCliente'] ?? ''));
+        $idReciboExcl = (int)($_GET['idRecibo'] ?? 0);
+
+        try {
+            $sql = "SELECT i.id_ingreso,
+                           COALESCE(i.tip_doc, 'FAC') AS tip_doc,
+                           COALESCE(i.nro_timbrado, '') AS nro_timbrado,
+                           i.nro_factura,
+                           COALESCE(i.serie, '') AS serie,
+                           DATE_FORMAT(i.fec_ingreso, '%Y-%m-%d') AS fec_ingreso,
+                           DATE_FORMAT(i.fec_ingreso, '%d/%m/%Y') AS fec_ingreso_fmt,
+                           COALESCE(i.ruc_cliente, '') AS ruc_cliente,
+                           COALESCE(i.nom_cliente, '') AS nom_cliente,
+                           COALESCE(i.cod_cliente, '') AS cod_cliente,
+                           COALESCE(i.cod_moneda, '1') AS cod_moneda,
+                           COALESCE(i.valor_total, 0) AS valor_total
+                    FROM co_ingresos i
+                    WHERE i.id_propietario = ?
+                      AND i.cod_empresa = ?
+                      AND (UPPER(TRIM(i.condicion)) IN ('CRE', 'CREDITO', 'CRÉDITO') OR UPPER(i.condicion) LIKE 'CRE%')
+                      AND COALESCE(i.anulada, 'N') <> 'S'
+                      AND COALESCE(i.inutilizado, 'N') <> 'S'
+                      AND COALESCE(i.estado, 'A') <> 'I' ";
+            $params = [$idProp, $empresa];
+
+            if ($rucCliente !== '') {
+                $rucNoDash = str_replace(['-', ' '], '', $rucCliente);
+                if ($codCliente !== '') {
+                    $sql .= "AND (UPPER(TRIM(i.ruc_cliente)) = UPPER(?) OR UPPER(REPLACE(i.ruc_cliente, '-', '')) = UPPER(?) OR TRIM(i.cod_cliente) = ?) ";
+                    $params[] = $rucCliente;
+                    $params[] = $rucNoDash;
+                    $params[] = $codCliente;
+                } else {
+                    $sql .= "AND (UPPER(TRIM(i.ruc_cliente)) = UPPER(?) OR UPPER(REPLACE(i.ruc_cliente, '-', '')) = UPPER(?)) ";
+                    $params[] = $rucCliente;
+                    $params[] = $rucNoDash;
+                }
+            } elseif ($codCliente !== '') {
+                $sql .= "AND TRIM(i.cod_cliente) = ? ";
+                $params[] = $codCliente;
+            }
+
+            $sql .= "ORDER BY i.fec_ingreso DESC, i.id_ingreso DESC";
+            $facturas = Database::queryForList($sql, $params);
+
+            // Calcular cobros aplicados previamente a cada factura en recibos activos
+            $sqlCobros = "SELECT d.id_ingreso, d.nro_factura, SUM(COALESCE(d.importe, 0)) AS cobrado
+                          FROM co_recibos_cobro_det d
+                          JOIN co_recibos_cobro c
+                            ON c.id_propietario = d.id_propietario AND c.id_recibo = d.id_recibo
+                          WHERE d.id_propietario = ?
+                            AND d.cod_empresa = ?
+                            AND COALESCE(c.anulada, 'N') <> 'S'
+                            AND COALESCE(c.estado, 'A') <> 'I' ";
+            $paramsCobros = [$idProp, $empresa];
+            if ($idReciboExcl > 0) {
+                $sqlCobros .= "AND d.id_recibo <> ? ";
+                $paramsCobros[] = $idReciboExcl;
+            }
+            $sqlCobros .= "GROUP BY d.id_ingreso, d.nro_factura";
+            $cobrosRows = Database::queryForList($sqlCobros, $paramsCobros);
+
+            $cobradoPorId  = [];
+            $cobradoPorDoc = [];
+            foreach ($cobrosRows as $cr) {
+                $idIng = (int)($cr['id_ingreso'] ?? 0);
+                $doc   = strtoupper(trim((string)($cr['nro_factura'] ?? '')));
+                $imp   = (float)($cr['cobrado'] ?? 0);
+                if ($idIng > 0) {
+                    $cobradoPorId[$idIng] = ($cobradoPorId[$idIng] ?? 0.0) + $imp;
+                } elseif ($doc !== '') {
+                    $cobradoPorDoc[$doc] = ($cobradoPorDoc[$doc] ?? 0.0) + $imp;
+                }
+            }
+
+            $result = [];
+            foreach ($facturas as $f) {
+                $idIng   = (int)($f['id_ingreso'] ?? 0);
+                $tipDoc  = (string)($f['tip_doc'] ?? 'FAC');
+                $nroFac  = self::formatNroFactura((string)($f['nro_factura'] ?? ''), $tipDoc);
+                $docKey  = strtoupper(trim($nroFac));
+                $total   = (float)($f['valor_total'] ?? 0);
+                $cobrado = $cobradoPorId[$idIng] ?? ($cobradoPorDoc[$docKey] ?? 0.0);
+                $saldo   = max(0.0, $total - $cobrado);
+
+                $result[] = [
+                    'id_ingreso'      => $idIng,
+                    'tip_doc'         => $tipDoc,
+                    'nro_timbrado'    => (string)($f['nro_timbrado'] ?? ''),
+                    'nro_factura'     => $nroFac,
+                    'serie'           => (string)($f['serie'] ?? ''),
+                    'fec_ingreso'     => (string)($f['fec_ingreso'] ?? ''),
+                    'fec_ingreso_fmt' => (string)($f['fec_ingreso_fmt'] ?? ''),
+                    'ruc_cliente'     => (string)($f['ruc_cliente'] ?? ''),
+                    'nom_cliente'     => (string)($f['nom_cliente'] ?? ''),
+                    'cod_cliente'     => (string)($f['cod_cliente'] ?? ''),
+                    'cod_moneda'      => (string)($f['cod_moneda'] ?? '1'),
+                    'valor_total'     => $total,
+                    'cobrado_previo'  => $cobrado,
+                    'saldo'           => $saldo,
+                ];
+            }
+
+            View::json(['status' => 'success', 'data' => $result]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al consultar facturas crédito: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiRecibosCobroList(): void {
+        if (!self::requireAuth()) return;
+        self::ensureRecibosCobroTables();
+        $idProp     = TenantContext::idPropietario();
+        $empresa    = TenantContext::empresa();
+        $anio       = trim((string)($_GET['anio'] ?? ''));
+        $mes        = trim((string)($_GET['mes'] ?? ''));
+        $fechaDesde = self::parseSqlDate((string)($_GET['fechaDesde'] ?? $_GET['desde'] ?? ''));
+        $fechaHasta = self::parseSqlDate((string)($_GET['fechaHasta'] ?? $_GET['hasta'] ?? ''));
+
+        try {
+            $sql = "SELECT c.id_recibo,
+                           c.cod_empresa,
+                           COALESCE(c.tip_doc, 'REC') AS tip_doc,
+                           c.cod_cliente,
+                           c.ruc_cliente,
+                           COALESCE(c.tip_doc_cliente, 'RUC') AS tip_doc_cliente,
+                           c.nom_cliente,
+                           c.talonario,
+                           COALESCE(c.cod_establecimiento, '001') AS cod_establecimiento,
+                           COALESCE(c.cod_punto_expedicion, '001') AS cod_punto_expedicion,
+                           c.nro_recibo,
+                           COALESCE(c.serie, '') AS serie,
+                           COALESCE(c.anulada, 'N') AS anulada,
+                           DATE_FORMAT(c.fec_recibo, '%Y-%m-%d') AS fec_recibo,
+                           DATE_FORMAT(c.fec_recibo, '%d/%m/%Y') AS fec_recibo_fmt,
+                           COALESCE(c.cod_moneda, '1') AS cod_moneda,
+                           COALESCE(c.tasa_cambio, 1) AS tasa_cambio,
+                           COALESCE(c.valor_total, 0) AS valor_total,
+                           COALESCE(c.valor_otras_facturas, 0) AS valor_otras_facturas,
+                           COALESCE(c.total_facturas, 0) AS total_facturas,
+                           COALESCE(c.diferencia, 0) AS diferencia,
+                           c.observacion,
+                           COALESCE(c.estado, 'A') AS estado,
+                           c.usuario_reg,
+                           DATE_FORMAT(c.fec_reg, '%d/%m/%Y %H:%i') AS fec_reg_fmt,
+                           (SELECT GROUP_CONCAT(
+                                CONCAT(d.nro_factura, IF(COALESCE(TRIM(d.serie), '') <> '', CONCAT(' [Serie ', TRIM(d.serie), ']'), ''))
+                                SEPARATOR ', '
+                            )
+                            FROM co_recibos_cobro_det d
+                            WHERE d.id_propietario = c.id_propietario AND d.id_recibo = c.id_recibo
+                           ) AS facturas_rel,
+                           (SELECT COUNT(*)
+                            FROM co_recibos_cobro_det d2
+                            WHERE d2.id_propietario = c.id_propietario AND d2.id_recibo = c.id_recibo
+                           ) AS cant_facturas
+                    FROM co_recibos_cobro c
+                    WHERE c.id_propietario = ? AND c.cod_empresa = ? ";
+            $params = [$idProp, $empresa];
+
+            if ($fechaDesde !== null) {
+                $sql .= "AND DATE(c.fec_recibo) >= ? ";
+                $params[] = $fechaDesde;
+            }
+            if ($fechaHasta !== null) {
+                $sql .= "AND DATE(c.fec_recibo) <= ? ";
+                $params[] = $fechaHasta;
+            }
+            if ($fechaDesde === null && $fechaHasta === null) {
+                if ($anio !== '' && strcasecmp($anio, 'TODOS') !== 0) {
+                    $sql .= "AND YEAR(c.fec_recibo) = ? ";
+                    $params[] = (int)$anio;
+                }
+                if ($mes !== '' && strcasecmp($mes, 'TODOS') !== 0) {
+                    $sql .= "AND MONTH(c.fec_recibo) = ? ";
+                    $params[] = (int)$mes;
+                }
+            }
+            $sql .= "ORDER BY c.fec_recibo DESC, c.id_recibo DESC";
+
+            $list = Database::queryForListUpper($sql, $params);
+            View::json(['status' => 'success', 'data' => $list]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al listar recibos de cobro: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiRecibosCobroGet(string $id): void {
+        if (!self::requireAuth()) return;
+        self::ensureRecibosCobroTables();
+        $idProp   = TenantContext::idPropietario();
+        $empresa  = TenantContext::empresa();
+        $idRecibo = (int)$id;
+
+        try {
+            $cab = Database::queryForListUpper(
+                "SELECT id_recibo, cod_empresa, COALESCE(tip_doc, 'REC') AS tip_doc,
+                        cod_cliente, ruc_cliente, COALESCE(tip_doc_cliente, 'RUC') AS tip_doc_cliente,
+                        nom_cliente, talonario, COALESCE(cod_establecimiento, '001') AS cod_establecimiento,
+                        COALESCE(cod_punto_expedicion, '001') AS cod_punto_expedicion, nro_recibo,
+                        COALESCE(serie, '') AS serie, COALESCE(anulada, 'N') AS anulada,
+                        DATE_FORMAT(fec_recibo, '%Y-%m-%d') AS fec_recibo,
+                        COALESCE(cod_moneda, '1') AS cod_moneda, COALESCE(tasa_cambio, 1) AS tasa_cambio,
+                        COALESCE(valor_total, 0) AS valor_total,
+                        COALESCE(valor_otras_facturas, 0) AS valor_otras_facturas,
+                        COALESCE(total_facturas, 0) AS total_facturas,
+                        COALESCE(diferencia, 0) AS diferencia,
+                        observacion, COALESCE(estado, 'A') AS estado, usuario_reg,
+                        DATE_FORMAT(fec_reg, '%d/%m/%Y %H:%i') AS fec_reg_fmt
+                 FROM co_recibos_cobro
+                 WHERE id_propietario = ? AND id_recibo = ? AND cod_empresa = ?
+                 LIMIT 1",
+                [$idProp, $idRecibo, $empresa]
+            );
+            if (empty($cab)) {
+                View::json(['status' => 'error', 'message' => 'Recibo de cobro no encontrado.']);
+                return;
+            }
+
+            $detalles = Database::queryForListUpper(
+                "SELECT id_detalle, id_ingreso, COALESCE(tip_doc, 'FAC') AS tip_doc,
+                        COALESCE(nro_timbrado, '') AS nro_timbrado,
+                        nro_factura, COALESCE(serie, '') AS serie,
+                        DATE_FORMAT(fec_ingreso, '%Y-%m-%d') AS fec_ingreso,
+                        DATE_FORMAT(fec_ingreso, '%d/%m/%Y') AS fec_ingreso_fmt,
+                        COALESCE(valor_total, 0) AS valor_total,
+                        COALESCE(saldo, 0) AS saldo,
+                        COALESCE(importe, 0) AS importe
+                 FROM co_recibos_cobro_det
+                 WHERE id_propietario = ? AND id_recibo = ? AND cod_empresa = ?
+                 ORDER BY id_detalle ASC",
+                [$idProp, $idRecibo, $empresa]
+            );
+
+            $data = $cab[0];
+            $data['DETALLES'] = $detalles;
+            View::json(['status' => 'success', 'data' => $data]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al obtener recibo de cobro: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiRecibosCobroSave(): void {
+        if (!self::requireAuth()) return;
+        self::ensureRecibosCobroTables();
+        $idProp  = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $usuario = TenantContext::usuario();
+        $payload = self::getInput();
+
+        try {
+            $idRecibo   = !empty($payload['idRecibo']) ? (int)$payload['idRecibo'] : null;
+            $tipDoc     = strtoupper(trim((string)($payload['tipDoc'] ?? 'REC'))) ?: 'REC';
+            $rucCliente = trim((string)($payload['rucCliente'] ?? ''));
+            $tipDocCli  = strtoupper(trim((string)($payload['tipDocCliente'] ?? 'RUC'))) ?: 'RUC';
+            $codCliente = trim((string)($payload['codCliente'] ?? ''));
+            $nomCliente = substr(trim((string)($payload['nomCliente'] ?? '')), 0, 150);
+
+            if ($rucCliente === '' || $nomCliente === '') {
+                View::json(['status' => 'error', 'message' => 'Debe indicar el RUC y Nombre del Cliente.']);
+                return;
+            }
+
+            if ($codCliente === '' || strcasecmp($codCliente, 'null') === 0) {
+                $rucNoDash = str_replace(['-', ' '], '', $rucCliente);
+                $foundCli = Database::queryForValue(
+                    "SELECT cod_cliente FROM co_clientes
+                     WHERE id_propietario = ?
+                       AND (UPPER(TRIM(ruc)) = UPPER(?) OR UPPER(REPLACE(ruc, '-', '')) = UPPER(?))
+                     ORDER BY CASE WHEN cod_empresa = ? THEN 1 ELSE 2 END, CAST(cod_cliente AS UNSIGNED) DESC
+                     LIMIT 1",
+                    [$idProp, $rucCliente, $rucNoDash, $empresa]
+                );
+                if ($foundCli !== null) {
+                    $codCliente = (string)$foundCli;
+                }
+            }
+
+            $talonario = trim((string)($payload['talonario'] ?? 'RECIBO DE COBRO [001-001]')) ?: 'RECIBO DE COBRO [001-001]';
+            $est       = str_pad(trim((string)($payload['codEstablecimiento'] ?? '001')) ?: '001', 3, '0', STR_PAD_LEFT);
+            $pto       = str_pad(trim((string)($payload['codPuntoExpedicion'] ?? '001')) ?: '001', 3, '0', STR_PAD_LEFT);
+            $rawNro    = trim((string)($payload['nroRecibo'] ?? ''));
+            if ($rawNro === '') {
+                View::json(['status' => 'error', 'message' => 'Debe indicar el Número de Recibo.']);
+                return;
+            }
+            if (str_contains($rawNro, '-')) {
+                $nroRecibo = self::formatNroFactura($rawNro);
+            } else {
+                $nroRecibo = "{$est}-{$pto}-" . str_pad(preg_replace('/\D/', '', $rawNro) ?: '1', 7, '0', STR_PAD_LEFT);
+            }
+
+            $serie   = substr(strtoupper(trim((string)($payload['serie'] ?? ''))), 0, 10);
+            $rawAnul = $payload['anulada'] ?? $payload['anulado'] ?? 'N';
+            $anulada = (!empty($rawAnul) && $rawAnul !== 'N' && $rawAnul !== 'false') ? 'S' : 'N';
+            $fecRecibo  = self::parseSqlDate((string)($payload['fecRecibo'] ?? '')) ?: date('Y-m-d');
+            $codMoneda  = trim((string)($payload['codMoneda'] ?? '1')) ?: '1';
+            $tasaCambio = (float)($payload['tasaCambio'] ?? 1);
+            if ($tasaCambio <= 0) $tasaCambio = 1.0;
+
+            $detallesRaw = is_array($payload['detalles'] ?? null) ? $payload['detalles'] : [];
+            $sumFacturas = 0.0;
+            $detallesLimpios = [];
+            foreach ($detallesRaw as $d) {
+                $nroFac = trim((string)($d['nroFactura'] ?? $d['nroDocumento'] ?? $d['documento'] ?? ''));
+                if ($nroFac === '') continue;
+                $idIng     = !empty($d['idIngreso']) ? (int)$d['idIngreso'] : null;
+                $tipDocDet = strtoupper(trim((string)($d['tipDoc'] ?? 'FAC'))) ?: 'FAC';
+                $nroTimb   = trim((string)($d['nroTimbrado'] ?? ''));
+                $serieDet  = substr(strtoupper(trim((string)($d['serie'] ?? ''))), 0, 10);
+                $fecIng    = self::parseSqlDate((string)($d['fecIngreso'] ?? $d['fecDocumento'] ?? $d['fecha'] ?? '')) ?: $fecRecibo;
+                $vTotal    = (float)($d['valorTotal'] ?? $d['montoTotal'] ?? $d['total'] ?? 0);
+                $vSaldo    = (float)($d['saldo'] ?? $d['saldoAnterior'] ?? $vTotal);
+                $vImporte  = (float)($d['importe'] ?? $d['importeCobrado'] ?? 0);
+                $sumFacturas += $vImporte;
+
+                $detallesLimpios[] = [
+                    'id_ingreso'   => $idIng,
+                    'tip_doc'      => $tipDocDet,
+                    'nro_timbrado' => $nroTimb ?: null,
+                    'nro_factura'  => self::formatNroFactura($nroFac, $tipDocDet),
+                    'serie'        => $serieDet ?: null,
+                    'fec_ingreso'  => $fecIng,
+                    'valor_total'  => $vTotal,
+                    'saldo'        => $vSaldo,
+                    'importe'      => $vImporte,
+                ];
+            }
+
+            $valorOtrasFacturas = (float)($payload['valorOtrasFacturas'] ?? 0);
+            $totalFacturas      = $sumFacturas + $valorOtrasFacturas;
+            $valorTotal         = (float)($payload['valorTotal'] ?? 0);
+            if ($valorTotal <= 0 && $totalFacturas > 0) {
+                $valorTotal = $totalFacturas;
+            }
+            $diferencia  = $valorTotal - $totalFacturas;
+            $observacion = isset($payload['observacion']) ? trim((string)$payload['observacion']) : null;
+
+            if ($idRecibo === null) {
+                $savedId = (int)Database::insertGetId(
+                    "INSERT INTO co_recibos_cobro (
+                        id_propietario, cod_empresa, tip_doc, anulada, talonario,
+                        cod_establecimiento, cod_punto_expedicion, nro_recibo, serie, fec_recibo,
+                        cod_cliente, nom_cliente, ruc_cliente, tip_doc_cliente,
+                        cod_moneda, tasa_cambio, valor_total, valor_otras_facturas, total_facturas,
+                        diferencia, observacion, estado, usuario_reg, fec_reg
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'A', ?, NOW())",
+                    [
+                        $idProp, $empresa, $tipDoc, $anulada, $talonario,
+                        $est, $pto, $nroRecibo, $serie ?: null, $fecRecibo,
+                        $codCliente ?: null, $nomCliente, $rucCliente, $tipDocCli,
+                        $codMoneda, $tasaCambio, $valorTotal, $valorOtrasFacturas, $totalFacturas,
+                        $diferencia, $observacion, $usuario
+                    ]
+                );
+                $msg = "Recibo de Cobro N° {$nroRecibo} registrado con éxito (#{$savedId}).";
+            } else {
+                Database::update(
+                    "UPDATE co_recibos_cobro SET
+                        tip_doc = ?, anulada = ?, talonario = ?,
+                        cod_establecimiento = ?, cod_punto_expedicion = ?, nro_recibo = ?,
+                        serie = ?, fec_recibo = ?, cod_cliente = ?, nom_cliente = ?,
+                        ruc_cliente = ?, tip_doc_cliente = ?, cod_moneda = ?, tasa_cambio = ?,
+                        valor_total = ?, valor_otras_facturas = ?, total_facturas = ?,
+                        diferencia = ?, observacion = ?
+                     WHERE id_propietario = ? AND id_recibo = ? AND cod_empresa = ?",
+                    [
+                        $tipDoc, $anulada, $talonario,
+                        $est, $pto, $nroRecibo,
+                        $serie ?: null, $fecRecibo, $codCliente ?: null, $nomCliente,
+                        $rucCliente, $tipDocCli, $codMoneda, $tasaCambio,
+                        $valorTotal, $valorOtrasFacturas, $totalFacturas,
+                        $diferencia, $observacion,
+                        $idProp, $idRecibo, $empresa
+                    ]
+                );
+                Database::update(
+                    "DELETE FROM co_recibos_cobro_det WHERE id_propietario = ? AND id_recibo = ? AND cod_empresa = ?",
+                    [$idProp, $idRecibo, $empresa]
+                );
+                $savedId = $idRecibo;
+                $msg = "Recibo de Cobro N° {$nroRecibo} actualizado con éxito.";
+            }
+
+            foreach ($detallesLimpios as $det) {
+                Database::update(
+                    "INSERT INTO co_recibos_cobro_det (
+                        id_propietario, id_recibo, cod_empresa, id_ingreso, tip_doc, nro_timbrado,
+                        nro_factura, serie, fec_ingreso, valor_total, saldo, importe,
+                        estado, usuario_reg, fec_reg
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'A', ?, NOW())",
+                    [
+                        $idProp, $savedId, $empresa, $det['id_ingreso'], $det['tip_doc'], $det['nro_timbrado'],
+                        $det['nro_factura'], $det['serie'], $det['fec_ingreso'], $det['valor_total'], $det['saldo'], $det['importe'],
+                        $usuario
+                    ]
+                );
+            }
+
+            View::json([
+                'status'   => 'success',
+                'message'  => $msg,
+                'idRecibo' => $savedId,
+            ]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al guardar el recibo de cobro: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiRecibosCobroDelete(): void {
+        if (!self::requireAuth()) return;
+        self::ensureRecibosCobroTables();
+        $idProp   = TenantContext::idPropietario();
+        $empresa  = TenantContext::empresa();
+        $payload  = self::getInput();
+        $idRecibo = (int)($payload['idRecibo'] ?? 0);
+
+        if ($idRecibo <= 0) {
+            View::json(['status' => 'error', 'message' => 'ID de recibo inválido.']);
+            return;
+        }
+
+        try {
+            Database::update(
+                "DELETE FROM co_recibos_cobro_det WHERE id_propietario = ? AND id_recibo = ? AND cod_empresa = ?",
+                [$idProp, $idRecibo, $empresa]
+            );
+            Database::update(
+                "DELETE FROM co_recibos_cobro WHERE id_propietario = ? AND id_recibo = ? AND cod_empresa = ?",
+                [$idProp, $idRecibo, $empresa]
+            );
+            View::json(['status' => 'success', 'message' => "Recibo de Cobro #{$idRecibo} eliminado correctamente."]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al eliminar recibo de cobro: ' . $e->getMessage()]);
+        }
+    }
+
+    // =========================================================================
+    // API RECIBOS DE PAGO (/api/recibos-pago/*) - Alineado a co_egresos
+    // =========================================================================
+    private static function ensureRecibosPagoTables(): void {
+        Database::execute("
+            CREATE TABLE IF NOT EXISTS `co_recibos_pago` (
+              `id_propietario` int NOT NULL DEFAULT '1',
+              `id_recibo_pago` bigint NOT NULL AUTO_INCREMENT,
+              `cod_empresa` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `tip_doc` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT 'REC',
+              `tip_proveedor` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'PROVEEDOR LOCAL',
+              `cod_proveedor` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `tip_doc_proveedor` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT 'RUC',
+              `nom_proveedor` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `ruc_proveedor` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `nro_recibo` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `serie` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `anulada` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT 'N',
+              `fec_recibo` datetime DEFAULT NULL,
+              `cod_moneda` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `tasa_cambio` decimal(12,4) DEFAULT NULL,
+              `valor_total` decimal(15,2) DEFAULT NULL,
+              `valor_otras_facturas` decimal(15,2) DEFAULT NULL,
+              `total_facturas` decimal(15,2) DEFAULT NULL,
+              `diferencia` decimal(15,2) DEFAULT NULL,
+              `observacion` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `estado` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT 'A',
+              `usuario_reg` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `fec_reg` datetime DEFAULT NULL,
+              PRIMARY KEY (`id_recibo_pago`,`id_propietario`),
+              KEY `idx_co_recibos_pago_prop` (`id_propietario`),
+              KEY `idx_co_recibos_pago_emp_fec` (`id_propietario`,`cod_empresa`,`fec_recibo`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ", true);
+
+        Database::execute("
+            CREATE TABLE IF NOT EXISTS `co_recibos_pago_det` (
+              `id_propietario` int NOT NULL DEFAULT '1',
+              `id_detalle` bigint NOT NULL AUTO_INCREMENT,
+              `id_recibo_pago` bigint NOT NULL,
+              `cod_empresa` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `id_egreso` bigint DEFAULT NULL,
+              `tip_comprobante` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT 'FAC',
+              `nro_timbrado` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `nro_factura` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `serie` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `fec_egreso` datetime DEFAULT NULL,
+              `valor_total` decimal(15,2) DEFAULT NULL,
+              `saldo` decimal(15,2) DEFAULT NULL,
+              `importe` decimal(15,2) DEFAULT NULL,
+              `estado` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT 'A',
+              `usuario_reg` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `fec_reg` datetime DEFAULT NULL,
+              PRIMARY KEY (`id_detalle`,`id_propietario`),
+              KEY `idx_co_recibos_pago_det_rec` (`id_propietario`,`id_recibo_pago`),
+              KEY `idx_co_recibos_pago_det_egr` (`id_propietario`,`id_egreso`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ", true);
+    }
+
+    public static function apiRecibosPagoProveedores(): void {
+        if (!self::requireAuth()) return;
+        $idProp  = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+
+        try {
+            $provRows = Database::queryForList(
+                "SELECT cod_proveedor, nombre, ruc, COALESCE(tipo_documento, 'RUC') AS tipo_documento
+                 FROM co_proveedores
+                 WHERE id_propietario = ? AND (cod_empresa = ? OR cod_empresa IS NULL OR cod_empresa = '')
+                   AND COALESCE(estado, 'A') <> 'I'
+                 ORDER BY nombre ASC",
+                [$idProp, $empresa]
+            );
+
+            $map = [];
+            foreach ($provRows as $r) {
+                $ruc = trim((string)($r['ruc'] ?? ''));
+                $nom = trim((string)($r['nombre'] ?? ''));
+                if ($ruc === '' && $nom === '') continue;
+                $key = strtoupper($ruc !== '' ? str_replace(['-', ' '], '', $ruc) : $nom);
+                $map[$key] = [
+                    'COD_PROVEEDOR'  => (string)($r['cod_proveedor'] ?? ''),
+                    'NOMBRE'         => $nom,
+                    'RUC'            => $ruc,
+                    'TIPO_DOCUMENTO' => (string)($r['tipo_documento'] ?? 'RUC'),
+                ];
+            }
+
+            // Complementar con proveedores registrados directamente en co_egresos
+            $egrRows = Database::queryForList(
+                "SELECT MAX(cod_proveedor) AS cod_proveedor,
+                        MAX(nom_proveedor) AS nombre,
+                        ruc_proveedor AS ruc
+                 FROM co_egresos
+                 WHERE id_propietario = ? AND cod_empresa = ?
+                   AND COALESCE(TRIM(ruc_proveedor), '') <> ''
+                 GROUP BY ruc_proveedor
+                 ORDER BY nombre ASC",
+                [$idProp, $empresa]
+            );
+            foreach ($egrRows as $er) {
+                $ruc = trim((string)($er['ruc'] ?? ''));
+                $nom = trim((string)($er['nombre'] ?? ''));
+                if ($ruc === '' && $nom === '') continue;
+                $key = strtoupper($ruc !== '' ? str_replace(['-', ' '], '', $ruc) : $nom);
+                if (!isset($map[$key])) {
+                    $map[$key] = [
+                        'COD_PROVEEDOR'  => (string)($er['cod_proveedor'] ?? ''),
+                        'NOMBRE'         => $nom,
+                        'RUC'            => $ruc,
+                        'TIPO_DOCUMENTO' => 'RUC',
+                    ];
+                }
+            }
+
+            View::json(['status' => 'success', 'data' => array_values($map)]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al listar proveedores: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiRecibosPagoFacturasPendientes(): void {
+        if (!self::requireAuth()) return;
+        self::ensureRecibosPagoTables();
+        $idProp       = TenantContext::idPropietario();
+        $empresa      = TenantContext::empresa();
+        $rucProveedor = trim((string)($_GET['rucProveedor'] ?? ''));
+        $codProveedor = trim((string)($_GET['codProveedor'] ?? ''));
+        $idReciboExcl = (int)($_GET['idReciboPago'] ?? $_GET['idRecibo'] ?? 0);
+
+        try {
+            $sql = "SELECT e.id_egreso,
+                           COALESCE(e.tip_doc, 'FAC') AS tip_doc,
+                           COALESCE(e.nro_timbrado, '') AS nro_timbrado,
+                           e.nro_factura,
+                           COALESCE(e.serie, '') AS serie,
+                           DATE_FORMAT(e.fec_egreso, '%Y-%m-%d') AS fec_egreso,
+                           DATE_FORMAT(e.fec_egreso, '%d/%m/%Y') AS fec_egreso_fmt,
+                           COALESCE(e.ruc_proveedor, '') AS ruc_proveedor,
+                           COALESCE(e.nom_proveedor, '') AS nom_proveedor,
+                           COALESCE(e.cod_proveedor, '') AS cod_proveedor,
+                           COALESCE(e.cod_moneda, '1') AS cod_moneda,
+                           COALESCE(e.tasa_cambio, 1) AS tasa_cambio,
+                           COALESCE(e.valor_total, 0) AS valor_total
+                    FROM co_egresos e
+                    WHERE e.id_propietario = ?
+                      AND e.cod_empresa = ?
+                      AND (UPPER(TRIM(e.condicion)) IN ('CRE', 'CREDITO', 'CRÉDITO') OR UPPER(e.condicion) LIKE 'CRE%')
+                      AND COALESCE(e.estado, 'A') <> 'I' ";
+            $params = [$idProp, $empresa];
+
+            if ($rucProveedor !== '') {
+                $rucNoDash = str_replace(['-', ' '], '', $rucProveedor);
+                if ($codProveedor !== '') {
+                    $sql .= "AND (UPPER(TRIM(e.ruc_proveedor)) = UPPER(?) OR UPPER(REPLACE(e.ruc_proveedor, '-', '')) = UPPER(?) OR TRIM(e.cod_proveedor) = ?) ";
+                    $params[] = $rucProveedor;
+                    $params[] = $rucNoDash;
+                    $params[] = $codProveedor;
+                } else {
+                    $sql .= "AND (UPPER(TRIM(e.ruc_proveedor)) = UPPER(?) OR UPPER(REPLACE(e.ruc_proveedor, '-', '')) = UPPER(?)) ";
+                    $params[] = $rucProveedor;
+                    $params[] = $rucNoDash;
+                }
+            } elseif ($codProveedor !== '') {
+                $sql .= "AND TRIM(e.cod_proveedor) = ? ";
+                $params[] = $codProveedor;
+            }
+
+            $sql .= "ORDER BY e.fec_egreso DESC, e.id_egreso DESC";
+            $facturas = Database::queryForList($sql, $params);
+
+            // Calcular pagos aplicados previamente a cada factura en recibos de pago activos
+            $sqlPagos = "SELECT d.id_egreso, d.nro_factura, SUM(COALESCE(d.importe, 0)) AS pagado
+                         FROM co_recibos_pago_det d
+                         JOIN co_recibos_pago p
+                           ON p.id_propietario = d.id_propietario AND p.id_recibo_pago = d.id_recibo_pago
+                         WHERE d.id_propietario = ?
+                           AND d.cod_empresa = ?
+                           AND COALESCE(p.anulada, 'N') <> 'S'
+                           AND COALESCE(p.estado, 'A') <> 'I' ";
+            $paramsPagos = [$idProp, $empresa];
+            if ($idReciboExcl > 0) {
+                $sqlPagos .= "AND d.id_recibo_pago <> ? ";
+                $paramsPagos[] = $idReciboExcl;
+            }
+            $sqlPagos .= "GROUP BY d.id_egreso, d.nro_factura";
+            $pagosRows = Database::queryForList($sqlPagos, $paramsPagos);
+
+            $pagadoPorId  = [];
+            $pagadoPorDoc = [];
+            foreach ($pagosRows as $pr) {
+                $idEgr = (int)($pr['id_egreso'] ?? 0);
+                $doc   = strtoupper(trim((string)($pr['nro_factura'] ?? '')));
+                $imp   = (float)($pr['pagado'] ?? 0);
+                if ($idEgr > 0) {
+                    $pagadoPorId[$idEgr] = ($pagadoPorId[$idEgr] ?? 0.0) + $imp;
+                } elseif ($doc !== '') {
+                    $pagadoPorDoc[$doc] = ($pagadoPorDoc[$doc] ?? 0.0) + $imp;
+                }
+            }
+
+            $result = [];
+            foreach ($facturas as $f) {
+                $idEgr  = (int)($f['id_egreso'] ?? 0);
+                $tipDoc = (string)($f['tip_doc'] ?? 'FAC');
+                $nroFac = self::formatNroFactura((string)($f['nro_factura'] ?? ''), $tipDoc);
+                $docKey = strtoupper(trim($nroFac));
+                $total  = (float)($f['valor_total'] ?? 0);
+                $pagado = $pagadoPorId[$idEgr] ?? ($pagadoPorDoc[$docKey] ?? 0.0);
+                $saldo  = max(0.0, $total - $pagado);
+
+                $result[] = [
+                    'id_egreso'      => $idEgr,
+                    'tip_doc'        => $tipDoc,
+                    'nro_timbrado'   => (string)($f['nro_timbrado'] ?? ''),
+                    'nro_factura'    => $nroFac,
+                    'serie'          => (string)($f['serie'] ?? ''),
+                    'fec_egreso'     => (string)($f['fec_egreso'] ?? ''),
+                    'fec_egreso_fmt' => (string)($f['fec_egreso_fmt'] ?? ''),
+                    'ruc_proveedor'  => (string)($f['ruc_proveedor'] ?? ''),
+                    'nom_proveedor'  => (string)($f['nom_proveedor'] ?? ''),
+                    'cod_proveedor'  => (string)($f['cod_proveedor'] ?? ''),
+                    'cod_moneda'     => (string)($f['cod_moneda'] ?? '1'),
+                    'tasa_cambio'    => (float)($f['tasa_cambio'] ?? 1),
+                    'valor_total'    => $total,
+                    'pagado_previo'  => $pagado,
+                    'saldo'          => $saldo,
+                ];
+            }
+
+            View::json(['status' => 'success', 'data' => $result]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al consultar facturas crédito de proveedores: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiRecibosPagoList(): void {
+        if (!self::requireAuth()) return;
+        self::ensureRecibosPagoTables();
+        $idProp     = TenantContext::idPropietario();
+        $empresa    = TenantContext::empresa();
+        $anio       = trim((string)($_GET['anio'] ?? ''));
+        $mes        = trim((string)($_GET['mes'] ?? ''));
+        $fechaDesde = self::parseSqlDate((string)($_GET['fechaDesde'] ?? $_GET['desde'] ?? ''));
+        $fechaHasta = self::parseSqlDate((string)($_GET['fechaHasta'] ?? $_GET['hasta'] ?? ''));
+
+        try {
+            $sql = "SELECT p.id_recibo_pago,
+                           p.cod_empresa,
+                           COALESCE(p.tip_doc, 'REC') AS tip_doc,
+                           COALESCE(p.tip_proveedor, 'PROVEEDOR LOCAL') AS tip_proveedor,
+                           p.cod_proveedor,
+                           p.ruc_proveedor,
+                           COALESCE(p.tip_doc_proveedor, 'RUC') AS tip_doc_proveedor,
+                           p.nom_proveedor,
+                           p.nro_recibo,
+                           COALESCE(p.serie, '') AS serie,
+                           COALESCE(p.anulada, 'N') AS anulada,
+                           DATE_FORMAT(p.fec_recibo, '%Y-%m-%d') AS fec_recibo,
+                           DATE_FORMAT(p.fec_recibo, '%d/%m/%Y') AS fec_recibo_fmt,
+                           COALESCE(p.cod_moneda, '1') AS cod_moneda,
+                           COALESCE(p.tasa_cambio, 1) AS tasa_cambio,
+                           COALESCE(p.valor_total, 0) AS valor_total,
+                           COALESCE(p.valor_otras_facturas, 0) AS valor_otras_facturas,
+                           COALESCE(p.total_facturas, 0) AS total_facturas,
+                           COALESCE(p.diferencia, 0) AS diferencia,
+                           p.observacion,
+                           COALESCE(p.estado, 'A') AS estado,
+                           p.usuario_reg,
+                           DATE_FORMAT(p.fec_reg, '%d/%m/%Y %H:%i') AS fec_reg_fmt,
+                           (SELECT GROUP_CONCAT(
+                                CONCAT(d.nro_factura, IF(COALESCE(TRIM(d.serie), '') <> '', CONCAT(' [Serie ', TRIM(d.serie), ']'), ''))
+                                SEPARATOR ', '
+                            )
+                            FROM co_recibos_pago_det d
+                            WHERE d.id_propietario = p.id_propietario AND d.id_recibo_pago = p.id_recibo_pago
+                           ) AS facturas_rel,
+                           (SELECT COUNT(*)
+                            FROM co_recibos_pago_det d2
+                            WHERE d2.id_propietario = p.id_propietario AND d2.id_recibo_pago = p.id_recibo_pago
+                           ) AS cant_facturas
+                    FROM co_recibos_pago p
+                    WHERE p.id_propietario = ? AND p.cod_empresa = ? ";
+            $params = [$idProp, $empresa];
+
+            if ($fechaDesde !== null) {
+                $sql .= "AND DATE(p.fec_recibo) >= ? ";
+                $params[] = $fechaDesde;
+            }
+            if ($fechaHasta !== null) {
+                $sql .= "AND DATE(p.fec_recibo) <= ? ";
+                $params[] = $fechaHasta;
+            }
+            if ($fechaDesde === null && $fechaHasta === null) {
+                if ($anio !== '' && strcasecmp($anio, 'TODOS') !== 0) {
+                    $sql .= "AND YEAR(p.fec_recibo) = ? ";
+                    $params[] = (int)$anio;
+                }
+                if ($mes !== '' && strcasecmp($mes, 'TODOS') !== 0) {
+                    $sql .= "AND MONTH(p.fec_recibo) = ? ";
+                    $params[] = (int)$mes;
+                }
+            }
+            $sql .= "ORDER BY p.fec_recibo DESC, p.id_recibo_pago DESC";
+
+            $list = Database::queryForListUpper($sql, $params);
+            View::json(['status' => 'success', 'data' => $list]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al listar recibos de pago: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiRecibosPagoGet(string $id): void {
+        if (!self::requireAuth()) return;
+        self::ensureRecibosPagoTables();
+        $idProp       = TenantContext::idPropietario();
+        $empresa      = TenantContext::empresa();
+        $idReciboPago = (int)$id;
+
+        try {
+            $cab = Database::queryForListUpper(
+                "SELECT id_recibo_pago, cod_empresa, COALESCE(tip_doc, 'REC') AS tip_doc,
+                        COALESCE(tip_proveedor, 'PROVEEDOR LOCAL') AS tip_proveedor,
+                        cod_proveedor, ruc_proveedor, COALESCE(tip_doc_proveedor, 'RUC') AS tip_doc_proveedor,
+                        nom_proveedor, nro_recibo, COALESCE(serie, '') AS serie,
+                        COALESCE(anulada, 'N') AS anulada,
+                        DATE_FORMAT(fec_recibo, '%Y-%m-%d') AS fec_recibo,
+                        COALESCE(cod_moneda, '1') AS cod_moneda, COALESCE(tasa_cambio, 1) AS tasa_cambio,
+                        COALESCE(valor_total, 0) AS valor_total,
+                        COALESCE(valor_otras_facturas, 0) AS valor_otras_facturas,
+                        COALESCE(total_facturas, 0) AS total_facturas,
+                        COALESCE(diferencia, 0) AS diferencia,
+                        observacion, COALESCE(estado, 'A') AS estado, usuario_reg,
+                        DATE_FORMAT(fec_reg, '%d/%m/%Y %H:%i') AS fec_reg_fmt
+                 FROM co_recibos_pago
+                 WHERE id_propietario = ? AND id_recibo_pago = ? AND cod_empresa = ?
+                 LIMIT 1",
+                [$idProp, $idReciboPago, $empresa]
+            );
+            if (empty($cab)) {
+                View::json(['status' => 'error', 'message' => 'Recibo de pago no encontrado.']);
+                return;
+            }
+
+            $detalles = Database::queryForListUpper(
+                "SELECT id_detalle, id_egreso, COALESCE(tip_comprobante, 'FAC') AS tip_comprobante,
+                        COALESCE(nro_timbrado, '') AS nro_timbrado,
+                        nro_factura, COALESCE(serie, '') AS serie,
+                        DATE_FORMAT(fec_egreso, '%Y-%m-%d') AS fec_egreso,
+                        DATE_FORMAT(fec_egreso, '%d/%m/%Y') AS fec_egreso_fmt,
+                        COALESCE(valor_total, 0) AS valor_total,
+                        COALESCE(saldo, 0) AS saldo,
+                        COALESCE(importe, 0) AS importe
+                 FROM co_recibos_pago_det
+                 WHERE id_propietario = ? AND id_recibo_pago = ? AND cod_empresa = ?
+                 ORDER BY id_detalle ASC",
+                [$idProp, $idReciboPago, $empresa]
+            );
+
+            $data = $cab[0];
+            $data['DETALLES'] = $detalles;
+            View::json(['status' => 'success', 'data' => $data]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al obtener recibo de pago: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiRecibosPagoSave(): void {
+        if (!self::requireAuth()) return;
+        self::ensureRecibosPagoTables();
+        $idProp  = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $usuario = TenantContext::usuario();
+        $payload = self::getInput();
+
+        try {
+            $idReciboPago = !empty($payload['idReciboPago']) ? (int)$payload['idReciboPago'] : (!empty($payload['idRecibo']) ? (int)$payload['idRecibo'] : null);
+            $tipDoc       = strtoupper(trim((string)($payload['tipDoc'] ?? 'REC'))) ?: 'REC';
+            $tipProveedor = strtoupper(trim((string)($payload['tipProveedor'] ?? 'PROVEEDOR LOCAL'))) ?: 'PROVEEDOR LOCAL';
+            $rucProveedor = trim((string)($payload['rucProveedor'] ?? ''));
+            $tipDocProv   = strtoupper(trim((string)($payload['tipDocProveedor'] ?? 'RUC'))) ?: 'RUC';
+            $codProveedor = trim((string)($payload['codProveedor'] ?? ''));
+            $nomProveedor = substr(trim((string)($payload['nomProveedor'] ?? '')), 0, 150);
+
+            if ($rucProveedor === '' || $nomProveedor === '') {
+                View::json(['status' => 'error', 'message' => 'Debe indicar el RUC y Nombre del Proveedor.']);
+                return;
+            }
+
+            if ($codProveedor === '' || strcasecmp($codProveedor, 'null') === 0) {
+                $rucNoDash = str_replace(['-', ' '], '', $rucProveedor);
+                $foundProv = Database::queryForValue(
+                    "SELECT cod_proveedor FROM co_proveedores
+                     WHERE id_propietario = ?
+                       AND (UPPER(TRIM(ruc)) = UPPER(?) OR UPPER(REPLACE(ruc, '-', '')) = UPPER(?))
+                     ORDER BY CASE WHEN cod_empresa = ? THEN 1 ELSE 2 END, CAST(cod_proveedor AS UNSIGNED) DESC
+                     LIMIT 1",
+                    [$idProp, $rucProveedor, $rucNoDash, $empresa]
+                );
+                if ($foundProv !== null) {
+                    $codProveedor = (string)$foundProv;
+                }
+            }
+
+            $nroRecibo = substr(trim((string)($payload['nroRecibo'] ?? '')), 0, 30);
+            if ($nroRecibo === '') {
+                View::json(['status' => 'error', 'message' => 'Debe indicar el Número del Recibo de Pago.']);
+                return;
+            }
+
+            $serie   = substr(strtoupper(trim((string)($payload['serie'] ?? ''))), 0, 10);
+            $rawAnul = $payload['anulada'] ?? $payload['anulado'] ?? 'N';
+            $anulada = (!empty($rawAnul) && $rawAnul !== 'N' && $rawAnul !== 'false') ? 'S' : 'N';
+            $fecRecibo  = self::parseSqlDate((string)($payload['fecRecibo'] ?? '')) ?: date('Y-m-d');
+            $codMoneda  = trim((string)($payload['codMoneda'] ?? '1')) ?: '1';
+            $tasaCambio = (float)($payload['tasaCambio'] ?? 1);
+            if ($tasaCambio <= 0) $tasaCambio = 1.0;
+
+            $detallesRaw = is_array($payload['detalles'] ?? null) ? $payload['detalles'] : [];
+            $sumFacturas = 0.0;
+            $detallesLimpios = [];
+            foreach ($detallesRaw as $d) {
+                $nroFac = trim((string)($d['nroFactura'] ?? $d['nroDocumento'] ?? $d['documento'] ?? ''));
+                if ($nroFac === '') continue;
+                $idEgr     = !empty($d['idEgreso']) ? (int)$d['idEgreso'] : null;
+                $tipDocDet = strtoupper(trim((string)($d['tipComprobante'] ?? $d['tipDoc'] ?? 'FAC'))) ?: 'FAC';
+                $nroTimb   = trim((string)($d['nroTimbrado'] ?? ''));
+                $serieDet  = substr(strtoupper(trim((string)($d['serie'] ?? ''))), 0, 10);
+                $fecEgr    = self::parseSqlDate((string)($d['fecEgreso'] ?? $d['fecDocumento'] ?? $d['fecha'] ?? '')) ?: $fecRecibo;
+                $vTotal    = (float)($d['valorTotal'] ?? $d['montoTotal'] ?? $d['total'] ?? 0);
+                $vSaldo    = (float)($d['saldo'] ?? $d['saldoAnterior'] ?? $vTotal);
+                $vImporte  = (float)($d['importe'] ?? $d['importePagado'] ?? 0);
+                $sumFacturas += $vImporte;
+
+                $detallesLimpios[] = [
+                    'id_egreso'       => $idEgr,
+                    'tip_comprobante' => $tipDocDet,
+                    'nro_timbrado'    => $nroTimb ?: null,
+                    'nro_factura'     => self::formatNroFactura($nroFac, $tipDocDet),
+                    'serie'           => $serieDet ?: null,
+                    'fec_egreso'      => $fecEgr,
+                    'valor_total'     => $vTotal,
+                    'saldo'           => $vSaldo,
+                    'importe'         => $vImporte,
+                ];
+            }
+
+            $valorOtrasFacturas = (float)($payload['valorOtrasFacturas'] ?? 0);
+            $totalFacturas      = $sumFacturas + $valorOtrasFacturas;
+            $valorTotal         = (float)($payload['valorTotal'] ?? 0);
+            if ($valorTotal <= 0 && $totalFacturas > 0) {
+                $valorTotal = $totalFacturas;
+            }
+            $diferencia  = $valorTotal - $totalFacturas;
+            $observacion = isset($payload['observacion']) ? trim((string)$payload['observacion']) : null;
+
+            if ($idReciboPago === null) {
+                $savedId = (int)Database::insertGetId(
+                    "INSERT INTO co_recibos_pago (
+                        id_propietario, cod_empresa, tip_doc, tip_proveedor,
+                        cod_proveedor, nom_proveedor, ruc_proveedor, tip_doc_proveedor,
+                        nro_recibo, serie, anulada, fec_recibo,
+                        cod_moneda, tasa_cambio, valor_total, valor_otras_facturas, total_facturas,
+                        diferencia, observacion, estado, usuario_reg, fec_reg
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'A', ?, NOW())",
+                    [
+                        $idProp, $empresa, $tipDoc, $tipProveedor,
+                        $codProveedor ?: null, $nomProveedor, $rucProveedor, $tipDocProv,
+                        $nroRecibo, $serie ?: null, $anulada, $fecRecibo,
+                        $codMoneda, $tasaCambio, $valorTotal, $valorOtrasFacturas, $totalFacturas,
+                        $diferencia, $observacion, $usuario
+                    ]
+                );
+                $msg = "Recibo de Pago N° {$nroRecibo} registrado con éxito (#{$savedId}).";
+            } else {
+                Database::update(
+                    "UPDATE co_recibos_pago SET
+                        tip_doc = ?, tip_proveedor = ?, cod_proveedor = ?, nom_proveedor = ?,
+                        ruc_proveedor = ?, tip_doc_proveedor = ?, nro_recibo = ?, serie = ?,
+                        anulada = ?, fec_recibo = ?, cod_moneda = ?, tasa_cambio = ?,
+                        valor_total = ?, valor_otras_facturas = ?, total_facturas = ?,
+                        diferencia = ?, observacion = ?
+                     WHERE id_propietario = ? AND id_recibo_pago = ? AND cod_empresa = ?",
+                    [
+                        $tipDoc, $tipProveedor, $codProveedor ?: null, $nomProveedor,
+                        $rucProveedor, $tipDocProv, $nroRecibo, $serie ?: null,
+                        $anulada, $fecRecibo, $codMoneda, $tasaCambio,
+                        $valorTotal, $valorOtrasFacturas, $totalFacturas,
+                        $diferencia, $observacion,
+                        $idProp, $idReciboPago, $empresa
+                    ]
+                );
+                Database::update(
+                    "DELETE FROM co_recibos_pago_det WHERE id_propietario = ? AND id_recibo_pago = ? AND cod_empresa = ?",
+                    [$idProp, $idReciboPago, $empresa]
+                );
+                $savedId = $idReciboPago;
+                $msg = "Recibo de Pago N° {$nroRecibo} actualizado con éxito.";
+            }
+
+            foreach ($detallesLimpios as $det) {
+                Database::update(
+                    "INSERT INTO co_recibos_pago_det (
+                        id_propietario, id_recibo_pago, cod_empresa, id_egreso, tip_comprobante, nro_timbrado,
+                        nro_factura, serie, fec_egreso, valor_total, saldo, importe,
+                        estado, usuario_reg, fec_reg
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'A', ?, NOW())",
+                    [
+                        $idProp, $savedId, $empresa, $det['id_egreso'], $det['tip_comprobante'], $det['nro_timbrado'],
+                        $det['nro_factura'], $det['serie'], $det['fec_egreso'], $det['valor_total'], $det['saldo'], $det['importe'],
+                        $usuario
+                    ]
+                );
+            }
+
+            View::json([
+                'status'       => 'success',
+                'message'      => $msg,
+                'idReciboPago' => $savedId,
+            ]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al guardar el recibo de pago: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiRecibosPagoDelete(): void {
+        if (!self::requireAuth()) return;
+        self::ensureRecibosPagoTables();
+        $idProp       = TenantContext::idPropietario();
+        $empresa      = TenantContext::empresa();
+        $payload      = self::getInput();
+        $idReciboPago = (int)($payload['idReciboPago'] ?? $payload['idRecibo'] ?? 0);
+
+        if ($idReciboPago <= 0) {
+            View::json(['status' => 'error', 'message' => 'ID de recibo de pago inválido.']);
+            return;
+        }
+
+        try {
+            Database::update(
+                "DELETE FROM co_recibos_pago_det WHERE id_propietario = ? AND id_recibo_pago = ? AND cod_empresa = ?",
+                [$idProp, $idReciboPago, $empresa]
+            );
+            Database::update(
+                "DELETE FROM co_recibos_pago WHERE id_propietario = ? AND id_recibo_pago = ? AND cod_empresa = ?",
+                [$idProp, $idReciboPago, $empresa]
+            );
+            View::json(['status' => 'success', 'message' => "Recibo de Pago #{$idReciboPago} eliminado correctamente."]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al eliminar recibo de pago: ' . $e->getMessage()]);
         }
     }
 }

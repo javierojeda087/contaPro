@@ -297,5 +297,54 @@ class TenantContext {
                 }
             } catch (\Throwable $ignored) {}
         }
+
+        // Asegurar explícitamente que LIQ (LIQUIDACION DE SALARIO) y su Tipo de Ingreso estén presentes en el nuevo Propietario
+        try {
+            $cntLiq = (int)Database::queryForValue(
+                "SELECT COUNT(*) FROM `co_tipos_comprobantes`
+                 WHERE `id_propietario` = ?
+                   AND (UPPER(TRIM(`tip_comprobante`)) = 'LIQ'
+                        OR UPPER(TRIM(`descripcion`)) LIKE '%LIQUIDAC%SALARIO%')",
+                [$newPropId]
+            );
+            if ($cntLiq === 0) {
+                Database::update(
+                    "INSERT INTO `co_tipos_comprobantes` (`id_propietario`, `tip_comprobante`, `descripcion`, `cod_modulo`, `tipo`, `estado`, `usuario_reg`, `fec_reg`)
+                     VALUES (?, 'LIQ', 'LIQUIDACION DE SALARIO', 'ST', 'INGRESOS', 'A', 'CONTA', NOW())",
+                    [$newPropId]
+                );
+            }
+
+            $cntRec = (int)Database::queryForValue(
+                "SELECT COUNT(*) FROM `co_tipos_comprobantes`
+                 WHERE `id_propietario` = ? AND UPPER(TRIM(`tip_comprobante`)) = 'REC'",
+                [$newPropId]
+            );
+            if ($cntRec === 0) {
+                Database::update(
+                    "INSERT INTO `co_tipos_comprobantes` (`id_propietario`, `tip_comprobante`, `descripcion`, `cod_modulo`, `tipo`, `estado`, `usuario_reg`, `fec_reg`)
+                     VALUES (?, 'REC', 'RECIBO', 'AMBOS', 'AMBOS', 'A', 'CONTA', NOW())",
+                    [$newPropId]
+                );
+            }
+
+            $cntSal = (int)Database::queryForValue(
+                "SELECT COUNT(*) FROM `co_tipo_ingreso`
+                 WHERE `id_propietario` = ? AND UPPER(TRIM(`descripcion`)) LIKE '%SALARIO%'",
+                [$newPropId]
+            );
+            if ($cntSal === 0) {
+                $nextCod = (int)Database::queryForValue(
+                    "SELECT COALESCE(MAX(CAST(`cod_tipo_ingreso` AS UNSIGNED)), 0) + 1 FROM `co_tipo_ingreso` WHERE `id_propietario` = ?",
+                    [$newPropId]
+                );
+                if ($nextCod <= 0) $nextCod = 1;
+                Database::update(
+                    "INSERT INTO `co_tipo_ingreso` (`id_propietario`, `cod_tipo_ingreso`, `descripcion`, `estado`, `usuario_reg`, `fec_reg`)
+                     VALUES (?, ?, 'SALARIOS Y CUALQUIER OTRA REMUNERACION OBTENIDA EN RELACION DE DEPENDENCIA', 'A', 'SYSTEM', NOW())",
+                    [$newPropId, $nextCod]
+                );
+            }
+        } catch (\Throwable $ignored) {}
     }
 }

@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 16;
+    private const SCHEMA_VERSION = 22;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -503,6 +503,390 @@ class DatabaseMigrator {
                  WHERE x.`id_propietario` = g.id_prop
                    AND UPPER(TRIM(x.`cod_grupo`)) = g.cod_grp
                    AND UPPER(TRIM(x.`nom_forma`)) = 'CORESIRP'
+             )",
+            true
+        );
+
+        // 9. Registrar LIQ -> LIQUIDACION DE SALARIO en co_tipos_comprobantes (Ingresos) para todos los propietarios
+        Database::execute(
+            "UPDATE `co_tipos_comprobantes`
+             SET `tip_comprobante` = 'LIQ', `descripcion` = 'LIQUIDACION DE SALARIO', `tipo` = 'INGRESOS'
+             WHERE UPPER(TRIM(`tip_comprobante`)) IN ('LIQUIDACION DE SALARIO', 'LIQUIDACIÓN DE SALARIO')",
+            true
+        );
+        Database::execute(
+            "UPDATE `co_ingresos`
+             SET `tip_doc` = 'LIQ'
+             WHERE UPPER(TRIM(`tip_doc`)) IN ('LIQUIDACION DE SALARIO', 'LIQUIDACIÓN DE SALARIO')",
+            true
+        );
+
+        Database::execute(
+            "INSERT INTO `co_tipos_comprobantes` (`id_propietario`, `tip_comprobante`, `descripcion`, `cod_modulo`, `tipo`, `estado`, `usuario_reg`, `fec_reg`)
+             SELECT DISTINCT p.id_prop, 'LIQ', 'LIQUIDACION DE SALARIO', 'ST', 'INGRESOS', 'A', 'CONTA', NOW()
+             FROM (
+                 SELECT `id_propietario` AS id_prop FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop FROM `co_tipos_comprobantes`
+                 UNION
+                 SELECT 1 AS id_prop
+             ) p
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM `co_tipos_comprobantes` c
+                 WHERE c.`id_propietario` = p.id_prop
+                   AND (
+                       UPPER(TRIM(c.`tip_comprobante`)) = 'LIQ'
+                       OR UPPER(TRIM(c.`descripcion`)) LIKE '%LIQUIDAC%SALARIO%'
+                   )
+             )",
+            true
+        );
+
+        // Asegurar REC -> RECIBO (AMBOS) en co_tipos_comprobantes para todos los propietarios
+        Database::execute(
+            "INSERT INTO `co_tipos_comprobantes` (`id_propietario`, `tip_comprobante`, `descripcion`, `cod_modulo`, `tipo`, `estado`, `usuario_reg`, `fec_reg`)
+             SELECT DISTINCT p.id_prop, 'REC', 'RECIBO', 'AMBOS', 'AMBOS', 'A', 'CONTA', NOW()
+             FROM (
+                 SELECT `id_propietario` AS id_prop FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop FROM `co_tipos_comprobantes`
+                 UNION
+                 SELECT 1 AS id_prop
+             ) p
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM `co_tipos_comprobantes` c
+                 WHERE c.`id_propietario` = p.id_prop
+                   AND UPPER(TRIM(c.`tip_comprobante`)) = 'REC'
+             )",
+            true
+        );
+        Database::execute(
+            "UPDATE `co_tipos_comprobantes`
+             SET `cod_modulo` = 'AMBOS', `tipo` = 'AMBOS'
+             WHERE UPPER(TRIM(`tip_comprobante`)) = 'REC'",
+            true
+        );
+
+        // Asegurar Tipo de Ingreso de Salarios en relación de dependencia para todos los propietarios
+        try {
+            $props = Database::queryForList(
+                "SELECT `id_propietario` AS id_prop FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop FROM `co_tipo_ingreso`
+                 UNION
+                 SELECT 1 AS id_prop"
+            );
+            foreach ($props as $pr) {
+                $pid = (int)($pr['id_prop'] ?? 0);
+                if ($pid <= 0) continue;
+                $existsSal = (int)Database::queryForValue(
+                    "SELECT COUNT(*) FROM `co_tipo_ingreso`
+                     WHERE `id_propietario` = ? AND UPPER(TRIM(`descripcion`)) LIKE '%SALARIO%'",
+                    [$pid]
+                );
+                if ($existsSal === 0) {
+                    $nextCod = (int)Database::queryForValue(
+                        "SELECT COALESCE(MAX(CAST(`cod_tipo_ingreso` AS UNSIGNED)), 0) + 1 FROM `co_tipo_ingreso` WHERE `id_propietario` = ?",
+                        [$pid]
+                    );
+                    if ($nextCod <= 0) $nextCod = 1;
+                    Database::update(
+                        "INSERT INTO `co_tipo_ingreso` (`id_propietario`, `cod_tipo_ingreso`, `descripcion`, `estado`, `usuario_reg`, `fec_reg`)
+                         VALUES (?, ?, 'SALARIOS Y CUALQUIER OTRA REMUNERACION OBTENIDA EN RELACION DE DEPENDENCIA', 'A', 'SYSTEM', NOW())",
+                        [$pid, $nextCod]
+                    );
+                }
+            }
+        } catch (\Throwable $ignored) {}
+
+        // 10. Tablas de Recibos de Cobro (co_recibos_cobro y co_recibos_cobro_det) alineadas con co_ingresos y registro en Menú (CORECIBO)
+        Database::execute("
+            CREATE TABLE IF NOT EXISTS `co_recibos_cobro` (
+              `id_propietario` int NOT NULL DEFAULT '1',
+              `id_recibo` bigint NOT NULL AUTO_INCREMENT,
+              `cod_empresa` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `tip_doc` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT 'REC',
+              `anulada` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT 'N',
+              `talonario` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT 'RECIBO DE COBRO [001-001]',
+              `cod_establecimiento` varchar(5) COLLATE utf8mb4_unicode_ci DEFAULT '001',
+              `cod_punto_expedicion` varchar(5) COLLATE utf8mb4_unicode_ci DEFAULT '001',
+              `nro_recibo` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `serie` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `fec_recibo` datetime DEFAULT NULL,
+              `cod_cliente` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `nom_cliente` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `ruc_cliente` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `tip_doc_cliente` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT 'RUC',
+              `cod_moneda` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `tasa_cambio` decimal(12,4) DEFAULT NULL,
+              `valor_total` decimal(15,2) DEFAULT NULL,
+              `valor_otras_facturas` decimal(15,2) DEFAULT NULL,
+              `total_facturas` decimal(15,2) DEFAULT NULL,
+              `diferencia` decimal(15,2) DEFAULT NULL,
+              `observacion` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `estado` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT 'A',
+              `usuario_reg` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `fec_reg` datetime DEFAULT NULL,
+              PRIMARY KEY (`id_recibo`),
+              KEY `idx_co_recibos_cobro_prop` (`id_propietario`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ", true);
+
+        $colsRecCab = [
+            'tip_doc'     => "varchar(30) DEFAULT 'REC'",
+            'anulada'     => "varchar(1) DEFAULT 'N'",
+            'serie'       => "varchar(10) DEFAULT NULL",
+            'cod_empresa' => "varchar(20) DEFAULT NULL",
+        ];
+        foreach ($colsRecCab as $cName => $cDef) {
+            if (!self::columnExists('co_recibos_cobro', $cName)) {
+                Database::execute("ALTER TABLE `co_recibos_cobro` ADD COLUMN `$cName` $cDef", true);
+            }
+        }
+
+        Database::execute("
+            CREATE TABLE IF NOT EXISTS `co_recibos_cobro_det` (
+              `id_detalle` bigint NOT NULL AUTO_INCREMENT,
+              `id_propietario` int NOT NULL DEFAULT '1',
+              `id_recibo` bigint NOT NULL,
+              `cod_empresa` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `id_ingreso` bigint DEFAULT NULL,
+              `tip_doc` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT 'FAC',
+              `nro_timbrado` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `nro_factura` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `serie` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `fec_ingreso` datetime DEFAULT NULL,
+              `valor_total` decimal(15,2) DEFAULT NULL,
+              `saldo` decimal(15,2) DEFAULT NULL,
+              `importe` decimal(15,2) DEFAULT NULL,
+              `estado` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT 'A',
+              `usuario_reg` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `fec_reg` datetime DEFAULT NULL,
+              PRIMARY KEY (`id_detalle`),
+              KEY `idx_co_recibos_cobro_det_prop` (`id_propietario`),
+              KEY `idx_co_recibos_cobro_det_rec` (`id_propietario`, `id_recibo`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ", true);
+
+        $colsRecDet = [
+            'tip_doc'      => "varchar(30) DEFAULT 'FAC'",
+            'nro_timbrado' => "varchar(20) DEFAULT NULL",
+            'nro_factura'  => "varchar(30) DEFAULT NULL",
+            'serie'        => "varchar(10) DEFAULT NULL",
+            'fec_ingreso'  => "datetime DEFAULT NULL",
+            'valor_total'  => "decimal(15,2) DEFAULT NULL",
+            'saldo'        => "decimal(15,2) DEFAULT NULL",
+            'importe'      => "decimal(15,2) DEFAULT NULL",
+            'estado'       => "varchar(1) DEFAULT 'A'",
+            'usuario_reg'  => "varchar(50) DEFAULT NULL",
+            'fec_reg'      => "datetime DEFAULT NULL",
+        ];
+        foreach ($colsRecDet as $cName => $cDef) {
+            if (!self::columnExists('co_recibos_cobro_det', $cName)) {
+                Database::execute("ALTER TABLE `co_recibos_cobro_det` ADD COLUMN `$cName` $cDef", true);
+            }
+        }
+
+        Database::execute(
+            "INSERT INTO `formas` (`id_propietario`, `cod_modulo`, `nom_forma`, `titulo`, `descripcion`, `esta`, `mostrar_en_menu`, `cod_modulo_menu`, `tipo`, `orden_en_menu`)
+             SELECT DISTINCT p.id_prop, 'CO', 'CORECIBO', 'Recibos de Cobro', 'REGISTRO DE RECIBOS DE COBRO DE FACTURAS CREDITO', 'A', 'S', 'CO', 'M', 3
+             FROM (
+                 SELECT `id_propietario` AS id_prop FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop FROM `formas`
+                 UNION
+                 SELECT 1 AS id_prop
+             ) p
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM `formas` f
+                 WHERE f.`id_propietario` = p.id_prop AND UPPER(TRIM(f.`nom_forma`)) = 'CORECIBO'
+             )",
+            true
+        );
+
+        Database::execute(
+            "INSERT INTO `accesos_grupos` (
+                 `id_propietario`, `cod_grupo`, `cod_modulo`, `nom_forma`,
+                 `puede_insertar`, `puede_borrar`, `puede_actualizar`, `puede_consultar`,
+                 `item_menu`, `mostrar_en_menu`
+             )
+             SELECT DISTINCT g.id_prop, g.cod_grp, 'CO', 'CORECIBO', 'S', 'S', 'S', 'S', 'Recibos de Cobro', 'S'
+             FROM (
+                 SELECT `id_propietario` AS id_prop, UPPER(TRIM(`cod_grupo`)) AS cod_grp
+                 FROM `usuarios`
+                 WHERE TRIM(COALESCE(`cod_grupo`, '')) <> ''
+                 UNION
+                 SELECT `id_propietario` AS id_prop, 'CONADM' AS cod_grp FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop, 'CONTA' AS cod_grp FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop, 'CONTAM' AS cod_grp FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop, 'CONTAP' AS cod_grp FROM `propietarios`
+                 UNION
+                 SELECT 1 AS id_prop, 'CONADM' AS cod_grp
+                 UNION
+                 SELECT 1 AS id_prop, 'CONTA' AS cod_grp
+             ) g
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM `accesos_grupos` x
+                 WHERE x.`id_propietario` = g.id_prop
+                   AND UPPER(TRIM(x.`cod_grupo`)) = g.cod_grp
+                   AND UPPER(TRIM(x.`nom_forma`)) = 'CORECIBO'
+             )",
+            true
+        );
+
+        // 19. Tablas de Recibos de Pago (alineadas a co_egresos)
+        Database::execute("
+            CREATE TABLE IF NOT EXISTS `co_recibos_pago` (
+              `id_propietario` int NOT NULL DEFAULT '1',
+              `id_recibo_pago` bigint NOT NULL AUTO_INCREMENT,
+              `cod_empresa` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `tip_doc` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `tip_proveedor` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'PROVEEDOR LOCAL',
+              `cod_proveedor` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `tip_doc_proveedor` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT 'RUC',
+              `nom_proveedor` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `ruc_proveedor` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `nro_recibo` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `serie` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `anulada` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT 'N',
+              `fec_recibo` datetime DEFAULT NULL,
+              `cod_moneda` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `tasa_cambio` decimal(12,4) DEFAULT NULL,
+              `valor_total` decimal(15,2) DEFAULT NULL,
+              `valor_otras_facturas` decimal(15,2) DEFAULT NULL,
+              `total_facturas` decimal(15,2) DEFAULT NULL,
+              `diferencia` decimal(15,2) DEFAULT NULL,
+              `observacion` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `estado` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT 'A',
+              `usuario_reg` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `fec_reg` datetime DEFAULT NULL,
+              PRIMARY KEY (`id_recibo_pago`,`id_propietario`),
+              KEY `idx_co_recibos_pago_prop` (`id_propietario`),
+              KEY `idx_co_recibos_pago_emp_fec` (`id_propietario`,`cod_empresa`,`fec_recibo`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ", true);
+
+        $colsRecPago = [
+            'tip_doc'              => "varchar(30) DEFAULT 'REC'",
+            'tip_proveedor'        => "varchar(50) DEFAULT 'PROVEEDOR LOCAL'",
+            'cod_proveedor'        => "varchar(30) DEFAULT NULL",
+            'tip_doc_proveedor'    => "varchar(20) DEFAULT 'RUC'",
+            'nom_proveedor'        => "varchar(150) DEFAULT NULL",
+            'ruc_proveedor'        => "varchar(30) DEFAULT NULL",
+            'nro_recibo'           => "varchar(30) DEFAULT NULL",
+            'serie'                => "varchar(10) DEFAULT NULL",
+            'anulada'              => "varchar(1) DEFAULT 'N'",
+            'fec_recibo'           => "datetime DEFAULT NULL",
+            'cod_moneda'           => "varchar(20) DEFAULT NULL",
+            'tasa_cambio'          => "decimal(12,4) DEFAULT NULL",
+            'valor_total'          => "decimal(15,2) DEFAULT NULL",
+            'valor_otras_facturas' => "decimal(15,2) DEFAULT NULL",
+            'total_facturas'       => "decimal(15,2) DEFAULT NULL",
+            'diferencia'           => "decimal(15,2) DEFAULT NULL",
+            'observacion'          => "varchar(500) DEFAULT NULL",
+            'estado'               => "varchar(1) DEFAULT 'A'",
+            'usuario_reg'          => "varchar(50) DEFAULT NULL",
+            'fec_reg'              => "datetime DEFAULT NULL",
+        ];
+        foreach ($colsRecPago as $cName => $cDef) {
+            if (!self::columnExists('co_recibos_pago', $cName)) {
+                Database::execute("ALTER TABLE `co_recibos_pago` ADD COLUMN `$cName` $cDef", true);
+            }
+        }
+
+        Database::execute("
+            CREATE TABLE IF NOT EXISTS `co_recibos_pago_det` (
+              `id_propietario` int NOT NULL DEFAULT '1',
+              `id_detalle` bigint NOT NULL AUTO_INCREMENT,
+              `id_recibo_pago` bigint NOT NULL,
+              `cod_empresa` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `id_egreso` bigint DEFAULT NULL,
+              `tip_comprobante` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT 'FAC',
+              `nro_timbrado` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `nro_factura` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `serie` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `fec_egreso` datetime DEFAULT NULL,
+              `valor_total` decimal(15,2) DEFAULT NULL,
+              `saldo` decimal(15,2) DEFAULT NULL,
+              `importe` decimal(15,2) DEFAULT NULL,
+              `estado` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT 'A',
+              `usuario_reg` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `fec_reg` datetime DEFAULT NULL,
+              PRIMARY KEY (`id_detalle`,`id_propietario`),
+              KEY `idx_co_recibos_pago_det_rec` (`id_propietario`,`id_recibo_pago`),
+              KEY `idx_co_recibos_pago_det_egr` (`id_propietario`,`id_egreso`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ", true);
+
+        $colsRecPagoDet = [
+            'id_egreso'       => "bigint DEFAULT NULL",
+            'tip_comprobante' => "varchar(20) DEFAULT 'FAC'",
+            'nro_timbrado'    => "varchar(20) DEFAULT NULL",
+            'nro_factura'     => "varchar(30) DEFAULT NULL",
+            'serie'           => "varchar(10) DEFAULT NULL",
+            'fec_egreso'      => "datetime DEFAULT NULL",
+            'valor_total'     => "decimal(15,2) DEFAULT NULL",
+            'saldo'           => "decimal(15,2) DEFAULT NULL",
+            'importe'         => "decimal(15,2) DEFAULT NULL",
+            'estado'          => "varchar(1) DEFAULT 'A'",
+            'usuario_reg'     => "varchar(50) DEFAULT NULL",
+            'fec_reg'         => "datetime DEFAULT NULL",
+        ];
+        foreach ($colsRecPagoDet as $cName => $cDef) {
+            if (!self::columnExists('co_recibos_pago_det', $cName)) {
+                Database::execute("ALTER TABLE `co_recibos_pago_det` ADD COLUMN `$cName` $cDef", true);
+            }
+        }
+
+        Database::execute(
+            "INSERT INTO `formas` (`id_propietario`, `cod_modulo`, `nom_forma`, `titulo`, `descripcion`, `esta`, `mostrar_en_menu`, `cod_modulo_menu`, `tipo`, `orden_en_menu`)
+             SELECT DISTINCT p.id_prop, 'CO', 'CORECIBOPAGO', 'Recibos de Pago', 'REGISTRO DE RECIBOS DE PAGO A PROVEEDORES DE FACTURAS CREDITO', 'A', 'S', 'CO', 'M', 4
+             FROM (
+                 SELECT `id_propietario` AS id_prop FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop FROM `formas`
+                 UNION
+                 SELECT 1 AS id_prop
+             ) p
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM `formas` f
+                 WHERE f.`id_propietario` = p.id_prop AND UPPER(TRIM(f.`nom_forma`)) = 'CORECIBOPAGO'
+             )",
+            true
+        );
+
+        Database::execute(
+            "INSERT INTO `accesos_grupos` (
+                 `id_propietario`, `cod_grupo`, `cod_modulo`, `nom_forma`,
+                 `puede_insertar`, `puede_borrar`, `puede_actualizar`, `puede_consultar`,
+                 `item_menu`, `mostrar_en_menu`
+             )
+             SELECT DISTINCT g.id_prop, g.cod_grp, 'CO', 'CORECIBOPAGO', 'S', 'S', 'S', 'S', 'Recibos de Pago', 'S'
+             FROM (
+                 SELECT `id_propietario` AS id_prop, UPPER(TRIM(`cod_grupo`)) AS cod_grp
+                 FROM `usuarios`
+                 WHERE TRIM(COALESCE(`cod_grupo`, '')) <> ''
+                 UNION
+                 SELECT `id_propietario` AS id_prop, 'CONADM' AS cod_grp FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop, 'CONTA' AS cod_grp FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop, 'CONTAM' AS cod_grp FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop, 'CONTAP' AS cod_grp FROM `propietarios`
+                 UNION
+                 SELECT 1 AS id_prop, 'CONADM' AS cod_grp
+                 UNION
+                 SELECT 1 AS id_prop, 'CONTA' AS cod_grp
+             ) g
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM `accesos_grupos` x
+                 WHERE x.`id_propietario` = g.id_prop
+                   AND UPPER(TRIM(x.`cod_grupo`)) = g.cod_grp
+                   AND UPPER(TRIM(x.`nom_forma`)) = 'CORECIBOPAGO'
              )",
             true
         );

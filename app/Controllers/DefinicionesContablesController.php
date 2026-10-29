@@ -999,6 +999,24 @@ class DefinicionesContablesController {
                 [$idProp]
             );
         }
+        try {
+            $cntSal = (int)Database::queryForValue(
+                "SELECT COUNT(*) FROM co_tipo_ingreso WHERE id_propietario = ? AND UPPER(TRIM(descripcion)) LIKE '%SALARIO%'",
+                [$idProp]
+            );
+            if ($cntSal === 0) {
+                $nextCod = (int)Database::queryForValue(
+                    "SELECT COALESCE(MAX(CAST(cod_tipo_ingreso AS UNSIGNED)), 0) + 1 FROM co_tipo_ingreso WHERE id_propietario = ?",
+                    [$idProp]
+                );
+                if ($nextCod <= 0) $nextCod = 1;
+                Database::update(
+                    "INSERT INTO co_tipo_ingreso (id_propietario, cod_tipo_ingreso, descripcion, estado, usuario_reg, fec_reg)
+                     VALUES (?, ?, 'SALARIOS Y CUALQUIER OTRA REMUNERACION OBTENIDA EN RELACION DE DEPENDENCIA', 'A', 'SYSTEM', NOW())",
+                    [$idProp, $nextCod]
+                );
+            }
+        } catch (\Throwable $ignored) {}
     }
 
     public static function apiTipoIngresoList(): void {
@@ -1230,6 +1248,42 @@ class DefinicionesContablesController {
             );
         }
 
+        // Asegurar que LIQ (LIQUIDACION DE SALARIO) exista siempre en INGRESOS para el propietario actual
+        try {
+            Database::update(
+                "UPDATE co_tipos_comprobantes
+                 SET tip_comprobante = 'LIQ', descripcion = 'LIQUIDACION DE SALARIO', tipo = 'INGRESOS'
+                 WHERE id_propietario = ? AND UPPER(TRIM(tip_comprobante)) IN ('LIQUIDACION DE SALARIO', 'LIQUIDACIÓN DE SALARIO')",
+                [$idProp]
+            );
+            $cntLiq = (int)Database::queryForValue(
+                "SELECT COUNT(*) FROM co_tipos_comprobantes
+                 WHERE id_propietario = ?
+                   AND (UPPER(TRIM(tip_comprobante)) = 'LIQ'
+                        OR UPPER(TRIM(descripcion)) LIKE '%LIQUIDAC%SALARIO%')",
+                [$idProp]
+            );
+            if ($cntLiq === 0) {
+                Database::update(
+                    "INSERT INTO co_tipos_comprobantes (id_propietario, tip_comprobante, descripcion, cod_modulo, tipo, estado, usuario_reg, fec_reg)
+                     VALUES (?, 'LIQ', 'LIQUIDACION DE SALARIO', 'ST', 'INGRESOS', 'A', 'CONTA', NOW())",
+                    [$idProp]
+                );
+            }
+            $cntRec = (int)Database::queryForValue(
+                "SELECT COUNT(*) FROM co_tipos_comprobantes
+                 WHERE id_propietario = ? AND UPPER(TRIM(tip_comprobante)) = 'REC'",
+                [$idProp]
+            );
+            if ($cntRec === 0) {
+                Database::update(
+                    "INSERT INTO co_tipos_comprobantes (id_propietario, tip_comprobante, descripcion, cod_modulo, tipo, estado, usuario_reg, fec_reg)
+                     VALUES (?, 'REC', 'RECIBO', 'AMBOS', 'AMBOS', 'A', 'CONTA', NOW())",
+                    [$idProp]
+                );
+            }
+        } catch (\Throwable $ignored) {}
+
         try {
             $sql = "SELECT tip_comprobante, descripcion, COALESCE(cod_modulo, 'AMBOS') AS cod_modulo,
                            COALESCE(tipo, COALESCE(cod_modulo, 'AMBOS')) AS tipo, COALESCE(estado, 'A') AS estado
@@ -1282,11 +1336,31 @@ class DefinicionesContablesController {
             return;
         }
         if ($descripcion === '') $descripcion = $tipComprobante;
+        $upDesc = strtoupper(trim($descripcion));
+        $upCode = strtoupper(trim($tipComprobante));
+        if (strlen($upCode) > 3) {
+            if (str_contains($upDesc, 'LIQUIDAC') && str_contains($upDesc, 'SALARIO')) {
+                $tipComprobante = 'LIQ';
+            } elseif (str_contains($upDesc, 'AUTO')) {
+                $tipComprobante = 'AUT';
+            } elseif (str_contains($upDesc, 'FACTURA')) {
+                $tipComprobante = 'FAC';
+            } elseif (str_contains($upDesc, 'CRED') || str_contains($upDesc, 'CRÉD')) {
+                $tipComprobante = 'NCR';
+            } elseif (str_contains($upDesc, 'DEB') || str_contains($upDesc, 'DÉB')) {
+                $tipComprobante = 'DEB';
+            } else {
+                $tipComprobante = substr(preg_replace('/[^A-Z0-9]/', '', $upCode), 0, 3) ?: substr($upCode, 0, 3);
+            }
+        } else {
+            $tipComprobante = $upCode;
+        }
+        $descripcion = strtoupper($descripcion);
         if ($tipo === '') {
             $tipo = ($codModulo === 'INGRESOS' || $codModulo === 'EGRESOS') ? $codModulo : 'AMBOS';
         }
         if ($codModulo === '') {
-            $codModulo = $tipo === 'INGRESOS' ? 'VT' : ($tipo === 'EGRESOS' ? 'CM' : 'AMBOS');
+            $codModulo = $tipo === 'INGRESOS' ? 'ST' : ($tipo === 'EGRESOS' ? 'CM' : 'AMBOS');
         }
 
         try {

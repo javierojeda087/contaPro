@@ -410,7 +410,7 @@
                     <input type="hidden" id="codCliente">
 
                     <!-- CDC Row -->
-                    <div style="display: grid; grid-template-columns: 125px 1fr 100px 85px; gap: 10px; align-items: center; margin-bottom: 12px;">
+                    <div id="rowCdcIngreso" style="display: grid; grid-template-columns: 125px 1fr 100px 85px; gap: 10px; align-items: center; margin-bottom: 12px;">
                         <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">CDC :</label>
                         <div style="position: relative; display: flex; align-items: center;">
                             <input type="text" id="cdc" maxlength="44" placeholder="____________________________________________" style="width: 100%; letter-spacing: 2px; font-family: monospace; font-weight: 700; font-size: 0.92rem; height: 38px; padding: 4px 34px 4px 10px; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #fafafa;" oninput="formatCDC(this)">
@@ -425,11 +425,12 @@
                     <!-- Tipo Doc / Regimen / Checkboxes Row -->
                     <div style="display: grid; grid-template-columns: 125px 1fr 125px 1fr auto; gap: 10px 18px; align-items: center; margin-bottom: 12px;">
                         <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Tipo de Doc. :</label>
-                        <select id="tipDoc" class="form-control" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; border: 1.5px solid #cbd5e1;" onchange="actualizarTimbradosPorTipoDoc()">
-                            <option value="Factura" selected>Factura</option>
-                            <option value="Nota de Débito">Nota de Débito</option>
-                            <option value="Nota de Crédito">Nota de Crédito</option>
-                            <option value="Autofactura">Autofactura</option>
+                        <select id="tipDoc" class="form-control" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; border: 1.5px solid #cbd5e1;" onchange="actualizarTimbradosPorTipoDoc(true)">
+                            <option value="FAC" selected>FACTURA</option>
+                            <option value="DEB">NOTA DE DEBITO</option>
+                            <option value="NCR">NOTA DE CREDITO</option>
+                            <option value="AUT">AUTOFACTURA</option>
+                            <option value="LIQ">LIQUIDACION DE SALARIO</option>
                         </select>
 
                         <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Régimen :</label>
@@ -451,11 +452,11 @@
                     </div>
 
                     <!-- Timbrado / Vencimiento / Condición Row -->
-                    <div style="display: grid; grid-template-columns: 125px 1fr 125px 1fr auto; gap: 10px 18px; align-items: center; margin-bottom: 12px;">
-                        <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Timbrado :</label>
+                    <div id="rowTimbradoIngreso" style="display: grid; grid-template-columns: 125px 1fr 125px 1fr auto; gap: 10px 18px; align-items: center; margin-bottom: 12px;">
+                        <label id="lblTimbradoIngreso" style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Timbrado :</label>
                         <select id="nroTimbrado" class="form-control" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #16a34a; color: #15803d;" onchange="alSeleccionarTimbrado()"></select>
 
-                        <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Venc. timbrado :</label>
+                        <label id="lblVencTimbradoIngreso" style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Venc. timbrado :</label>
                         <input type="date" id="vencTimbrado" class="form-control" onchange="validarFechasComprobanteVencimiento()" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; background: #f8fafc; border: 1.5px solid #cbd5e1;" readonly>
 
                         <div style="display: flex; gap: 18px; align-items: center; padding-left: 6px; min-width: 195px;">
@@ -470,19 +471,19 @@
 
                     <!-- Factura Nro / Fecha / Serie Row -->
                     <div style="display: grid; grid-template-columns: 125px 1fr 125px 1fr auto; gap: 10px 18px; align-items: center; margin-bottom: 12px;">
-                        <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Factura :</label>
+                        <label id="lblNroComprobanteIngreso" style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Factura :</label>
                         <div style="display: flex; gap: 6px; align-items: center;">
                             <input type="text" id="facEst" maxlength="3" value="001" readonly tabindex="-1" style="width: 52px; text-align: center; border-radius: 8px; border: 1.5px solid #cbd5e1; height: 38px; font-size: 0.92rem; padding: 0; background: #f8fafc; font-weight: 700; color: #334155;">
-                            <span style="font-weight: 700; color: #64748b;">-</span>
+                            <span id="sepFac1" style="font-weight: 700; color: #64748b;">-</span>
                             <input type="text" id="facPto" maxlength="3" value="001" readonly tabindex="-1" style="width: 52px; text-align: center; border-radius: 8px; border: 1.5px solid #cbd5e1; height: 38px; font-size: 0.92rem; padding: 0; background: #f8fafc; font-weight: 700; color: #334155;">
-                            <span style="font-weight: 700; color: #64748b;">-</span>
+                            <span id="sepFac2" style="font-weight: 700; color: #64748b;">-</span>
                             <input type="text" id="facNro" maxlength="7" placeholder="0000001" onblur="validarFacturaDuplicada(false)" onchange="validarFacturaDuplicada(true)" style="flex: 1; min-width: 90px; text-align: right; border-radius: 8px; border: 1.5px solid #cbd5e1; height: 38px; font-size: 0.95rem; font-weight: 700; padding: 4px 10px;">
                         </div>
 
                         <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Fecha :</label>
                         <input type="date" id="fecIngreso" class="form-control" onchange="validarFechasComprobanteVencimiento()" style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; border: 1.5px solid #cbd5e1;">
 
-                        <div style="display: flex; gap: 8px; align-items: center; padding-left: 6px; min-width: 195px;">
+                        <div id="boxSerieIngreso" style="display: flex; gap: 8px; align-items: center; padding-left: 6px; min-width: 195px;">
                             <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155; white-space: nowrap;">Serie :</label>
                             <input type="text" id="serie" maxlength="5" placeholder="A" style="width: 90px; border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; text-transform: uppercase; text-align: center; font-weight: 700; border: 1.5px solid #cbd5e1;">
                         </div>
@@ -544,19 +545,19 @@
                             <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">I.V.A. 05% :</label>
                             <input type="text" id="iva5" value="0" readonly class="form-control text-end" style="border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; background: #f8fafc; color: #15803d; border: 1.5px solid #cbd5e1;">
 
-                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Exentas :</label>
+                            <label id="lblExentasIngreso" style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Exentas :</label>
                             <input type="text" inputmode="numeric" id="exentas" value="0" class="form-control text-end" oninput="formatearInputMiles(this); recalcularTotales()" onfocus="if(this.value==='0') this.value='';" onblur="if(this.value.trim()===''){this.value='0'; recalcularTotales();}" style="border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1;">
 
-                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Total I.V.A. :</label>
+                            <label id="lblTotIvaIngreso" style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Total I.V.A. :</label>
                             <input type="text" id="totIva" value="0" readonly class="form-control text-end" style="border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 800; background: #dcfce7; color: #166534; border: 1.5px solid #86efac;">
 
-                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Valor Bruto :</label>
+                            <label id="lblValorBrutoIngreso" style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Valor Bruto :</label>
                             <input type="text" id="valorBruto" value="0" readonly class="form-control text-end" style="border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; background: #f8fafc; border: 1.5px solid #cbd5e1;">
 
-                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">No gravado :</label>
+                            <label id="lblNoGravadoIngreso" style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">No gravado :</label>
                             <input type="text" inputmode="numeric" id="noGravado" value="0" class="form-control text-end" oninput="formatearInputMiles(this); recalcularTotales()" onfocus="if(this.value==='0') this.value='';" onblur="if(this.value.trim()===''){this.value='0'; recalcularTotales();}" style="border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1;">
 
-                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Redondeo :</label>
+                            <label id="lblRedondeoIngreso" style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Redondeo :</label>
                             <input type="text" inputmode="numeric" id="redondeo" value="0" class="form-control text-end" oninput="formatearInputMiles(this); recalcularTotales()" onfocus="if(this.value==='0') this.value='';" onblur="if(this.value.trim()===''){this.value='0'; recalcularTotales();}" style="border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1;">
 
                             <label style="text-align: right; font-weight: 800; font-size: 0.95rem; color: #0f172a;">Valor Total :</label>
@@ -579,7 +580,7 @@
                 <button type="button" class="btn" onclick="cerrarModal()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.9rem; color: #475569; padding: 8px 22px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
                     <i class="ph ph-x" style="font-size: 1.1rem;"></i> Cancelar
                 </button>
-                <button type="button" class="btn" onclick="guardarIngreso(true)" title="Guardar comprobante y generar Factura Electrónica SIFEN (CDC + XML v150 + QR)" style="background: linear-gradient(135deg, #0284c7, #0369a1); border: none; font-weight: 800; font-size: 0.9rem; color: white; padding: 8px 20px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(2,132,199,0.3);">
+                <button type="button" id="btnGuardarEmitirSifenModal" class="btn" onclick="guardarIngreso(true)" title="Guardar comprobante y generar Factura Electrónica SIFEN (CDC + XML v150 + QR)" style="background: linear-gradient(135deg, #0284c7, #0369a1); border: none; font-weight: 800; font-size: 0.9rem; color: white; padding: 8px 20px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(2,132,199,0.3);">
                     <i class="ph ph-seal-check" style="font-size: 1.15rem;"></i> Guardar y Emitir SIFEN
                 </button>
                 <button type="button" class="btn" onclick="guardarIngreso(false)" style="background: linear-gradient(135deg, #16a34a, #15803d); border: none; font-weight: 800; font-size: 0.95rem; color: white; padding: 8px 28px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(22,163,74,0.35);">
@@ -927,10 +928,31 @@
             return str;
         }
 
+        function esLiquidacionSalario(tipDoc) {
+            const u = String(tipDoc ?? (document.getElementById('tipDoc')?.value || '')).trim().toUpperCase();
+            return u === 'LIQ'
+                || u === 'LIQUIDACION DE SALARIO'
+                || u === 'LIQUIDACIÓN DE SALARIO'
+                || (u.includes('LIQUIDAC') && u.includes('SALARIO'));
+        }
+
         function formatNroFactura(nroFactura, tipDoc) {
             if (!nroFactura) return '-';
             let s = String(nroFactura).trim();
             if (!s || s === '-') return '-';
+
+            if (esLiquidacionSalario(tipDoc)) {
+                if (s.includes('-')) {
+                    let parts = s.split('-');
+                    if (parts.length === 3 && parts[0].trim() === '001' && parts[1].trim() === '001') {
+                        return parts[2].trim().padStart(7, '0');
+                    }
+                }
+                if (/^\d+$/.test(s)) {
+                    return s.padStart(7, '0');
+                }
+                return s;
+            }
 
             if (s.includes('-')) {
                 let parts = s.split('-');
@@ -1690,9 +1712,136 @@
             }
         }
 
-        function actualizarTimbradosPorTipoDoc() {
+        function aplicarModoLiquidacionSalarioUI(cambioPorUsuario = false) {
+            const isLiq = esLiquidacionSalario();
+            const g10El   = document.getElementById('grav10');
+            const g5El    = document.getElementById('grav5');
+            const i10El   = document.getElementById('iva10');
+            const i5El    = document.getElementById('iva5');
+            const tIvaEl  = document.getElementById('totIva');
+            const rowCdc  = document.getElementById('rowCdcIngreso');
+            const lblTimb = document.getElementById('lblTimbradoIngreso');
+            const selTimb = document.getElementById('nroTimbrado');
+            const lblVenc = document.getElementById('lblVencTimbradoIngreso');
+            const inpVenc = document.getElementById('vencTimbrado');
+            const lblComp = document.getElementById('lblNroComprobanteIngreso');
+            const facEst  = document.getElementById('facEst');
+            const facPto  = document.getElementById('facPto');
+            const sep1    = document.getElementById('sepFac1');
+            const sep2    = document.getElementById('sepFac2');
+            const boxSer  = document.getElementById('boxSerieIngreso');
+            const lblEx   = document.getElementById('lblExentasIngreso');
+            const lblNoG  = document.getElementById('lblNoGravadoIngreso');
+            const btnSifen = document.getElementById('btnGuardarEmitirSifenModal');
+
+            if (isLiq) {
+                if (g10El) {
+                    g10El.value = '0';
+                    g10El.readOnly = true;
+                    g10El.disabled = true;
+                    g10El.style.backgroundColor = '#f1f5f9';
+                    g10El.style.color = '#64748b';
+                    g10El.style.cursor = 'not-allowed';
+                }
+                if (g5El) {
+                    g5El.value = '0';
+                    g5El.readOnly = true;
+                    g5El.disabled = true;
+                    g5El.style.backgroundColor = '#f1f5f9';
+                    g5El.style.color = '#64748b';
+                    g5El.style.cursor = 'not-allowed';
+                }
+                if (i10El) i10El.value = '0';
+                if (i5El)  i5El.value  = '0';
+                if (tIvaEl) tIvaEl.value = '0';
+
+                if (rowCdc) rowCdc.style.display = 'none';
+                if (lblTimb) lblTimb.style.visibility = 'hidden';
+                if (selTimb) selTimb.style.visibility = 'hidden';
+                if (lblVenc) lblVenc.style.visibility = 'hidden';
+                if (inpVenc) inpVenc.style.visibility = 'hidden';
+
+                if (lblComp) lblComp.innerText = 'Comprobante :';
+                if (facEst)  facEst.style.display = 'none';
+                if (facPto)  facPto.style.display = 'none';
+                if (sep1)    sep1.style.display   = 'none';
+                if (sep2)    sep2.style.display   = 'none';
+                if (boxSer)  boxSer.style.visibility = 'hidden';
+
+                if (lblEx)   lblEx.innerText  = 'Ingr. Gravado :';
+                if (lblNoG)  lblNoG.innerText = 'Ingreso No Gravado :';
+                if (btnSifen) btnSifen.style.display = 'none';
+
+                if (cambioPorUsuario) {
+                    // Seleccionar automáticamente Régimen = IRP (2)
+                    const regSelect = document.getElementById('regimen');
+                    if (regSelect) {
+                        for (let opt of regSelect.options) {
+                            if (normalizarCodEntero(opt.value) === '2' || opt.text.trim().toUpperCase() === 'IRP') {
+                                regSelect.value = opt.value;
+                                break;
+                            }
+                        }
+                    }
+                    // Seleccionar automáticamente Tipo de Ingreso = Salarios...
+                    const tipSelect = document.getElementById('tipIngreso');
+                    if (tipSelect) {
+                        for (let opt of tipSelect.options) {
+                            if (opt.text.toUpperCase().includes('SALARIO')) {
+                                tipSelect.value = opt.value;
+                                break;
+                            }
+                        }
+                    }
+                    const facNroEl = document.getElementById('facNro');
+                    if (facNroEl && !facNroEl.value.trim()) {
+                        facNroEl.value = '0000001';
+                    }
+                }
+            } else {
+                if (g10El) {
+                    g10El.readOnly = false;
+                    g10El.disabled = false;
+                    g10El.style.backgroundColor = '#ffffff';
+                    g10El.style.color = '#0f172a';
+                    g10El.style.cursor = 'text';
+                }
+                if (g5El) {
+                    g5El.readOnly = false;
+                    g5El.disabled = false;
+                    g5El.style.backgroundColor = '#ffffff';
+                    g5El.style.color = '#0f172a';
+                    g5El.style.cursor = 'text';
+                }
+                if (rowCdc)  rowCdc.style.display = 'grid';
+                if (lblTimb) lblTimb.style.visibility = 'visible';
+                if (selTimb) selTimb.style.visibility = 'visible';
+                if (lblVenc) lblVenc.style.visibility = 'visible';
+                if (inpVenc) inpVenc.style.visibility = 'visible';
+
+                if (lblComp) lblComp.innerText = 'Factura :';
+                if (facEst)  facEst.style.display = 'inline-block';
+                if (facPto)  facPto.style.display = 'inline-block';
+                if (sep1)    sep1.style.display   = 'inline';
+                if (sep2)    sep2.style.display   = 'inline';
+                if (boxSer)  boxSer.style.visibility = 'visible';
+
+                if (lblEx)   lblEx.innerText  = 'Exentas :';
+                if (lblNoG)  lblNoG.innerText = 'No gravado :';
+                if (btnSifen) btnSifen.style.display = 'flex';
+            }
+            recalcularTotales();
+        }
+
+        function actualizarTimbradosPorTipoDoc(cambioPorUsuario = false) {
+            aplicarModoLiquidacionSalarioUI(cambioPorUsuario);
             const select = document.getElementById('nroTimbrado');
             const tipDocVal = (document.getElementById('tipDoc').value || '').trim().toUpperCase();
+            if (esLiquidacionSalario(tipDocVal)) {
+                select.innerHTML = '<option value="">-- Sin Timbrado (Liquidación de Salario) --</option>';
+                document.getElementById('vencTimbrado').value = '';
+                return;
+            }
             const currentSelected = select.value;
             select.innerHTML = '';
 
@@ -1820,8 +1969,11 @@
                         const tipDocSel = document.getElementById('tipDoc');
                         if (tipDocSel) {
                             let matchedDoc = false;
+                            const isRawLiq = esLiquidacionSalario(rawTipDoc);
                             for (let opt of tipDocSel.options) {
-                                if (opt.value.toUpperCase() === rawTipDoc.toUpperCase() || opt.text.toUpperCase() === rawTipDoc.toUpperCase()) {
+                                if (opt.value.toUpperCase() === rawTipDoc.toUpperCase()
+                                    || opt.text.toUpperCase() === rawTipDoc.toUpperCase()
+                                    || (isRawLiq && esLiquidacionSalario(opt.value))) {
                                     tipDocSel.value = opt.value;
                                     matchedDoc = true;
                                     break;
@@ -1857,12 +2009,19 @@
                         document.getElementById('vencTimbrado').value = item.VENC_TIMBRADO || '';
 
                         if (item.NRO_FACTURA || item.nro_factura) {
-                            const formattedFac = formatNroFactura(item.NRO_FACTURA || item.nro_factura, item.TIP_DOC || item.tip_doc);
-                            const parts = formattedFac.split('-');
-                            if (parts.length === 3) {
-                                document.getElementById('facEst').value = parts[0];
-                                document.getElementById('facPto').value = parts[1];
-                                document.getElementById('facNro').value = parts[2].padStart(7, '0');
+                            const rawNroFac = String(item.NRO_FACTURA || item.nro_factura).trim();
+                            if (esLiquidacionSalario(item.TIP_DOC || item.tip_doc)) {
+                                const partsLiq = rawNroFac.split('-');
+                                const numOnly = partsLiq.length === 3 ? partsLiq[2].trim() : rawNroFac;
+                                document.getElementById('facNro').value = numOnly.padStart(7, '0');
+                            } else {
+                                const formattedFac = formatNroFactura(rawNroFac, item.TIP_DOC || item.tip_doc);
+                                const parts = formattedFac.split('-');
+                                if (parts.length === 3) {
+                                    document.getElementById('facEst').value = parts[0];
+                                    document.getElementById('facPto').value = parts[1];
+                                    document.getElementById('facNro').value = parts[2].padStart(7, '0');
+                                }
                             }
                         }
 
@@ -1971,15 +2130,22 @@
         }
 
         function recalcularTotales() {
-            const g10 = parseMonto(document.getElementById('grav10').value);
-            const g5 = parseMonto(document.getElementById('grav5').value);
+            const isLiq = esLiquidacionSalario();
+            if (isLiq) {
+                const g10El = document.getElementById('grav10');
+                const g5El  = document.getElementById('grav5');
+                if (g10El && g10El.value !== '0') g10El.value = '0';
+                if (g5El  && g5El.value  !== '0') g5El.value  = '0';
+            }
+            const g10 = isLiq ? 0 : parseMonto(document.getElementById('grav10').value);
+            const g5 = isLiq ? 0 : parseMonto(document.getElementById('grav5').value);
             const ex = parseMonto(document.getElementById('exentas').value);
             const noGrav = parseMonto(document.getElementById('noGravado').value);
             const red = parseMonto(document.getElementById('redondeo').value);
 
-            const i10 = Math.round(g10 / 11);
-            const i5 = Math.round(g5 / 21);
-            const tIva = i10 + i5;
+            const i10 = isLiq ? 0 : Math.round(g10 / 11);
+            const i5 = isLiq ? 0 : Math.round(g5 / 21);
+            const tIva = isLiq ? 0 : (i10 + i5);
 
             const vBruto = g10 + g5 + ex + noGrav;
             const vTotal = vBruto + red;
@@ -2234,9 +2400,12 @@
                 }
             }
 
+            const isLiq = esLiquidacionSalario();
             checkField('tipDoc', 'Tipo de Comprobante');
-            checkField('nroTimbrado', 'Número de Timbrado', v => !v || v.includes('No hay'));
-            checkField('facNro', 'Número de Factura');
+            if (!isLiq) {
+                checkField('nroTimbrado', 'Número de Timbrado', v => !v || v.includes('No hay'));
+            }
+            checkField('facNro', isLiq ? 'Número de Comprobante' : 'Número de Factura');
             checkField('rucCliente', 'RUC de Cliente');
             checkField('nomCliente', 'Nombre / Razón Social del Cliente');
             checkField('fecIngreso', 'Fecha del Ingreso');
@@ -2442,25 +2611,26 @@
             const regimenVal = document.getElementById('regimen').value;
             const tipIngresoVal = document.getElementById('tipIngreso').value;
 
+            const isLiq = esLiquidacionSalario();
             const est = (document.getElementById('facEst').value || '1').trim().padStart(3, '0');
             const pto = (document.getElementById('facPto').value || '1').trim().padStart(3, '0');
             const nro = (document.getElementById('facNro').value || '').trim();
             const formattedNro = nro ? nro.padStart(7, '0') : '';
-            const nroFactura = nro ? `${est}-${pto}-${formattedNro}` : '';
+            const nroFactura = nro ? (isLiq ? formattedNro : `${est}-${pto}-${formattedNro}`) : '';
 
             const payload = {
                 idIngreso: document.getElementById('idIngreso').value,
-                cdc: cdc,
-                emitirSifen: emitirSifen,
+                cdc: isLiq ? '' : cdc,
+                emitirSifen: isLiq ? false : emitirSifen,
                 tipDoc: document.getElementById('tipDoc').value,
                 regimen: regimenVal,
                 codRegimen: regimenVal,
                 anulada: document.getElementById('chkAnulada').checked,
                 inutilizado: document.getElementById('chkInutilizado').checked,
-                nroTimbrado: document.getElementById('nroTimbrado').value,
-                vencTimbrado: document.getElementById('vencTimbrado').value,
+                nroTimbrado: isLiq ? '' : document.getElementById('nroTimbrado').value,
+                vencTimbrado: isLiq ? '' : document.getElementById('vencTimbrado').value,
                 nroFactura: nroFactura,
-                serie: document.getElementById('serie').value,
+                serie: isLiq ? '' : document.getElementById('serie').value,
                 fecIngreso: document.getElementById('fecIngreso').value,
                 condicion: document.querySelector('input[name="condicion"]:checked')?.value || 'CON',
                 codCliente: codCliente,
@@ -2471,12 +2641,12 @@
                 form145: document.getElementById('form145').value,
                 codMoneda: document.getElementById('codMoneda').value || '1',
                 tasaCambio: document.getElementById('tasaCambio').value,
-                grav10: parseMonto(document.getElementById('grav10').value),
-                iva10: document.getElementById('iva10').value.replace(/\./g, ''),
-                grav5: parseMonto(document.getElementById('grav5').value),
-                iva5: document.getElementById('iva5').value.replace(/\./g, ''),
+                grav10: isLiq ? 0 : parseMonto(document.getElementById('grav10').value),
+                iva10: isLiq ? 0 : document.getElementById('iva10').value.replace(/\./g, ''),
+                grav5: isLiq ? 0 : parseMonto(document.getElementById('grav5').value),
+                iva5: isLiq ? 0 : document.getElementById('iva5').value.replace(/\./g, ''),
                 exentas: parseMonto(document.getElementById('exentas').value),
-                totIva: document.getElementById('totIva').value.replace(/\./g, ''),
+                totIva: isLiq ? 0 : document.getElementById('totIva').value.replace(/\./g, ''),
                 valorBruto: document.getElementById('valorBruto').value.replace(/\./g, ''),
                 noGravado: parseMonto(document.getElementById('noGravado').value),
                 redondeo: parseMonto(document.getElementById('redondeo').value),

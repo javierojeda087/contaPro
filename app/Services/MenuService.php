@@ -89,6 +89,42 @@ class MenuService {
              )",
             true
         );
+        Database::execute(
+            "INSERT INTO formas (id_propietario, cod_modulo, nom_forma, titulo, descripcion, esta, mostrar_en_menu, cod_modulo_menu, tipo, orden_en_menu)
+             SELECT $pIdInt, 'CO', 'CORECIBO', 'Recibos de Cobro', 'REGISTRO DE RECIBOS DE COBRO DE FACTURAS CREDITO', 'A', 'S', 'CO', 'M', 3
+             FROM DUAL
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM formas WHERE id_propietario = $pIdInt AND UPPER(TRIM(nom_forma)) = 'CORECIBO'
+             )",
+            true
+        );
+        Database::execute(
+            "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
+             SELECT $pIdInt, 'CONADM', 'CO', 'CORECIBO', 'S', 'S', 'S', 'S', 'Recibos de Cobro', 'S'
+             FROM DUAL
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM accesos_grupos WHERE id_propietario = $pIdInt AND UPPER(TRIM(cod_grupo)) = 'CONADM' AND UPPER(TRIM(nom_forma)) = 'CORECIBO'
+             )",
+            true
+        );
+        Database::execute(
+            "INSERT INTO formas (id_propietario, cod_modulo, nom_forma, titulo, descripcion, esta, mostrar_en_menu, cod_modulo_menu, tipo, orden_en_menu)
+             SELECT $pIdInt, 'CO', 'CORECIBOPAGO', 'Recibos de Pago', 'REGISTRO DE RECIBOS DE PAGO A PROVEEDORES DE FACTURAS CREDITO', 'A', 'S', 'CO', 'M', 4
+             FROM DUAL
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM formas WHERE id_propietario = $pIdInt AND UPPER(TRIM(nom_forma)) = 'CORECIBOPAGO'
+             )",
+            true
+        );
+        Database::execute(
+            "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
+             SELECT $pIdInt, 'CONADM', 'CO', 'CORECIBOPAGO', 'S', 'S', 'S', 'S', 'Recibos de Pago', 'S'
+             FROM DUAL
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM accesos_grupos WHERE id_propietario = $pIdInt AND UPPER(TRIM(cod_grupo)) = 'CONADM' AND UPPER(TRIM(nom_forma)) = 'CORECIBOPAGO'
+             )",
+            true
+        );
 
         $sql = "SELECT m.cod_modulo,
                        m.descripcion AS modulo_desc,
@@ -274,6 +310,35 @@ class MenuService {
                     'tipo'     => 'R',
                     'titulo'   => 'Resumen IRP',
                     'route'    => RouteHelper::getRoute('CORESIRP'),
+                ];
+            }
+
+            $hasCorecibo = false;
+            $hasCorecibopago = false;
+            foreach ($modulosMap['CO']['movimientos'] as $movItem) {
+                if (($movItem['nomForma'] ?? '') === 'CORECIBO') {
+                    $hasCorecibo = true;
+                }
+                if (($movItem['nomForma'] ?? '') === 'CORECIBOPAGO') {
+                    $hasCorecibopago = true;
+                }
+            }
+            if (!$hasCorecibo) {
+                $modulosMap['CO']['movimientos'][] = [
+                    'nomForma' => 'CORECIBO',
+                    'itemMenu' => 'Recibos de Cobro',
+                    'tipo'     => 'M',
+                    'titulo'   => 'Recibos de Cobro',
+                    'route'    => RouteHelper::getRoute('CORECIBO'),
+                ];
+            }
+            if (!$hasCorecibopago) {
+                $modulosMap['CO']['movimientos'][] = [
+                    'nomForma' => 'CORECIBOPAGO',
+                    'itemMenu' => 'Recibos de Pago',
+                    'tipo'     => 'M',
+                    'titulo'   => 'Recibos de Pago',
+                    'route'    => RouteHelper::getRoute('CORECIBOPAGO'),
                 ];
             }
         }

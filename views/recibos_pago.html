@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Recibos de Pago - Sistema Contable')}">
+</head>
+<body style="background: var(--bg-color);">
+
+    <!-- Left Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Navbar -->
+        <div th:replace="~{fragments/layout :: navbar('Registro de Recibos de Pago')}"></div>
+
+        <div class="content-area">
+
+            <!-- MAIN CARD WINDOW -->
+            <div style="background: white; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 8px 25px rgba(0,0,0,0.06); overflow: hidden; width: 100%; min-height: calc(100vh - 140px); display: flex; flex-direction: column;">
+
+                <!-- Toolbar & Search Header -->
+                <div style="padding: 14px 22px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; flex-shrink: 0;">
+
+                    <!-- Action Toolbar Buttons -->
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <button type="button" class="btn" onclick="abrirModalNuevoReciboPago()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #1e293b; height: 38px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 0.2s;" onmouseover="this.style.borderColor='#16a34a'; this.style.color='#16a34a'" onmouseout="this.style.borderColor='#cbd5e1'; this.style.color='#1e293b'">
+                            <i class="ph ph-plus-circle" style="color: #16a34a; font-size: 1.15rem;"></i> Nuevo
+                        </button>
+                        <button type="button" class="btn" onclick="abrirModalEditarReciboPago()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #1e293b; height: 38px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 0.2s;" onmouseover="this.style.borderColor='#15803d'; this.style.color='#15803d'" onmouseout="this.style.borderColor='#cbd5e1'; this.style.color='#1e293b'">
+                            <i class="ph ph-pencil-simple" style="color: #15803d; font-size: 1.15rem;"></i> Modificar
+                        </button>
+                        <button type="button" class="btn" onclick="eliminarReciboPagoSeleccionado()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #ef4444; height: 38px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 0.2s;" onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#fca5a5'" onmouseout="this.style.background='white'; this.style.borderColor='#cbd5e1'">
+                            <i class="ph ph-trash" style="font-size: 1.15rem;"></i> Eliminar
+                        </button>
+                    </div>
+
+                    <!-- Periodo & Search Controls -->
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 8px; background: #ffffff; height: 38px; padding: 0 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.88rem;">
+                            <span style="font-weight: 700; color: #64748b;">Periodo:</span>
+
+                            <div id="grupoFiltroMes" style="display: flex; align-items: center; gap: 6px;">
+                                <select id="filtroAnio" onchange="onCambioPeriodoRecibosPago()" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 8px; font-weight: 700; color: #0f172a; font-size: 0.85rem; outline: none; background: #f8fafc; cursor: pointer; height: 28px;">
+                                    <option value="TODOS">Todos</option>
+                                </select>
+                                <select id="filtroMes" onchange="onCambioPeriodoRecibosPago()" style="border: 2px solid #16a34a; border-radius: 6px; padding: 3px 8px; font-weight: 800; color: #15803d; font-size: 0.85rem; outline: none; background: #dcfce7; cursor: pointer; height: 28px;">
+                                    <option value="TODOS">Todos</option>
+                                    <option value="1">Enero</option>
+                                    <option value="2">Febrero</option>
+                                    <option value="3">Marzo</option>
+                                    <option value="4">Abril</option>
+                                    <option value="5">Mayo</option>
+                                    <option value="6">Junio</option>
+                                    <option value="7">Julio</option>
+                                    <option value="8">Agosto</option>
+                                    <option value="9">Septiembre</option>
+                                    <option value="10">Octubre</option>
+                                    <option value="11">Noviembre</option>
+                                    <option value="12">Diciembre</option>
+                                    <option value="RANGO">📅 Por Rango de Fechas...</option>
+                                </select>
+                                <button type="button" onclick="cambiarModoPeriodoRecibosPago('RANGO')" style="border: 1px solid #cbd5e1; background: #f8fafc; color: #0284c7; border-radius: 6px; height: 28px; padding: 0 8px; font-size: 0.78rem; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
+                                    <i class="ph ph-calendar-blank" style="font-size: 0.95rem;"></i> Rango
+                                </button>
+                            </div>
+
+                            <div id="grupoFiltroRango" style="display: none; align-items: center; gap: 6px;">
+                                <span style="font-size: 0.76rem; font-weight: 700; color: #475569;">Desde:</span>
+                                <input type="date" id="filtroFechaDesde" onchange="cargarRecibosPago()" style="border: 1.5px solid #0284c7; border-radius: 6px; padding: 2px 6px; font-weight: 700; color: #0f172a; font-size: 0.8rem; background: #f0f9ff; height: 28px; outline: none;">
+                                <span style="font-size: 0.76rem; font-weight: 700; color: #475569;">Hasta:</span>
+                                <input type="date" id="filtroFechaHasta" onchange="cargarRecibosPago()" style="border: 1.5px solid #0284c7; border-radius: 6px; padding: 2px 6px; font-weight: 700; color: #0f172a; font-size: 0.8rem; background: #f0f9ff; height: 28px; outline: none;">
+                                <button type="button" onclick="cambiarModoPeriodoRecibosPago('MES')" style="border: 1px solid #86efac; background: #dcfce7; color: #15803d; border-radius: 6px; height: 28px; padding: 0 8px; font-size: 0.76rem; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
+                                    <i class="ph ph-calendar-check" style="font-size: 0.95rem;"></i> Mes
+                                </button>
+                            </div>
+                        </div>
+
+                        <div style="position: relative; width: 255px;">
+                            <input type="text" id="searchInput" class="form-control" placeholder="BUSCAR RECIBO / PROVEEDOR / FACTURA" onkeyup="filtrarRecibosPago()" style="padding-right: 36px; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; height: 38px;" autocomplete="off">
+                            <i class="ph ph-magnifying-glass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #64748b; font-size: 1.1rem;"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPIs DE RECIBOS DE PAGO -->
+                <div style="padding: 12px 22px; background: #ffffff; border-bottom: 1px solid #e2e8f0; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; flex-shrink: 0;">
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #0284c7; border-radius: 10px; padding: 10px 14px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Recibos de Pago Registrados</span>
+                            <i class="ph ph-receipt" style="color: #0284c7; font-size: 1.15rem;"></i>
+                        </div>
+                        <div style="font-size: 1.25rem; font-weight: 900; color: #0f172a; margin: 2px 0;" id="kpiCantRecibos">0</div>
+                        <div style="font-size: 0.72rem; color: #64748b; font-weight: 600;">
+                            Activos en el periodo seleccionado
+                        </div>
+                    </div>
+
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #7c3aed; border-radius: 10px; padding: 10px 14px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.72rem; font-weight: 800; color: #6d28d9; text-transform: uppercase;">Facturas Crédito Aplicadas</span>
+                            <i class="ph ph-files" style="color: #7c3aed; font-size: 1.15rem;"></i>
+                        </div>
+                        <div style="font-size: 1.25rem; font-weight: 900; color: #4c1d95; margin: 2px 0;" id="kpiCantFacturasRel">0</div>
+                        <div style="font-size: 0.72rem; color: #64748b; font-weight: 600;">
+                            Comprobantes de compra cancelados / abonados
+                        </div>
+                    </div>
+
+                    <div style="background: linear-gradient(135deg, #0f172a, #1e293b); border: 1px solid #0f172a; border-radius: 10px; padding: 10px 14px; color: white;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.72rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Total Pagado a Proveedores</span>
+                            <i class="ph ph-coins" style="color: #4ade80; font-size: 1.15rem;"></i>
+                        </div>
+                        <div style="font-size: 1.25rem; font-weight: 900; color: #4ade80; font-family: monospace; margin: 2px 0;"><span id="kpiTotalPagado">0</span></div>
+                        <div style="font-size: 0.71rem; color: #cbd5e1; font-weight: 600;">
+                            Suma total de recibos de pago activos
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TABLA PRINCIPAL DE RECIBOS DE PAGO -->
+                <div style="overflow-x: auto; flex: 1; min-height: 480px;">
+                    <table class="table table-hover align-middle m-0" style="font-size: 0.88rem;">
+                        <thead style="background: #f8fafc; color: #334155; font-weight: 800; font-size: 0.83rem; border-bottom: 2px solid #e2e8f0;">
+                            <tr>
+                                <th style="padding: 13px 16px;">Número Recibo</th>
+                                <th style="padding: 13px 12px; text-align: center;">Serie</th>
+                                <th style="padding: 13px 14px; text-align: center;">Fecha</th>
+                                <th style="padding: 13px 14px;">Tipo de Prov.</th>
+                                <th style="padding: 13px 14px;">RUC</th>
+                                <th style="padding: 13px 14px;">Proveedor</th>
+                                <th style="padding: 13px 14px;">Facturas Relacionadas</th>
+                                <th style="padding: 13px 12px; text-align: center;">Mon.</th>
+                                <th style="padding: 13px 12px; text-align: right;">T.C.</th>
+                                <th style="padding: 13px 16px; text-align: right;">Valor Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaRecibosPagoBody">
+                            <tr>
+                                <td colspan="10" class="text-center py-5 text-muted">
+                                    <i class="ph ph-spinner-gap" style="font-size: 2rem; animation: spin 1s linear infinite;"></i>
+                                    <div class="mt-2" style="font-size: 0.92rem; font-weight: 600;">Cargando recibos de pago...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot style="background: #f1f5f9; border-top: 2px solid #cbd5e1; font-weight: 800; color: #0f172a; position: sticky; bottom: 0;">
+                            <tr>
+                                <td colspan="9" style="padding: 11px 16px; text-align: right; font-size: 0.84rem; color: #334155; text-transform: uppercase;">
+                                    Total General de Recibos de Pago Activos (<span id="footCantRecibos" style="color: #16a34a;">0</span>):
+                                </td>
+                                <td class="text-end" style="padding: 11px 16px; font-family: monospace; font-size: 0.96rem; color: #15803d; background: #dcfce7;" id="footTotalPagado">0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL PRINCIPAL: REGISTRAR / MODIFICAR RECIBO DE PAGO (CON PESTAÑAS)      -->
+    <!-- ========================================================================= -->
+    <div id="reciboPagoModalOverlay" style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.48); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 16px;">
+        <div style="background: white; border-radius: 12px; border: 1px solid #94a3b8; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.38); width: 96vw; max-width: 1100px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; animation: modalSlideDown 0.22s ease-out;">
+
+            <!-- Cabecera del Modal -->
+            <div style="background: #f8fafc; border-bottom: 1px solid #cbd5e1; padding: 12px 22px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #0284c7, #0369a1); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.15rem;">
+                        <i class="ph ph-receipt"></i>
+                    </div>
+                    <h3 id="modalTitleReciboPago" style="margin: 0; font-size: 1.12rem; font-weight: 800; color: #0f172a;">Registrar recibo de pago</h3>
+                </div>
+                <button type="button" class="btn-close" onclick="cerrarModalReciboPago()" style="font-size: 0.9rem; cursor: pointer;"></button>
+            </div>
+
+            <!-- Barra de Pestañas (Encabezado | Facturas | Informaciones) -->
+            <div style="background: #e2e8f0; border-bottom: 1px solid #cbd5e1; padding: 6px 20px 0 20px; display: flex; gap: 4px; flex-shrink: 0;">
+                <button type="button" id="tabBtnEncabezado" onclick="cambiarTabReciboPago('encabezado')"
+                        style="padding: 9px 22px; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; border-bottom: none; border-radius: 8px 8px 0 0; font-weight: 800; font-size: 0.9rem; cursor: pointer; margin-bottom: -1px;">
+                    Encabezado
+                </button>
+                <button type="button" id="tabBtnFacturas" onclick="cambiarTabReciboPago('facturas')"
+                        style="padding: 9px 22px; background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; border-bottom: none; border-radius: 8px 8px 0 0; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-bottom: -1px; display: flex; align-items: center; gap: 6px;">
+                    <span>Facturas</span>
+                    <span id="badgeCantFacturasTab" style="background: #1d4ed8; color: white; font-size: 0.72rem; font-weight: 800; padding: 1px 7px; border-radius: 99px;">0</span>
+                </button>
+                <button type="button" id="tabBtnInformaciones" onclick="cambiarTabReciboPago('informaciones')"
+                        style="padding: 9px 22px; background: #f1f5f9; color: #475569; border: 1px solid transparent; border-bottom: none; border-radius: 8px 8px 0 0; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-bottom: -1px;">
+                    Informaciones
+                </button>
+            </div>
+
+            <!-- Cuerpo del Formulario -->
+            <div style="padding: 20px 24px; overflow-y: auto; flex: 1; background: #ffffff;">
+                <form id="formReciboPago" onsubmit="return false;">
+                    <input type="hidden" id="idReciboPago">
+                    <input type="hidden" id="codProveedorRecibo">
+
+                    <!-- ========================================================= -->
+                    <!-- PESTAÑA 1: ENCABEZADO (Diseño idéntico a captura 1)       -->
+                    <!-- ========================================================= -->
+                    <div id="tabPaneEncabezado" style="display: block;">
+
+                        <!-- Fila 1: Tipo de Prov. : [PROVEEDOR LOCAL ▼] -->
+                        <div style="display: grid; grid-template-columns: 115px 420px 1fr; gap: 8px; align-items: center; margin-bottom: 14px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Tipo de Prov. :</label>
+                            <select id="tipProveedorRecibo" class="form-control"
+                                    style="border-radius: 6px; font-size: 0.9rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; color: #0f172a; background: #f8fafc;">
+                                <option value="PROVEEDOR LOCAL" selected>PROVEEDOR LOCAL</option>
+                                <option value="PROVEEDOR DEL EXTERIOR">PROVEEDOR DEL EXTERIOR</option>
+                                <option value="NO DOMICILIADO">NO DOMICILIADO</option>
+                            </select>
+                            <div></div>
+                        </div>
+
+                        <!-- Fila 2: Proveedor : [RUC] [Tipo Doc ▼] [Razón Social] [Buscar] -->
+                        <div style="display: grid; grid-template-columns: 115px 165px 115px 1fr 105px; gap: 8px; align-items: center; margin-bottom: 14px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Proveedor :</label>
+                            <input type="text" id="rucProveedorRecibo" class="form-control" placeholder="80012739-0"
+                                   onchange="verificarProveedorRecibo()"
+                                   onkeypress="if(event.key === 'Enter'){verificarProveedorRecibo(); event.preventDefault();}"
+                                   style="border-radius: 6px; font-size: 0.92rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #3b82f6;">
+                            <select id="tipDocProveedorRecibo" class="form-control" style="border-radius: 6px; font-size: 0.88rem; height: 38px; padding: 4px 8px; font-weight: 700; border: 1.5px solid #cbd5e1; background: #f8fafc;">
+                                <option value="RUC" selected>RUC</option>
+                                <option value="CI">CÉDULA</option>
+                                <option value="EXTERIOR">EXTERIOR</option>
+                                <option value="OTRO">OTRO</option>
+                            </select>
+                            <input type="text" id="nomProveedorRecibo" class="form-control" placeholder="Razón Social del Proveedor..." readonly tabindex="-1"
+                                   style="border-radius: 6px; font-size: 0.92rem; height: 38px; padding: 4px 12px; background: #f1f5f9; font-weight: 700; color: #0f172a; border: 1.5px solid #cbd5e1;">
+                            <button type="button" class="btn" onclick="buscarProveedorReciboModal()"
+                                    style="border: 1.5px solid #cbd5e1; background: #f8fafc; font-weight: 700; font-size: 0.86rem; color: #1e293b; height: 38px; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                                <i class="ph ph-magnifying-glass"></i> Buscar
+                            </button>
+                        </div>
+
+                        <!-- Fila 3: Número : [143936] | Serie : [A] | Fecha : [04/10/2025] | Anulado : [ ] -->
+                        <div style="display: grid; grid-template-columns: 115px 250px 60px 85px 65px 165px 1fr; gap: 8px; align-items: center; margin-bottom: 14px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Número :</label>
+                            <input type="text" id="nroReciboPago" maxlength="30" placeholder="143936"
+                                   style="text-align: right; border-radius: 6px; border: 1.5px solid #cbd5e1; height: 38px; font-size: 0.95rem; font-weight: 800; padding: 4px 12px; background: #f8fafc; color: #0f172a;">
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Serie :</label>
+                            <input type="text" id="serieReciboPago" maxlength="10" placeholder="A"
+                                   style="text-align: center; text-transform: uppercase; border-radius: 6px; border: 1.5px solid #cbd5e1; height: 38px; font-size: 0.9rem; font-weight: 800; color: #0f172a;">
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Fecha :</label>
+                            <input type="date" id="fecReciboPago" class="form-control"
+                                   style="border-radius: 6px; font-size: 0.92rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; background: #f8fafc;">
+
+                            <div style="display: flex; justify-content: flex-end;">
+                                <label style="font-size: 0.88rem; font-weight: 700; color: #334155; cursor: pointer; display: flex; align-items: center; gap: 6px; margin: 0; white-space: nowrap;">
+                                    Anulado : <input type="checkbox" id="chkAnuladoReciboPago" style="width: 17px; height: 17px; accent-color: #ef4444;">
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Fila 4: Moneda : [DÓLAR ▼] | Tasa de Cambio : [7.010] -->
+                        <div style="display: grid; grid-template-columns: 115px 250px 1fr 130px 180px; gap: 8px; align-items: center; margin-bottom: 14px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Moneda :</label>
+                            <select id="codMonedaReciboPago" class="form-control" onchange="alCambiarMonedaReciboPago()"
+                                    style="border-radius: 6px; font-size: 0.9rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; background: #f8fafc;">
+                                <option value="1" selected>GUARANÍ</option>
+                                <option value="2">DÓLAR</option>
+                                <option value="3">REAL</option>
+                            </select>
+
+                            <div></div>
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Tasa de Cambio :</label>
+                            <input type="number" id="tasaCambioReciboPago" value="1" step="0.0001" class="form-control text-end"
+                                   style="text-align: right; border-radius: 6px; border: 1.5px solid #cbd5e1; height: 38px; padding: 4px 10px; font-size: 0.92rem; font-weight: 700; background: #f1f5f9;">
+                        </div>
+
+                        <!-- Fila 5: Valor Total + Acceso rápido a Facturas -->
+                        <div style="display: grid; grid-template-columns: 115px 340px 1fr; gap: 12px; align-items: center; margin-bottom: 14px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Valor Total :</label>
+                            <input type="text" inputmode="numeric" id="valorTotalReciboPago" value="0"
+                                   oninput="formatearInputMilesReciboPago(this); recalcularTotalesReciboPago(false)"
+                                   onfocus="if(this.value==='0') this.value='';"
+                                   onblur="if(this.value.trim()===''){this.value='0'; recalcularTotalesReciboPago(false);}"
+                                   style="text-align: right; border-radius: 6px; border: 1.5px solid #94a3b8; height: 40px; padding: 4px 12px; font-size: 1.05rem; font-weight: 800; color: #0f172a; background: #f8fafc;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <button type="button" class="btn" onclick="cambiarTabReciboPago('facturas'); abrirSelectorFacturasProveedor();"
+                                        style="background: #eff6ff; border: 1.5px solid #93c5fd; color: #1d4ed8; font-weight: 800; font-size: 0.84rem; height: 38px; padding: 0 14px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
+                                    <i class="ph ph-plus-circle" style="font-size: 1.1rem;"></i> Cargar Facturas del Proveedor
+                                </button>
+                                <span id="resumenFacturasEnEncabezado" style="font-size: 0.8rem; font-weight: 700; color: #15803d;"></span>
+                            </div>
+                        </div>
+
+                        <!-- Fila 6: Observación -->
+                        <div style="display: grid; grid-template-columns: 115px 1fr; gap: 8px; align-items: start;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155; padding-top: 8px;">Observación :</label>
+                            <textarea id="observacionReciboPago" rows="3" placeholder="Detalle u observaciones del recibo de pago..."
+                                      style="width: 100%; border-radius: 6px; border: 1.5px solid #cbd5e1; padding: 8px 12px; font-size: 0.9rem; font-weight: 600; color: #1e293b; resize: vertical;"></textarea>
+                        </div>
+
+                    </div>
+
+                    <!-- ========================================================= -->
+                    <!-- PESTAÑA 2: FACTURAS (Detalle idéntico a captura 2 + Serie)-->
+                    <!-- ========================================================= -->
+                    <div id="tabPaneFacturas" style="display: none;">
+
+                        <!-- Barra superior del detalle: [+ Agregar Facturas] [+ Fila Manual] -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button type="button" class="btn" onclick="abrirSelectorFacturasProveedor()"
+                                        style="background: #f8fafc; border: 1.5px solid #94a3b8; font-weight: 800; font-size: 0.86rem; color: #0f172a; height: 36px; padding: 0 14px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                                    <i class="ph-fill ph-plus-circle" style="font-size: 1.05rem; color: #0f172a;"></i> Agregar Facturas
+                                </button>
+                                <button type="button" class="btn" onclick="agregarFilaFacturaManualPago()"
+                                        style="background: #ffffff; border: 1.5px dashed #cbd5e1; font-weight: 700; font-size: 0.82rem; color: #475569; height: 36px; padding: 0 12px; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px;">
+                                    <i class="ph ph-plus"></i> Fila Manual
+                                </button>
+                            </div>
+                            <div style="font-size: 0.82rem; color: #475569; font-weight: 600;">
+                                Proveedor seleccionado: <strong id="lblProveedorEnTabFacturas" style="color: #0f172a;">— Sin seleccionar —</strong>
+                            </div>
+                        </div>
+
+                        <!-- Contenedor tipo grilla con borde -->
+                        <div style="border: 1.5px solid #cbd5e1; border-radius: 6px; background: #f8fafc; min-height: 270px; max-height: 340px; overflow-y: auto;">
+                            <table class="table table-bordered align-middle m-0" style="font-size: 0.88rem; background: white;">
+                                <thead style="background: #f1f5f9; color: #1e293b; font-weight: 800; font-size: 0.84rem; position: sticky; top: 0; z-index: 5;">
+                                    <tr>
+                                        <th style="padding: 10px 12px; width: 220px; text-align: center;">Documento</th>
+                                        <th style="padding: 10px 10px; width: 95px; text-align: center;">Serie</th>
+                                        <th style="padding: 10px 10px; width: 135px; text-align: center;">Fecha</th>
+                                        <th style="padding: 10px 12px; width: 165px; text-align: center;">Total</th>
+                                        <th style="padding: 10px 12px; width: 165px; text-align: center;">Saldo</th>
+                                        <th style="padding: 10px 12px; width: 185px; text-align: center;">Importe</th>
+                                        <th style="padding: 10px 8px; width: 48px; text-align: center;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyFacturasReciboPago">
+                                    <tr>
+                                        <td colspan="7" class="text-center py-5 text-muted" style="font-weight: 600;">
+                                            Haga clic en <strong>"+ Agregar Facturas"</strong> para vincular las facturas a crédito emitidas por el proveedor.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Barra inferior: Valor Otras Facturas | Total | Diferencia -->
+                        <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <label style="font-weight: 700; font-size: 0.86rem; color: #334155;">Valor Otras Facturas :</label>
+                                <input type="text" inputmode="numeric" id="valorOtrasFacturasReciboPago" value="0"
+                                       oninput="formatearInputMilesReciboPago(this); recalcularTotalesReciboPago(false)"
+                                       style="width: 195px; text-align: right; border-radius: 6px; border: 1.5px solid #cbd5e1; height: 36px; padding: 4px 10px; font-weight: 700; font-size: 0.9rem; background: #f1f5f9;">
+                            </div>
+
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <label style="font-weight: 700; font-size: 0.86rem; color: #334155;">Total :</label>
+                                <input type="text" id="totalFacturasReciboPago" value="0" readonly
+                                       style="width: 175px; text-align: right; border-radius: 6px; border: 1.5px solid #cbd5e1; height: 36px; padding: 4px 10px; font-weight: 800; font-size: 0.92rem; background: #e2e8f0; color: #0f172a;">
+                            </div>
+
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <label style="font-weight: 700; font-size: 0.86rem; color: #334155;">Diferencia :</label>
+                                <input type="text" id="diferenciaReciboPago" value="0" readonly
+                                       style="width: 195px; text-align: right; border-radius: 6px; border: 1.5px solid #cbd5e1; height: 36px; padding: 4px 10px; font-weight: 800; font-size: 0.92rem; background: #e2e8f0; color: #0f172a;">
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- ========================================================= -->
+                    <!-- PESTAÑA 3: INFORMACIONES                                  -->
+                    <!-- ========================================================= -->
+                    <div id="tabPaneInformaciones" style="display: none;">
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px 22px;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+                                <div>
+                                    <label style="font-size: 0.78rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Tipo de Documento (co_recibos_pago)</label>
+                                    <input type="text" id="infoTipDocPago" value="REC - RECIBO" readonly class="form-control mt-1" style="background: #e2e8f0; font-weight: 700;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.78rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Usuario Registro</label>
+                                    <input type="text" id="infoUsuarioRegPago" value="-" readonly class="form-control mt-1" style="background: #e2e8f0; font-weight: 700;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.78rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Fecha / Hora Registro</label>
+                                    <input type="text" id="infoFecRegPago" value="-" readonly class="form-control mt-1" style="background: #e2e8f0; font-weight: 700;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.78rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Estado Registro</label>
+                                    <input type="text" id="infoEstadoRegPago" value="ACTIVO (A)" readonly class="form-control mt-1" style="background: #dcfce7; color: #166534; font-weight: 800;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+
+            <!-- Pie del Modal (Botones Cancelar y Guardar) -->
+            <div style="background: #f1f5f9; border-top: 1px solid #cbd5e1; padding: 12px 24px; display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-shrink: 0;">
+                <button type="button" class="btn" onclick="cerrarModalReciboPago()"
+                        style="background: #ffffff; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #1e293b; height: 38px; padding: 0 18px; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
+                    <i class="ph-bold ph-x"></i> Cancelar
+                </button>
+                <button type="button" id="btnGuardarReciboPago" class="btn" onclick="guardarReciboPago()"
+                        style="background: #38bdf8; border: 1.5px solid #0284c7; font-weight: 800; font-size: 0.9rem; color: #ffffff; height: 38px; padding: 0 22px; border-radius: 6px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 5px rgba(2, 132, 199, 0.25);">
+                    <i class="ph-bold ph-check"></i> Guardar
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- SUB-MODAL: SELECTOR DE FACTURAS CRÉDITO PENDIENTES DEL PROVEEDOR          -->
+    <!-- ========================================================================= -->
+    <div id="selectorFacturasPagoOverlay" style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); z-index: 2100; display: none; align-items: center; justify-content: center; padding: 16px;">
+        <div style="background: white; border-radius: 12px; border: 1px solid #cbd5e1; width: 94vw; max-width: 920px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.35);">
+            <div style="padding: 14px 20px; background: #0f172a; color: white; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="ph ph-files" style="font-size: 1.3rem; color: #38bdf8;"></i>
+                    <div>
+                        <div style="font-weight: 800; font-size: 0.98rem;">Seleccionar Facturas Crédito Emitidas por el Proveedor</div>
+                        <div id="subtituloSelectorFacturasPago" style="font-size: 0.76rem; color: #94a3b8;">Facturas registradas con condición CRÉDITO en Egresos (Compras)</div>
+                    </div>
+                </div>
+                <button type="button" onclick="cerrarSelectorFacturasProveedor()" style="background: transparent; border: none; color: #cbd5e1; font-size: 1.2rem; cursor: pointer;">
+                    <i class="ph-bold ph-x"></i>
+                </button>
+            </div>
+
+            <div style="padding: 12px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <input type="text" id="buscarFacturaPendientePagoInput" class="form-control" placeholder="Filtrar por Nro. de Factura, Serie o Proveedor..." oninput="filtrarTablaFacturasPendientesPago()" style="max-width: 360px; height: 36px; font-size: 0.85rem; font-weight: 600;">
+                <label style="font-size: 0.82rem; font-weight: 700; color: #334155; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <input type="checkbox" id="chkMostrarTodasFacturasPago" onchange="filtrarTablaFacturasPendientesPago()" style="width: 16px; height: 16px;">
+                    Mostrar también facturas con saldo 0
+                </label>
+            </div>
+
+            <div style="overflow-y: auto; flex: 1; max-height: 420px;">
+                <table class="table table-hover align-middle m-0" style="font-size: 0.85rem;">
+                    <thead style="background: #f1f5f9; font-weight: 800; color: #334155; position: sticky; top: 0;">
+                        <tr>
+                            <th style="width: 42px; text-align: center;">
+                                <input type="checkbox" id="chkSelectAllFacturasPago" onchange="toggleSelectAllFacturasPendientesPago(this.checked)">
+                            </th>
+                            <th>Documento</th>
+                            <th style="text-align: center;">Serie</th>
+                            <th style="text-align: center;">Fecha</th>
+                            <th>Proveedor</th>
+                            <th style="text-align: center;">Mon.</th>
+                            <th style="text-align: right;">Total Factura</th>
+                            <th style="text-align: right;">Pagado Previo</th>
+                            <th style="text-align: right;">Saldo Pendiente</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodySelectorFacturasPendientesPago">
+                        <tr>
+                            <td colspan="9" class="text-center py-4 text-muted">Cargando facturas...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="padding: 12px 20px; background: #f1f5f9; border-top: 1px solid #cbd5e1; display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn" onclick="cerrarSelectorFacturasProveedor()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; height: 36px; padding: 0 16px; border-radius: 6px;">
+                    Cerrar
+                </button>
+                <button type="button" class="btn" onclick="confirmarAgregarFacturasSeleccionadasPago()" style="background: #0284c7; color: white; font-weight: 800; font-size: 0.86rem; height: 36px; padding: 0 18px; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
+                    <i class="ph-bold ph-check"></i> Vincular Facturas Seleccionadas
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- SUB-MODAL: BUSCADOR DE PROVEEDORES                                        -->
+    <!-- ========================================================================= -->
+    <div id="buscadorProveedoresReciboOverlay" style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); z-index: 2150; display: none; align-items: center; justify-content: center; padding: 16px;">
+        <div style="background: white; border-radius: 12px; border: 1px solid #cbd5e1; width: 92vw; max-width: 680px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.35);">
+            <div style="padding: 13px 18px; background: #0f172a; color: white; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 800; font-size: 0.95rem;"><i class="ph ph-truck me-1"></i> Seleccionar Proveedor</span>
+                <button type="button" onclick="document.getElementById('buscadorProveedoresReciboOverlay').style.display='none'" style="background: transparent; border: none; color: white; font-size: 1.1rem; cursor: pointer;">
+                    <i class="ph-bold ph-x"></i>
+                </button>
+            </div>
+            <div style="padding: 12px 18px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                <input type="text" id="inputFiltroProveedorModal" class="form-control" placeholder="Escriba RUC o Razón Social del Proveedor..." oninput="renderListaProveedoresModal()" style="height: 38px; font-weight: 700; font-size: 0.88rem;">
+            </div>
+            <div style="overflow-y: auto; flex: 1; max-height: 380px;">
+                <table class="table table-hover align-middle m-0" style="font-size: 0.85rem;">
+                    <thead style="background: #f1f5f9; font-weight: 800;">
+                        <tr>
+                            <th style="padding: 9px 14px;">RUC / Doc.</th>
+                            <th style="padding: 9px 14px;">Razón Social</th>
+                            <th style="padding: 9px 14px; text-align: right;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyProveedoresModalRecibo"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes modalSlideDown {
+            from { opacity: 0; transform: translateY(-16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .recibo-row-selected {
+            background-color: #dcfce7 !important;
+        }
+        .recibo-row-selected td {
+            background-color: #dcfce7 !important;
+        }
+    </style>
+
+    <script>
+        let recibosPagoData = [];
+        let selectedReciboPagoId = null;
+        let proveedoresCacheRecibo = [];
+        let facturasDetalleReciboPago = [];
+        let facturasPendientesPagoCache = [];
+        let modoPeriodoRecibosPago = 'MES';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            inicializarSelectAniosRecibosPago();
+            cargarProveedoresCacheRecibo();
+            cargarRecibosPago();
+        });
+
+        function inicializarSelectAniosRecibosPago() {
+            const selAnio = document.getElementById('filtroAnio');
+            const selMes = document.getElementById('filtroMes');
+            const currentYear = new Date().getFullYear();
+            selAnio.innerHTML = '<option value="TODOS">Todos</option>';
+            for (let y = currentYear + 1; y >= 2020; y--) {
+                const opt = document.createElement('option');
+                opt.value = String(y);
+                opt.textContent = String(y);
+                selAnio.appendChild(opt);
+            }
+            selAnio.value = 'TODOS';
+            selMes.value = 'TODOS';
+        }
+
+        function cambiarModoPeriodoRecibosPago(modo) {
+            modoPeriodoRecibosPago = modo;
+            const gMes = document.getElementById('grupoFiltroMes');
+            const gRango = document.getElementById('grupoFiltroRango');
+            if (modo === 'RANGO') {
+                gMes.style.display = 'none';
+                gRango.style.display = 'flex';
+            } else {
+                gMes.style.display = 'flex';
+                gRango.style.display = 'none';
+                if (document.getElementById('filtroMes').value === 'RANGO') {
+                    document.getElementById('filtroMes').value = 'TODOS';
+                }
+                cargarRecibosPago();
+            }
+        }
+
+        function onCambioPeriodoRecibosPago() {
+            const mes = document.getElementById('filtroMes').value;
+            if (mes === 'RANGO') {
+                cambiarModoPeriodoRecibosPago('RANGO');
+                return;
+            }
+            cargarRecibosPago();
+        }
+
+        function formatGsPago(num) {
+            const n = Math.round(Number(num) || 0);
+            const sign = n < 0 ? '-' : '';
+            return sign + Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        function parseGsPago(str) {
+            if (typeof str === 'number') return Math.round(str);
+            const clean = String(str || '').replace(/[^\d-]/g, '');
+            const val = parseInt(clean, 10);
+            return isNaN(val) ? 0 : val;
+        }
+
+        function formatearInputMilesReciboPago(input) {
+            const raw = String(input.value || '').replace(/\D/g, '');
+            if (raw === '') {
+                input.value = '';
+                return;
+            }
+            input.value = formatGsPago(parseInt(raw, 10));
+        }
+
+        async function cargarProveedoresCacheRecibo() {
+            try {
+                const r = await fetch('/api/recibos-pago/proveedores');
+                const j = await r.json();
+                if (j.status === 'success' && Array.isArray(j.data)) {
+                    proveedoresCacheRecibo = j.data;
+                }
+            } catch (e) {
+                console.warn('Error cargando proveedores:', e);
+            }
+        }
+
+        async function cargarRecibosPago() {
+            const tbody = document.getElementById('tablaRecibosPagoBody');
+            try {
+                let url = '/api/recibos-pago/list';
+                const params = new URLSearchParams();
+                if (modoPeriodoRecibosPago === 'RANGO') {
+                    const d = document.getElementById('filtroFechaDesde').value;
+                    const h = document.getElementById('filtroFechaHasta').value;
+                    if (d) params.set('fechaDesde', d);
+                    if (h) params.set('fechaHasta', h);
+                } else {
+                    const anio = document.getElementById('filtroAnio').value;
+                    const mes = document.getElementById('filtroMes').value;
+                    if (anio && anio !== 'TODOS') params.set('anio', anio);
+                    if (mes && mes !== 'TODOS' && mes !== 'RANGO') params.set('mes', mes);
+                }
+                const qs = params.toString();
+                if (qs) url += '?' + qs;
+
+                const res = await fetch(url);
+                const json = await res.json();
+                if (json.status === 'success' && Array.isArray(json.data)) {
+                    recibosPagoData = json.data;
+                } else {
+                    recibosPagoData = [];
+                }
+                renderTablaRecibosPago(recibosPagoData);
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-danger">Error al cargar recibos de pago.</td></tr>`;
+            }
+        }
+
+        function renderTablaRecibosPago(lista) {
+            const tbody = document.getElementById('tablaRecibosPagoBody');
+            let cantActivos = 0;
+            let cantFacturasRel = 0;
+            let totalPagado = 0;
+
+            if (!lista || lista.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="text-center py-5 text-muted">
+                            <i class="ph ph-receipt" style="font-size: 2.3rem; color: #94a3b8;"></i>
+                            <div class="mt-2" style="font-weight: 700; color: #475569;">No hay recibos de pago registrados en este periodo</div>
+                            <div style="font-size: 0.8rem;">Haga clic en <strong>+ Nuevo</strong> para cargar un recibo de pago de proveedor y sus facturas crédito relacionadas.</div>
+                        </td>
+                    </tr>`;
+                document.getElementById('kpiCantRecibos').textContent = '0';
+                document.getElementById('kpiCantFacturasRel').textContent = '0';
+                document.getElementById('kpiTotalPagado').textContent = '0';
+                document.getElementById('footCantRecibos').textContent = '0';
+                document.getElementById('footTotalPagado').textContent = '0';
+                return;
+            }
+
+            let html = '';
+            lista.forEach(item => {
+                const id = item.ID_RECIBO_PAGO || item.id_recibo_pago;
+                const nro = item.NRO_RECIBO || item.nro_recibo || '';
+                const serie = item.SERIE || item.serie || '';
+                const tipProv = item.TIP_PROVEEDOR || item.tip_proveedor || 'PROVEEDOR LOCAL';
+                const fecha = item.FEC_RECIBO_FMT || item.fec_recibo_fmt || item.FEC_RECIBO || '';
+                const ruc = item.RUC_PROVEEDOR || item.ruc_proveedor || '';
+                const proveedor = item.NOM_PROVEEDOR || item.nom_proveedor || '';
+                const facturasRel = item.FACTURAS_REL || item.facturas_rel || '';
+                const cantFac = parseInt(item.CANT_FACTURAS || item.cant_facturas || 0, 10);
+                const monCode = String(item.COD_MONEDA || item.cod_moneda || '1');
+                const monLabel = monCode === '2' ? 'USD' : (monCode === '3' ? 'BRL' : 'GS');
+                const tc = parseFloat(item.TASA_CAMBIO || item.tasa_cambio || 1) || 1;
+                const total = parseFloat(item.VALOR_TOTAL || item.valor_total || 0);
+                const anulada = (item.ANULADA || item.anulada) === 'S';
+                const isSelected = String(selectedReciboPagoId) === String(id);
+
+                if (!anulada) {
+                    cantActivos++;
+                    cantFacturasRel += cantFac;
+                    totalPagado += total;
+                }
+
+                const badgeAnul = anulada
+                    ? `<span style="background:#fee2e2;color:#b91c1c;font-size:0.7rem;font-weight:800;padding:2px 6px;border-radius:4px;margin-left:6px;">ANULADO</span>`
+                    : '';
+
+                const facBadges = facturasRel
+                    ? `<span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:2px 8px;border-radius:6px;font-weight:700;font-size:0.78rem;font-family:monospace;">${facturasRel}</span>`
+                    : `<span style="color:#94a3b8;font-size:0.78rem;">Sin facturas vinculadas</span>`;
+
+                html += `
+                    <tr class="${isSelected ? 'recibo-row-selected' : ''}"
+                        style="cursor: pointer; ${anulada ? 'opacity:0.6;text-decoration:line-through;' : ''}"
+                        onclick="seleccionarFilaReciboPago(${id}, this)"
+                        ondblclick="seleccionarFilaReciboPago(${id}, this); abrirModalEditarReciboPago();">
+                        <td style="padding: 11px 16px; font-family: monospace; font-weight: 800; color: #0f172a;">${nro}${badgeAnul}</td>
+                        <td style="padding: 11px 12px; text-align: center; font-weight: 800; color: #334155;">${serie || '-'}</td>
+                        <td style="padding: 11px 14px; text-align: center; font-weight: 700; color: #334155;">${fecha}</td>
+                        <td style="padding: 11px 14px; font-size: 0.78rem; font-weight: 700; color: #475569;">${tipProv}</td>
+                        <td style="padding: 11px 14px; font-family: monospace; font-weight: 700; color: #334155;">${ruc}</td>
+                        <td style="padding: 11px 14px; font-weight: 700; color: #0f172a;">${proveedor}</td>
+                        <td style="padding: 11px 14px;">${facBadges}</td>
+                        <td style="padding: 11px 12px; text-align: center; font-weight: 800; color: #475569;">${monLabel}</td>
+                        <td style="padding: 11px 12px; text-align: right; font-family: monospace; font-weight: 700; color: #475569;">${formatGsPago(tc)}</td>
+                        <td style="padding: 11px 16px; text-align: right; font-family: monospace; font-weight: 800; color: #15803d;">${formatGsPago(total)}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+            document.getElementById('kpiCantRecibos').textContent = String(cantActivos);
+            document.getElementById('kpiCantFacturasRel').textContent = String(cantFacturasRel);
+            document.getElementById('kpiTotalPagado').textContent = formatGsPago(totalPagado);
+            document.getElementById('footCantRecibos').textContent = String(cantActivos);
+            document.getElementById('footTotalPagado').textContent = formatGsPago(totalPagado);
+        }
+
+        function seleccionarFilaReciboPago(id, trEl) {
+            selectedReciboPagoId = id;
+            document.querySelectorAll('#tablaRecibosPagoBody tr').forEach(r => r.classList.remove('recibo-row-selected'));
+            if (trEl) trEl.classList.add('recibo-row-selected');
+        }
+
+        function filtrarRecibosPago() {
+            const q = (document.getElementById('searchInput').value || '').trim().toUpperCase();
+            if (!q) {
+                renderTablaRecibosPago(recibosPagoData);
+                return;
+            }
+            const filtrados = recibosPagoData.filter(item => {
+                const nro = String(item.NRO_RECIBO || item.nro_recibo || '').toUpperCase();
+                const serie = String(item.SERIE || item.serie || '').toUpperCase();
+                const ruc = String(item.RUC_PROVEEDOR || item.ruc_proveedor || '').toUpperCase();
+                const nom = String(item.NOM_PROVEEDOR || item.nom_proveedor || '').toUpperCase();
+                const fac = String(item.FACTURAS_REL || item.facturas_rel || '').toUpperCase();
+                return nro.includes(q) || serie.includes(q) || ruc.includes(q) || nom.includes(q) || fac.includes(q);
+            });
+            renderTablaRecibosPago(filtrados);
+        }
+
+        function cambiarTabReciboPago(tab) {
+            const panes = {
+                encabezado: document.getElementById('tabPaneEncabezado'),
+                facturas: document.getElementById('tabPaneFacturas'),
+                informaciones: document.getElementById('tabPaneInformaciones')
+            };
+            const btns = {
+                encabezado: document.getElementById('tabBtnEncabezado'),
+                facturas: document.getElementById('tabBtnFacturas'),
+                informaciones: document.getElementById('tabBtnInformaciones')
+            };
+            Object.keys(panes).forEach(k => {
+                const active = k === tab;
+                panes[k].style.display = active ? 'block' : 'none';
+                btns[k].style.background = active ? '#ffffff' : (k === 'facturas' ? '#dbeafe' : '#f1f5f9');
+                btns[k].style.color = active ? '#0f172a' : (k === 'facturas' ? '#1e40af' : '#475569');
+                btns[k].style.borderColor = active ? '#cbd5e1' : (k === 'facturas' ? '#93c5fd' : 'transparent');
+                btns[k].style.fontWeight = active ? '800' : '700';
+            });
+            const nomProv = (document.getElementById('nomProveedorRecibo').value || '').trim();
+            const rucProv = (document.getElementById('rucProveedorRecibo').value || '').trim();
+            document.getElementById('lblProveedorEnTabFacturas').textContent = nomProv ? `${rucProv} - ${nomProv}` : '— Todos los proveedores —';
+        }
+
+        function alCambiarMonedaReciboPago() {
+            const mon = document.getElementById('codMonedaReciboPago').value;
+            const tcInput = document.getElementById('tasaCambioReciboPago');
+            if (mon === '1') {
+                tcInput.value = '1';
+            }
+        }
+
+        function abrirModalNuevoReciboPago() {
+            document.getElementById('modalTitleReciboPago').textContent = 'Registrar recibo de pago';
+            document.getElementById('idReciboPago').value = '';
+            document.getElementById('codProveedorRecibo').value = '';
+            document.getElementById('tipProveedorRecibo').value = 'PROVEEDOR LOCAL';
+            document.getElementById('rucProveedorRecibo').value = '';
+            document.getElementById('tipDocProveedorRecibo').value = 'RUC';
+            document.getElementById('nomProveedorRecibo').value = '';
+            document.getElementById('nroReciboPago').value = '';
+            document.getElementById('serieReciboPago').value = '';
+            document.getElementById('chkAnuladoReciboPago').checked = false;
+            document.getElementById('fecReciboPago').value = new Date().toISOString().slice(0, 10);
+            document.getElementById('codMonedaReciboPago').value = '1';
+            document.getElementById('tasaCambioReciboPago').value = '1';
+            document.getElementById('valorTotalReciboPago').value = '0';
+            document.getElementById('observacionReciboPago').value = '';
+            document.getElementById('valorOtrasFacturasReciboPago').value = '0';
+            document.getElementById('totalFacturasReciboPago').value = '0';
+            document.getElementById('diferenciaReciboPago').value = '0';
+
+            document.getElementById('infoUsuarioRegPago').value = 'ACTUAL';
+            document.getElementById('infoFecRegPago').value = new Date().toLocaleDateString('es-PY');
+            document.getElementById('infoEstadoRegPago').value = 'ACTIVO (A)';
+
+            facturasDetalleReciboPago = [];
+            renderTablaFacturasDetallePago();
+            recalcularTotalesReciboPago(false);
+            cambiarTabReciboPago('encabezado');
+
+            document.getElementById('reciboPagoModalOverlay').style.display = 'flex';
+            setTimeout(() => document.getElementById('rucProveedorRecibo').focus(), 100);
+        }
+
+        async function abrirModalEditarReciboPago() {
+            if (!selectedReciboPagoId) {
+                Swal.fire({ icon: 'info', title: 'Seleccione un recibo', text: 'Haga clic sobre un recibo de pago de la tabla para modificarlo.' });
+                return;
+            }
+            try {
+                const r = await fetch('/api/recibos-pago/get/' + encodeURIComponent(selectedReciboPagoId));
+                const j = await r.json();
+                if (j.status !== 'success' || !j.data) {
+                    Swal.fire({ icon: 'error', title: 'Error', text: j.message || 'No se pudo cargar el recibo de pago.' });
+                    return;
+                }
+                const d = j.data;
+                document.getElementById('modalTitleReciboPago').textContent = 'Modificar recibo de pago';
+                document.getElementById('idReciboPago').value = d.ID_RECIBO_PAGO || '';
+                document.getElementById('codProveedorRecibo').value = d.COD_PROVEEDOR || '';
+                document.getElementById('tipProveedorRecibo').value = d.TIP_PROVEEDOR || 'PROVEEDOR LOCAL';
+                document.getElementById('rucProveedorRecibo').value = d.RUC_PROVEEDOR || '';
+                document.getElementById('tipDocProveedorRecibo').value = d.TIP_DOC_PROVEEDOR || 'RUC';
+                document.getElementById('nomProveedorRecibo').value = d.NOM_PROVEEDOR || '';
+                document.getElementById('nroReciboPago').value = d.NRO_RECIBO || '';
+                document.getElementById('serieReciboPago').value = d.SERIE || '';
+                document.getElementById('chkAnuladoReciboPago').checked = (d.ANULADA === 'S');
+                document.getElementById('fecReciboPago').value = d.FEC_RECIBO || new Date().toISOString().slice(0, 10);
+                document.getElementById('codMonedaReciboPago').value = String(d.COD_MONEDA || '1');
+                document.getElementById('tasaCambioReciboPago').value = d.TASA_CAMBIO || '1';
+                document.getElementById('valorTotalReciboPago').value = formatGsPago(d.VALOR_TOTAL || 0);
+                document.getElementById('valorOtrasFacturasReciboPago').value = formatGsPago(d.VALOR_OTRAS_FACTURAS || 0);
+                document.getElementById('observacionReciboPago').value = d.OBSERVACION || '';
+
+                document.getElementById('infoUsuarioRegPago').value = d.USUARIO_REG || '-';
+                document.getElementById('infoFecRegPago').value = d.FEC_REG_FMT || '-';
+                document.getElementById('infoEstadoRegPago').value = (d.ANULADA === 'S') ? 'ANULADO (S)' : 'ACTIVO (A)';
+
+                const dets = Array.isArray(d.DETALLES) ? d.DETALLES : [];
+                facturasDetalleReciboPago = dets.map(x => ({
+                    idEgreso: x.ID_EGRESO || null,
+                    tipComprobante: x.TIP_COMPROBANTE || 'FAC',
+                    nroTimbrado: x.NRO_TIMBRADO || '',
+                    nroFactura: x.NRO_FACTURA || '',
+                    serie: x.SERIE || '',
+                    fecEgreso: x.FEC_EGRESO || '',
+                    valorTotal: parseFloat(x.VALOR_TOTAL || 0),
+                    saldo: parseFloat(x.SALDO || 0),
+                    importe: parseFloat(x.IMPORTE || 0)
+                }));
+
+                renderTablaFacturasDetallePago();
+                recalcularTotalesReciboPago(false);
+                cambiarTabReciboPago('encabezado');
+                document.getElementById('reciboPagoModalOverlay').style.display = 'flex';
+            } catch (err) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Error de conexión al obtener el recibo de pago.' });
+            }
+        }
+
+        function cerrarModalReciboPago() {
+            document.getElementById('reciboPagoModalOverlay').style.display = 'none';
+        }
+
+        function verificarProveedorRecibo() {
+            const raw = (document.getElementById('rucProveedorRecibo').value || '').trim();
+            if (!raw) return;
+            const clean = raw.replace(/[-\s]/g, '').toUpperCase();
+            const found = proveedoresCacheRecibo.find(p => {
+                const r = String(p.RUC || p.ruc || '').replace(/[-\s]/g, '').toUpperCase();
+                return r === clean || r.startsWith(clean);
+            });
+            if (found) {
+                document.getElementById('codProveedorRecibo').value = found.COD_PROVEEDOR || found.cod_proveedor || '';
+                document.getElementById('rucProveedorRecibo').value = found.RUC || found.ruc || raw;
+                document.getElementById('nomProveedorRecibo').value = found.NOMBRE || found.nombre || '';
+            } else {
+                const nomInput = document.getElementById('nomProveedorRecibo');
+                nomInput.removeAttribute('readonly');
+                nomInput.style.background = '#ffffff';
+                nomInput.placeholder = 'Ingrese Razón Social del Proveedor...';
+                nomInput.focus();
+            }
+        }
+
+        function buscarProveedorReciboModal() {
+            document.getElementById('inputFiltroProveedorModal').value = '';
+            renderListaProveedoresModal();
+            document.getElementById('buscadorProveedoresReciboOverlay').style.display = 'flex';
+            setTimeout(() => document.getElementById('inputFiltroProveedorModal').focus(), 80);
+        }
+
+        function renderListaProveedoresModal() {
+            const q = (document.getElementById('inputFiltroProveedorModal').value || '').trim().toUpperCase();
+            const tbody = document.getElementById('tbodyProveedoresModalRecibo');
+            const filtrados = proveedoresCacheRecibo.filter(p => {
+                const ruc = String(p.RUC || p.ruc || '').toUpperCase();
+                const nom = String(p.NOMBRE || p.nombre || '').toUpperCase();
+                return !q || ruc.includes(q) || nom.includes(q);
+            }).slice(0, 60);
+
+            if (filtrados.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center py-3 text-muted">No se encontraron proveedores coincidentes.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtrados.map((p, idx) => {
+                const ruc = p.RUC || p.ruc || '';
+                const nom = p.NOMBRE || p.nombre || '';
+                const cod = p.COD_PROVEEDOR || p.cod_proveedor || '';
+                return `
+                    <tr style="cursor:pointer;" onclick="seleccionarProveedorDesdeModal('${cod.replace(/'/g, "\\'")}', '${ruc.replace(/'/g, "\\'")}', '${nom.replace(/'/g, "\\'")}')">
+                        <td style="padding: 8px 14px; font-family: monospace; font-weight: 700;">${ruc}</td>
+                        <td style="padding: 8px 14px; font-weight: 700; color: #0f172a;">${nom}</td>
+                        <td style="padding: 8px 14px; text-align: right;">
+                            <button type="button" class="btn btn-sm" style="background:#dcfce7;color:#15803d;font-weight:800;font-size:0.76rem;padding:2px 10px;border-radius:5px;">Elegir</button>
+                        </td>
+                    </tr>`;
+            }).join('');
+        }
+
+        function seleccionarProveedorDesdeModal(cod, ruc, nom) {
+            document.getElementById('codProveedorRecibo').value = cod;
+            document.getElementById('rucProveedorRecibo').value = ruc;
+            const nomInput = document.getElementById('nomProveedorRecibo');
+            nomInput.value = nom;
+            nomInput.setAttribute('readonly', 'readonly');
+            nomInput.style.background = '#f1f5f9';
+            document.getElementById('buscadorProveedoresReciboOverlay').style.display = 'none';
+            document.getElementById('lblProveedorEnTabFacturas').textContent = `${ruc} - ${nom}`;
+        }
+
+        function renderTablaFacturasDetallePago() {
+            const tbody = document.getElementById('tbodyFacturasReciboPago');
+            document.getElementById('badgeCantFacturasTab').textContent = String(facturasDetalleReciboPago.length);
+
+            if (facturasDetalleReciboPago.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted" style="font-weight: 600;">
+                            Haga clic en <strong>"+ Agregar Facturas"</strong> para vincular las facturas a crédito emitidas por el proveedor.
+                        </td>
+                    </tr>`;
+                document.getElementById('resumenFacturasEnEncabezado').textContent = '';
+                return;
+            }
+
+            tbody.innerHTML = facturasDetalleReciboPago.map((f, index) => {
+                const docVal = f.nroFactura || '';
+                const serieVal = f.serie || '';
+                const fecVal = f.fecEgreso || new Date().toISOString().slice(0, 10);
+                const totalFmt = formatGsPago(f.valorTotal || 0);
+                const saldoFmt = formatGsPago(f.saldo || 0);
+                const impFmt = formatGsPago(f.importe || 0);
+
+                return `
+                    <tr>
+                        <td style="padding: 6px 8px;">
+                            <input type="text" value="${docVal}" placeholder="007-001-0000345"
+                                   onchange="actualizarCampoDetallePago(${index}, 'nroFactura', this.value)"
+                                   style="width: 100%; border: 1px solid #cbd5e1; border-radius: 5px; height: 32px; padding: 2px 8px; font-family: monospace; font-weight: 800; font-size: 0.86rem; color: #0f172a;">
+                        </td>
+                        <td style="padding: 6px 6px;">
+                            <input type="text" value="${serieVal}" maxlength="10" placeholder="Serie"
+                                   onchange="actualizarCampoDetallePago(${index}, 'serie', this.value.toUpperCase())"
+                                   style="width: 100%; text-align: center; text-transform: uppercase; border: 1px solid #cbd5e1; border-radius: 5px; height: 32px; padding: 2px 6px; font-weight: 800; font-size: 0.84rem; color: #334155;">
+                        </td>
+                        <td style="padding: 6px 6px;">
+                            <input type="date" value="${fecVal}"
+                                   onchange="actualizarCampoDetallePago(${index}, 'fecEgreso', this.value)"
+                                   style="width: 100%; border: 1px solid #cbd5e1; border-radius: 5px; height: 32px; padding: 2px 6px; font-weight: 700; font-size: 0.82rem; color: #334155;">
+                        </td>
+                        <td style="padding: 6px 8px;">
+                            <input type="text" inputmode="numeric" value="${totalFmt}"
+                                   oninput="formatearInputMilesReciboPago(this); actualizarMontoDetallePago(${index}, 'valorTotal', this.value)"
+                                   style="width: 100%; text-align: right; border: 1px solid #cbd5e1; border-radius: 5px; height: 32px; padding: 2px 8px; font-family: monospace; font-weight: 700; font-size: 0.86rem; background: #f8fafc; color: #334155;">
+                        </td>
+                        <td style="padding: 6px 8px;">
+                            <input type="text" inputmode="numeric" value="${saldoFmt}"
+                                   oninput="formatearInputMilesReciboPago(this); actualizarMontoDetallePago(${index}, 'saldo', this.value)"
+                                   style="width: 100%; text-align: right; border: 1px solid #cbd5e1; border-radius: 5px; height: 32px; padding: 2px 8px; font-family: monospace; font-weight: 700; font-size: 0.86rem; background: #f8fafc; color: #334155;">
+                        </td>
+                        <td style="padding: 6px 8px;">
+                            <input type="text" inputmode="numeric" value="${impFmt}"
+                                   oninput="formatearInputMilesReciboPago(this); actualizarMontoDetallePago(${index}, 'importe', this.value)"
+                                   style="width: 100%; text-align: right; border: 1.5px solid #0284c7; border-radius: 5px; height: 32px; padding: 2px 8px; font-family: monospace; font-weight: 800; font-size: 0.9rem; background: #f0f9ff; color: #0f172a;">
+                        </td>
+                        <td style="padding: 6px 6px; text-align: center;">
+                            <button type="button" onclick="quitarFilaDetalleReciboPago(${index})"
+                                    style="background: #dc2626; color: white; border: none; width: 30px; height: 30px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;" title="Quitar factura">
+                                <i class="ph-bold ph-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('resumenFacturasEnEncabezado').textContent = `${facturasDetalleReciboPago.length} factura(s) vinculada(s)`;
+        }
+
+        function actualizarCampoDetallePago(index, campo, valor) {
+            if (!facturasDetalleReciboPago[index]) return;
+            facturasDetalleReciboPago[index][campo] = valor;
+        }
+
+        function actualizarMontoDetallePago(index, campo, valorStr) {
+            if (!facturasDetalleReciboPago[index]) return;
+            const num = parseGsPago(valorStr);
+            facturasDetalleReciboPago[index][campo] = num;
+            recalcularTotalesReciboPago(campo === 'importe');
+        }
+
+        function agregarFilaFacturaManualPago() {
+            const fecRec = document.getElementById('fecReciboPago').value || new Date().toISOString().slice(0, 10);
+            const serieRec = (document.getElementById('serieReciboPago').value || '').trim().toUpperCase();
+            facturasDetalleReciboPago.push({
+                idEgreso: null,
+                tipComprobante: 'FAC',
+                nroTimbrado: '',
+                nroFactura: '',
+                serie: serieRec,
+                fecEgreso: fecRec,
+                valorTotal: 0,
+                saldo: 0,
+                importe: 0
+            });
+            renderTablaFacturasDetallePago();
+            recalcularTotalesReciboPago(true);
+        }
+
+        function quitarFilaDetalleReciboPago(index) {
+            facturasDetalleReciboPago.splice(index, 1);
+            renderTablaFacturasDetallePago();
+            recalcularTotalesReciboPago(true);
+        }
+
+        function recalcularTotalesReciboPago(sincronizarValorTotalEncabezado = false) {
+            const sumaDetalle = facturasDetalleReciboPago.reduce((acc, item) => acc + (Number(item.importe) || 0), 0);
+            const otras = parseGsPago(document.getElementById('valorOtrasFacturasReciboPago').value);
+            const totalFacturas = sumaDetalle + otras;
+
+            document.getElementById('totalFacturasReciboPago').value = formatGsPago(totalFacturas);
+
+            let valorTotalEnc = parseGsPago(document.getElementById('valorTotalReciboPago').value);
+            if (sincronizarValorTotalEncabezado || valorTotalEnc === 0) {
+                valorTotalEnc = totalFacturas;
+                document.getElementById('valorTotalReciboPago').value = formatGsPago(valorTotalEnc);
+            }
+
+            const diferencia = valorTotalEnc - totalFacturas;
+            const difInput = document.getElementById('diferenciaReciboPago');
+            difInput.value = formatGsPago(diferencia);
+            difInput.style.color = diferencia === 0 ? '#0f172a' : '#dc2626';
+        }
+
+        async function abrirSelectorFacturasProveedor() {
+            const ruc = (document.getElementById('rucProveedorRecibo').value || '').trim();
+            const cod = (document.getElementById('codProveedorRecibo').value || '').trim();
+            const nom = (document.getElementById('nomProveedorRecibo').value || '').trim();
+            const idRec = (document.getElementById('idReciboPago').value || '').trim();
+
+            document.getElementById('subtituloSelectorFacturasPago').textContent = nom
+                ? `Proveedor: ${ruc} - ${nom}`
+                : 'Mostrando todas las facturas emitidas a CRÉDITO por proveedores en Egresos (Compras)';
+
+            document.getElementById('buscarFacturaPendientePagoInput').value = '';
+            document.getElementById('chkSelectAllFacturasPago').checked = false;
+            document.getElementById('selectorFacturasPagoOverlay').style.display = 'flex';
+
+            const tbody = document.getElementById('tbodySelectorFacturasPendientesPago');
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted">Consultando facturas crédito del proveedor...</td></tr>`;
+
+            try {
+                const params = new URLSearchParams();
+                if (ruc) params.set('rucProveedor', ruc);
+                if (cod) params.set('codProveedor', cod);
+                if (idRec) params.set('idReciboPago', idRec);
+
+                const r = await fetch('/api/recibos-pago/facturas-pendientes?' + params.toString());
+                const j = await r.json();
+                if (j.status === 'success' && Array.isArray(j.data)) {
+                    facturasPendientesPagoCache = j.data;
+                } else {
+                    facturasPendientesPagoCache = [];
+                }
+                filtrarTablaFacturasPendientesPago();
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-danger">Error al consultar facturas pendientes.</td></tr>`;
+            }
+        }
+
+        function cerrarSelectorFacturasProveedor() {
+            document.getElementById('selectorFacturasPagoOverlay').style.display = 'none';
+        }
+
+        function filtrarTablaFacturasPendientesPago() {
+            const q = (document.getElementById('buscarFacturaPendientePagoInput').value || '').trim().toUpperCase();
+            const mostrarCero = document.getElementById('chkMostrarTodasFacturasPago').checked;
+            const tbody = document.getElementById('tbodySelectorFacturasPendientesPago');
+
+            const idsYaAgregados = new Set(facturasDetalleReciboPago.map(d => Number(d.idEgreso)).filter(Boolean));
+
+            const lista = facturasPendientesPagoCache.filter(f => {
+                if (idsYaAgregados.has(Number(f.id_egreso))) return false;
+                if (!mostrarCero && Number(f.saldo) <= 0) return false;
+                if (!q) return true;
+                const doc = String(f.nro_factura || '').toUpperCase();
+                const ser = String(f.serie || '').toUpperCase();
+                const cli = String(f.nom_proveedor || '').toUpperCase();
+                const ruc = String(f.ruc_proveedor || '').toUpperCase();
+                return doc.includes(q) || ser.includes(q) || cli.includes(q) || ruc.includes(q);
+            });
+
+            if (lista.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted">
+                            No se encontraron facturas a crédito con saldo pendiente para este filtro.
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            tbody.innerHTML = lista.map(f => {
+                const monCode = String(f.cod_moneda || '1');
+                const monLabel = monCode === '2' ? 'USD' : (monCode === '3' ? 'BRL' : 'GS');
+                return `
+                <tr style="cursor: pointer;" onclick="const ck = this.querySelector('.chk-fac-pend-pago'); ck.checked = !ck.checked;">
+                    <td style="text-align: center;" onclick="event.stopPropagation();">
+                        <input type="checkbox" class="chk-fac-pend-pago" value="${f.id_egreso}">
+                    </td>
+                    <td style="font-family: monospace; font-weight: 800; color: #0f172a;">${f.nro_factura}</td>
+                    <td style="text-align: center; font-weight: 800; color: #334155;">${f.serie || '-'}</td>
+                    <td style="text-align: center; font-weight: 700;">${f.fec_egreso_fmt || f.fec_egreso}</td>
+                    <td style="font-weight: 700; color: #1e293b;">${f.nom_proveedor} <span style="color:#64748b;font-size:0.76rem;">(${f.ruc_proveedor})</span></td>
+                    <td style="text-align: center; font-weight: 800; color: #475569;">${monLabel}</td>
+                    <td style="text-align: right; font-family: monospace; font-weight: 700;">${formatGsPago(f.valor_total)}</td>
+                    <td style="text-align: right; font-family: monospace; color: #64748b;">${formatGsPago(f.pagado_previo)}</td>
+                    <td style="text-align: right; font-family: monospace; font-weight: 800; color: #15803d;">${formatGsPago(f.saldo)}</td>
+                </tr>
+            `}).join('');
+        }
+
+        function toggleSelectAllFacturasPendientesPago(checked) {
+            document.querySelectorAll('.chk-fac-pend-pago').forEach(ck => {
+                ck.checked = checked;
+            });
+        }
+
+        function confirmarAgregarFacturasSeleccionadasPago() {
+            const checks = Array.from(document.querySelectorAll('.chk-fac-pend-pago:checked'));
+            if (checks.length === 0) {
+                Swal.fire({ icon: 'warning', title: 'Atención', text: 'Marque al menos una factura para vincular al recibo de pago.' });
+                return;
+            }
+
+            checks.forEach(ck => {
+                const idEgr = Number(ck.value);
+                const fac = facturasPendientesPagoCache.find(x => Number(x.id_egreso) === idEgr);
+                if (!fac) return;
+
+                // Si el encabezado aún no tenía proveedor cargado, autocompletarlo con el de la factura
+                if (!document.getElementById('rucProveedorRecibo').value.trim() && fac.ruc_proveedor) {
+                    document.getElementById('rucProveedorRecibo').value = fac.ruc_proveedor;
+                    document.getElementById('nomProveedorRecibo').value = fac.nom_proveedor || '';
+                    document.getElementById('codProveedorRecibo').value = fac.cod_proveedor || '';
+                    document.getElementById('lblProveedorEnTabFacturas').textContent = `${fac.ruc_proveedor} - ${fac.nom_proveedor || ''}`;
+                }
+
+                // Si la factura tiene moneda USD y la cabecera estaba vacía, sincronizar moneda y TC
+                if (facturasDetalleReciboPago.length === 0 && fac.cod_moneda) {
+                    document.getElementById('codMonedaReciboPago').value = String(fac.cod_moneda);
+                    if (Number(fac.tasa_cambio) > 0) {
+                        document.getElementById('tasaCambioReciboPago').value = String(fac.tasa_cambio);
+                    }
+                }
+
+                const saldoPend = Number(fac.saldo) > 0 ? Number(fac.saldo) : Number(fac.valor_total || 0);
+                facturasDetalleReciboPago.push({
+                    idEgreso: fac.id_egreso,
+                    tipComprobante: fac.tip_doc || 'FAC',
+                    nroTimbrado: fac.nro_timbrado || '',
+                    nroFactura: fac.nro_factura || '',
+                    serie: fac.serie || '',
+                    fecEgreso: fac.fec_egreso || new Date().toISOString().slice(0, 10),
+                    valorTotal: Number(fac.valor_total || 0),
+                    saldo: saldoPend,
+                    importe: saldoPend
+                });
+            });
+
+            cerrarSelectorFacturasProveedor();
+            renderTablaFacturasDetallePago();
+            recalcularTotalesReciboPago(true);
+        }
+
+        async function guardarReciboPago() {
+            const rucProveedor = (document.getElementById('rucProveedorRecibo').value || '').trim();
+            const nomProveedor = (document.getElementById('nomProveedorRecibo').value || '').trim();
+            const nroRecibo = (document.getElementById('nroReciboPago').value || '').trim();
+
+            if (!rucProveedor || !nomProveedor) {
+                cambiarTabReciboPago('encabezado');
+                Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'Debe indicar el RUC y Razón Social del Proveedor.' });
+                return;
+            }
+            if (!nroRecibo) {
+                cambiarTabReciboPago('encabezado');
+                Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'Debe indicar el Número del Recibo de Pago.' });
+                return;
+            }
+
+            const payload = {
+                idReciboPago: document.getElementById('idReciboPago').value || null,
+                tipDoc: 'REC',
+                tipProveedor: document.getElementById('tipProveedorRecibo').value,
+                codProveedor: document.getElementById('codProveedorRecibo').value || '',
+                rucProveedor: rucProveedor,
+                tipDocProveedor: document.getElementById('tipDocProveedorRecibo').value,
+                nomProveedor: nomProveedor,
+                nroRecibo: nroRecibo,
+                serie: (document.getElementById('serieReciboPago').value || '').trim().toUpperCase(),
+                anulada: document.getElementById('chkAnuladoReciboPago').checked ? 'S' : 'N',
+                fecRecibo: document.getElementById('fecReciboPago').value,
+                codMoneda: document.getElementById('codMonedaReciboPago').value,
+                tasaCambio: parseFloat(document.getElementById('tasaCambioReciboPago').value) || 1,
+                valorTotal: parseGsPago(document.getElementById('valorTotalReciboPago').value),
+                valorOtrasFacturas: parseGsPago(document.getElementById('valorOtrasFacturasReciboPago').value),
+                observacion: (document.getElementById('observacionReciboPago').value || '').trim(),
+                detalles: facturasDetalleReciboPago
+            };
+
+            const btn = document.getElementById('btnGuardarReciboPago');
+            btn.disabled = true;
+            try {
+                const res = await fetch('/api/recibos-pago/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    cerrarModalReciboPago();
+                    selectedReciboPagoId = json.idReciboPago || selectedReciboPagoId;
+                    await cargarRecibosPago();
+                    Swal.fire({ icon: 'success', title: 'Guardado', text: json.message, timer: 1700, showConfirmButton: false });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: json.message || 'No se pudo guardar el recibo de pago.' });
+                }
+            } catch (err) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Error de red al guardar el recibo de pago.' });
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function eliminarReciboPagoSeleccionado() {
+            if (!selectedReciboPagoId) {
+                Swal.fire({ icon: 'info', title: 'Seleccione un recibo', text: 'Seleccione un recibo de pago de la tabla para eliminarlo.' });
+                return;
+            }
+            const conf = await Swal.fire({
+                icon: 'warning',
+                title: '¿Eliminar Recibo de Pago?',
+                text: 'Se eliminará el recibo de pago y el vínculo con sus facturas asociadas.',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            });
+            if (!conf.isConfirmed) return;
+
+            try {
+                const r = await fetch('/api/recibos-pago/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idReciboPago: selectedReciboPagoId })
+                });
+                const j = await r.json();
+                if (j.status === 'success') {
+                    selectedReciboPagoId = null;
+                    await cargarRecibosPago();
+                    Swal.fire({ icon: 'success', title: 'Eliminado', text: j.message, timer: 1500, showConfirmButton: false });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: j.message || 'No se pudo eliminar.' });
+                }
+            } catch (e) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Error de conexión al eliminar.' });
+            }
+        }
+    </script>
+</body>
+</html>

@@ -2475,7 +2475,8 @@ class ReportesContablesController {
         $sqlIng = "SELECT id_ingreso, tip_doc,
                           COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
                           COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
-                          COALESCE(exentas, 0) AS exentas, COALESCE(tot_iva, 0) AS tot_iva,
+                          COALESCE(exentas, 0) AS exentas, COALESCE(no_gravado, 0) AS no_gravado,
+                          COALESCE(tot_iva, 0) AS tot_iva,
                           COALESCE(valor_total, 0) AS valor_total,
                           COALESCE(anulada, 'N') AS anulada
                    FROM co_ingresos
@@ -2495,23 +2496,25 @@ class ReportesContablesController {
             $anulada = strcasecmp((string)($r['anulada'] ?? 'N'), 'S') === 0;
             if ($anulada) continue;
 
-            $tot = (float)($r['valor_total'] ?? 0);
-            $g10 = (float)($r['grav10'] ?? 0);
-            $i10 = (float)($r['iva10'] ?? 0);
-            $g5  = (float)($r['grav5'] ?? 0);
-            $i5  = (float)($r['iva5'] ?? 0);
-            $ex  = (float)($r['exentas'] ?? 0);
+            $tot   = (float)($r['valor_total'] ?? 0);
+            $g10   = (float)($r['grav10'] ?? 0);
+            $i10   = (float)($r['iva10'] ?? 0);
+            $g5    = (float)($r['grav5'] ?? 0);
+            $i5    = (float)($r['iva5'] ?? 0);
+            $ex    = (float)($r['exentas'] ?? 0);
+            $noGrv = (float)($r['no_gravado'] ?? 0);
+            $tipDoc = strtoupper(trim((string)($r['tip_doc'] ?? 'FAC')));
+            $esLiqSal = ($tipDoc === 'LIQ' || str_contains($tipDoc, 'LIQUIDAC'));
 
             [$b10, $iv10] = self::extraerBaseImponibleEImpuesto($g10, $i10, 10);
             [$b5,  $iv5]  = self::extraerBaseImponibleEImpuesto($g5,  $i5,  5);
             $deducible    = $b10 + $b5 + $ex;
 
-            if ($tot > 0 && $deducible <= 0) {
+            if ($tot > 0 && $deducible <= 0 && !$esLiqSal && $noGrv <= 0) {
                 $totIva    = (float)($r['tot_iva'] ?? 0);
                 $deducible = $totIva > 0 ? max(0.0, $tot - $totIva) : round($tot / 1.1);
             }
 
-            $tipDoc = strtoupper(trim((string)($r['tip_doc'] ?? 'FAC')));
             $sign   = ($tipDoc === 'NCR') ? -1.0 : 1.0;
 
             $ingresosImporte    += ($sign * $tot);
