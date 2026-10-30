@@ -3453,6 +3453,11 @@ class MovimientosContablesController {
                            DATE_FORMAT(r.fec_retencion, '%Y-%m-%d') AS fec_retencion,
                            DATE_FORMAT(r.fec_retencion, '%d/%m/%Y') AS fec_retencion_fmt,
                            COALESCE(r.cod_moneda, '1') AS cod_moneda,
+                           COALESCE(
+                               (SELECT m.descripcion FROM monedas m WHERE m.id_propietario = r.id_propietario AND TRIM(m.cod_moneda) = TRIM(r.cod_moneda) LIMIT 1),
+                               (SELECT m2.descripcion FROM monedas m2 WHERE m2.id_propietario = 1 AND TRIM(m2.cod_moneda) = TRIM(r.cod_moneda) LIMIT 1),
+                               'GUARANÍ'
+                           ) AS desc_moneda,
                            COALESCE(r.tasa_cambio, 1) AS tasa_cambio,
                            COALESCE(r.grav10, 0) AS grav10,
                            COALESCE(r.iva10, 0) AS iva10,
