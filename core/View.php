@@ -268,6 +268,7 @@ class View {
             </div>
             <?php echo self::extractSidebarInlineScript(); ?>
         </aside>
+        <div id="sidebarMobileBackdrop" class="sidebar-mobile-backdrop" onclick="toggleSidebarCollapse()"></div>
         <?php
         return ob_get_clean();
     }
@@ -356,14 +357,14 @@ class View {
             </div>
 
             <div class="user-info">
-                <div style="background: rgba(22, 163, 74, 0.08); border: 1px solid rgba(22, 163, 74, 0.25); padding: 5px 11px; border-radius: 8px; font-size: 0.78rem; color: #15803d; font-weight: 700; display: flex; align-items: center; gap: 5px; cursor: pointer; transition: all 0.2s; white-space: nowrap;" onclick="openGlobalSearchModal()">
-                    <i class="ph ph-magnifying-glass" style="font-size: 0.92rem;"></i> Buscar (Ctrl+F2)
+                <div class="nav-btn-search" style="background: rgba(22, 163, 74, 0.08); border: 1px solid rgba(22, 163, 74, 0.25); padding: 5px 11px; border-radius: 8px; font-size: 0.78rem; color: #15803d; font-weight: 700; display: flex; align-items: center; gap: 5px; cursor: pointer; transition: all 0.2s; white-space: nowrap;" onclick="openGlobalSearchModal()" title="Buscar pantalla (Ctrl+F2)">
+                    <i class="ph ph-magnifying-glass" style="font-size: 0.92rem;"></i> <span class="nav-btn-text">Buscar (Ctrl+F2)</span>
                 </div>
 
                 <?php if ($ejercicio !== ''): ?>
-                <div style="background: #f0fdf4; border: 1px solid #86efac; padding: 5px 11px; border-radius: 8px; font-size: 0.78rem; color: #15803d; font-weight: 700; display: flex; align-items: center; gap: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); white-space: nowrap;">
+                <div class="nav-badge-ejercicio" style="background: #f0fdf4; border: 1px solid #86efac; padding: 5px 11px; border-radius: 8px; font-size: 0.78rem; color: #15803d; font-weight: 700; display: flex; align-items: center; gap: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); white-space: nowrap;" title="Ejercicio Fiscal Activo">
                     <i class="ph ph-calendar-blank" style="font-size: 1rem; color: #16a34a;"></i>
-                    <span>Ejercicio: <strong><?= htmlspecialchars($ejercicio) ?></strong></span>
+                    <span><span class="nav-ejercicio-label">Ejercicio: </span><strong><?= htmlspecialchars($ejercicio) ?></strong></span>
                 </div>
                 <?php endif; ?>
 
@@ -372,12 +373,12 @@ class View {
                     <span class="user-role"><?= htmlspecialchars($roleText) ?></span>
                 </div>
                 <div class="avatar"><?= htmlspecialchars($avatarChar) ?></div>
-                <a href="/cambiar-contribuyente" class="btn-logout" title="Cambiar Contribuyente"
+                <a href="/cambiar-contribuyente" class="btn-logout btn-cambiar-contrib" title="Cambiar Contribuyente"
                    style="color:#15803d; border-color:#bbf7d0; background:#f0fdf4;">
-                    <i class="ph ph-buildings"></i> Cambiar Contribuyente
+                    <i class="ph ph-buildings"></i> <span class="nav-btn-text">Cambiar Contribuyente</span>
                 </a>
-                <a href="/logout" class="btn-logout">
-                    <i class="ph ph-sign-out"></i> Salir
+                <a href="/logout" class="btn-logout btn-salir" title="Cerrar sesión">
+                    <i class="ph ph-sign-out"></i> <span class="nav-btn-text">Salir</span>
                 </a>
             </div>
             <?php echo self::extractGlobalSearchModal(); ?>

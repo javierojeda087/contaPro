@@ -10,7 +10,7 @@
     <!-- Main Content -->
     <main class="main-content">
         <!-- Top Navbar -->
-        <div th:replace="~{fragments/layout :: navbar('Registro de Egresos de Compra')}"></div>
+        <div th:replace="~{fragments/layout :: navbar('Registro de Egresos')}"></div>
 
         <div class="content-area">
             
@@ -37,7 +37,7 @@
                         <button type="button" class="btn" onclick="importarMarangatu()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #475569; height: 38px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
                             <i class="ph ph-download-simple" style="font-size: 1.15rem; color: #16a34a;"></i> Importar Marangatu
                         </button>
-                        <button type="button" class="btn" onclick="importarComprobante()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #475569; height: 38px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
+                        <button type="button" class="btn" onclick="importarComprobante()" style="display: none; background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #475569; height: 38px; padding: 0 16px; border-radius: 8px; align-items: center; gap: 6px;">
                             <i class="ph ph-upload-simple" style="font-size: 1.15rem; color: #16a34a;"></i> Importar
                         </button>
                     </div>
@@ -388,13 +388,13 @@
                 <button type="button" id="btnEgresoTabEncabezado" onclick="switchTab('encabezado')" style="padding: 10px 22px; background: white; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: 700; color: #15803d; border: 1px solid #cbd5e1; border-bottom: none; margin-bottom: -1px; font-size: 0.92rem; cursor: pointer;">
                     Encabezado
                 </button>
-                <button type="button" id="btnEgresoTabAsientoDebe" onclick="switchTab('asientoDebe')" style="padding: 10px 22px; background: #e2e8f0; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: 600; color: #64748b; border: 1px solid transparent; margin-bottom: -1px; font-size: 0.92rem; cursor: pointer;">
+                <button type="button" id="btnEgresoTabAsientoDebe" onclick="switchTab('asientoDebe')" style="display: none; padding: 10px 22px; background: #e2e8f0; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: 600; color: #64748b; border: 1px solid transparent; margin-bottom: -1px; font-size: 0.92rem; cursor: pointer;">
                     Asiento Debe
                 </button>
-                <button type="button" id="btnEgresoTabAsientoHaber" onclick="switchTab('asientoHaber')" style="padding: 10px 22px; background: #e2e8f0; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: 600; color: #64748b; border: 1px solid transparent; margin-bottom: -1px; font-size: 0.92rem; cursor: pointer;">
+                <button type="button" id="btnEgresoTabAsientoHaber" onclick="switchTab('asientoHaber')" style="display: none; padding: 10px 22px; background: #e2e8f0; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: 600; color: #64748b; border: 1px solid transparent; margin-bottom: -1px; font-size: 0.92rem; cursor: pointer;">
                     Asiento Haber
                 </button>
-                <button type="button" id="btnEgresoTabAnexoF120" onclick="switchTab('anexoF120')" style="padding: 10px 22px; background: #e2e8f0; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: 600; color: #64748b; border: 1px solid transparent; margin-bottom: -1px; font-size: 0.92rem; cursor: pointer;">
+                <button type="button" id="btnEgresoTabAnexoF120" onclick="switchTab('anexoF120')" style="display: none; padding: 10px 22px; background: #e2e8f0; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: 600; color: #64748b; border: 1px solid transparent; margin-bottom: -1px; font-size: 0.92rem; cursor: pointer;">
                     Anexo F120
                 </button>
             </div>
@@ -1854,11 +1854,16 @@
                 }
 
                 tr.onclick = function() {
+                    const rowId = item.ID_EGRESO || item.id_egreso;
+                    const alreadySelected = (selectedIdEgreso && String(selectedIdEgreso) === String(rowId));
                     document.querySelectorAll('#tablaEgresosBody tr').forEach(r => {
                         r.classList.remove('fila-seleccionada');
                     });
                     tr.classList.add('fila-seleccionada');
-                    selectedIdEgreso = item.ID_EGRESO || item.id_egreso;
+                    selectedIdEgreso = rowId;
+                    if (alreadySelected && window.innerWidth <= 992) {
+                        abrirModalEditar();
+                    }
                 };
 
                 tr.ondblclick = function() {

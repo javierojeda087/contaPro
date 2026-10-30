@@ -657,6 +657,136 @@
         .table tbody tr.selected-row {
             border-left: 5px solid #16a34a !important;
         }
+
+        /* =====================================================================
+           ADAPTACIÓN RESPONSIVE PARA TABLET (<= 992px) Y TELÉFONO (<= 640px)
+        ===================================================================== */
+        .sidebar-mobile-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(2px);
+            z-index: 2400;
+        }
+
+        @media (max-width: 1120px) {
+            .user-details {
+                display: none !important;
+            }
+        }
+
+        @media (max-width: 992px) {
+            /* Menú lateral como panel deslizable (off-canvas) encima del contenido */
+            .app-sidebar {
+                position: fixed !important;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                z-index: 2500 !important;
+                box-shadow: 10px 0 30px rgba(15, 23, 42, 0.25);
+            }
+
+            body:not(.sidebar-collapsed) .sidebar-mobile-backdrop {
+                display: block;
+            }
+
+            /* Mostrar siempre el logo y botón hamburguesa en el navbar en móvil/tablet */
+            .navbar-collapsed-brand {
+                display: flex !important;
+                padding-right: 10px;
+                margin-right: 2px;
+            }
+
+            .content-area {
+                padding: 1rem 1rem 1.5rem 1rem !important;
+            }
+
+            .page-title-bar {
+                padding: 8px 1rem !important;
+            }
+        }
+
+        @media (max-width: 820px) {
+            /* Compactar botones de la barra superior a íconos limpios */
+            .nav-btn-text {
+                display: none !important;
+            }
+            .nav-btn-search,
+            .btn-logout {
+                padding: 6px 9px !important;
+            }
+            .top-navbar {
+                padding: 0 0.75rem !important;
+                gap: 6px !important;
+            }
+            .user-info {
+                gap: 0.4rem !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            /* Adaptar formularios de modales (Ingresos, Egresos, etc.) para pantallas táctiles */
+            #ingresoModalOverlay > div,
+            #egresoModalOverlay > div {
+                width: 98vw !important;
+                max-height: 95vh !important;
+                border-radius: 12px !important;
+            }
+
+            #formIngreso > div[style*="grid-template-columns"],
+            #formEgreso #tabContentEncabezado > div[style*="grid-template-columns"] {
+                grid-template-columns: 1fr !important;
+                gap: 6px !important;
+            }
+
+            #formIngreso label[style*="text-align: right"],
+            #formEgreso label[style*="text-align: right"] {
+                text-align: left !important;
+                margin-top: 4px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .navbar-collapsed-brand a {
+                display: none !important;
+            }
+            .navbar-collapsed-brand {
+                border-right: none !important;
+                padding-right: 2px !important;
+                margin-right: 0 !important;
+            }
+            .bcp-ticker-badge span:last-child {
+                display: none !important;
+            }
+            .bcp-navbar-ticker {
+                gap: 6px !important;
+            }
+            .bcp-rate-label {
+                font-size: 0.62rem !important;
+            }
+            .bcp-rate-val {
+                font-size: 0.78rem !important;
+            }
+            .nav-ejercicio-label {
+                display: none !important;
+            }
+            .nav-badge-ejercicio {
+                padding: 5px 8px !important;
+                font-size: 0.74rem !important;
+            }
+            .avatar {
+                width: 30px !important;
+                height: 30px !important;
+                font-size: 0.8rem !important;
+            }
+            .content-area {
+                padding: 0.75rem 0.65rem 1.25rem 0.65rem !important;
+            }
+            .page-title {
+                font-size: 0.92rem !important;
+            }
+        }
     </style>
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -835,7 +965,8 @@
 
             document.addEventListener('DOMContentLoaded', function() {
                 try {
-                    if (localStorage.getItem('contapro_sidebar_collapsed') === '1') {
+                    const isSmallScreen = window.innerWidth <= 992;
+                    if (isSmallScreen || localStorage.getItem('contapro_sidebar_collapsed') === '1') {
                         const sb = document.getElementById('appSidebar');
                         if (sb) {
                             sb.classList.add('collapsed');

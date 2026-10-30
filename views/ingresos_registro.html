@@ -10,7 +10,7 @@
     <!-- Main Content -->
     <main class="main-content">
         <!-- Top Navbar -->
-        <div th:replace="~{fragments/layout :: navbar('Registro de Ingresos de Venta')}"></div>
+        <div th:replace="~{fragments/layout :: navbar('Registro de Ingresos')}"></div>
 
         <div class="content-area">
             
@@ -35,10 +35,10 @@
 
                         <div style="height: 24px; width: 1px; background: #cbd5e1; margin: 0 4px;"></div>
 
-                        <button type="button" class="btn" onclick="emitirSifenSeleccionado()" title="Generar CDC 44 dígitos, XML v150 y QR en SIFEN" style="background: #f0fdf4; border: 1.5px solid #86efac; font-weight: 800; font-size: 0.85rem; color: #15803d; height: 38px; padding: 0 14px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
+                        <button type="button" class="btn" onclick="emitirSifenSeleccionado()" title="Generar CDC 44 dígitos, XML v150 y QR en SIFEN" style="display: none; background: #f0fdf4; border: 1.5px solid #86efac; font-weight: 800; font-size: 0.85rem; color: #15803d; height: 38px; padding: 0 14px; border-radius: 8px; align-items: center; gap: 6px;">
                             <i class="ph ph-seal-check" style="font-size: 1.15rem; color: #16a34a;"></i> Emitir SIFEN
                         </button>
-                        <button type="button" class="btn" onclick="imprimirKudeSeleccionado()" title="Ver e Imprimir KuDE (Representación Gráfica Oficial con QR)" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #0f172a; height: 38px; padding: 0 14px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
+                        <button type="button" class="btn" onclick="imprimirKudeSeleccionado()" title="Ver e Imprimir KuDE (Representación Gráfica Oficial con QR)" style="display: none; background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #0f172a; height: 38px; padding: 0 14px; border-radius: 8px; align-items: center; gap: 6px;">
                             <i class="ph ph-printer" style="font-size: 1.15rem; color: #0284c7;"></i> KuDE / QR
                         </button>
                         <button type="button" class="btn" onclick="cancelarSifenSeleccionado()" title="Enviar Evento de Cancelación a SIFEN" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.85rem; color: #b91c1c; height: 38px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; gap: 5px;">
@@ -50,7 +50,7 @@
                         <button type="button" class="btn" onclick="importarMarangatu()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #475569; height: 38px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
                             <i class="ph ph-download-simple" style="font-size: 1.15rem; color: #16a34a;"></i> Importar Marangatu
                         </button>
-                        <button type="button" class="btn" onclick="importarComprobante()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #475569; height: 38px; padding: 0 16px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
+                        <button type="button" class="btn" onclick="importarComprobante()" style="display: none; background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #475569; height: 38px; padding: 0 16px; border-radius: 8px; align-items: center; gap: 6px;">
                             <i class="ph ph-upload-simple" style="font-size: 1.15rem; color: #16a34a;"></i> Importar
                         </button>
                     </div>
@@ -1545,11 +1545,16 @@
                 }
 
                 tr.onclick = function() {
+                    const rowId = item.ID_INGRESO || item.id_ingreso;
+                    const alreadySelected = (selectedIdIngreso && String(selectedIdIngreso) === String(rowId));
                     document.querySelectorAll('#tablaIngresosBody tr').forEach(r => {
                         r.classList.remove('fila-seleccionada');
                     });
                     tr.classList.add('fila-seleccionada');
-                    selectedIdIngreso = item.ID_INGRESO || item.id_ingreso;
+                    selectedIdIngreso = rowId;
+                    if (alreadySelected && window.innerWidth <= 992) {
+                        abrirModalEditar();
+                    }
                 };
 
                 tr.ondblclick = function() {
