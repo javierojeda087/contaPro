@@ -125,6 +125,24 @@ class MenuService {
              )",
             true
         );
+        Database::execute(
+            "INSERT INTO formas (id_propietario, cod_modulo, nom_forma, titulo, descripcion, esta, mostrar_en_menu, cod_modulo_menu, tipo, orden_en_menu)
+             SELECT $pIdInt, 'CO', 'CORETSUF', 'Retenciones Sufridas', 'REGISTRO DE RETENCIONES SUFRIDAS', 'A', 'S', 'CO', 'M', 5
+             FROM DUAL
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM formas WHERE id_propietario = $pIdInt AND UPPER(TRIM(nom_forma)) = 'CORETSUF'
+             )",
+            true
+        );
+        Database::execute(
+            "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
+             SELECT $pIdInt, 'CONADM', 'CO', 'CORETSUF', 'S', 'S', 'S', 'S', 'Retenciones Sufridas', 'S'
+             FROM DUAL
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM accesos_grupos WHERE id_propietario = $pIdInt AND UPPER(TRIM(cod_grupo)) = 'CONADM' AND UPPER(TRIM(nom_forma)) = 'CORETSUF'
+             )",
+            true
+        );
 
         $sql = "SELECT m.cod_modulo,
                        m.descripcion AS modulo_desc,
@@ -315,12 +333,16 @@ class MenuService {
 
             $hasCorecibo = false;
             $hasCorecibopago = false;
+            $hasCoretsuf = false;
             foreach ($modulosMap['CO']['movimientos'] as $movItem) {
                 if (($movItem['nomForma'] ?? '') === 'CORECIBO') {
                     $hasCorecibo = true;
                 }
                 if (($movItem['nomForma'] ?? '') === 'CORECIBOPAGO') {
                     $hasCorecibopago = true;
+                }
+                if (($movItem['nomForma'] ?? '') === 'CORETSUF') {
+                    $hasCoretsuf = true;
                 }
             }
             if (!$hasCorecibo) {
@@ -339,6 +361,15 @@ class MenuService {
                     'tipo'     => 'M',
                     'titulo'   => 'Recibos de Pago',
                     'route'    => RouteHelper::getRoute('CORECIBOPAGO'),
+                ];
+            }
+            if (!$hasCoretsuf) {
+                $modulosMap['CO']['movimientos'][] = [
+                    'nomForma' => 'CORETSUF',
+                    'itemMenu' => 'Retenciones Sufridas',
+                    'tipo'     => 'M',
+                    'titulo'   => 'Retenciones Sufridas',
+                    'route'    => RouteHelper::getRoute('CORETSUF'),
                 ];
             }
         }

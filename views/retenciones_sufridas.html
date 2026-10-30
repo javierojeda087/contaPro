@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Retenciones Sufridas - Sistema Contable')}">
+</head>
+<body style="background: var(--bg-color);">
+
+    <!-- Left Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Navbar -->
+        <div th:replace="~{fragments/layout :: navbar('Registro de Retenciones Sufridas')}"></div>
+
+        <div class="content-area">
+
+            <!-- MAIN CARD WINDOW -->
+            <div style="background: white; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 8px 25px rgba(0,0,0,0.06); overflow: hidden; width: 100%; min-height: calc(100vh - 140px); display: flex; flex-direction: column;">
+
+                <!-- Toolbar & Search Header -->
+                <div style="padding: 16px 22px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; flex-shrink: 0;">
+
+                    <!-- Action Toolbar Buttons -->
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <button type="button" class="btn" onclick="abrirModalNuevaRetencion()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.93rem; color: #1e293b; height: 44px; padding: 0 18px; border-radius: 9px; display: flex; align-items: center; gap: 7px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 0.2s;" onmouseover="this.style.borderColor='#16a34a'; this.style.color='#16a34a'" onmouseout="this.style.borderColor='#cbd5e1'; this.style.color='#1e293b'">
+                            <i class="ph ph-plus-circle" style="color: #16a34a; font-size: 1.25rem;"></i> Nuevo
+                        </button>
+                        <button type="button" class="btn" onclick="abrirModalEditarRetencion()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.93rem; color: #1e293b; height: 44px; padding: 0 18px; border-radius: 9px; display: flex; align-items: center; gap: 7px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 0.2s;" onmouseover="this.style.borderColor='#15803d'; this.style.color='#15803d'" onmouseout="this.style.borderColor='#cbd5e1'; this.style.color='#1e293b'">
+                            <i class="ph ph-pencil-simple" style="color: #15803d; font-size: 1.25rem;"></i> Modificar
+                        </button>
+                        <button type="button" class="btn" onclick="eliminarRetencionSeleccionada()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.93rem; color: #ef4444; height: 44px; padding: 0 18px; border-radius: 9px; display: flex; align-items: center; gap: 7px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 0.2s;" onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#fca5a5'" onmouseout="this.style.background='white'; this.style.borderColor='#cbd5e1'">
+                            <i class="ph ph-trash" style="font-size: 1.25rem;"></i> Eliminar
+                        </button>
+
+                        <div style="height: 28px; width: 1px; background: #cbd5e1; margin: 0 4px;"></div>
+
+                        <button type="button" class="btn" onclick="anularRetencionSeleccionada()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.93rem; color: #b91c1c; height: 44px; padding: 0 18px; border-radius: 9px; display: flex; align-items: center; gap: 7px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 0.2s;" onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#fca5a5'" onmouseout="this.style.background='white'; this.style.borderColor='#cbd5e1'">
+                            <i class="ph ph-prohibit" style="font-size: 1.25rem; color: #dc2626;"></i> Anular
+                        </button>
+                    </div>
+
+                    <!-- Periodo & Search Controls -->
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 8px; background: #ffffff; height: 44px; padding: 0 14px; border-radius: 9px; border: 1.5px solid #cbd5e1; font-size: 0.92rem;">
+                            <span style="font-weight: 700; color: #64748b;">Periodo:</span>
+
+                            <div id="grupoFiltroMes" style="display: flex; align-items: center; gap: 8px;">
+                                <select id="filtroAnio" onchange="onCambioPeriodoRetenciones()" style="border: 1px solid #cbd5e1; border-radius: 7px; padding: 4px 10px; font-weight: 700; color: #0f172a; font-size: 0.92rem; outline: none; background: #f8fafc; cursor: pointer; height: 35px;">
+                                    <option value="TODOS">Todos</option>
+                                </select>
+                                <select id="filtroMes" onchange="onCambioPeriodoRetenciones()" style="border: 2px solid #16a34a; border-radius: 7px; padding: 4px 12px; font-weight: 800; color: #15803d; font-size: 0.93rem; outline: none; background: #dcfce7; cursor: pointer; height: 35px; min-width: 145px;">
+                                    <option value="TODOS">Todos</option>
+                                    <option value="1">Enero</option>
+                                    <option value="2">Febrero</option>
+                                    <option value="3">Marzo</option>
+                                    <option value="4">Abril</option>
+                                    <option value="5">Mayo</option>
+                                    <option value="6">Junio</option>
+                                    <option value="7">Julio</option>
+                                    <option value="8">Agosto</option>
+                                    <option value="9">Septiembre</option>
+                                    <option value="10">Octubre</option>
+                                    <option value="11">Noviembre</option>
+                                    <option value="12">Diciembre</option>
+                                    <option value="RANGO">📅 Por Rango de Fechas...</option>
+                                </select>
+                                <button type="button" onclick="cambiarModoPeriodoRetenciones('RANGO')" style="border: 1px solid #cbd5e1; background: #f8fafc; color: #0284c7; border-radius: 7px; height: 35px; padding: 0 12px; font-size: 0.85rem; font-weight: 800; display: inline-flex; align-items: center; gap: 5px; cursor: pointer;">
+                                    <i class="ph ph-calendar-blank" style="font-size: 1.05rem;"></i> Rango
+                                </button>
+                            </div>
+
+                            <div id="grupoFiltroRango" style="display: none; align-items: center; gap: 6px;">
+                                <span style="font-size: 0.82rem; font-weight: 700; color: #475569;">Desde:</span>
+                                <input type="date" id="filtroFechaDesde" onchange="cargarRetenciones()" style="border: 1.5px solid #0284c7; border-radius: 7px; padding: 3px 8px; font-weight: 700; color: #0f172a; font-size: 0.88rem; background: #f0f9ff; height: 35px; outline: none;">
+                                <span style="font-size: 0.82rem; font-weight: 700; color: #475569;">Hasta:</span>
+                                <input type="date" id="filtroFechaHasta" onchange="cargarRetenciones()" style="border: 1.5px solid #0284c7; border-radius: 7px; padding: 3px 8px; font-weight: 700; color: #0f172a; font-size: 0.88rem; background: #f0f9ff; height: 35px; outline: none;">
+                                <button type="button" onclick="cambiarModoPeriodoRetenciones('MES')" style="border: 1px solid #86efac; background: #dcfce7; color: #15803d; border-radius: 7px; height: 35px; padding: 0 12px; font-size: 0.84rem; font-weight: 800; display: inline-flex; align-items: center; gap: 5px; cursor: pointer;">
+                                    <i class="ph ph-calendar-check" style="font-size: 1.05rem;"></i> Mes
+                                </button>
+                            </div>
+                        </div>
+
+                        <div style="position: relative; width: 250px;">
+                            <input type="text" id="searchInput" class="form-control" placeholder="BUSCAR RETENCIÓN / CLIENTE" onkeyup="filtrarRetenciones()" style="padding-right: 36px; font-size: 0.88rem; font-weight: 700; text-transform: uppercase; border-radius: 9px; border: 1.5px solid #cbd5e1; background: #ffffff; height: 44px;" autocomplete="off">
+                            <i class="ph ph-magnifying-glass" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #64748b; font-size: 1.15rem;"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPIs DE RETENCIONES SUFRIDAS -->
+                <div style="padding: 12px 22px; background: #ffffff; border-bottom: 1px solid #e2e8f0; display: grid; grid-template-columns: repeat(auto-fit, minmax(195px, 1fr)); gap: 12px; flex-shrink: 0;">
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #0284c7; border-radius: 10px; padding: 10px 14px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Retenciones (RES)</span>
+                            <i class="ph ph-file-text" style="color: #0284c7; font-size: 1.15rem;"></i>
+                        </div>
+                        <div style="font-size: 1.25rem; font-weight: 900; color: #0f172a; margin: 2px 0;" id="kpiCantRetenciones">0</div>
+                        <div style="font-size: 0.72rem; color: #64748b; font-weight: 600;">Comprobantes activos en el periodo</div>
+                    </div>
+
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #3b82f6; border-radius: 10px; padding: 10px 14px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.72rem; font-weight: 800; color: #1d4ed8; text-transform: uppercase;">Total Sujeto a Retención</span>
+                            <i class="ph ph-calculator" style="color: #3b82f6; font-size: 1.15rem;"></i>
+                        </div>
+                        <div style="font-size: 1.18rem; font-weight: 900; color: #0f172a; font-family: monospace; margin: 2px 0;" id="kpiTotalBase">0</div>
+                        <div style="font-size: 0.72rem; color: #64748b; font-weight: 600;">IVA Total: <b id="kpiTotalIva" style="color: #0284c7;">0</b></div>
+                    </div>
+
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #16a34a; border-radius: 10px; padding: 10px 14px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.72rem; font-weight: 800; color: #15803d; text-transform: uppercase;">Retención IVA 10%</span>
+                            <i class="ph ph-percent" style="color: #16a34a; font-size: 1.15rem;"></i>
+                        </div>
+                        <div style="font-size: 1.18rem; font-weight: 900; color: #15803d; font-family: monospace; margin: 2px 0;" id="kpiTotalRet10">0</div>
+                        <div style="font-size: 0.72rem; color: #64748b; font-weight: 600;">Retención IVA 5%: <b id="kpiTotalRet5" style="color: #0f172a;">0</b></div>
+                    </div>
+
+                    <div style="background: linear-gradient(135deg, #0f172a, #1e293b); border: 1px solid #0f172a; border-radius: 10px; padding: 10px 14px; color: white;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.72rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Importe Total Retenido</span>
+                            <i class="ph ph-shield-check" style="color: #4ade80; font-size: 1.15rem;"></i>
+                        </div>
+                        <div style="font-size: 1.25rem; font-weight: 900; color: #4ade80; font-family: monospace; margin: 2px 0;" id="kpiTotalRetenido">0</div>
+                        <div style="font-size: 0.71rem; color: #cbd5e1; font-weight: 600;">Crédito por retenciones sufridas</div>
+                    </div>
+                </div>
+
+                <!-- TABLA PRINCIPAL DE RETENCIONES SUFRIDAS -->
+                <div style="overflow-x: auto; flex: 1; min-height: 460px;">
+                    <table class="table table-hover align-middle m-0" style="font-size: 0.88rem;">
+                        <thead style="background: #f8fafc; color: #334155; font-weight: 800; font-size: 0.83rem; border-bottom: 2px solid #e2e8f0;">
+                            <tr>
+                                <th style="padding: 12px 16px;">Número</th>
+                                <th style="padding: 12px 14px;">Timbrado</th>
+                                <th style="padding: 12px 12px;">Tipo</th>
+                                <th style="padding: 12px 12px; text-align: center;">Fecha</th>
+                                <th style="padding: 12px 14px;">RUC</th>
+                                <th style="padding: 12px 14px;">Cliente</th>
+                                <th style="padding: 12px 14px;">Comprobantes</th>
+                                <th style="padding: 12px 12px; text-align: center;">Moneda</th>
+                                <th style="padding: 12px 14px; text-align: right;">Total Facturado</th>
+                                <th style="padding: 12px 14px; text-align: right;">Ret. 10%</th>
+                                <th style="padding: 12px 14px; text-align: right;">Ret. 5%</th>
+                                <th style="padding: 12px 16px; text-align: right;">Importe Retenido</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaRetencionesBody">
+                            <tr>
+                                <td colspan="12" class="text-center py-5 text-muted">
+                                    <i class="ph ph-spinner-gap" style="font-size: 2rem; animation: spin 1s linear infinite;"></i>
+                                    <div class="mt-2" style="font-size: 0.92rem; font-weight: 600;">Cargando retenciones sufridas...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot style="background: #f1f5f9; border-top: 2px solid #cbd5e1; font-weight: 800; color: #0f172a; position: sticky; bottom: 0;">
+                            <tr>
+                                <td colspan="8" style="padding: 11px 16px; text-align: right; font-size: 0.84rem; color: #334155; text-transform: uppercase;">
+                                    Totales Activos (<span id="footCantRetenciones" style="color: #16a34a;">0</span>):
+                                </td>
+                                <td class="text-end" style="padding: 11px 14px; font-family: monospace; font-size: 0.9rem; color: #334155;" id="footTotalFacturado">0,00</td>
+                                <td class="text-end" style="padding: 11px 14px; font-family: monospace; font-size: 0.9rem; color: #0284c7;" id="footTotalRet10">0,00</td>
+                                <td class="text-end" style="padding: 11px 14px; font-family: monospace; font-size: 0.9rem; color: #0284c7;" id="footTotalRet5">0,00</td>
+                                <td class="text-end" style="padding: 11px 16px; font-family: monospace; font-size: 0.96rem; color: #15803d; background: #dcfce7;" id="footTotalRetenido">0,00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL PRINCIPAL: REGISTRAR / MODIFICAR RETENCIÓN SUFRIDA                  -->
+    <!-- ========================================================================= -->
+    <div id="retencionModalOverlay" style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.48); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 14px;">
+        <div style="background: #f1f5f9; border-radius: 10px; border: 1px solid #94a3b8; border-left: 5px solid #0284c7; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.4); width: 96vw; max-width: 1160px; max-height: 94vh; display: flex; flex-direction: column; overflow: hidden; animation: modalSlideDown 0.2s ease-out;">
+
+            <!-- Cabecera del Modal -->
+            <div style="background: #e2e8f0; border-bottom: 1px solid #cbd5e1; padding: 12px 22px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <h3 id="modalTitleRetencion" style="margin: 0; font-size: 1.25rem; font-weight: 700; color: #1e293b;">Registrar retención sufrida</h3>
+                <button type="button" class="btn-close" onclick="cerrarModalRetencion()" style="font-size: 0.95rem; cursor: pointer;"></button>
+            </div>
+
+            <!-- Barra de Pestañas (Encabezado | Comprobantes | Informaciones) -->
+            <div style="background: #cbd5e1; border-bottom: 1px solid #94a3b8; padding: 8px 18px 0 18px; display: flex; gap: 4px; flex-shrink: 0;">
+                <button type="button" id="tabBtnRetEncabezado" onclick="cambiarTabRetencion('encabezado')"
+                        style="padding: 9px 22px; background: #f1f5f9; color: #0f172a; border: 1px solid #94a3b8; border-top: 3px solid #0284c7; border-bottom: none; border-radius: 6px 6px 0 0; font-weight: 800; font-size: 0.92rem; cursor: pointer; margin-bottom: -1px;">
+                    Encabezado
+                </button>
+                <button type="button" id="tabBtnRetComprobantes" onclick="cambiarTabRetencion('comprobantes')"
+                        style="padding: 9px 22px; background: #e2e8f0; color: #334155; border: 1px solid #94a3b8; border-bottom: none; border-radius: 6px 6px 0 0; font-weight: 700; font-size: 0.92rem; cursor: pointer; margin-bottom: -1px; display: flex; align-items: center; gap: 6px;">
+                    <span>Comprobantes</span>
+                    <span id="badgeCantComprobantesRet" style="background: #0284c7; color: white; font-size: 0.72rem; font-weight: 800; padding: 1px 7px; border-radius: 99px;">0</span>
+                </button>
+                <button type="button" id="tabBtnRetInformaciones" onclick="cambiarTabRetencion('informaciones')"
+                        style="padding: 9px 22px; background: #e2e8f0; color: #334155; border: 1px solid #94a3b8; border-bottom: none; border-radius: 6px 6px 0 0; font-weight: 700; font-size: 0.92rem; cursor: pointer; margin-bottom: -1px;">
+                    Informaciones
+                </button>
+            </div>
+
+            <!-- Cuerpo del Formulario -->
+            <div style="padding: 18px 24px; overflow-y: auto; flex: 1; background: #f1f5f9;">
+                <form id="formRetencionSufrida" onsubmit="return false;">
+                    <input type="hidden" id="idRetencion">
+                    <input type="hidden" id="codClienteRet">
+
+                    <!-- ========================================================= -->
+                    <!-- PESTAÑA 1: ENCABEZADO (Diseño idéntico a captura 1)       -->
+                    <!-- ========================================================= -->
+                    <div id="tabPaneRetEncabezado" style="display: block;">
+
+                        <!-- Fila 1: Cliente : [80055317-9] [RUC ▼] [SOMAX AGRO SA.] [Buscar] -->
+                        <div class="ret-grid-row" style="display: grid; grid-template-columns: 120px 175px 150px 1fr 125px; gap: 8px; align-items: center; margin-bottom: 11px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Cliente :</label>
+                            <input type="text" id="rucClienteRet" class="form-control" placeholder="80055317-9"
+                                   onchange="verificarClienteRetencion()"
+                                   onkeypress="if(event.key === 'Enter'){verificarClienteRetencion(); event.preventDefault();}"
+                                   style="border-radius: 5px; font-size: 0.95rem; height: 36px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #0284c7; background: #ffffff;">
+                            <select id="tipDocClienteRet" class="form-control" style="border-radius: 5px; font-size: 0.9rem; height: 36px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #e2e8f0; color: #1e293b;">
+                                <option value="RUC" selected>RUC</option>
+                                <option value="CI">CÉDULA</option>
+                                <option value="OTRO">OTRO</option>
+                            </select>
+                            <input type="text" id="nomClienteRet" class="form-control" placeholder="Razón Social del Cliente..." readonly tabindex="-1"
+                                   style="border-radius: 5px; font-size: 0.95rem; height: 36px; padding: 4px 12px; background: #cbd5e1; font-weight: 700; color: #1e293b; border: 1px solid #94a3b8;">
+                            <button type="button" class="btn" onclick="buscarClienteRetencionModal()"
+                                    style="border: 1px solid #94a3b8; background: #e2e8f0; font-weight: 700; font-size: 0.9rem; color: #0f172a; height: 36px; border-radius: 5px;">
+                                Buscar
+                            </button>
+                        </div>
+
+                        <!-- Fila 2: Timbrado : [11303647]   Tipo : [Virtual ▼] -->
+                        <div class="ret-grid-row" style="display: grid; grid-template-columns: 120px 333px 70px 210px 1fr; gap: 8px; align-items: center; margin-bottom: 11px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Timbrado :</label>
+                            <input type="text" id="nroTimbradoRet" list="listaTimbradosRet" maxlength="15" placeholder="Ej: 11303647"
+                                   style="border-radius: 5px; font-size: 0.95rem; height: 36px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #ffffff; color: #0f172a;">
+                            <datalist id="listaTimbradosRet"></datalist>
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Tipo :</label>
+                            <select id="tipTimbradoRet" class="form-control" style="border-radius: 5px; font-size: 0.92rem; height: 36px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #e2e8f0; color: #1e293b;">
+                                <option value="Virtual" selected>Virtual</option>
+                                <option value="Electrónico">Electrónico</option>
+                                <option value="Pre-impreso">Pre-impreso</option>
+                                <option value="Autoimpresor">Autoimpresor</option>
+                            </select>
+                            <div></div>
+                        </div>
+
+                        <!-- Fila 3: Formulario 145 : [ORIGINAL ▼] -->
+                        <div class="ret-grid-row" style="display: grid; grid-template-columns: 120px 235px 1fr; gap: 8px; align-items: center; margin-bottom: 11px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Formulario 145 :</label>
+                            <select id="form145Ret" class="form-control" style="border-radius: 5px; font-size: 0.92rem; height: 36px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #e2e8f0; color: #1e293b;">
+                                <option value="ORIGINAL" selected>ORIGINAL</option>
+                                <option value="RECTIFICATIVA">RECTIFICATIVA</option>
+                                <option value="CLAUSURA">CLAUSURA</option>
+                            </select>
+                            <div></div>
+                        </div>
+
+                        <!-- Fila 4: Número : [001-005-0016191]                      Fecha : [26/02/2025] -->
+                        <div class="ret-grid-row" style="display: grid; grid-template-columns: 120px 300px 1fr 80px 165px; gap: 8px; align-items: center; margin-bottom: 11px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Número :</label>
+                            <input type="text" id="nroRetencion" placeholder="001-005-0016191" maxlength="20"
+                                   onblur="formatearNumeroComprobanteInput(this)"
+                                   style="border-radius: 5px; font-size: 0.96rem; height: 36px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #ffffff; color: #0f172a;">
+                            <div></div>
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Fecha :</label>
+                            <input type="date" id="fecRetencion" class="form-control"
+                                   style="border-radius: 5px; font-size: 0.92rem; height: 36px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #ffffff; color: #0f172a;">
+                        </div>
+
+                        <!-- Fila 5: Moneda : [DÓLAR ▼]                 Tasa de Cambio : [7.924] -->
+                        <div class="ret-grid-row" style="display: grid; grid-template-columns: 120px 333px 1fr 140px 260px; gap: 8px; align-items: center; margin-bottom: 11px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Moneda :</label>
+                            <select id="codMonedaRet" class="form-control" onchange="onCambioMonedaRetencion()"
+                                    style="border-radius: 5px; font-size: 0.92rem; height: 36px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #e2e8f0; color: #1e293b;">
+                                <option value="1" selected>GUARANÍ</option>
+                                <option value="2">DÓLAR</option>
+                                <option value="3">REAL</option>
+                            </select>
+                            <div></div>
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Tasa de Cambio :</label>
+                            <input type="text" id="tasaCambioRet" value="1"
+                                   oninput="formatearDecimalInput(this, false)"
+                                   style="text-align: right; border-radius: 5px; font-size: 0.95rem; height: 36px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #ffffff; color: #0f172a;">
+                        </div>
+
+                        <!-- Fila 6: Grav. 10% : [2.750,00]  I.V.A. 10% : [250,00]  Porc. 10% : [70,00]  Ret. 10% : [175,00] -->
+                        <div class="ret-grid-row" style="display: grid; grid-template-columns: 120px 1.2fr 95px 1fr 90px 85px 85px 1fr; gap: 8px; align-items: center; margin-bottom: 11px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Grav. 10% :</label>
+                            <input type="text" id="grav10Ret" value="0,00"
+                                   onfocus="seleccionarTextoMonto(this)"
+                                   oninput="recalcularDesdeGravadasRet()"
+                                   onblur="formatearMontoRetOnBlur(this); recalcularDesdeGravadasRet();"
+                                   style="text-align: right; border-radius: 5px; font-size: 0.96rem; height: 36px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #ffffff; color: #0f172a;">
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">I.V.A. 10% :</label>
+                            <input type="text" id="iva10Ret" value="0,00"
+                                   onfocus="seleccionarTextoMonto(this)"
+                                   oninput="recalcularRetencionesDesdeIva()"
+                                   onblur="formatearMontoRetOnBlur(this); recalcularRetencionesDesdeIva();"
+                                   style="text-align: right; border-radius: 5px; font-size: 0.96rem; height: 36px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #cbd5e1; color: #0f172a;">
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Porc. 10% :</label>
+                            <input type="text" id="porc10Ret" value="70,00"
+                                   onfocus="seleccionarTextoMonto(this)"
+                                   oninput="recalcularRetencionesDesdeIva()"
+                                   onblur="formatearMontoRetOnBlur(this); recalcularRetencionesDesdeIva();"
+                                   style="text-align: right; border-radius: 5px; font-size: 0.96rem; height: 36px; padding: 4px 8px; font-weight: 700; border: 1px solid #94a3b8; background: #ffffff; color: #0f172a;">
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Ret. 10% :</label>
+                            <input type="text" id="ret10Ret" value="0,00"
+                                   onfocus="seleccionarTextoMonto(this)"
+                                   oninput="recalcularTotalesDirectosRet()"
+                                   onblur="formatearMontoRetOnBlur(this); recalcularTotalesDirectosRet();"
+                                   style="text-align: right; border-radius: 5px; font-size: 0.96rem; height: 36px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #cbd5e1; color: #0f172a;">
+                        </div>
+
+                        <!-- Fila 7: Grav. 05% : [0,00]      I.V.A. 05% : [0,00]    Porc. 5% : [0,00]   Ret. 05% : [0,00] -->
+                        <div class="ret-grid-row" style="display: grid; grid-template-columns: 120px 1.2fr 95px 1fr 90px 85px 85px 1fr; gap: 8px; align-items: center; margin-bottom: 11px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Grav. 05% :</label>
+                            <input type="text" id="grav5Ret" value="0,00"
+                                   onfocus="seleccionarTextoMonto(this)"
+                                   oninput="recalcularDesdeGravadasRet()"
+                                   onblur="formatearMontoRetOnBlur(this); recalcularDesdeGravadasRet();"
+                                   style="text-align: right; border-radius: 5px; font-size: 0.96rem; height: 36px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #ffffff; color: #0f172a;">
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">I.V.A. 05% :</label>
+                            <input type="text" id="iva5Ret" value="0,00"
+                                   onfocus="seleccionarTextoMonto(this)"
+                                   oninput="recalcularRetencionesDesdeIva()"
+                                   onblur="formatearMontoRetOnBlur(this); recalcularRetencionesDesdeIva();"
+                                   style="text-align: right; border-radius: 5px; font-size: 0.96rem; height: 36px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #cbd5e1; color: #0f172a;">
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Porc. 5% :</label>
+                            <input type="text" id="porc5Ret" value="0,00"
+                                   onfocus="seleccionarTextoMonto(this)"
+                                   oninput="recalcularRetencionesDesdeIva()"
+                                   onblur="formatearMontoRetOnBlur(this); recalcularRetencionesDesdeIva();"
+                                   style="text-align: right; border-radius: 5px; font-size: 0.96rem; height: 36px; padding: 4px 8px; font-weight: 700; border: 1px solid #94a3b8; background: #ffffff; color: #0f172a;">
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Ret. 05% :</label>
+                            <input type="text" id="ret5Ret" value="0,00"
+                                   onfocus="seleccionarTextoMonto(this)"
+                                   oninput="recalcularTotalesDirectosRet()"
+                                   onblur="formatearMontoRetOnBlur(this); recalcularTotalesDirectosRet();"
+                                   style="text-align: right; border-radius: 5px; font-size: 0.96rem; height: 36px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #cbd5e1; color: #0f172a;">
+                        </div>
+
+                        <!-- Fila 8: Exentas : [0,00]       Total : [2.750,00]      Importe Retenido : [175,00] -->
+                        <div class="ret-grid-row" style="display: grid; grid-template-columns: 120px 1.2fr 95px 1.45fr 140px 1fr; gap: 8px; align-items: center; margin-bottom: 11px;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Exentas :</label>
+                            <input type="text" id="exentasRet" value="0,00"
+                                   onfocus="seleccionarTextoMonto(this)"
+                                   oninput="recalcularDesdeGravadasRet()"
+                                   onblur="formatearMontoRetOnBlur(this); recalcularDesdeGravadasRet();"
+                                   style="text-align: right; border-radius: 5px; font-size: 0.96rem; height: 36px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #ffffff; color: #0f172a;">
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Total :</label>
+                            <input type="text" id="valorTotalRet" value="0,00" readonly
+                                   style="text-align: right; border-radius: 5px; font-size: 0.98rem; height: 36px; padding: 4px 10px; font-weight: 800; border: 1px solid #94a3b8; background: #cbd5e1; color: #0f172a;">
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Importe Retenido :</label>
+                            <input type="text" id="importeRetenidoRet" value="0,00" readonly
+                                   style="text-align: right; border-radius: 5px; font-size: 0.98rem; height: 36px; padding: 4px 10px; font-weight: 800; border: 1px solid #94a3b8; background: #cbd5e1; color: #0f172a;">
+                        </div>
+
+                        <!-- Fila 9: Observación -->
+                        <div class="ret-grid-row" style="display: grid; grid-template-columns: 120px 1fr; gap: 8px; align-items: start;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155; padding-top: 6px;">Observación :</label>
+                            <textarea id="observacionRet" rows="3" placeholder=""
+                                      style="width: 100%; border-radius: 5px; border: 1px solid #94a3b8; background: #ffffff; padding: 8px 12px; font-size: 0.92rem; font-weight: 600; color: #1e293b; resize: vertical;"></textarea>
+                        </div>
+
+                    </div>
+
+                    <!-- ========================================================= -->
+                    <!-- PESTAÑA 2: COMPROBANTES (Diseño idéntico a captura 2)     -->
+                    <!-- ========================================================= -->
+                    <div id="tabPaneRetComprobantes" style="display: none;">
+
+                        <!-- Panel superior de selección / carga de comprobante -->
+                        <div style="margin-bottom: 10px;">
+                            <!-- Fila 1: Comprobante [___-___-_______] [Info] [Buscar]         Retenido [     ] -->
+                            <div class="ret-grid-row" style="display: grid; grid-template-columns: 110px 180px 1fr 100px 110px 260px; gap: 8px; align-items: center; margin-bottom: 8px;">
+                                <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Comprobante</label>
+                                <input type="text" id="compNroInput" placeholder="___-___-_______" maxlength="20"
+                                       onblur="formatearNumeroComprobanteInput(this); buscarComprobanteDirectoPorNro();"
+                                       onkeypress="if(event.key==='Enter'){formatearNumeroComprobanteInput(this); buscarComprobanteDirectoPorNro(); event.preventDefault();}"
+                                       style="border-radius: 5px; font-size: 0.95rem; height: 34px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #0284c7; background: #ffffff; color: #0f172a;">
+                                <input type="text" id="compDescInput" readonly tabindex="-1" placeholder=""
+                                       style="border-radius: 5px; font-size: 0.88rem; height: 34px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #cbd5e1; color: #1e293b;">
+                                <button type="button" class="btn" onclick="abrirSelectorComprobantesCliente()"
+                                        style="border: 1px solid #94a3b8; background: #e2e8f0; font-weight: 700; font-size: 0.88rem; color: #0f172a; height: 34px; border-radius: 5px;">
+                                    Buscar
+                                </button>
+                                <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Retenido</label>
+                                <input type="text" id="compRetenidoInput" value="0,00"
+                                       onfocus="seleccionarTextoMonto(this)"
+                                       onblur="formatearMontoRetOnBlur(this)"
+                                       style="text-align: right; border-radius: 5px; font-size: 0.95rem; height: 34px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #ffffff; color: #0f172a;">
+                            </div>
+
+                            <!-- Fila 2: Grav. 10% : [0,00] [0,00]           I.V.A. 10% : [0,00] -->
+                            <div class="ret-grid-row" style="display: grid; grid-template-columns: 110px 290px 210px 1fr 110px 260px; gap: 8px; align-items: center; margin-bottom: 8px;">
+                                <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Grav. 10% :</label>
+                                <input type="text" id="compGrav10A" value="0,00" readonly
+                                       style="text-align: right; border-radius: 5px; font-size: 0.94rem; height: 34px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #cbd5e1; color: #1e293b;">
+                                <input type="text" id="compGrav10B" value="0,00" readonly
+                                       style="text-align: right; border-radius: 5px; font-size: 0.94rem; height: 34px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #cbd5e1; color: #1e293b;">
+                                <div></div>
+                                <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">I.V.A. 10% :</label>
+                                <input type="text" id="compIva10" value="0,00" readonly
+                                       style="text-align: right; border-radius: 5px; font-size: 0.94rem; height: 34px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #cbd5e1; color: #1e293b;">
+                            </div>
+
+                            <!-- Fila 3: Grav. 05% : [0,00] [0,00]           I.V.A. 05% : [0,00] -->
+                            <div class="ret-grid-row" style="display: grid; grid-template-columns: 110px 290px 210px 1fr 110px 260px; gap: 8px; align-items: center; margin-bottom: 8px;">
+                                <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Grav. 05% :</label>
+                                <input type="text" id="compGrav5A" value="0,00" readonly
+                                       style="text-align: right; border-radius: 5px; font-size: 0.94rem; height: 34px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #cbd5e1; color: #1e293b;">
+                                <input type="text" id="compGrav5B" value="0,00" readonly
+                                       style="text-align: right; border-radius: 5px; font-size: 0.94rem; height: 34px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #cbd5e1; color: #1e293b;">
+                                <div></div>
+                                <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">I.V.A. 05% :</label>
+                                <input type="text" id="compIva5" value="0,00" readonly
+                                       style="text-align: right; border-radius: 5px; font-size: 0.94rem; height: 34px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #cbd5e1; color: #1e293b;">
+                            </div>
+
+                            <!-- Fila 4: Exentas : [0,00] [0,00]             Total I.V.A. : [0,00] -->
+                            <div class="ret-grid-row" style="display: grid; grid-template-columns: 110px 290px 210px 1fr 110px 260px; gap: 8px; align-items: center; margin-bottom: 8px;">
+                                <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Exentas :</label>
+                                <input type="text" id="compExentasA" value="0,00" readonly
+                                       style="text-align: right; border-radius: 5px; font-size: 0.94rem; height: 34px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #cbd5e1; color: #1e293b;">
+                                <input type="text" id="compExentasB" value="0,00" readonly
+                                       style="text-align: right; border-radius: 5px; font-size: 0.94rem; height: 34px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #cbd5e1; color: #1e293b;">
+                                <div></div>
+                                <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Total I.V.A. :</label>
+                                <input type="text" id="compTotIva" value="0,00" readonly
+                                       style="text-align: right; border-radius: 5px; font-size: 0.94rem; height: 34px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #cbd5e1; color: #1e293b;">
+                            </div>
+
+                            <!-- Fila 5: Total [           ]                              [ + ]  [ - ] -->
+                            <div class="ret-grid-row" style="display: grid; grid-template-columns: 110px 290px 1fr auto; gap: 8px; align-items: center;">
+                                <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Total</label>
+                                <input type="text" id="compTotal" value="0,00" readonly
+                                       style="text-align: right; border-radius: 5px; font-size: 0.95rem; height: 34px; padding: 4px 10px; font-weight: 800; border: 1px solid #94a3b8; background: #cbd5e1; color: #0f172a;">
+                                <div></div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button type="button" class="btn" onclick="agregarComprobanteAGrilla()" title="Agregar comprobante a la lista"
+                                            style="width: 68px; height: 34px; border: 1px solid #64748b; background: #e2e8f0; color: #0f172a; font-weight: 900; font-size: 1.25rem; line-height: 1; border-radius: 5px; display: flex; align-items: center; justify-content: center;">
+                                        +
+                                    </button>
+                                    <button type="button" class="btn" onclick="quitarComprobanteSeleccionadoGrilla()" title="Quitar comprobante seleccionado de la lista"
+                                            style="width: 68px; height: 34px; border: 1px solid #64748b; background: #e2e8f0; color: #0f172a; font-weight: 900; font-size: 1.25rem; line-height: 1; border-radius: 5px; display: flex; align-items: center; justify-content: center;">
+                                        &minus;
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tabla de Comprobantes Vinculados -->
+                        <div style="border: 1px solid #94a3b8; border-radius: 4px; overflow: hidden; min-height: 220px; max-height: 260px; overflow-y: auto; background: #e2e8f0; margin-bottom: 12px;">
+                            <table class="table table-bordered align-middle m-0" style="font-size: 0.88rem; background: #f8fafc;">
+                                <thead style="background: #cbd5e1; color: #1e293b; font-weight: 800; font-size: 0.84rem; position: sticky; top: 0; z-index: 2;">
+                                    <tr>
+                                        <th style="padding: 8px 12px; width: 16%; text-align: center;">Tipo</th>
+                                        <th style="padding: 8px 12px; width: 26%; text-align: center;">Comprobante</th>
+                                        <th style="padding: 8px 12px; width: 20%; text-align: center;">Total</th>
+                                        <th style="padding: 8px 12px; width: 19%; text-align: center;">I.V.A.</th>
+                                        <th style="padding: 8px 12px; width: 19%; text-align: center;">Retenido</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaComprobantesRetBody">
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-muted" style="background: #e2e8f0;">
+                                            Sin comprobantes asociados. Use el botón <b>Buscar</b> y luego presione <b>+</b>.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Barra Inferior: Retención : [175,00]  Comprobantes : [175,00]  Diferencia : [0,00] -->
+                        <div class="ret-grid-row" style="display: grid; grid-template-columns: 95px 1fr 120px 1fr 100px 1fr; gap: 10px; align-items: center;">
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Retención :</label>
+                            <input type="text" id="resumenRetencionTab" value="0,00" readonly
+                                   style="text-align: right; border-radius: 5px; font-size: 0.95rem; height: 34px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #cbd5e1; color: #0f172a;">
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Comprobantes :</label>
+                            <input type="text" id="resumenComprobantesTab" value="0,00" readonly
+                                   style="text-align: right; border-radius: 5px; font-size: 0.95rem; height: 34px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #cbd5e1; color: #0f172a;">
+
+                            <label style="text-align: right; font-weight: 700; font-size: 0.9rem; color: #334155;">Diferencia :</label>
+                            <input type="text" id="resumenDiferenciaTab" value="0,00" readonly
+                                   style="text-align: right; border-radius: 5px; font-size: 0.95rem; height: 34px; padding: 4px 10px; font-weight: 700; border: 1px solid #94a3b8; background: #cbd5e1; color: #0f172a;">
+                        </div>
+
+                    </div>
+
+                    <!-- ========================================================= -->
+                    <!-- PESTAÑA 3: INFORMACIONES                                  -->
+                    <!-- ========================================================= -->
+                    <div id="tabPaneRetInformaciones" style="display: none;">
+                        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 18px 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                            <div>
+                                <div style="font-size: 0.78rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Tipo de Comprobante</div>
+                                <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; margin-top: 2px;">RES — RETENCIÓN SUFRIDA</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.78rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Usuario de Registro</div>
+                                <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; margin-top: 2px;" id="infoUsuarioRegRet">-</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.78rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Fecha / Hora de Registro</div>
+                                <div style="font-size: 0.95rem; font-weight: 700; color: #334155; margin-top: 2px;" id="infoFecRegRet">-</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.78rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Estado</div>
+                                <div style="font-size: 0.95rem; font-weight: 800; color: #15803d; margin-top: 2px;" id="infoEstadoRet">ACTIVO</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+
+            <!-- Pie de Modal (Cancelar / Guardar) -->
+            <div style="background: #e2e8f0; border-top: 1px solid #cbd5e1; padding: 12px 24px; display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0;">
+                <button type="button" class="btn" onclick="cerrarModalRetencion()"
+                        style="background: #f8fafc; border: 1px solid #94a3b8; font-weight: 700; font-size: 0.9rem; color: #1e293b; padding: 7px 20px; border-radius: 5px; display: flex; align-items: center; gap: 6px;">
+                    <i class="ph-bold ph-x" style="font-size: 0.95rem;"></i> Cancelar
+                </button>
+                <button type="button" class="btn" onclick="guardarRetencionSufrida()"
+                        style="background: linear-gradient(180deg, #38bdf8, #0284c7); border: 1px solid #0369a1; font-weight: 800; font-size: 0.92rem; color: white; padding: 7px 24px; border-radius: 5px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(2,132,199,0.3);">
+                    <i class="ph-bold ph-check" style="font-size: 1rem;"></i> Guardar
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- SUB-MODAL: SELECCIONAR COMPROBANTE DE INGRESO DEL CLIENTE                 -->
+    <!-- ========================================================================= -->
+    <div id="selectorComprobantesRetOverlay" style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); z-index: 2600; display: none; align-items: center; justify-content: center; padding: 16px;">
+        <div style="background: white; border-radius: 12px; border: 1px solid #94a3b8; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.45); width: 94vw; max-width: 900px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;">
+            <div style="background: #f8fafc; border-bottom: 1px solid #cbd5e1; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;">
+                <h4 style="margin: 0; font-size: 1rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-files" style="color: #0284c7; font-size: 1.2rem;"></i>
+                    Seleccionar Comprobante de Ingreso del Cliente
+                </h4>
+                <button type="button" class="btn-close" onclick="cerrarSelectorComprobantesRet()"></button>
+            </div>
+
+            <div style="padding: 12px 20px; background: #f1f5f9; border-bottom: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <input type="text" id="busquedaComprobanteCliente" class="form-control" placeholder="Filtrar por N° de factura o cliente..." oninput="filtrarTablaSelectorComprobantes()"
+                       style="max-width: 380px; height: 36px; font-size: 0.88rem; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1;">
+                <span style="font-size: 0.82rem; font-weight: 700; color: #475569;">Haga clic en un comprobante para seleccionarlo</span>
+            </div>
+
+            <div style="overflow-y: auto; flex: 1; max-height: 420px;">
+                <table class="table table-hover align-middle m-0" style="font-size: 0.86rem;">
+                    <thead style="background: #f8fafc; font-weight: 800; color: #334155; position: sticky; top: 0;">
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Comprobante</th>
+                            <th style="text-align: center;">Fecha</th>
+                            <th>Cliente</th>
+                            <th style="text-align: right;">Grav. 10%</th>
+                            <th style="text-align: right;">I.V.A.</th>
+                            <th style="text-align: right;">Total</th>
+                            <th style="text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaSelectorComprobantesBody"></tbody>
+                </table>
+            </div>
+
+            <div style="background: #f8fafc; border-top: 1px solid #cbd5e1; padding: 10px 20px; display: flex; justify-content: flex-end;">
+                <button type="button" class="btn" onclick="cerrarSelectorComprobantesRet()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.86rem; padding: 6px 18px; border-radius: 6px;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes modalSlideDown {
+            from { opacity: 0; transform: translateY(-16px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @media (max-width: 768px) {
+            .ret-grid-row {
+                grid-template-columns: 1fr !important;
+                gap: 6px !important;
+            }
+            .ret-grid-row label {
+                text-align: left !important;
+            }
+        }
+    </style>
+
+    <!-- Layout Scripts -->
+    <div th:replace="~{fragments/layout :: scripts}"></div>
+
+    <script>
+        let listRetencionesData = [];
+        let selectedIdRetencion = null;
+        let detalleComprobantesRet = [];
+        let selectedIndexComprobanteGrilla = -1;
+        let comprobanteEnEdicionActual = null;
+        let cacheComprobantesCliente = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            inicializarFiltroAniosRetenciones();
+            cargarTimbradosSugeridos();
+            cargarRetenciones();
+        });
+
+        function obtenerAnioEjercicioActual() {
+            const navText = document.body.innerText || '';
+            const match = navText.match(/Ejercicio:\s*(\d{4})/i);
+            if (match && match[1]) return parseInt(match[1], 10);
+            return new Date().getFullYear();
+        }
+
+        function inicializarFiltroAniosRetenciones() {
+            const selectAnio = document.getElementById('filtroAnio');
+            const selectMes  = document.getElementById('filtroMes');
+            if (!selectAnio) return;
+
+            const anioEj = obtenerAnioEjercicioActual();
+            const anioActual = new Date().getFullYear();
+            const aniosSet = new Set([anioEj, anioActual, anioEj - 1, anioEj + 1]);
+            const aniosOrdenados = Array.from(aniosSet).sort((a, b) => b - a);
+
+            selectAnio.innerHTML = '<option value="TODOS">Todos</option>';
+            aniosOrdenados.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = String(a);
+                opt.textContent = String(a);
+                if (a === anioEj) opt.selected = true;
+                selectAnio.appendChild(opt);
+            });
+
+            if (selectMes) {
+                selectMes.value = 'TODOS';
+            }
+        }
+
+        function cambiarModoPeriodoRetenciones(modo) {
+            const grpMes = document.getElementById('grupoFiltroMes');
+            const grpRng = document.getElementById('grupoFiltroRango');
+            if (modo === 'RANGO') {
+                grpMes.style.display = 'none';
+                grpRng.style.display = 'flex';
+            } else {
+                grpRng.style.display = 'none';
+                grpMes.style.display = 'flex';
+                const selMes = document.getElementById('filtroMes');
+                if (selMes && selMes.value === 'RANGO') selMes.value = 'TODOS';
+                cargarRetenciones();
+            }
+        }
+
+        function onCambioPeriodoRetenciones() {
+            const selMes = document.getElementById('filtroMes');
+            if (selMes && selMes.value === 'RANGO') {
+                cambiarModoPeriodoRetenciones('RANGO');
+                return;
+            }
+            cargarRetenciones();
+        }
+
+        async function cargarTimbradosSugeridos() {
+            try {
+                const res = await fetch('/api/timbrados/list');
+                const json = await res.json();
+                const dl = document.getElementById('listaTimbradosRet');
+                if (!dl || !json.data) return;
+                dl.innerHTML = '';
+                json.data.forEach(t => {
+                    const nro = t.NRO_TIMBRADO || t.nro_timbrado || '';
+                    if (nro) {
+                        const opt = document.createElement('option');
+                        opt.value = nro;
+                        dl.appendChild(opt);
+                    }
+                });
+            } catch (e) {}
+        }
+
+        // =====================================================================
+        // FORMATEO DE MONTOS (SOPORTA DECIMALES 2.750,00 Y ENTEROS)
+        // =====================================================================
+        function parseMontoDecimal(val) {
+            if (val === null || val === undefined) return 0;
+            if (typeof val === 'number') return isNaN(val) ? 0 : val;
+            let s = String(val).trim();
+            if (!s) return 0;
+            if (s.includes(',') && s.includes('.')) {
+                s = s.replace(/\./g, '').replace(',', '.');
+            } else if (s.includes(',')) {
+                s = s.replace(',', '.');
+            } else if ((s.match(/\./g) || []).length > 1) {
+                s = s.replace(/\./g, '');
+            } else if (s.includes('.')) {
+                const parts = s.split('.');
+                if (parts[1] && parts[1].length === 3) {
+                    s = s.replace(/\./g, '');
+                }
+            }
+            const n = parseFloat(s);
+            return isNaN(n) ? 0 : n;
+        }
+
+        function formatMontoDosDecimales(num) {
+            const n = Number(num) || 0;
+            return n.toLocaleString('es-PY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function seleccionarTextoMonto(input) {
+            setTimeout(() => {
+                try { input.select(); } catch (e) {}
+            }, 10);
+        }
+
+        function formatearMontoRetOnBlur(input) {
+            const n = parseMontoDecimal(input.value);
+            input.value = formatMontoDosDecimales(n);
+        }
+
+        function formatearDecimalInput(input) {
+            input.value = input.value.replace(/[^0-9.,]/g, '');
+        }
+
+        function formatearNumeroComprobanteInput(input) {
+            let s = (input.value || '').trim();
+            if (!s) return;
+            const digits = s.replace(/\D/g, '');
+            if (s.includes('-')) {
+                const p = s.split('-');
+                if (p.length === 3) {
+                    input.value = p[0].trim().padStart(3, '0') + '-' + p[1].trim().padStart(3, '0') + '-' + p[2].trim().padStart(7, '0');
+                }
+            } else if (digits.length > 0 && digits.length <= 7) {
+                input.value = '001-001-' + digits.padStart(7, '0');
+            } else if (digits.length === 13) {
+                input.value = digits.slice(0, 3) + '-' + digits.slice(3, 6) + '-' + digits.slice(6).padStart(7, '0');
+            }
+        }
+
+        // =====================================================================
+        // CÁLCULOS AUTOMÁTICOS DE ENCABEZADO Y COMPROBANTES
+        // =====================================================================
+        function recalcularDesdeGravadasRet() {
+            const grav10  = parseMontoDecimal(document.getElementById('grav10Ret').value);
+            const grav5   = parseMontoDecimal(document.getElementById('grav5Ret').value);
+            const exentas = parseMontoDecimal(document.getElementById('exentasRet').value);
+
+            const iva10 = Math.round((grav10 / 11) * 100) / 100;
+            const iva5  = Math.round((grav5 / 21) * 100) / 100;
+
+            document.getElementById('iva10Ret').value = formatMontoDosDecimales(iva10);
+            document.getElementById('iva5Ret').value  = formatMontoDosDecimales(iva5);
+
+            recalcularRetencionesDesdeIva();
+        }
+
+        function recalcularRetencionesDesdeIva() {
+            const grav10  = parseMontoDecimal(document.getElementById('grav10Ret').value);
+            const grav5   = parseMontoDecimal(document.getElementById('grav5Ret').value);
+            const exentas = parseMontoDecimal(document.getElementById('exentasRet').value);
+
+            const iva10  = parseMontoDecimal(document.getElementById('iva10Ret').value);
+            const porc10 = parseMontoDecimal(document.getElementById('porc10Ret').value);
+            const iva5   = parseMontoDecimal(document.getElementById('iva5Ret').value);
+            const porc5  = parseMontoDecimal(document.getElementById('porc5Ret').value);
+
+            const ret10 = Math.round((iva10 * (porc10 / 100)) * 100) / 100;
+            const ret5  = Math.round((iva5 * (porc5 / 100)) * 100) / 100;
+
+            document.getElementById('ret10Ret').value = formatMontoDosDecimales(ret10);
+            document.getElementById('ret5Ret').value  = formatMontoDosDecimales(ret5);
+
+            const total = grav10 + grav5 + exentas;
+            const impRetenido = ret10 + ret5;
+
+            document.getElementById('valorTotalRet').value      = formatMontoDosDecimales(total);
+            document.getElementById('importeRetenidoRet').value = formatMontoDosDecimales(impRetenido);
+
+            actualizarResumenTabComprobantes();
+        }
+
+        function recalcularTotalesDirectosRet() {
+            const grav10  = parseMontoDecimal(document.getElementById('grav10Ret').value);
+            const grav5   = parseMontoDecimal(document.getElementById('grav5Ret').value);
+            const exentas = parseMontoDecimal(document.getElementById('exentasRet').value);
+            const ret10   = parseMontoDecimal(document.getElementById('ret10Ret').value);
+            const ret5    = parseMontoDecimal(document.getElementById('ret5Ret').value);
+
+            document.getElementById('valorTotalRet').value      = formatMontoDosDecimales(grav10 + grav5 + exentas);
+            document.getElementById('importeRetenidoRet').value = formatMontoDosDecimales(ret10 + ret5);
+
+            actualizarResumenTabComprobantes();
+        }
+
+        function actualizarResumenTabComprobantes() {
+            const impRetenido = parseMontoDecimal(document.getElementById('importeRetenidoRet').value);
+            let sumComp = 0;
+            detalleComprobantesRet.forEach(d => {
+                sumComp += (Number(d.importeRetenido) || 0);
+            });
+            const dif = impRetenido - sumComp;
+
+            document.getElementById('resumenRetencionTab').value    = formatMontoDosDecimales(impRetenido);
+            document.getElementById('resumenComprobantesTab').value = formatMontoDosDecimales(sumComp);
+            document.getElementById('resumenDiferenciaTab').value   = formatMontoDosDecimales(dif);
+
+            const badge = document.getElementById('badgeCantComprobantesRet');
+            if (badge) badge.textContent = String(detalleComprobantesRet.length);
+        }
+
+        async function onCambioMonedaRetencion() {
+            const codMon = document.getElementById('codMonedaRet').value;
+            const tcInput = document.getElementById('tasaCambioRet');
+            if (codMon === '1') {
+                tcInput.value = '1';
+                return;
+            }
+            try {
+                const res = await fetch('/api/cotizaciones/bcp-actual');
+                const data = await res.json();
+                if (data && data.status === 'success' && data.compra) {
+                    tcInput.value = Math.round(Number(data.compra)).toLocaleString('es-PY');
+                }
+            } catch (e) {}
+        }
+
+        // =====================================================================
+        // LISTADO PRINCIPAL Y FILTROS
+        // =====================================================================
+        function cargarRetenciones() {
+            const grpRng = document.getElementById('grupoFiltroRango');
+            const esRango = grpRng && grpRng.style.display !== 'none';
+            let url = '/api/retenciones-sufridas/list';
+
+            if (esRango) {
+                const d = document.getElementById('filtroFechaDesde').value;
+                const h = document.getElementById('filtroFechaHasta').value;
+                const params = new URLSearchParams();
+                if (d) params.set('fechaDesde', d);
+                if (h) params.set('fechaHasta', h);
+                url += '?' + params.toString();
+            } else {
+                const anio = document.getElementById('filtroAnio')?.value || 'TODOS';
+                const mes  = document.getElementById('filtroMes')?.value || 'TODOS';
+                url += `?anio=${encodeURIComponent(anio)}&mes=${encodeURIComponent(mes)}`;
+            }
+
+            fetch(url)
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status === 'success') {
+                        listRetencionesData = res.data || [];
+                        filtrarRetenciones();
+                    } else {
+                        Swal.fire('Error', res.message || 'No se pudieron cargar las retenciones sufridas.', 'error');
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('tablaRetencionesBody').innerHTML =
+                        '<tr><td colspan="12" class="text-center py-4 text-danger fw-bold">Error de conexión al cargar retenciones sufridas.</td></tr>';
+                });
+        }
+
+        function filtrarRetenciones() {
+            const q = (document.getElementById('searchInput')?.value || '').trim().toUpperCase();
+            let filtrados = listRetencionesData;
+            if (q) {
+                filtrados = listRetencionesData.filter(item => {
+                    const nro  = String(item.NRO_RETENCION || '').toUpperCase();
+                    const timb = String(item.NRO_TIMBRADO || '').toUpperCase();
+                    const ruc  = String(item.RUC_CLIENTE || '').toUpperCase();
+                    const nom  = String(item.NOM_CLIENTE || '').toUpperCase();
+                    const comp = String(item.COMPROBANTES_REL || '').toUpperCase();
+                    return nro.includes(q) || timb.includes(q) || ruc.includes(q) || nom.includes(q) || comp.includes(q);
+                });
+            }
+            renderTablaRetenciones(filtrados);
+        }
+
+        function renderTablaRetenciones(lista) {
+            const tbody = document.getElementById('tablaRetencionesBody');
+            tbody.innerHTML = '';
+
+            let cantActivas = 0;
+            let sumBase     = 0;
+            let sumIva      = 0;
+            let sumRet10    = 0;
+            let sumRet5     = 0;
+            let sumRetenido = 0;
+
+            lista.forEach(item => {
+                const isAnul = String(item.ANULADA || 'N').toUpperCase() === 'S';
+                if (!isAnul) {
+                    cantActivas++;
+                    sumBase     += parseFloat(item.VALOR_TOTAL || 0);
+                    sumIva      += parseFloat(item.IVA10 || 0) + parseFloat(item.IVA5 || 0);
+                    sumRet10    += parseFloat(item.RET10 || 0);
+                    sumRet5     += parseFloat(item.RET5 || 0);
+                    sumRetenido += parseFloat(item.IMPORTE_RETENIDO || 0);
+                }
+            });
+
+            document.getElementById('kpiCantRetenciones').textContent = cantActivas.toLocaleString('es-PY');
+            document.getElementById('kpiTotalBase').textContent       = formatMontoDosDecimales(sumBase);
+            document.getElementById('kpiTotalIva').textContent        = formatMontoDosDecimales(sumIva);
+            document.getElementById('kpiTotalRet10').textContent      = formatMontoDosDecimales(sumRet10);
+            document.getElementById('kpiTotalRet5').textContent       = formatMontoDosDecimales(sumRet5);
+            document.getElementById('kpiTotalRetenido').textContent   = formatMontoDosDecimales(sumRetenido);
+
+            document.getElementById('footCantRetenciones').textContent = cantActivas.toLocaleString('es-PY');
+            document.getElementById('footTotalFacturado').textContent  = formatMontoDosDecimales(sumBase);
+            document.getElementById('footTotalRet10').textContent      = formatMontoDosDecimales(sumRet10);
+            document.getElementById('footTotalRet5').textContent       = formatMontoDosDecimales(sumRet5);
+            document.getElementById('footTotalRetenido').textContent   = formatMontoDosDecimales(sumRetenido);
+
+            if (!lista || lista.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="12" class="text-center py-5 text-muted" style="font-weight: 600;">No se encontraron registros de retenciones sufridas en el periodo seleccionado.</td></tr>';
+                return;
+            }
+
+            lista.forEach(item => {
+                const tr = document.createElement('tr');
+                const rowId = item.ID_RETENCION;
+                tr.style.cursor = 'pointer';
+                if (selectedIdRetencion && String(selectedIdRetencion) === String(rowId)) {
+                    tr.classList.add('fila-seleccionada');
+                }
+
+                tr.onclick = function() {
+                    const already = (selectedIdRetencion && String(selectedIdRetencion) === String(rowId));
+                    document.querySelectorAll('#tablaRetencionesBody tr').forEach(r => r.classList.remove('fila-seleccionada'));
+                    tr.classList.add('fila-seleccionada');
+                    selectedIdRetencion = rowId;
+                    if (already && window.innerWidth <= 992) {
+                        abrirModalEditarRetencion();
+                    }
+                };
+                tr.ondblclick = function() {
+                    selectedIdRetencion = rowId;
+                    abrirModalEditarRetencion();
+                };
+
+                const isAnul = String(item.ANULADA || 'N').toUpperCase() === 'S';
+                const badgeAnul = isAnul
+                    ? ' <span class="badge" style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;font-size:0.68rem;">ANULADO</span>'
+                    : '';
+
+                const monCod = String(item.COD_MONEDA || '1');
+                const monTxt = monCod === '2' ? 'DÓLAR' : (monCod === '3' ? 'REAL' : 'GUARANÍ');
+
+                tr.innerHTML = `
+                    <td style="padding: 11px 16px; font-weight: 800; color: #0284c7;">${item.NRO_RETENCION || '-'}${badgeAnul}</td>
+                    <td style="padding: 11px 14px; font-weight: 600; color: #334155;">${item.NRO_TIMBRADO || '-'}</td>
+                    <td style="padding: 11px 12px; color: #475569;">${item.TIP_TIMBRADO || 'Virtual'}</td>
+                    <td style="padding: 11px 12px; text-align: center; color: #334155;">${item.FEC_RETENCION_FMT || item.FEC_RETENCION || '-'}</td>
+                    <td style="padding: 11px 14px; font-weight: 600; color: #475569;">${item.RUC_CLIENTE || '-'}</td>
+                    <td style="padding: 11px 14px; font-weight: 700; color: #0f172a;">${item.NOM_CLIENTE || '-'}</td>
+                    <td style="padding: 11px 14px; font-size: 0.82rem; color: #0369a1; font-weight: 700;">${item.COMPROBANTES_REL || '<span class="text-muted">-</span>'}</td>
+                    <td style="padding: 11px 12px; text-align: center; font-weight: 700; color: #475569;">${monTxt}</td>
+                    <td style="padding: 11px 14px; text-align: right; font-family: monospace; font-weight: 700; color: #334155;">${formatMontoDosDecimales(item.VALOR_TOTAL)}</td>
+                    <td style="padding: 11px 14px; text-align: right; font-family: monospace; font-weight: 700; color: #0284c7;">${formatMontoDosDecimales(item.RET10)}</td>
+                    <td style="padding: 11px 14px; text-align: right; font-family: monospace; font-weight: 700; color: #0284c7;">${formatMontoDosDecimales(item.RET5)}</td>
+                    <td style="padding: 11px 16px; text-align: right; font-family: monospace; font-weight: 800; color: #15803d;">${formatMontoDosDecimales(item.IMPORTE_RETENIDO)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // =====================================================================
+        // MODAL Y PESTAÑAS (ENCABEZADO / COMPROBANTES / INFORMACIONES)
+        // =====================================================================
+        function cambiarTabRetencion(tab) {
+            const pEnc  = document.getElementById('tabPaneRetEncabezado');
+            const pComp = document.getElementById('tabPaneRetComprobantes');
+            const pInfo = document.getElementById('tabPaneRetInformaciones');
+
+            const bEnc  = document.getElementById('tabBtnRetEncabezado');
+            const bComp = document.getElementById('tabBtnRetComprobantes');
+            const bInfo = document.getElementById('tabBtnRetInformaciones');
+
+            const styleTab = (btn, active) => {
+                if (!btn) return;
+                btn.style.background  = active ? '#f1f5f9' : '#e2e8f0';
+                btn.style.color       = active ? '#0f172a' : '#334155';
+                btn.style.borderTop   = active ? '3px solid #0284c7' : '1px solid #94a3b8';
+                btn.style.fontWeight  = active ? '800' : '700';
+            };
+
+            pEnc.style.display  = tab === 'encabezado' ? 'block' : 'none';
+            pComp.style.display = tab === 'comprobantes' ? 'block' : 'none';
+            pInfo.style.display = tab === 'informaciones' ? 'block' : 'none';
+
+            styleTab(bEnc,  tab === 'encabezado');
+            styleTab(bComp, tab === 'comprobantes');
+            styleTab(bInfo, tab === 'informaciones');
+
+            if (tab === 'comprobantes') {
+                actualizarResumenTabComprobantes();
+                const retActual = parseMontoDecimal(document.getElementById('compRetenidoInput').value);
+                const impEnc = parseMontoDecimal(document.getElementById('importeRetenidoRet').value);
+                if (retActual === 0 && impEnc > 0 && detalleComprobantesRet.length === 0) {
+                    document.getElementById('compRetenidoInput').value = formatMontoDosDecimales(impEnc);
+                }
+            }
+        }
+
+        function limpiarFormularioRetencion() {
+            document.getElementById('idRetencion').value        = '';
+            document.getElementById('codClienteRet').value      = '';
+            document.getElementById('rucClienteRet').value      = '';
+            document.getElementById('tipDocClienteRet').value   = 'RUC';
+            document.getElementById('nomClienteRet').value      = '';
+            document.getElementById('nroTimbradoRet').value     = '';
+            document.getElementById('tipTimbradoRet').value     = 'Virtual';
+            document.getElementById('form145Ret').value         = 'ORIGINAL';
+            document.getElementById('nroRetencion').value       = '';
+            document.getElementById('fecRetencion').value       = new Date().toISOString().split('T')[0];
+            document.getElementById('codMonedaRet').value       = '1';
+            document.getElementById('tasaCambioRet').value      = '1';
+            document.getElementById('grav10Ret').value          = '0,00';
+            document.getElementById('iva10Ret').value           = '0,00';
+            document.getElementById('porc10Ret').value          = '70,00';
+            document.getElementById('ret10Ret').value           = '0,00';
+            document.getElementById('grav5Ret').value           = '0,00';
+            document.getElementById('iva5Ret').value            = '0,00';
+            document.getElementById('porc5Ret').value           = '0,00';
+            document.getElementById('ret5Ret').value            = '0,00';
+            document.getElementById('exentasRet').value         = '0,00';
+            document.getElementById('valorTotalRet').value      = '0,00';
+            document.getElementById('importeRetenidoRet').value = '0,00';
+            document.getElementById('observacionRet').value     = '';
+
+            limpiarCamposComprobanteIndividual();
+            detalleComprobantesRet = [];
+            selectedIndexComprobanteGrilla = -1;
+            renderGrillaComprobantesRet();
+            actualizarResumenTabComprobantes();
+
+            document.getElementById('infoUsuarioRegRet').textContent = '-';
+            document.getElementById('infoFecRegRet').textContent     = '-';
+            document.getElementById('infoEstadoRet').textContent     = 'ACTIVO';
+        }
+
+        function limpiarCamposComprobanteIndividual() {
+            comprobanteEnEdicionActual = null;
+            document.getElementById('compNroInput').value      = '';
+            document.getElementById('compDescInput').value     = '';
+            document.getElementById('compRetenidoInput').value = '0,00';
+            document.getElementById('compGrav10A').value       = '0,00';
+            document.getElementById('compGrav10B').value       = '0,00';
+            document.getElementById('compIva10').value         = '0,00';
+            document.getElementById('compGrav5A').value        = '0,00';
+            document.getElementById('compGrav5B').value        = '0,00';
+            document.getElementById('compIva5').value          = '0,00';
+            document.getElementById('compExentasA').value      = '0,00';
+            document.getElementById('compExentasB').value      = '0,00';
+            document.getElementById('compTotIva').value        = '0,00';
+            document.getElementById('compTotal').value         = '0,00';
+        }
+
+        function abrirModalNuevaRetencion() {
+            limpiarFormularioRetencion();
+            document.getElementById('modalTitleRetencion').textContent = 'Registrar retención sufrida';
+            cambiarTabRetencion('encabezado');
+            document.getElementById('retencionModalOverlay').style.display = 'flex';
+            setTimeout(() => document.getElementById('rucClienteRet').focus(), 80);
+        }
+
+        function abrirModalEditarRetencion() {
+            if (!selectedIdRetencion) {
+                Swal.fire('Atención', 'Seleccione una retención sufrida de la tabla para modificar.', 'warning');
+                return;
+            }
+            fetch('/api/retenciones-sufridas/get/' + encodeURIComponent(selectedIdRetencion))
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status !== 'success' || !res.data) {
+                        Swal.fire('Error', res.message || 'No se pudo cargar la retención.', 'error');
+                        return;
+                    }
+                    const d = res.data;
+                    limpiarFormularioRetencion();
+                    document.getElementById('modalTitleRetencion').textContent = 'Modificar retención sufrida';
+
+                    document.getElementById('idRetencion').value        = d.ID_RETENCION || '';
+                    document.getElementById('codClienteRet').value      = d.COD_CLIENTE || '';
+                    document.getElementById('rucClienteRet').value      = d.RUC_CLIENTE || '';
+                    document.getElementById('tipDocClienteRet').value   = d.TIP_DOC_CLIENTE || 'RUC';
+                    document.getElementById('nomClienteRet').value      = d.NOM_CLIENTE || '';
+                    document.getElementById('nroTimbradoRet').value     = d.NRO_TIMBRADO || '';
+                    document.getElementById('tipTimbradoRet').value     = d.TIP_TIMBRADO || 'Virtual';
+                    document.getElementById('form145Ret').value         = (d.FORM_145 || 'ORIGINAL').toUpperCase();
+                    document.getElementById('nroRetencion').value       = d.NRO_RETENCION || '';
+                    document.getElementById('fecRetencion').value       = d.FEC_RETENCION || '';
+                    document.getElementById('codMonedaRet').value       = String(d.COD_MONEDA || '1');
+                    document.getElementById('tasaCambioRet').value      = Number(d.TASA_CHANGE || d.TASA_CAMBIO || 1).toLocaleString('es-PY');
+
+                    document.getElementById('grav10Ret').value          = formatMontoDosDecimales(d.GRAV10);
+                    document.getElementById('iva10Ret').value           = formatMontoDosDecimales(d.IVA10);
+                    document.getElementById('porc10Ret').value          = formatMontoDosDecimales(d.PORC10);
+                    document.getElementById('ret10Ret').value           = formatMontoDosDecimales(d.RET10);
+                    document.getElementById('grav5Ret').value           = formatMontoDosDecimales(d.GRAV5);
+                    document.getElementById('iva5Ret').value            = formatMontoDosDecimales(d.IVA5);
+                    document.getElementById('porc5Ret').value           = formatMontoDosDecimales(d.PORC5);
+                    document.getElementById('ret5Ret').value            = formatMontoDosDecimales(d.RET5);
+                    document.getElementById('exentasRet').value         = formatMontoDosDecimales(d.EXENTAS);
+                    document.getElementById('valorTotalRet').value      = formatMontoDosDecimales(d.VALOR_TOTAL);
+                    document.getElementById('importeRetenidoRet').value = formatMontoDosDecimales(d.IMPORTE_RETENIDO);
+                    document.getElementById('observacionRet').value     = d.OBSERVACION || '';
+
+                    document.getElementById('infoUsuarioRegRet').textContent = d.USUARIO_REG || '-';
+                    document.getElementById('infoFecRegRet').textContent     = d.FEC_REG_FMT || '-';
+                    document.getElementById('infoEstadoRet').textContent     = String(d.ANULADA || 'N') === 'S' ? 'ANULADO' : 'ACTIVO';
+
+                    detalleComprobantesRet = (d.DETALLES || []).map(det => ({
+                        idIngreso:       det.ID_INGRESO || null,
+                        tipComprobante:  det.TIP_COMPROBANTE || 'Factura',
+                        nroComprobante:  det.NRO_COMPROBANTE || '',
+                        fecComprobante:  det.FEC_COMPROBANTE || '',
+                        grav10:          parseFloat(det.GRAV10 || 0),
+                        iva10:           parseFloat(det.IVA10 || 0),
+                        grav5:           parseFloat(det.GRAV5 || 0),
+                        iva5:            parseFloat(det.IVA5 || 0),
+                        exentas:         parseFloat(det.EXENTAS || 0),
+                        totIva:          parseFloat(det.TOT_IVA || 0),
+                        valorTotal:      parseFloat(det.VALOR_TOTAL || 0),
+                        importeRetenido: parseFloat(det.IMPORTE_RETENIDO || 0)
+                    }));
+                    renderGrillaComprobantesRet();
+                    actualizarResumenTabComprobantes();
+
+                    cambiarTabRetencion('encabezado');
+                    document.getElementById('retencionModalOverlay').style.display = 'flex';
+                });
+        }
+
+        function cerrarModalRetencion() {
+            document.getElementById('retencionModalOverlay').style.display = 'none';
+        }
+
+        // =====================================================================
+        // VERIFICACIÓN Y BÚSQUEDA DE CLIENTE (RUC / DNIT)
+        // =====================================================================
+        async function verificarClienteRetencion() {
+            const rucVal = document.getElementById('rucClienteRet').value.trim();
+            if (!rucVal || rucVal.length < 3) return;
+
+            document.getElementById('nomClienteRet').value = '';
+            try {
+                const res1 = await fetch('/api/co_clientes/auto-registrar-ruc', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ruc: rucVal, nombre: '' })
+                });
+                const data1 = await res1.json();
+
+                if (data1.status === 'CLIENTE_EXISTE' || data1.status === 'CREADO') {
+                    document.getElementById('rucClienteRet').value = data1.ruc || rucVal;
+                    document.getElementById('nomClienteRet').value = data1.nombre || '';
+                    document.getElementById('codClienteRet').value = data1.codCliente || '';
+                    return;
+                }
+
+                const rucBase = rucVal.split('-')[0].trim();
+                const resDnit = await fetch(`/api/dnit/consultar-ruc?ruc=${encodeURIComponent(rucBase)}`);
+                const jsonDnit = await resDnit.json();
+                if (jsonDnit.status === 'SUCCESS' && jsonDnit.data && jsonDnit.data.razonSocial) {
+                    const d = jsonDnit.data;
+                    const rucFull = (d.dv !== undefined && !String(d.ruc).includes('-')) ? `${d.ruc}-${d.dv}` : (d.ruc || rucVal);
+                    document.getElementById('rucClienteRet').value = rucFull;
+                    document.getElementById('nomClienteRet').value = d.razonSocial;
+
+                    const resCreate = await fetch('/api/co_clientes/auto-registrar-ruc', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ruc: rucFull, nombre: d.razonSocial })
+                    });
+                    const dataCreate = await resCreate.json();
+                    if (dataCreate.codCliente) {
+                        document.getElementById('codClienteRet').value = dataCreate.codCliente;
+                    }
+                } else {
+                    Swal.fire('Atención', 'RUC no encontrado en la base local ni en la DNIT.', 'warning');
+                }
+            } catch (e) {}
+        }
+
+        async function buscarClienteRetencionModal() {
+            const { value: rucInput } = await Swal.fire({
+                title: 'Buscar Cliente por RUC',
+                input: 'text',
+                inputLabel: 'Ingrese RUC o Cédula del Cliente:',
+                inputPlaceholder: 'Ej: 80055317-9',
+                showCancelButton: true,
+                confirmButtonText: 'Buscar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#0284c7'
+            });
+            if (rucInput && rucInput.trim()) {
+                document.getElementById('rucClienteRet').value = rucInput.trim();
+                await verificarClienteRetencion();
+            }
+        }
+
+        // =====================================================================
+        // PESTAÑA COMPROBANTES: BÚSQUEDA Y GRILLA DE FACTURAS VINCULADAS
+        // =====================================================================
+        function cargarDatosComprobanteEnFormularioSuperior(comp) {
+            comprobanteEnEdicionActual = comp;
+            const g10 = parseFloat(comp.grav10 || 0);
+            const i10 = parseFloat(comp.iva10 || 0);
+            const g5  = parseFloat(comp.grav5 || 0);
+            const i5  = parseFloat(comp.iva5 || 0);
+            const ex  = parseFloat(comp.exentas || 0);
+            const totIva = parseFloat(comp.tot_iva || (i10 + i5));
+            const tot    = parseFloat(comp.valor_total || (g10 + g5 + ex));
+
+            document.getElementById('compNroInput').value  = comp.nro_comprobante || '';
+            document.getElementById('compDescInput').value = `${comp.tip_comprobante || 'Factura'} · ${comp.fec_fmt || comp.fec_comprobante || ''} · ${comp.nom_cliente || ''}`.trim();
+
+            document.getElementById('compGrav10A').value  = formatMontoDosDecimales(g10);
+            document.getElementById('compGrav10B').value  = formatMontoDosDecimales(Math.max(0, g10 - i10));
+            document.getElementById('compIva10').value    = formatMontoDosDecimales(i10);
+
+            document.getElementById('compGrav5A').value   = formatMontoDosDecimales(g5);
+            document.getElementById('compGrav5B').value   = formatMontoDosDecimales(Math.max(0, g5 - i5));
+            document.getElementById('compIva5').value     = formatMontoDosDecimales(i5);
+
+            document.getElementById('compExentasA').value = formatMontoDosDecimales(ex);
+            document.getElementById('compExentasB').value = formatMontoDosDecimales(ex);
+            document.getElementById('compTotIva').value   = formatMontoDosDecimales(totIva);
+            document.getElementById('compTotal').value    = formatMontoDosDecimales(tot);
+
+            // Sugerir importe retenido según porcentaje del encabezado
+            const porc10 = parseMontoDecimal(document.getElementById('porc10Ret').value) || 70;
+            const porc5  = parseMontoDecimal(document.getElementById('porc5Ret').value) || 0;
+            const retSug = Math.round(((i10 * (porc10 / 100)) + (i5 * (porc5 / 100))) * 100) / 100;
+            const impEnc = parseMontoDecimal(document.getElementById('importeRetenidoRet').value);
+            document.getElementById('compRetenidoInput').value = formatMontoDosDecimales(retSug > 0 ? retSug : impEnc);
+        }
+
+        function buscarComprobanteDirectoPorNro() {
+            const nro = document.getElementById('compNroInput').value.trim();
+            if (!nro) return;
+            const ruc = document.getElementById('rucClienteRet').value.trim();
+            const cod = document.getElementById('codClienteRet').value.trim();
+
+            fetch(`/api/retenciones-sufridas/comprobantes-cliente?rucCliente=${encodeURIComponent(ruc)}&codCliente=${encodeURIComponent(cod)}&nroComprobante=${encodeURIComponent(nro)}`)
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status === 'success' && res.data && res.data.length > 0) {
+                        cargarDatosComprobanteEnFormularioSuperior(res.data[0]);
+                    } else {
+                        // Permitir carga manual con los montos del Encabezado si no existe en co_ingresos
+                        const g10 = parseMontoDecimal(document.getElementById('grav10Ret').value);
+                        const i10 = parseMontoDecimal(document.getElementById('iva10Ret').value);
+                        const g5  = parseMontoDecimal(document.getElementById('grav5Ret').value);
+                        const i5  = parseMontoDecimal(document.getElementById('iva5Ret').value);
+                        const ex  = parseMontoDecimal(document.getElementById('exentasRet').value);
+                        cargarDatosComprobanteEnFormularioSuperior({
+                            id_ingreso: null,
+                            tip_comprobante: 'Factura',
+                            nro_comprobante: nro,
+                            fec_comprobante: document.getElementById('fecRetencion').value,
+                            nom_cliente: document.getElementById('nomClienteRet').value,
+                            grav10: g10,
+                            iva10: i10,
+                            grav5: g5,
+                            iva5: i5,
+                            exentas: ex,
+                            tot_iva: i10 + i5,
+                            valor_total: g10 + g5 + ex
+                        });
+                    }
+                });
+        }
+
+        function abrirSelectorComprobantesCliente() {
+            const ruc = document.getElementById('rucClienteRet').value.trim();
+            const cod = document.getElementById('codClienteRet').value.trim();
+            document.getElementById('busquedaComprobanteCliente').value = '';
+            document.getElementById('selectorComprobantesRetOverlay').style.display = 'flex';
+
+            const tbody = document.getElementById('tablaSelectorComprobantesBody');
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">Consultando comprobantes de ingreso...</td></tr>';
+
+            fetch(`/api/retenciones-sufridas/comprobantes-cliente?rucCliente=${encodeURIComponent(ruc)}&codCliente=${encodeURIComponent(cod)}`)
+                .then(r => r.json())
+                .then(res => {
+                    cacheComprobantesCliente = (res.status === 'success' && res.data) ? res.data : [];
+                    filtrarTablaSelectorComprobantes();
+                })
+                .catch(() => {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-danger">Error al cargar comprobantes.</td></tr>';
+                });
+        }
+
+        function cerrarSelectorComprobantesRet() {
+            document.getElementById('selectorComprobantesRetOverlay').style.display = 'none';
+        }
+
+        function filtrarTablaSelectorComprobantes() {
+            const q = (document.getElementById('busquedaComprobanteCliente').value || '').trim().toUpperCase();
+            const tbody = document.getElementById('tablaSelectorComprobantesBody');
+            tbody.innerHTML = '';
+
+            const lista = cacheComprobantesCliente.filter(c => {
+                if (!q) return true;
+                return String(c.nro_comprobante || '').toUpperCase().includes(q)
+                    || String(c.nom_cliente || '').toUpperCase().includes(q);
+            });
+
+            if (lista.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">No se encontraron facturas emitidas para este filtro.</td></tr>';
+                return;
+            }
+
+            lista.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.style.cursor = 'pointer';
+                tr.onclick = function() {
+                    seleccionarComprobanteDelModal(c);
+                };
+                tr.innerHTML = `
+                    <td class="fw-bold">${c.tip_comprobante || 'Factura'}</td>
+                    <td class="fw-bold text-primary">${c.nro_comprobante}</td>
+                    <td class="text-center">${c.fec_fmt || c.fec_comprobante || '-'}</td>
+                    <td>${c.nom_cliente || '-'}</td>
+                    <td class="text-end" style="font-family:monospace;">${formatMontoDosDecimales(c.grav10)}</td>
+                    <td class="text-end" style="font-family:monospace;">${formatMontoDosDecimales(c.tot_iva)}</td>
+                    <td class="text-end fw-bold" style="font-family:monospace;">${formatMontoDosDecimales(c.valor_total)}</td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-primary fw-bold">Elegir</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function seleccionarComprobanteDelModal(comp) {
+            cerrarSelectorComprobantesRet();
+            cargarDatosComprobanteEnFormularioSuperior(comp);
+
+            // Si el encabezado aún tiene Grav 10% y Grav 5% en cero, sincronizar automáticamente los montos de la factura
+            const encG10 = parseMontoDecimal(document.getElementById('grav10Ret').value);
+            const encG5  = parseMontoDecimal(document.getElementById('grav5Ret').value);
+            const encEx  = parseMontoDecimal(document.getElementById('exentasRet').value);
+            if (encG10 === 0 && encG5 === 0 && encEx === 0) {
+                document.getElementById('grav10Ret').value  = formatMontoDosDecimales(comp.grav10 || 0);
+                document.getElementById('grav5Ret').value   = formatMontoDosDecimales(comp.grav5 || 0);
+                document.getElementById('exentasRet').value = formatMontoDosDecimales(comp.exentas || 0);
+                recalcularDesdeGravadasRet();
+                document.getElementById('compRetenidoInput').value = document.getElementById('importeRetenidoRet').value;
+            }
+        }
+
+        function agregarComprobanteAGrilla() {
+            const nro = document.getElementById('compNroInput').value.trim();
+            if (!nro) {
+                Swal.fire('Atención', 'Indique o busque un número de comprobante antes de presionar +.', 'warning');
+                return;
+            }
+
+            const retenido = parseMontoDecimal(document.getElementById('compRetenidoInput').value);
+            const grav10   = parseMontoDecimal(document.getElementById('compGrav10A').value) || parseMontoDecimal(document.getElementById('grav10Ret').value);
+            const iva10    = parseMontoDecimal(document.getElementById('compIva10').value)   || parseMontoDecimal(document.getElementById('iva10Ret').value);
+            const grav5    = parseMontoDecimal(document.getElementById('compGrav5A').value)  || parseMontoDecimal(document.getElementById('grav5Ret').value);
+            const iva5     = parseMontoDecimal(document.getElementById('compIva5').value)    || parseMontoDecimal(document.getElementById('iva5Ret').value);
+            const exentas  = parseMontoDecimal(document.getElementById('compExentasA').value)|| parseMontoDecimal(document.getElementById('exentasRet').value);
+            const totIva   = parseMontoDecimal(document.getElementById('compTotIva').value)  || (iva10 + iva5);
+            const total    = parseMontoDecimal(document.getElementById('compTotal').value)   || (grav10 + grav5 + exentas);
+
+            const nuevoItem = {
+                idIngreso:       comprobanteEnEdicionActual ? comprobanteEnEdicionActual.id_ingreso : null,
+                tipComprobante:  comprobanteEnEdicionActual ? (comprobanteEnEdicionActual.tip_comprobante || 'Factura') : 'Factura',
+                nroComprobante:  nro,
+                fecComprobante:  comprobanteEnEdicionActual ? (comprobanteEnEdicionActual.fec_comprobante || '') : document.getElementById('fecRetencion').value,
+                grav10:          grav10,
+                iva10:           iva10,
+                grav5:           grav5,
+                iva5:            iva5,
+                exentas:         exentas,
+                totIva:          totIva,
+                valorTotal:      total,
+                importeRetenido: retenido
+            };
+
+            const idxExistente = detalleComprobantesRet.findIndex(x => x.nroComprobante === nro);
+            if (idxExistente >= 0) {
+                detalleComprobantesRet[idxExistente] = nuevoItem;
+                selectedIndexComprobanteGrilla = idxExistente;
+            } else {
+                detalleComprobantesRet.push(nuevoItem);
+                selectedIndexComprobanteGrilla = detalleComprobantesRet.length - 1;
+            }
+
+            renderGrillaComprobantesRet();
+            actualizarResumenTabComprobantes();
+            limpiarCamposComprobanteIndividual();
+        }
+
+        function quitarComprobanteSeleccionadoGrilla() {
+            if (detalleComprobantesRet.length === 0) return;
+            const idx = selectedIndexComprobanteGrilla >= 0 ? selectedIndexComprobanteGrilla : (detalleComprobantesRet.length - 1);
+            detalleComprobantesRet.splice(idx, 1);
+            selectedIndexComprobanteGrilla = detalleComprobantesRet.length > 0 ? 0 : -1;
+            renderGrillaComprobantesRet();
+            actualizarResumenTabComprobantes();
+        }
+
+        function renderGrillaComprobantesRet() {
+            const tbody = document.getElementById('tablaComprobantesRetBody');
+            tbody.innerHTML = '';
+
+            if (detalleComprobantesRet.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted" style="background: #e2e8f0;">
+                            Sin comprobantes asociados. Use el botón <b>Buscar</b> y luego presione <b>+</b>.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            detalleComprobantesRet.forEach((item, idx) => {
+                const tr = document.createElement('tr');
+                tr.style.cursor = 'pointer';
+                if (idx === selectedIndexComprobanteGrilla) {
+                    tr.classList.add('fila-seleccionada');
+                }
+                tr.onclick = function() {
+                    selectedIndexComprobanteGrilla = idx;
+                    renderGrillaComprobantesRet();
+                    cargarDatosComprobanteEnFormularioSuperior({
+                        id_ingreso:      item.idIngreso,
+                        tip_comprobante: item.tipComprobante,
+                        nro_comprobante: item.nroComprobante,
+                        fec_comprobante: item.fecComprobante,
+                        nom_cliente:     document.getElementById('nomClienteRet').value,
+                        grav10:          item.grav10,
+                        iva10:           item.iva10,
+                        grav5:           item.grav5,
+                        iva5:            item.iva5,
+                        exentas:         item.exentas,
+                        tot_iva:         item.totIva,
+                        valor_total:     item.valorTotal
+                    });
+                    document.getElementById('compRetenidoInput').value = formatMontoDosDecimales(item.importeRetenido);
+                };
+
+                tr.innerHTML = `
+                    <td style="padding: 8px 12px; text-align: center; font-weight: 700;">${item.tipComprobante || 'Factura'}</td>
+                    <td style="padding: 8px 12px; text-align: center; font-weight: 700;">${item.nroComprobante}</td>
+                    <td style="padding: 8px 12px; text-align: right; font-family: monospace; font-weight: 700;">${formatMontoDosDecimales(item.valorTotal)}</td>
+                    <td style="padding: 8px 12px; text-align: right; font-family: monospace; font-weight: 700;">${formatMontoDosDecimales(item.totIva)}</td>
+                    <td style="padding: 8px 12px; text-align: right; font-family: monospace; font-weight: 800; color: #0f172a;">${formatMontoDosDecimales(item.importeRetenido)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // =====================================================================
+        // GUARDAR / ELIMINAR / ANULAR RETENCIÓN SUFRIDA
+        // =====================================================================
+        function guardarRetencionSufrida() {
+            const rucCliente  = document.getElementById('rucClienteRet').value.trim();
+            const nomCliente  = document.getElementById('nomClienteRet').value.trim();
+            const nroRet      = document.getElementById('nroRetencion').value.trim();
+
+            if (!rucCliente || !nomCliente) {
+                Swal.fire('Atención', 'Ingrese el RUC y verifique los datos del Cliente.', 'warning');
+                return;
+            }
+            if (!nroRet) {
+                Swal.fire('Atención', 'Ingrese el Número del comprobante de retención.', 'warning');
+                return;
+            }
+
+            // Si el usuario dejó cargado un comprobante en los campos superiores de la pestaña Comprobantes sin pulsar "+", agregarlo automáticamente
+            const compPendNro = document.getElementById('compNroInput').value.trim();
+            if (compPendNro && detalleComprobantesRet.length === 0) {
+                agregarComprobanteAGrilla();
+            }
+
+            const payload = {
+                idRetencion:     document.getElementById('idRetencion').value,
+                codCliente:      document.getElementById('codClienteRet').value,
+                rucCliente:      rucCliente,
+                tipDocCliente:   document.getElementById('tipDocClienteRet').value,
+                nomCliente:      nomCliente,
+                nroTimbrado:     document.getElementById('nroTimbradoRet').value.trim(),
+                tipTimbrado:     document.getElementById('tipTimbradoRet').value,
+                form145:         document.getElementById('form145Ret').value,
+                nroRetencion:    nroRet,
+                fecRetencion:    document.getElementById('fecRetencion').value,
+                codMoneda:       document.getElementById('codMonedaRet').value,
+                tasaCambio:      parseMontoDecimal(document.getElementById('tasaCambioRet').value) || 1,
+                grav10:          parseMontoDecimal(document.getElementById('grav10Ret').value),
+                iva10:           parseMontoDecimal(document.getElementById('iva10Ret').value),
+                porc10:          parseMontoDecimal(document.getElementById('porc10Ret').value),
+                ret10:           parseMontoDecimal(document.getElementById('ret10Ret').value),
+                grav5:           parseMontoDecimal(document.getElementById('grav5Ret').value),
+                iva5:            parseMontoDecimal(document.getElementById('iva5Ret').value),
+                porc5:           parseMontoDecimal(document.getElementById('porc5Ret').value),
+                ret5:            parseMontoDecimal(document.getElementById('ret5Ret').value),
+                exentas:         parseMontoDecimal(document.getElementById('exentasRet').value),
+                valorTotal:      parseMontoDecimal(document.getElementById('valorTotalRet').value),
+                importeRetenido: parseMontoDecimal(document.getElementById('importeRetenidoRet').value),
+                observacion:     document.getElementById('observacionRet').value.trim(),
+                detalles:        detalleComprobantesRet
+            };
+
+            fetch('/api/retenciones-sufridas/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    cerrarModalRetencion();
+                    cargarRetenciones();
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: res.message || 'Retención sufrida guardada.',
+                        showConfirmButton: false,
+                        timer: 2500
+                    });
+                } else {
+                    Swal.fire('Error', res.message || 'No se pudo guardar la retención sufrida.', 'error');
+                }
+            })
+            .catch(() => Swal.fire('Error', 'Fallo de conexión al guardar la retención sufrida.', 'error'));
+        }
+
+        function eliminarRetencionSeleccionada() {
+            if (!selectedIdRetencion) {
+                Swal.fire('Atención', 'Seleccione una retención sufrida de la tabla para eliminar.', 'warning');
+                return;
+            }
+            Swal.fire({
+                title: '¿Eliminar Retención Sufrida?',
+                text: 'Esta acción no se puede deshacer.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then(r => {
+                if (r.isConfirmed) {
+                    fetch('/api/retenciones-sufridas/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ idRetencion: selectedIdRetencion })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            selectedIdRetencion = null;
+                            cargarRetenciones();
+                            Swal.fire('Eliminado', data.message, 'success');
+                        } else {
+                            Swal.fire('Error', data.message, 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function anularRetencionSeleccionada() {
+            if (!selectedIdRetencion) {
+                Swal.fire('Atención', 'Seleccione una retención sufrida de la tabla para anular.', 'warning');
+                return;
+            }
+            const item = listRetencionesData.find(x => String(x.ID_RETENCION) === String(selectedIdRetencion));
+            const yaAnul = item && String(item.ANULADA || 'N').toUpperCase() === 'S';
+            const nro = item ? (item.NRO_RETENCION || ('#' + selectedIdRetencion)) : ('#' + selectedIdRetencion);
+
+            Swal.fire({
+                title: yaAnul ? '¿Reactivar Retención Sufrida?' : '¿Anular Retención Sufrida?',
+                html: yaAnul
+                    ? `¿Desea reactivar el comprobante <b>${nro}</b>?`
+                    : `¿Está seguro de anular el comprobante <b>${nro}</b>?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: yaAnul ? '#16a34a' : '#dc2626',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: yaAnul ? 'Sí, reactivar' : 'Sí, anular',
+                cancelButtonText: 'Cancelar'
+            }).then(r => {
+                if (r.isConfirmed) {
+                    fetch('/api/retenciones-sufridas/anular', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ idRetencion: selectedIdRetencion, anulada: yaAnul ? 'N' : 'S' })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            cargarRetenciones();
+                            Swal.fire(yaAnul ? 'Reactivado' : 'Anulado', data.message, 'success');
+                        } else {
+                            Swal.fire('Error', data.message, 'error');
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+</body>
+</html>

@@ -410,7 +410,7 @@
                     <input type="hidden" id="codCliente">
 
                     <!-- CDC Row -->
-                    <div id="rowCdcIngreso" style="display: grid; grid-template-columns: 125px 1fr 100px 85px; gap: 10px; align-items: center; margin-bottom: 12px;">
+                    <div id="rowCdcIngreso" style="display: none; grid-template-columns: 125px 1fr 100px 85px; gap: 10px; align-items: center; margin-bottom: 12px;">
                         <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">CDC :</label>
                         <div style="position: relative; display: flex; align-items: center;">
                             <input type="text" id="cdc" maxlength="44" placeholder="____________________________________________" style="width: 100%; letter-spacing: 2px; font-family: monospace; font-weight: 700; font-size: 0.92rem; height: 38px; padding: 4px 34px 4px 10px; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #fafafa;" oninput="formatCDC(this)">
@@ -580,7 +580,7 @@
                 <button type="button" class="btn" onclick="cerrarModal()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.9rem; color: #475569; padding: 8px 22px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
                     <i class="ph ph-x" style="font-size: 1.1rem;"></i> Cancelar
                 </button>
-                <button type="button" id="btnGuardarEmitirSifenModal" class="btn" onclick="guardarIngreso(true)" title="Guardar comprobante y generar Factura Electrónica SIFEN (CDC + XML v150 + QR)" style="background: linear-gradient(135deg, #0284c7, #0369a1); border: none; font-weight: 800; font-size: 0.9rem; color: white; padding: 8px 20px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(2,132,199,0.3);">
+                <button type="button" id="btnGuardarEmitirSifenModal" class="btn" onclick="guardarIngreso(true)" title="Guardar comprobante y generar Factura Electrónica SIFEN (CDC + XML v150 + QR)" style="display: none; background: linear-gradient(135deg, #0284c7, #0369a1); border: none; font-weight: 800; font-size: 0.9rem; color: white; padding: 8px 20px; border-radius: 8px; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(2,132,199,0.3);">
                     <i class="ph ph-seal-check" style="font-size: 1.15rem;"></i> Guardar y Emitir SIFEN
                 </button>
                 <button type="button" class="btn" onclick="guardarIngreso(false)" style="background: linear-gradient(135deg, #16a34a, #15803d); border: none; font-weight: 800; font-size: 0.95rem; color: white; padding: 8px 28px; border-radius: 8px; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(22,163,74,0.35);">
@@ -1818,7 +1818,7 @@
                     g5El.style.color = '#0f172a';
                     g5El.style.cursor = 'text';
                 }
-                if (rowCdc)  rowCdc.style.display = 'grid';
+                if (rowCdc)  rowCdc.style.display = 'none';
                 if (lblTimb) lblTimb.style.visibility = 'visible';
                 if (selTimb) selTimb.style.visibility = 'visible';
                 if (lblVenc) lblVenc.style.visibility = 'visible';
@@ -1833,7 +1833,7 @@
 
                 if (lblEx)   lblEx.innerText  = 'Exentas :';
                 if (lblNoG)  lblNoG.innerText = 'No gravado :';
-                if (btnSifen) btnSifen.style.display = 'flex';
+                if (btnSifen) btnSifen.style.display = 'none';
             }
             recalcularTotales();
         }

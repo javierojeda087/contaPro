@@ -1409,6 +1409,18 @@ class DefinicionesContablesController {
                     [$idProp]
                 );
             }
+            $cntRes = (int)Database::queryForValue(
+                "SELECT COUNT(*) FROM co_tipos_comprobantes
+                 WHERE id_propietario = ? AND UPPER(TRIM(tip_comprobante)) = 'RES'",
+                [$idProp]
+            );
+            if ($cntRes === 0) {
+                Database::update(
+                    "INSERT INTO co_tipos_comprobantes (id_propietario, tip_comprobante, descripcion, cod_modulo, tipo, estado, usuario_reg, fec_reg)
+                     VALUES (?, 'RES', 'RETENCION SUFRIDA', 'ST', 'INGRESOS', 'A', 'CONTA', NOW())",
+                    [$idProp]
+                );
+            }
         } catch (\Throwable $ignored) {}
 
         try {
@@ -1470,6 +1482,8 @@ class DefinicionesContablesController {
         if (strlen($upCode) > 3) {
             if (str_contains($upDesc, 'LIQUIDAC') && str_contains($upDesc, 'SALARIO')) {
                 $tipComprobante = 'LIQ';
+            } elseif (str_contains($upDesc, 'RETENC') && str_contains($upDesc, 'SUFRID')) {
+                $tipComprobante = 'RES';
             } elseif (str_contains($upDesc, 'AUTO')) {
                 $tipComprobante = 'AUT';
             } elseif (str_contains($upDesc, 'FACTURA')) {

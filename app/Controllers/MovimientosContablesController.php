@@ -169,6 +169,14 @@ class MovimientosContablesController {
         ]);
     }
 
+    public static function pageRetencionesSufridas(): void {
+        self::ensureRetencionesSufridasTables();
+        self::renderFormPage('retenciones_sufridas', [
+            'nomForma'    => 'CORETSUF',
+            'tituloForma' => 'Registro de Retenciones Sufridas',
+        ]);
+    }
+
     public static function pageAsientos(): void {
         self::renderFormPage('asientos', [
             'nomForma'    => 'COASIENT',
@@ -3226,6 +3234,597 @@ class MovimientosContablesController {
             View::json(['status' => 'success', 'message' => "Recibo de Pago #{$idReciboPago} eliminado correctamente."]);
         } catch (\Throwable $e) {
             View::json(['status' => 'error', 'message' => 'Error al eliminar recibo de pago: ' . $e->getMessage()]);
+        }
+    }
+
+    // =========================================================================
+    // API RETENCIONES SUFRIDAS (/api/retenciones-sufridas/*)
+    // =========================================================================
+    public static function ensureRetencionesSufridasTables(): void {
+        Database::execute("
+            CREATE TABLE IF NOT EXISTS `co_retenciones_sufridas` (
+              `id_retencion` bigint NOT NULL AUTO_INCREMENT,
+              `id_propietario` int NOT NULL DEFAULT '1',
+              `cod_empresa` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `tip_comprobante` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT 'RES',
+              `cod_cliente` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `ruc_cliente` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `tip_doc_cliente` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT 'RUC',
+              `nom_cliente` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `nro_timbrado` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `tip_timbrado` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT 'Virtual',
+              `form_145` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT 'ORIGINAL',
+              `nro_retencion` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `fec_retencion` datetime DEFAULT NULL,
+              `cod_moneda` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT '1',
+              `tasa_cambio` decimal(15,4) DEFAULT '1.0000',
+              `grav10` decimal(15,2) DEFAULT '0.00',
+              `iva10` decimal(15,2) DEFAULT '0.00',
+              `porc10` decimal(8,2) DEFAULT '70.00',
+              `ret10` decimal(15,2) DEFAULT '0.00',
+              `grav5` decimal(15,2) DEFAULT '0.00',
+              `iva5` decimal(15,2) DEFAULT '0.00',
+              `porc5` decimal(8,2) DEFAULT '0.00',
+              `ret5` decimal(15,2) DEFAULT '0.00',
+              `exentas` decimal(15,2) DEFAULT '0.00',
+              `valor_total` decimal(15,2) DEFAULT '0.00',
+              `importe_retenido` decimal(15,2) DEFAULT '0.00',
+              `total_comprobantes` decimal(15,2) DEFAULT '0.00',
+              `diferencia` decimal(15,2) DEFAULT '0.00',
+              `observacion` text COLLATE utf8mb4_unicode_ci,
+              `anulada` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT 'N',
+              `estado` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT 'A',
+              `usuario_reg` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `fec_reg` datetime DEFAULT NULL,
+              PRIMARY KEY (`id_retencion`),
+              KEY `idx_co_ret_sufridas_prop_emp` (`id_propietario`, `cod_empresa`),
+              KEY `idx_co_ret_sufridas_fec` (`id_propietario`, `cod_empresa`, `fec_retencion`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ", true);
+
+        Database::execute("
+            CREATE TABLE IF NOT EXISTS `co_retenciones_sufridas_det` (
+              `id_detalle` bigint NOT NULL AUTO_INCREMENT,
+              `id_propietario` int NOT NULL DEFAULT '1',
+              `id_retencion` bigint NOT NULL,
+              `cod_empresa` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `id_ingreso` bigint DEFAULT NULL,
+              `tip_comprobante` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT 'Factura',
+              `nro_comprobante` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `fec_comprobante` datetime DEFAULT NULL,
+              `grav10` decimal(15,2) DEFAULT '0.00',
+              `iva10` decimal(15,2) DEFAULT '0.00',
+              `grav5` decimal(15,2) DEFAULT '0.00',
+              `iva5` decimal(15,2) DEFAULT '0.00',
+              `exentas` decimal(15,2) DEFAULT '0.00',
+              `tot_iva` decimal(15,2) DEFAULT '0.00',
+              `valor_total` decimal(15,2) DEFAULT '0.00',
+              `importe_retenido` decimal(15,2) DEFAULT '0.00',
+              `estado` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT 'A',
+              `usuario_reg` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+              `fec_reg` datetime DEFAULT NULL,
+              PRIMARY KEY (`id_detalle`),
+              KEY `idx_co_ret_sufridas_det_prop` (`id_propietario`),
+              KEY `idx_co_ret_sufridas_det_ret` (`id_propietario`, `id_retencion`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ", true);
+
+        // Asegurar que exista el tipo de comprobante RES - RETENCION SUFRIDA
+        try {
+            $idProp = TenantContext::idPropietario();
+            Database::execute("ALTER TABLE co_tipos_comprobantes MODIFY COLUMN descripcion VARCHAR(100) DEFAULT NULL", true);
+            $cntRes = (int)Database::queryForValue(
+                "SELECT COUNT(*) FROM co_tipos_comprobantes WHERE id_propietario = ? AND UPPER(TRIM(tip_comprobante)) = 'RES'",
+                [$idProp]
+            );
+            if ($cntRes === 0) {
+                Database::update(
+                    "INSERT INTO co_tipos_comprobantes (id_propietario, tip_comprobante, descripcion, cod_modulo, tipo, estado, usuario_reg, fec_reg)
+                     VALUES (?, 'RES', 'RETENCION SUFRIDA', 'ST', 'INGRESOS', 'A', 'CONTA', NOW())",
+                    [$idProp]
+                );
+            }
+        } catch (\Throwable $ignored) {}
+    }
+
+    public static function apiRetencionesSufridasComprobantesCliente(): void {
+        if (!self::requireAuth()) return;
+        self::ensureRetencionesSufridasTables();
+        $idProp     = TenantContext::idPropietario();
+        $empresa    = TenantContext::empresa();
+        $rucCliente = trim((string)($_GET['rucCliente'] ?? ''));
+        $codCliente = trim((string)($_GET['codCliente'] ?? ''));
+        $nroFiltro  = trim((string)($_GET['nroComprobante'] ?? ''));
+
+        try {
+            $sql = "SELECT i.id_ingreso,
+                           COALESCE(i.tip_doc, 'FAC') AS tip_doc,
+                           COALESCE(i.nro_timbrado, '') AS nro_timbrado,
+                           i.nro_factura,
+                           COALESCE(i.serie, '') AS serie,
+                           DATE_FORMAT(i.fec_ingreso, '%Y-%m-%d') AS fec_ingreso,
+                           DATE_FORMAT(i.fec_ingreso, '%d/%m/%Y') AS fec_ingreso_fmt,
+                           COALESCE(i.ruc_cliente, '') AS ruc_cliente,
+                           COALESCE(i.nom_cliente, '') AS nom_cliente,
+                           COALESCE(i.cod_cliente, '') AS cod_cliente,
+                           COALESCE(i.cod_moneda, '1') AS cod_moneda,
+                           COALESCE(i.grav10, 0) AS grav10,
+                           COALESCE(i.iva10, 0) AS iva10,
+                           COALESCE(i.grav5, 0) AS grav5,
+                           COALESCE(i.iva5, 0) AS iva5,
+                           COALESCE(i.exentas, 0) AS exentas,
+                           COALESCE(i.tot_iva, COALESCE(i.iva10, 0) + COALESCE(i.iva5, 0)) AS tot_iva,
+                           COALESCE(i.valor_total, 0) AS valor_total
+                    FROM co_ingresos i
+                    WHERE i.id_propietario = ?
+                      AND i.cod_empresa = ?
+                      AND COALESCE(i.anulada, 'N') <> 'S'
+                      AND COALESCE(i.inutilizado, 'N') <> 'S'
+                      AND COALESCE(i.estado, 'A') <> 'I' ";
+            $params = [$idProp, $empresa];
+
+            if ($rucCliente !== '') {
+                $rucNoDash = str_replace(['-', ' '], '', $rucCliente);
+                if ($codCliente !== '') {
+                    $sql .= "AND (UPPER(TRIM(i.ruc_cliente)) = UPPER(?) OR UPPER(REPLACE(i.ruc_cliente, '-', '')) = UPPER(?) OR TRIM(i.cod_cliente) = ?) ";
+                    $params[] = $rucCliente;
+                    $params[] = $rucNoDash;
+                    $params[] = $codCliente;
+                } else {
+                    $sql .= "AND (UPPER(TRIM(i.ruc_cliente)) = UPPER(?) OR UPPER(REPLACE(i.ruc_cliente, '-', '')) = UPPER(?)) ";
+                    $params[] = $rucCliente;
+                    $params[] = $rucNoDash;
+                }
+            } elseif ($codCliente !== '') {
+                $sql .= "AND TRIM(i.cod_cliente) = ? ";
+                $params[] = $codCliente;
+            }
+
+            if ($nroFiltro !== '') {
+                $cleanNro = str_replace(['-', ' '], '', $nroFiltro);
+                $sql .= "AND (REPLACE(i.nro_factura, '-', '') LIKE ? OR i.nro_factura LIKE ?) ";
+                $params[] = '%' . $cleanNro . '%';
+                $params[] = '%' . $nroFiltro . '%';
+            }
+
+            $sql .= "ORDER BY i.fec_ingreso DESC, i.id_ingreso DESC LIMIT 200";
+            $facturas = Database::queryForList($sql, $params);
+
+            $result = [];
+            foreach ($facturas as $f) {
+                $tipDocRaw = strtoupper(trim((string)($f['tip_doc'] ?? 'FAC')));
+                $tipLabel  = 'Factura';
+                if (str_contains($tipDocRaw, 'CRED') || $tipDocRaw === 'NCR') $tipLabel = 'Nota de Crédito';
+                elseif (str_contains($tipDocRaw, 'DEB') || $tipDocRaw === 'NDB') $tipLabel = 'Nota de Débito';
+                elseif (str_contains($tipDocRaw, 'AUTO') || $tipDocRaw === 'AUT') $tipLabel = 'Autofactura';
+
+                $nroFac = self::formatNroFactura((string)($f['nro_factura'] ?? ''), $tipDocRaw);
+                $result[] = [
+                    'id_ingreso'      => (int)($f['id_ingreso'] ?? 0),
+                    'tip_comprobante' => $tipLabel,
+                    'tip_doc'         => $tipDocRaw,
+                    'nro_timbrado'    => (string)($f['nro_timbrado'] ?? ''),
+                    'nro_comprobante' => $nroFac,
+                    'serie'           => (string)($f['serie'] ?? ''),
+                    'fec_comprobante' => (string)($f['fec_ingreso'] ?? ''),
+                    'fec_fmt'         => (string)($f['fec_ingreso_fmt'] ?? ''),
+                    'ruc_cliente'     => (string)($f['ruc_cliente'] ?? ''),
+                    'nom_cliente'     => (string)($f['nom_cliente'] ?? ''),
+                    'cod_cliente'     => (string)($f['cod_cliente'] ?? ''),
+                    'cod_moneda'      => (string)($f['cod_moneda'] ?? '1'),
+                    'grav10'          => (float)($f['grav10'] ?? 0),
+                    'iva10'           => (float)($f['iva10'] ?? 0),
+                    'grav5'           => (float)($f['grav5'] ?? 0),
+                    'iva5'            => (float)($f['iva5'] ?? 0),
+                    'exentas'         => (float)($f['exentas'] ?? 0),
+                    'tot_iva'         => (float)($f['tot_iva'] ?? 0),
+                    'valor_total'     => (float)($f['valor_total'] ?? 0),
+                ];
+            }
+
+            View::json(['status' => 'success', 'data' => $result]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al consultar comprobantes del cliente: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiRetencionesSufridasList(): void {
+        if (!self::requireAuth()) return;
+        self::ensureRetencionesSufridasTables();
+        $idProp     = TenantContext::idPropietario();
+        $empresa    = TenantContext::empresa();
+        $anio       = trim((string)($_GET['anio'] ?? ''));
+        $mes        = trim((string)($_GET['mes'] ?? ''));
+        $fechaDesde = self::parseSqlDate((string)($_GET['fechaDesde'] ?? $_GET['desde'] ?? ''));
+        $fechaHasta = self::parseSqlDate((string)($_GET['fechaHasta'] ?? $_GET['hasta'] ?? ''));
+
+        try {
+            $sql = "SELECT r.id_retencion,
+                           r.cod_empresa,
+                           COALESCE(r.tip_comprobante, 'RES') AS tip_comprobante,
+                           r.cod_cliente,
+                           r.ruc_cliente,
+                           COALESCE(r.tip_doc_cliente, 'RUC') AS tip_doc_cliente,
+                           r.nom_cliente,
+                           COALESCE(r.nro_timbrado, '') AS nro_timbrado,
+                           COALESCE(r.tip_timbrado, 'Virtual') AS tip_timbrado,
+                           COALESCE(r.form_145, 'ORIGINAL') AS form_145,
+                           r.nro_retencion,
+                           DATE_FORMAT(r.fec_retencion, '%Y-%m-%d') AS fec_retencion,
+                           DATE_FORMAT(r.fec_retencion, '%d/%m/%Y') AS fec_retencion_fmt,
+                           COALESCE(r.cod_moneda, '1') AS cod_moneda,
+                           COALESCE(r.tasa_cambio, 1) AS tasa_cambio,
+                           COALESCE(r.grav10, 0) AS grav10,
+                           COALESCE(r.iva10, 0) AS iva10,
+                           COALESCE(r.porc10, 70) AS porc10,
+                           COALESCE(r.ret10, 0) AS ret10,
+                           COALESCE(r.grav5, 0) AS grav5,
+                           COALESCE(r.iva5, 0) AS iva5,
+                           COALESCE(r.porc5, 0) AS porc5,
+                           COALESCE(r.ret5, 0) AS ret5,
+                           COALESCE(r.exentas, 0) AS exentas,
+                           COALESCE(r.valor_total, 0) AS valor_total,
+                           COALESCE(r.importe_retenido, 0) AS importe_retenido,
+                           COALESCE(r.total_comprobantes, 0) AS total_comprobantes,
+                           COALESCE(r.diferencia, 0) AS diferencia,
+                           r.observacion,
+                           COALESCE(r.anulada, 'N') AS anulada,
+                           COALESCE(r.estado, 'A') AS estado,
+                           r.usuario_reg,
+                           DATE_FORMAT(r.fec_reg, '%d/%m/%Y %H:%i') AS fec_reg_fmt,
+                           (SELECT GROUP_CONCAT(d.nro_comprobante SEPARATOR ', ')
+                            FROM co_retenciones_sufridas_det d
+                            WHERE d.id_propietario = r.id_propietario AND d.id_retencion = r.id_retencion
+                           ) AS comprobantes_rel,
+                           (SELECT COUNT(*)
+                            FROM co_retenciones_sufridas_det d2
+                            WHERE d2.id_propietario = r.id_propietario AND d2.id_retencion = r.id_retencion
+                           ) AS cant_comprobantes
+                    FROM co_retenciones_sufridas r
+                    WHERE r.id_propietario = ? AND r.cod_empresa = ? ";
+            $params = [$idProp, $empresa];
+
+            if ($fechaDesde !== null) {
+                $sql .= "AND DATE(r.fec_retencion) >= ? ";
+                $params[] = $fechaDesde;
+            }
+            if ($fechaHasta !== null) {
+                $sql .= "AND DATE(r.fec_retencion) <= ? ";
+                $params[] = $fechaHasta;
+            }
+            if ($fechaDesde === null && $fechaHasta === null) {
+                if ($anio !== '' && strcasecmp($anio, 'TODOS') !== 0) {
+                    $sql .= "AND YEAR(r.fec_retencion) = ? ";
+                    $params[] = (int)$anio;
+                }
+                if ($mes !== '' && strcasecmp($mes, 'TODOS') !== 0) {
+                    $sql .= "AND MONTH(r.fec_retencion) = ? ";
+                    $params[] = (int)$mes;
+                }
+            }
+            $sql .= "ORDER BY r.fec_retencion DESC, r.id_retencion DESC";
+
+            $list = Database::queryForListUpper($sql, $params);
+            View::json(['status' => 'success', 'data' => $list]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al listar retenciones sufridas: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiRetencionesSufridasGet(string $id): void {
+        if (!self::requireAuth()) return;
+        self::ensureRetencionesSufridasTables();
+        $idProp      = TenantContext::idPropietario();
+        $empresa     = TenantContext::empresa();
+        $idRetencion = (int)$id;
+
+        try {
+            $cab = Database::queryForListUpper(
+                "SELECT id_retencion, cod_empresa, COALESCE(tip_comprobante, 'RES') AS tip_comprobante,
+                        cod_cliente, ruc_cliente, COALESCE(tip_doc_cliente, 'RUC') AS tip_doc_cliente,
+                        nom_cliente, COALESCE(nro_timbrado, '') AS nro_timbrado,
+                        COALESCE(tip_timbrado, 'Virtual') AS tip_timbrado,
+                        COALESCE(form_145, 'ORIGINAL') AS form_145,
+                        nro_retencion,
+                        DATE_FORMAT(fec_retencion, '%Y-%m-%d') AS fec_retencion,
+                        COALESCE(cod_moneda, '1') AS cod_moneda,
+                        COALESCE(tasa_cambio, 1) AS tasa_cambio,
+                        COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
+                        COALESCE(porc10, 70) AS porc10, COALESCE(ret10, 0) AS ret10,
+                        COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
+                        COALESCE(porc5, 0) AS porc5, COALESCE(ret5, 0) AS ret5,
+                        COALESCE(exentas, 0) AS exentas,
+                        COALESCE(valor_total, 0) AS valor_total,
+                        COALESCE(importe_retenido, 0) AS importe_retenido,
+                        COALESCE(total_comprobantes, 0) AS total_comprobantes,
+                        COALESCE(diferencia, 0) AS diferencia,
+                        observacion, COALESCE(anulada, 'N') AS anulada,
+                        COALESCE(estado, 'A') AS estado, usuario_reg,
+                        DATE_FORMAT(fec_reg, '%d/%m/%Y %H:%i') AS fec_reg_fmt
+                 FROM co_retenciones_sufridas
+                 WHERE id_propietario = ? AND id_retencion = ? AND cod_empresa = ?
+                 LIMIT 1",
+                [$idProp, $idRetencion, $empresa]
+            );
+            if (empty($cab)) {
+                View::json(['status' => 'error', 'message' => 'Retención sufrida no encontrada.']);
+                return;
+            }
+
+            $detalles = Database::queryForListUpper(
+                "SELECT id_detalle, id_ingreso, COALESCE(tip_comprobante, 'Factura') AS tip_comprobante,
+                        nro_comprobante,
+                        DATE_FORMAT(fec_comprobante, '%Y-%m-%d') AS fec_comprobante,
+                        DATE_FORMAT(fec_comprobante, '%d/%m/%Y') AS fec_comprobante_fmt,
+                        COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
+                        COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
+                        COALESCE(exentas, 0) AS exentas, COALESCE(tot_iva, 0) AS tot_iva,
+                        COALESCE(valor_total, 0) AS valor_total,
+                        COALESCE(importe_retenido, 0) AS importe_retenido
+                 FROM co_retenciones_sufridas_det
+                 WHERE id_propietario = ? AND id_retencion = ? AND cod_empresa = ?
+                 ORDER BY id_detalle ASC",
+                [$idProp, $idRetencion, $empresa]
+            );
+
+            $data = $cab[0];
+            $data['DETALLES'] = $detalles;
+            View::json(['status' => 'success', 'data' => $data]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al obtener retención sufrida: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiRetencionesSufridasSave(): void {
+        if (!self::requireAuth()) return;
+        self::ensureRetencionesSufridasTables();
+        $idProp  = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $usuario = TenantContext::usuario();
+        $payload = self::getInput();
+
+        try {
+            $idRetencion  = !empty($payload['idRetencion']) ? (int)$payload['idRetencion'] : null;
+            $rucCliente   = trim((string)($payload['rucCliente'] ?? ''));
+            $tipDocCli    = strtoupper(trim((string)($payload['tipDocCliente'] ?? 'RUC'))) ?: 'RUC';
+            $codCliente   = trim((string)($payload['codCliente'] ?? ''));
+            $nomCliente   = substr(trim((string)($payload['nomCliente'] ?? '')), 0, 150);
+
+            if ($rucCliente === '' || $nomCliente === '') {
+                View::json(['status' => 'error', 'message' => 'Debe indicar el RUC y Razón Social del Cliente (Agente de Retención).']);
+                return;
+            }
+
+            if ($codCliente === '' || strcasecmp($codCliente, 'null') === 0) {
+                $rucNoDash = str_replace(['-', ' '], '', $rucCliente);
+                $foundCli = Database::queryForValue(
+                    "SELECT cod_cliente FROM co_clientes
+                     WHERE id_propietario = ?
+                       AND (UPPER(TRIM(ruc)) = UPPER(?) OR UPPER(REPLACE(ruc, '-', '')) = UPPER(?))
+                     ORDER BY CASE WHEN cod_empresa = ? THEN 1 ELSE 2 END, CAST(cod_cliente AS UNSIGNED) DESC
+                     LIMIT 1",
+                    [$idProp, $rucCliente, $rucNoDash, $empresa]
+                );
+                if ($foundCli !== null) {
+                    $codCliente = (string)$foundCli;
+                }
+            }
+
+            $nroTimbrado  = substr(trim((string)($payload['nroTimbrado'] ?? '')), 0, 20);
+            $tipTimbrado  = trim((string)($payload['tipTimbrado'] ?? 'Virtual')) ?: 'Virtual';
+            $form145      = strtoupper(trim((string)($payload['form145'] ?? 'ORIGINAL'))) ?: 'ORIGINAL';
+            $nroRetencion = self::formatNroFactura(trim((string)($payload['nroRetencion'] ?? '')), 'RES');
+
+            if ($nroRetencion === '') {
+                View::json(['status' => 'error', 'message' => 'Debe indicar el Número del Comprobante de Retención.']);
+                return;
+            }
+
+            $fecRetencion = self::parseSqlDate((string)($payload['fecRetencion'] ?? '')) ?: date('Y-m-d');
+            $codMoneda    = trim((string)($payload['codMoneda'] ?? '1')) ?: '1';
+            $tasaCambio   = (float)($payload['tasaCambio'] ?? 1);
+            if ($tasaCambio <= 0) $tasaCambio = 1.0;
+
+            $grav10       = (float)($payload['grav10'] ?? 0);
+            $iva10        = (float)($payload['iva10'] ?? 0);
+            $porc10       = (float)($payload['porc10'] ?? 70);
+            $ret10        = (float)($payload['ret10'] ?? 0);
+            $grav5        = (float)($payload['grav5'] ?? 0);
+            $iva5         = (float)($payload['iva5'] ?? 0);
+            $porc5        = (float)($payload['porc5'] ?? 0);
+            $ret5         = (float)($payload['ret5'] ?? 0);
+            $exentas      = (float)($payload['exentas'] ?? 0);
+            $valorTotal   = (float)($payload['valorTotal'] ?? ($grav10 + $grav5 + $exentas));
+            $impRetenido  = (float)($payload['importeRetenido'] ?? ($ret10 + $ret5));
+            $observacion  = isset($payload['observacion']) ? trim((string)$payload['observacion']) : null;
+            $rawAnul      = $payload['anulada'] ?? 'N';
+            $anulada      = (!empty($rawAnul) && $rawAnul !== 'N' && $rawAnul !== 'false') ? 'S' : 'N';
+
+            $detallesRaw = is_array($payload['detalles'] ?? null) ? $payload['detalles'] : [];
+            $sumComprobantes = 0.0;
+            $detallesLimpios = [];
+            foreach ($detallesRaw as $d) {
+                $nroComp = trim((string)($d['nroComprobante'] ?? $d['comprobante'] ?? ''));
+                if ($nroComp === '') continue;
+                $idIng       = !empty($d['idIngreso']) ? (int)$d['idIngreso'] : null;
+                $tipComp     = trim((string)($d['tipComprobante'] ?? $d['tipo'] ?? 'Factura')) ?: 'Factura';
+                $fecComp     = self::parseSqlDate((string)($d['fecComprobante'] ?? '')) ?: $fecRetencion;
+                $dGrav10     = (float)($d['grav10'] ?? 0);
+                $dIva10      = (float)($d['iva10'] ?? 0);
+                $dGrav5      = (float)($d['grav5'] ?? 0);
+                $dIva5       = (float)($d['iva5'] ?? 0);
+                $dExentas    = (float)($d['exentas'] ?? 0);
+                $dTotIva     = (float)($d['totIva'] ?? ($dIva10 + $dIva5));
+                $dValTotal   = (float)($d['valorTotal'] ?? $d['total'] ?? ($dGrav10 + $dGrav5 + $dExentas));
+                $dRetenido   = (float)($d['importeRetenido'] ?? $d['retenido'] ?? 0);
+                $sumComprobantes += $dRetenido;
+
+                $detallesLimpios[] = [
+                    'id_ingreso'       => $idIng,
+                    'tip_comprobante'  => $tipComp,
+                    'nro_comprobante'  => self::formatNroFactura($nroComp, 'FAC'),
+                    'fec_comprobante'  => $fecComp,
+                    'grav10'           => $dGrav10,
+                    'iva10'            => $dIva10,
+                    'grav5'            => $dGrav5,
+                    'iva5'             => $dIva5,
+                    'exentas'          => $dExentas,
+                    'tot_iva'          => $dTotIva,
+                    'valor_total'      => $dValTotal,
+                    'importe_retenido' => $dRetenido,
+                ];
+            }
+
+            $totalComprobantes = $sumComprobantes > 0 ? $sumComprobantes : $impRetenido;
+            $diferencia        = $impRetenido - $totalComprobantes;
+
+            if ($idRetencion === null) {
+                $savedId = (int)Database::insertGetId(
+                    "INSERT INTO co_retenciones_sufridas (
+                        id_propietario, cod_empresa, tip_comprobante, cod_cliente, ruc_cliente,
+                        tip_doc_cliente, nom_cliente, nro_timbrado, tip_timbrado, form_145,
+                        nro_retencion, fec_retencion, cod_moneda, tasa_cambio,
+                        grav10, iva10, porc10, ret10, grav5, iva5, porc5, ret5,
+                        exentas, valor_total, importe_retenido, total_comprobantes, diferencia,
+                        observacion, anulada, estado, usuario_reg, fec_reg
+                     ) VALUES (?, ?, 'RES', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'A', ?, NOW())",
+                    [
+                        $idProp, $empresa, $codCliente ?: null, $rucCliente,
+                        $tipDocCli, $nomCliente, $nroTimbrado ?: null, $tipTimbrado, $form145,
+                        $nroRetencion, $fecRetencion, $codMoneda, $tasaCambio,
+                        $grav10, $iva10, $porc10, $ret10, $grav5, $iva5, $porc5, $ret5,
+                        $exentas, $valorTotal, $impRetenido, $totalComprobantes, $diferencia,
+                        $observacion, $anulada, $usuario
+                    ]
+                );
+                $msg = "Retención Sufrida N° {$nroRetencion} registrada con éxito (#{$savedId}).";
+            } else {
+                Database::update(
+                    "UPDATE co_retenciones_sufridas SET
+                        cod_cliente = ?, ruc_cliente = ?, tip_doc_cliente = ?, nom_cliente = ?,
+                        nro_timbrado = ?, tip_timbrado = ?, form_145 = ?, nro_retencion = ?,
+                        fec_retencion = ?, cod_moneda = ?, tasa_cambio = ?,
+                        grav10 = ?, iva10 = ?, porc10 = ?, ret10 = ?,
+                        grav5 = ?, iva5 = ?, porc5 = ?, ret5 = ?,
+                        exentas = ?, valor_total = ?, importe_retenido = ?,
+                        total_comprobantes = ?, diferencia = ?, observacion = ?, anulada = ?
+                     WHERE id_propietario = ? AND id_retencion = ? AND cod_empresa = ?",
+                    [
+                        $codCliente ?: null, $rucCliente, $tipDocCli, $nomCliente,
+                        $nroTimbrado ?: null, $tipTimbrado, $form145, $nroRetencion,
+                        $fecRetencion, $codMoneda, $tasaCambio,
+                        $grav10, $iva10, $porc10, $ret10,
+                        $grav5, $iva5, $porc5, $ret5,
+                        $exentas, $valorTotal, $impRetenido,
+                        $totalComprobantes, $diferencia, $observacion, $anulada,
+                        $idProp, $idRetencion, $empresa
+                    ]
+                );
+                Database::update(
+                    "DELETE FROM co_retenciones_sufridas_det WHERE id_propietario = ? AND id_retencion = ? AND cod_empresa = ?",
+                    [$idProp, $idRetencion, $empresa]
+                );
+                $savedId = $idRetencion;
+                $msg = "Retención Sufrida N° {$nroRetencion} actualizada con éxito.";
+            }
+
+            foreach ($detallesLimpios as $det) {
+                Database::update(
+                    "INSERT INTO co_retenciones_sufridas_det (
+                        id_propietario, id_retencion, cod_empresa, id_ingreso, tip_comprobante,
+                        nro_comprobante, fec_comprobante, grav10, iva10, grav5, iva5,
+                        exentas, tot_iva, valor_total, importe_retenido, estado, usuario_reg, fec_reg
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'A', ?, NOW())",
+                    [
+                        $idProp, $savedId, $empresa, $det['id_ingreso'], $det['tip_comprobante'],
+                        $det['nro_comprobante'], $det['fec_comprobante'], $det['grav10'], $det['iva10'],
+                        $det['grav5'], $det['iva5'], $det['exentas'], $det['tot_iva'],
+                        $det['valor_total'], $det['importe_retenido'], $usuario
+                    ]
+                );
+            }
+
+            View::json([
+                'status'      => 'success',
+                'message'     => $msg,
+                'idRetencion' => $savedId,
+            ]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al guardar retención sufrida: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiRetencionesSufridasDelete(): void {
+        if (!self::requireAuth()) return;
+        self::ensureRetencionesSufridasTables();
+        $idProp      = TenantContext::idPropietario();
+        $empresa     = TenantContext::empresa();
+        $payload     = self::getInput();
+        $idRetencion = (int)($payload['idRetencion'] ?? 0);
+
+        if ($idRetencion <= 0) {
+            View::json(['status' => 'error', 'message' => 'ID de retención sufrida inválido.']);
+            return;
+        }
+
+        try {
+            Database::update(
+                "DELETE FROM co_retenciones_sufridas_det WHERE id_propietario = ? AND id_retencion = ? AND cod_empresa = ?",
+                [$idProp, $idRetencion, $empresa]
+            );
+            Database::update(
+                "DELETE FROM co_retenciones_sufridas WHERE id_propietario = ? AND id_retencion = ? AND cod_empresa = ?",
+                [$idProp, $idRetencion, $empresa]
+            );
+            View::json(['status' => 'success', 'message' => "Retención Sufrida #{$idRetencion} eliminada correctamente."]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al eliminar retención sufrida: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiRetencionesSufridasAnular(): void {
+        if (!self::requireAuth()) return;
+        self::ensureRetencionesSufridasTables();
+        $idProp      = TenantContext::idPropietario();
+        $empresa     = TenantContext::empresa();
+        $payload     = self::getInput();
+        $idRetencion = (int)($payload['idRetencion'] ?? 0);
+
+        if ($idRetencion <= 0) {
+            View::json(['status' => 'error', 'message' => 'Seleccione una retención sufrida para anular.']);
+            return;
+        }
+
+        try {
+            $row = Database::queryForMap(
+                "SELECT id_retencion, nro_retencion, COALESCE(anulada, 'N') AS anulada
+                 FROM co_retenciones_sufridas
+                 WHERE id_propietario = ? AND id_retencion = ? AND cod_empresa = ?
+                 LIMIT 1",
+                [$idProp, $idRetencion, $empresa]
+            );
+            if (!$row) {
+                View::json(['status' => 'error', 'message' => 'Retención sufrida no encontrada.']);
+                return;
+            }
+            $nroRet = trim((string)($row['nro_retencion'] ?? '')) ?: ('#' . $idRetencion);
+            $nuevoEstado = (isset($payload['anulada']) && strtoupper((string)$payload['anulada']) === 'N') ? 'N' : 'S';
+
+            Database::update(
+                "UPDATE co_retenciones_sufridas SET anulada = ?
+                 WHERE id_propietario = ? AND id_retencion = ? AND cod_empresa = ?",
+                [$nuevoEstado, $idProp, $idRetencion, $empresa]
+            );
+
+            View::json([
+                'status'  => 'success',
+                'anulada' => $nuevoEstado,
+                'message' => $nuevoEstado === 'S'
+                    ? "La Retención Sufrida {$nroRet} fue anulada correctamente."
+                    : "La Retención Sufrida {$nroRet} fue reactivada correctamente.",
+            ]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al actualizar estado de retención sufrida: ' . $e->getMessage()]);
         }
     }
 }
