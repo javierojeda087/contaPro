@@ -646,6 +646,7 @@ $exactApiRoutes = [
     '/api/ingresos/list'                           => [MovimientosContablesController::class, 'apiIngresosList'],
     '/api/ingresos/save'                           => [MovimientosContablesController::class, 'apiIngresosSave'],
     '/api/ingresos/delete'                         => [MovimientosContablesController::class, 'apiIngresosDelete'],
+    '/api/ingresos/anular'                         => [MovimientosContablesController::class, 'apiIngresosAnular'],
     '/api/recibos-cobro/list'                      => [MovimientosContablesController::class, 'apiRecibosCobroList'],
     '/api/recibos_cobro/list'                      => [MovimientosContablesController::class, 'apiRecibosCobroList'],
     '/api/recibos-cobro/save'                      => [MovimientosContablesController::class, 'apiRecibosCobroSave'],

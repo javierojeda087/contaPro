@@ -1674,6 +1674,56 @@ class MovimientosContablesController {
         }
     }
 
+    public static function apiIngresosAnular(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $payload = self::getInput();
+        $idIngreso = (int)($payload['idIngreso'] ?? 0);
+
+        if ($idIngreso <= 0) {
+            View::json(['status' => 'error', 'message' => 'Debe seleccionar un comprobante de ingreso para anular.']);
+            return;
+        }
+
+        try {
+            $row = Database::queryForMap(
+                "SELECT id_ingreso, nro_factura, COALESCE(anulada, 'N') AS anulada
+                 FROM co_ingresos
+                 WHERE id_propietario = ? AND id_ingreso = ? AND cod_empresa = ?
+                 LIMIT 1",
+                [$idProp, $idIngreso, $empresa]
+            );
+
+            if (!$row) {
+                View::json(['status' => 'error', 'message' => 'El comprobante de ingreso seleccionado no fue encontrado.']);
+                return;
+            }
+
+            $nroFactura = trim((string)($row['nro_factura'] ?? '')) ?: ('#' . $idIngreso);
+            $nuevoEstadoAnulada = (isset($payload['anulada']) && strtoupper((string)$payload['anulada']) === 'N') ? 'N' : 'S';
+
+            Database::update(
+                "UPDATE co_ingresos
+                 SET anulada = ?
+                 WHERE id_propietario = ? AND id_ingreso = ? AND cod_empresa = ?",
+                [$nuevoEstadoAnulada, $idProp, $idIngreso, $empresa]
+            );
+
+            $msg = $nuevoEstadoAnulada === 'S'
+                ? "El comprobante {$nroFactura} ha sido anulado correctamente."
+                : "El comprobante {$nroFactura} ha sido reactivado correctamente.";
+
+            View::json([
+                'status'  => 'success',
+                'anulada' => $nuevoEstadoAnulada,
+                'message' => $msg,
+            ]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al anular ingreso: ' . $e->getMessage()]);
+        }
+    }
+
     // =========================================================================
     // API ASIENTOS CONTABLES (/api/asientos/*)
     // =========================================================================
