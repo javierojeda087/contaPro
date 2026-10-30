@@ -1443,57 +1443,72 @@ class AdminController {
                  ) t"
             );
 
-            Database::update("DELETE FROM accesos_grupos WHERE UPPER(TRIM(cod_grupo)) = ?", [$codGrupo]);
-
-            foreach ($permisos as $p) {
-                $nomForma  = strtoupper(trim((string)($p['nomForma'] ?? '')));
-                $codModulo = strtoupper(trim((string)($p['codModulo'] ?? 'CO')));
-                $itemMenu  = trim((string)($p['itemMenu'] ?? $nomForma));
-                if ($nomForma === '') continue;
-
-                // Regla estricta: solo CONADM puede tener acceso a BSGRPUSU (Accesos Grupos) y BSFORMAS (Formas del Sistema)
-                if (in_array($nomForma, ['BSGRPUSU', 'BSFORMAS'], true) && $codGrupo !== 'CONADM') {
-                    continue;
+            // Soportar guardado de un grupo específico o de TODOS los grupos ('ALL')
+            $gruposAProcesar = [];
+            if ($codGrupo === 'ALL') {
+                foreach ($permisos as $p) {
+                    $g = strtoupper(trim((string)($p['codGrupo'] ?? '')));
+                    if ($g !== '' && $g !== 'ALL') {
+                        $gruposAProcesar[$g][] = $p;
+                    }
                 }
-
-                $mostrar    = (!empty($p['mostrarEnMenu']) && $p['mostrarEnMenu'] !== 'N' && $p['mostrarEnMenu'] !== false) ? 'S' : 'N';
-                $insertar   = (!empty($p['puedeInsertar']) && $p['puedeInsertar'] !== 'N' && $p['puedeInsertar'] !== false) ? 'S' : 'N';
-                $actualizar = (!empty($p['puedeActualizar']) && $p['puedeActualizar'] !== 'N' && $p['puedeActualizar'] !== false) ? 'S' : 'N';
-                $borrar     = (!empty($p['puedeBorrar']) && $p['puedeBorrar'] !== 'N' && $p['puedeBorrar'] !== false) ? 'S' : 'N';
-                $consultar  = (!empty($p['puedeConsultar']) && $p['puedeConsultar'] !== 'N' && $p['puedeConsultar'] !== false) ? 'S' : 'N';
-
-                if ($mostrar === 'N' && $insertar === 'N' && $actualizar === 'N' && $borrar === 'N' && $consultar === 'N') {
-                    continue;
-                }
-
-                foreach ($propRows as $pr) {
-                    $pid = (int)($pr['id_prop'] ?? 1);
-                    Database::update(
-                        "INSERT INTO accesos_grupos (
-                             id_propietario, cod_grupo, cod_modulo, nom_forma,
-                             puede_insertar, puede_borrar, puede_actualizar, puede_consultar,
-                             item_menu, mostrar_en_menu
-                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        [$pid, $codGrupo, $codModulo, $nomForma, $insertar, $borrar, $actualizar, $consultar, $itemMenu, $mostrar]
-                    );
-                }
+            } else {
+                $gruposAProcesar[$codGrupo] = $permisos;
             }
 
-            // Si es CONADM, garantizar que siempre mantenga acceso a BSGRPUSU y BSFORMAS
-            if ($codGrupo === 'CONADM') {
-                foreach ($propRows as $pr) {
-                    $pid = (int)($pr['id_prop'] ?? 1);
-                    foreach ([['BSGRPUSU', 'Accesos Grupos'], ['BSFORMAS', 'Formas del Sistema']] as $fAdmin) {
-                        $has = (int)Database::queryForValue(
-                            "SELECT COUNT(*) FROM accesos_grupos WHERE id_propietario = ? AND UPPER(TRIM(cod_grupo)) = 'CONADM' AND UPPER(TRIM(nom_forma)) = ?",
-                            [$pid, $fAdmin[0]]
+            foreach ($gruposAProcesar as $grpActual => $listaPermisos) {
+                Database::update("DELETE FROM accesos_grupos WHERE UPPER(TRIM(cod_grupo)) = ?", [$grpActual]);
+
+                foreach ($listaPermisos as $p) {
+                    $nomForma  = strtoupper(trim((string)($p['nomForma'] ?? '')));
+                    $codModulo = strtoupper(trim((string)($p['codModulo'] ?? 'CO')));
+                    $itemMenu  = trim((string)($p['itemMenu'] ?? $nomForma));
+                    if ($nomForma === '') continue;
+
+                    // Regla estricta: solo CONADM puede tener acceso a BSGRPUSU (Accesos Grupos) y BSFORMAS (Formas del Sistema)
+                    if (in_array($nomForma, ['BSGRPUSU', 'BSFORMAS'], true) && $grpActual !== 'CONADM') {
+                        continue;
+                    }
+
+                    $mostrar    = (!empty($p['mostrarEnMenu']) && $p['mostrarEnMenu'] !== 'N' && $p['mostrarEnMenu'] !== false) ? 'S' : 'N';
+                    $insertar   = (!empty($p['puedeInsertar']) && $p['puedeInsertar'] !== 'N' && $p['puedeInsertar'] !== false) ? 'S' : 'N';
+                    $actualizar = (!empty($p['puedeActualizar']) && $p['puedeActualizar'] !== 'N' && $p['puedeActualizar'] !== false) ? 'S' : 'N';
+                    $borrar     = (!empty($p['puedeBorrar']) && $p['puedeBorrar'] !== 'N' && $p['puedeBorrar'] !== false) ? 'S' : 'N';
+                    $consultar  = (!empty($p['puedeConsultar']) && $p['puedeConsultar'] !== 'N' && $p['puedeConsultar'] !== false) ? 'S' : 'N';
+
+                    if ($mostrar === 'N' && $insertar === 'N' && $actualizar === 'N' && $borrar === 'N' && $consultar === 'N') {
+                        continue;
+                    }
+
+                    foreach ($propRows as $pr) {
+                        $pid = (int)($pr['id_prop'] ?? 1);
+                        Database::update(
+                            "INSERT INTO accesos_grupos (
+                                 id_propietario, cod_grupo, cod_modulo, nom_forma,
+                                 puede_insertar, puede_borrar, puede_actualizar, puede_consultar,
+                                 item_menu, mostrar_en_menu
+                             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            [$pid, $grpActual, $codModulo, $nomForma, $insertar, $borrar, $actualizar, $consultar, $itemMenu, $mostrar]
                         );
-                        if ($has === 0) {
-                            Database::update(
-                                "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
-                                 VALUES (?, 'CONADM', 'AD', ?, 'S', 'S', 'S', 'S', ?, 'S')",
-                                [$pid, $fAdmin[0], $fAdmin[1]]
+                    }
+                }
+
+                // Si es CONADM, garantizar que siempre mantenga acceso a BSGRPUSU y BSFORMAS
+                if ($grpActual === 'CONADM') {
+                    foreach ($propRows as $pr) {
+                        $pid = (int)($pr['id_prop'] ?? 1);
+                        foreach ([['BSGRPUSU', 'Accesos Grupos'], ['BSFORMAS', 'Formas del Sistema']] as $fAdmin) {
+                            $has = (int)Database::queryForValue(
+                                "SELECT COUNT(*) FROM accesos_grupos WHERE id_propietario = ? AND UPPER(TRIM(cod_grupo)) = 'CONADM' AND UPPER(TRIM(nom_forma)) = ?",
+                                [$pid, $fAdmin[0]]
                             );
+                            if ($has === 0) {
+                                Database::update(
+                                    "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
+                                     VALUES (?, 'CONADM', 'AD', ?, 'S', 'S', 'S', 'S', ?, 'S')",
+                                    [$pid, $fAdmin[0], $fAdmin[1]]
+                                );
+                            }
                         }
                     }
                 }
@@ -1501,7 +1516,9 @@ class AdminController {
 
             View::json([
                 'status'  => 'success',
-                'message' => "Permisos del grupo {$codGrupo} actualizados correctamente.",
+                'message' => $codGrupo === 'ALL'
+                    ? "Permisos de todos los grupos actualizados correctamente."
+                    : "Permisos del grupo {$codGrupo} actualizados correctamente.",
             ]);
         } catch (\Throwable $e) {
             View::json(['status' => 'error', 'message' => 'Error al guardar permisos: ' . $e->getMessage()]);

@@ -558,6 +558,8 @@ $exactApiRoutes = [
     '/api/coejerci/delete'                         => [DefinicionesContablesController::class, 'apiEjerciciosDelete'],
     '/api/ejercicios/personas'                     => [DefinicionesContablesController::class, 'apiEjerciciosPersonas'],
     '/api/coejerci/personas'                       => [DefinicionesContablesController::class, 'apiEjerciciosPersonas'],
+    '/api/ejercicios/buscar-dnit'                  => [DefinicionesContablesController::class, 'apiEjerciciosBuscarDnit'],
+    '/api/coejerci/buscar-dnit'                    => [DefinicionesContablesController::class, 'apiEjerciciosBuscarDnit'],
 
     // Monedas y Cotizaciones
     '/api/monedas/list'                            => [DefinicionesContablesController::class, 'apiMonedasList'],

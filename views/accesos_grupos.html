@@ -255,7 +255,7 @@
                         </div>
 
                         <button type="button" id="btnGuardarPermisos" onclick="guardarPermisosGrupo()" style="background: #16a34a; border: 1px solid #16a34a; color: #ffffff; padding: 0.55rem 1.35rem; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(22,163,74,0.25);">
-                            <i class="ph ph-floppy-disk"></i> Guardar Permisos del Grupo
+                            <i class="ph ph-floppy-disk"></i> <span id="btnGuardarPermisosLabel">Guardar Permisos del Grupo</span>
                         </button>
                     </div>
 
@@ -263,9 +263,10 @@
                         <table class="data-grid" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem;">
                             <thead style="position: sticky; top: 0; z-index: 5;">
                                 <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569; font-weight: 600; text-transform: uppercase; font-size: 0.76rem;">
-                                    <th style="padding: 0.8rem 1.25rem;">Módulo</th>
-                                    <th style="padding: 0.8rem 1.25rem;">Código Forma</th>
-                                    <th style="padding: 0.8rem 1.25rem;">Nombre de Pantalla / Ítem de Menú</th>
+                                    <th style="padding: 0.8rem 1.1rem;">Grupo</th>
+                                    <th style="padding: 0.8rem 1.1rem;">Módulo</th>
+                                    <th style="padding: 0.8rem 1.1rem;">Código Forma</th>
+                                    <th style="padding: 0.8rem 1.1rem;">Nombre de Pantalla / Ítem de Menú</th>
                                     <th style="padding: 0.8rem 1rem; text-align: center;">Mostrar en Menú</th>
                                     <th style="padding: 0.8rem 1rem; text-align: center;">Consultar</th>
                                     <th style="padding: 0.8rem 1rem; text-align: center;">Insertar</th>
@@ -371,8 +372,8 @@
             filterSel.innerHTML = '<option value="">Todos los grupos</option>';
 
             const permSel = document.getElementById('permGrupoSelect');
-            const currentPerm = permSel.value || 'CONTA';
-            permSel.innerHTML = '';
+            const currentPerm = permSel.value || 'ALL';
+            permSel.innerHTML = '<option value="ALL">Todos los grupos</option>';
 
             const clonarSel = document.getElementById('inputClonarGrupo');
             const currentClonar = clonarSel ? (clonarSel.value || 'CONTA') : 'CONTA';
@@ -731,7 +732,29 @@
 
         function renderPermisosTable() {
             const tbody = document.getElementById('permisosTableBody');
-            const codGrupo = (document.getElementById('permGrupoSelect').value || 'CONTA').toUpperCase();
+            const selectedGrupo = (document.getElementById('permGrupoSelect').value || 'ALL').toUpperCase();
+            const btnLabel = document.getElementById('btnGuardarPermisosLabel');
+            if (btnLabel) {
+                btnLabel.textContent = selectedGrupo === 'ALL'
+                    ? 'Guardar Permisos (Todos los Grupos)'
+                    : `Guardar Permisos (${selectedGrupo})`;
+            }
+
+            const gruposRender = selectedGrupo === 'ALL'
+                ? allGrupos.map(g => ({
+                    codGrupo: (g.codGrupo || '').trim().toUpperCase(),
+                    descripcion: (g.descripcion || g.codGrupo || '').trim()
+                }))
+                : allGrupos
+                    .filter(g => (g.codGrupo || '').trim().toUpperCase() === selectedGrupo)
+                    .map(g => ({
+                        codGrupo: (g.codGrupo || '').trim().toUpperCase(),
+                        descripcion: (g.descripcion || g.codGrupo || '').trim()
+                    }));
+
+            if (gruposRender.length === 0 && selectedGrupo !== 'ALL') {
+                gruposRender.push({ codGrupo: selectedGrupo, descripcion: selectedGrupo });
+            }
 
             let html = '';
             allFormas.forEach(f => {
@@ -740,60 +763,71 @@
                 const titulo = f.titulo || nomForma;
                 const isOnlyConadm = ['BSGRPUSU', 'BSFORMAS'].includes(nomForma);
 
-                const acc = allAccesos.find(a =>
-                    (a.codGrupo || '').toUpperCase() === codGrupo &&
-                    (a.nomForma || '').toUpperCase() === nomForma
-                );
-
-                // Si es BSGRPUSU y el grupo no es CONADM, siempre desmarcado y bloqueado
-                const mostrar = isOnlyConadm ? (codGrupo === 'CONADM') : (acc ? acc.mostrarEnMenu === 'S' : false);
-                const consultar = isOnlyConadm ? (codGrupo === 'CONADM') : (acc ? acc.puedeConsultar === 'S' : false);
-                const insertar = isOnlyConadm ? (codGrupo === 'CONADM') : (acc ? acc.puedeInsertar === 'S' : false);
-                const actualizar = isOnlyConadm ? (codGrupo === 'CONADM') : (acc ? acc.puedeActualizar === 'S' : false);
-                const borrar = isOnlyConadm ? (codGrupo === 'CONADM') : (acc ? acc.puedeBorrar === 'S' : false);
-
                 const modBadge = codModulo === 'AD'
                     ? `<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:5px;font-weight:700;font-size:0.75rem;">AD - Administración</span>`
                     : `<span style="background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:5px;font-weight:700;font-size:0.75rem;">CO - Contabilidad</span>`;
 
-                const searchKey = normalizarTexto(`${nomForma} ${titulo} ${codModulo === 'AD' ? 'ADMINISTRACION' : 'CONTABILIDAD'}`);
+                gruposRender.forEach(gObj => {
+                    const codGrupo = gObj.codGrupo;
+                    const descGrupo = gObj.descripcion;
+                    const grpBadgeStyle = getBadgeColorForGroup(codGrupo);
 
-                html += `
-                    <tr class="perm-row" data-forma="${nomForma}" data-modulo="${codModulo}" data-titulo="${titulo.replace(/"/g, '&quot;')}" data-search="${searchKey.replace(/"/g, '&quot;')}" style="border-bottom: 1px solid #f1f5f9; ${isOnlyConadm ? 'background:#f0fdf4;' : ''}">
-                        <td style="padding: 0.7rem 1.25rem;">${modBadge}</td>
-                        <td style="padding: 0.7rem 1.25rem; font-family: monospace; font-weight: 700; color: #334155;">${nomForma}</td>
-                        <td style="padding: 0.7rem 1.25rem; font-weight: 600; color: #0f172a;">
-                            ${titulo}
-                            ${isOnlyConadm ? `<span style="margin-left:8px;font-size:0.72rem;background:#16a34a;color:white;padding:2px 7px;border-radius:4px;">Exclusivo CONADM</span>` : ''}
-                        </td>
-                        <td style="padding: 0.7rem 1rem; text-align: center;">
-                            <input type="checkbox" class="chk-mostrar" ${mostrar ? 'checked' : ''} ${isOnlyConadm ? 'disabled' : ''} style="width:17px;height:17px;accent-color:#16a34a;cursor:pointer;">
-                        </td>
-                        <td style="padding: 0.7rem 1rem; text-align: center;">
-                            <input type="checkbox" class="chk-consultar" ${consultar ? 'checked' : ''} ${isOnlyConadm ? 'disabled' : ''} style="width:17px;height:17px;accent-color:#16a34a;cursor:pointer;">
-                        </td>
-                        <td style="padding: 0.7rem 1rem; text-align: center;">
-                            <input type="checkbox" class="chk-insertar" ${insertar ? 'checked' : ''} ${isOnlyConadm ? 'disabled' : ''} style="width:17px;height:17px;accent-color:#16a34a;cursor:pointer;">
-                        </td>
-                        <td style="padding: 0.7rem 1rem; text-align: center;">
-                            <input type="checkbox" class="chk-actualizar" ${actualizar ? 'checked' : ''} ${isOnlyConadm ? 'disabled' : ''} style="width:17px;height:17px;accent-color:#16a34a;cursor:pointer;">
-                        </td>
-                        <td style="padding: 0.7rem 1rem; text-align: center;">
-                            <input type="checkbox" class="chk-borrar" ${borrar ? 'checked' : ''} ${isOnlyConadm ? 'disabled' : ''} style="width:17px;height:17px;accent-color:#16a34a;cursor:pointer;">
-                        </td>
-                        <td style="padding: 0.7rem 1rem; text-align: center; white-space: nowrap;">
-                            ${isOnlyConadm
-                                ? `<span style="font-size:0.75rem;color:#16a34a;font-weight:700;"><i class="ph ph-lock-key"></i> Fijo</span>`
-                                : `<button type="button" onclick="setFilaPermiso('${nomForma}', false)" title="Quitar todos los accesos de esta pantalla" style="border:1px solid #fecaca;background:#fef2f2;color:#dc2626;padding:3px 8px;border-radius:6px;font-size:0.75rem;font-weight:700;cursor:pointer;margin-right:4px;">
-                                       Quitar
-                                   </button>
-                                   <button type="button" onclick="setFilaPermiso('${nomForma}', true)" title="Habilitar todos los accesos de esta pantalla" style="border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;padding:3px 8px;border-radius:6px;font-size:0.75rem;font-weight:700;cursor:pointer;">
-                                       Dar todo
-                                   </button>`
-                            }
-                        </td>
-                    </tr>
-                `;
+                    const acc = allAccesos.find(a =>
+                        (a.codGrupo || '').toUpperCase() === codGrupo &&
+                        (a.nomForma || '').toUpperCase() === nomForma
+                    );
+
+                    // Si es BSGRPUSU o BSFORMAS y el grupo no es CONADM, siempre desmarcado y bloqueado
+                    const mostrar = isOnlyConadm ? (codGrupo === 'CONADM') : (acc ? acc.mostrarEnMenu === 'S' : false);
+                    const consultar = isOnlyConadm ? (codGrupo === 'CONADM') : (acc ? acc.puedeConsultar === 'S' : false);
+                    const insertar = isOnlyConadm ? (codGrupo === 'CONADM') : (acc ? acc.puedeInsertar === 'S' : false);
+                    const actualizar = isOnlyConadm ? (codGrupo === 'CONADM') : (acc ? acc.puedeActualizar === 'S' : false);
+                    const borrar = isOnlyConadm ? (codGrupo === 'CONADM') : (acc ? acc.puedeBorrar === 'S' : false);
+
+                    const searchKey = normalizarTexto(`${codGrupo} ${descGrupo} ${nomForma} ${titulo} ${codModulo === 'AD' ? 'ADMINISTRACION' : 'CONTABILIDAD'}`);
+
+                    html += `
+                        <tr class="perm-row" data-grupo="${codGrupo}" data-forma="${nomForma}" data-modulo="${codModulo}" data-titulo="${titulo.replace(/"/g, '&quot;')}" data-search="${searchKey.replace(/"/g, '&quot;')}" style="border-bottom: 1px solid #f1f5f9; ${isOnlyConadm ? 'background:#f0fdf4;' : ''}">
+                            <td style="padding: 0.7rem 1.1rem; white-space: nowrap;">
+                                <span style="${grpBadgeStyle} padding: 3px 9px; border-radius: 6px; font-size: 0.76rem; font-weight: 800;" title="${descGrupo.replace(/"/g, '&quot;')}">
+                                    ${codGrupo}
+                                </span>
+                            </td>
+                            <td style="padding: 0.7rem 1.1rem; white-space: nowrap;">${modBadge}</td>
+                            <td style="padding: 0.7rem 1.1rem; font-family: monospace; font-weight: 700; color: #334155;">${nomForma}</td>
+                            <td style="padding: 0.7rem 1.1rem; font-weight: 600; color: #0f172a;">
+                                ${titulo}
+                                ${isOnlyConadm ? `<span style="margin-left:8px;font-size:0.72rem;background:#16a34a;color:white;padding:2px 7px;border-radius:4px;">Exclusivo CONADM</span>` : ''}
+                            </td>
+                            <td style="padding: 0.7rem 1rem; text-align: center;">
+                                <input type="checkbox" class="chk-mostrar" ${mostrar ? 'checked' : ''} ${isOnlyConadm ? 'disabled' : ''} style="width:17px;height:17px;accent-color:#16a34a;cursor:pointer;">
+                            </td>
+                            <td style="padding: 0.7rem 1rem; text-align: center;">
+                                <input type="checkbox" class="chk-consultar" ${consultar ? 'checked' : ''} ${isOnlyConadm ? 'disabled' : ''} style="width:17px;height:17px;accent-color:#16a34a;cursor:pointer;">
+                            </td>
+                            <td style="padding: 0.7rem 1rem; text-align: center;">
+                                <input type="checkbox" class="chk-insertar" ${insertar ? 'checked' : ''} ${isOnlyConadm ? 'disabled' : ''} style="width:17px;height:17px;accent-color:#16a34a;cursor:pointer;">
+                            </td>
+                            <td style="padding: 0.7rem 1rem; text-align: center;">
+                                <input type="checkbox" class="chk-actualizar" ${actualizar ? 'checked' : ''} ${isOnlyConadm ? 'disabled' : ''} style="width:17px;height:17px;accent-color:#16a34a;cursor:pointer;">
+                            </td>
+                            <td style="padding: 0.7rem 1rem; text-align: center;">
+                                <input type="checkbox" class="chk-borrar" ${borrar ? 'checked' : ''} ${isOnlyConadm ? 'disabled' : ''} style="width:17px;height:17px;accent-color:#16a34a;cursor:pointer;">
+                            </td>
+                            <td style="padding: 0.7rem 1rem; text-align: center; white-space: nowrap;">
+                                ${isOnlyConadm
+                                    ? `<span style="font-size:0.75rem;color:#16a34a;font-weight:700;"><i class="ph ph-lock-key"></i> Fijo</span>`
+                                    : `<button type="button" onclick="setFilaPermiso('${codGrupo}', '${nomForma}', false)" title="Quitar todos los accesos de esta pantalla para ${codGrupo}" style="border:1px solid #fecaca;background:#fef2f2;color:#dc2626;padding:3px 8px;border-radius:6px;font-size:0.75rem;font-weight:700;cursor:pointer;margin-right:4px;">
+                                           Quitar
+                                       </button>
+                                       <button type="button" onclick="setFilaPermiso('${codGrupo}', '${nomForma}', true)" title="Habilitar todos los accesos de esta pantalla para ${codGrupo}" style="border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;padding:3px 8px;border-radius:6px;font-size:0.75rem;font-weight:700;cursor:pointer;">
+                                           Dar todo
+                                       </button>`
+                                }
+                            </td>
+                        </tr>
+                    `;
+                });
             });
 
             tbody.innerHTML = html;
@@ -828,8 +862,8 @@
             filtrarPermisosTabla();
         }
 
-        function setFilaPermiso(nomForma, estado) {
-            const row = document.querySelector(`.perm-row[data-forma="${nomForma}"]`);
+        function setFilaPermiso(codGrupo, nomForma, estado) {
+            const row = document.querySelector(`.perm-row[data-grupo="${codGrupo}"][data-forma="${nomForma}"]`);
             if (!row || ['BSGRPUSU', 'BSFORMAS'].includes(nomForma)) return;
             row.querySelectorAll('input[type="checkbox"]').forEach(chk => {
                 if (!chk.disabled) chk.checked = estado;
@@ -848,15 +882,17 @@
         }
 
         async function guardarPermisosGrupo() {
-            const codGrupo = (document.getElementById('permGrupoSelect').value || 'CONTA').toUpperCase();
+            const codGrupo = (document.getElementById('permGrupoSelect').value || 'ALL').toUpperCase();
             const permisos = [];
 
             document.querySelectorAll('.perm-row').forEach(row => {
+                const rowGrupo = row.getAttribute('data-grupo') || codGrupo;
                 const nomForma = row.getAttribute('data-forma');
                 const codModulo = row.getAttribute('data-modulo');
                 const itemMenu = row.getAttribute('data-titulo');
 
                 permisos.push({
+                    codGrupo: rowGrupo,
                     nomForma: nomForma,
                     codModulo: codModulo,
                     itemMenu: itemMenu,

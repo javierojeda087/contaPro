@@ -5,6 +5,7 @@ use Core\Database;
 use Core\TenantContext;
 use Core\View;
 use App\Services\MenuService;
+use App\Services\PersonaService;
 
 class DefinicionesContablesController {
 
@@ -177,7 +178,11 @@ class DefinicionesContablesController {
         $idProp = TenantContext::idPropietario();
         $rows = Database::queryForList(
             "SELECT p.cod_persona, p.nombre,
-                    COALESCE(p.ruc, (SELECT MAX(i.numero) FROM ident_personas i WHERE i.id_propietario = p.id_propietario AND i.cod_persona = p.cod_persona)) AS ruc
+                    COALESCE(
+                        NULLIF(TRIM(p.ruc), ''),
+                        NULLIF(TRIM(p.ci), ''),
+                        (SELECT MAX(i.numero) FROM ident_personas i WHERE i.id_propietario = p.id_propietario AND TRIM(i.cod_persona) = TRIM(p.cod_persona))
+                    ) AS ruc
              FROM personas p
              WHERE p.id_propietario = ?
              ORDER BY p.nombre",
@@ -192,6 +197,117 @@ class DefinicionesContablesController {
             ];
         }
         View::json($out);
+    }
+
+    public static function apiEjerciciosBuscarDnit(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $rucInput = trim((string)($_GET['ruc'] ?? $_POST['ruc'] ?? ''));
+
+        if ($rucInput === '') {
+            View::json(['status' => 'NOT_FOUND']);
+            return;
+        }
+
+        $rucBase = str_contains($rucInput, '-') ? trim(explode('-', $rucInput)[0]) : $rucInput;
+        $rucBase = preg_replace('/[^0-9]/', '', $rucBase) ?? '';
+        if (strlen($rucBase) < 3) {
+            View::json(['status' => 'NOT_FOUND']);
+            return;
+        }
+
+        // 1. Verificar si ya existe en personas / ident_personas de este propietario
+        try {
+            $local = Database::queryForMap(
+                "SELECT p.cod_persona, p.nombre,
+                        COALESCE(
+                            NULLIF(TRIM(p.ruc), ''),
+                            NULLIF(TRIM(p.ci), ''),
+                            (SELECT MAX(i.numero) FROM ident_personas i WHERE i.id_propietario = p.id_propietario AND TRIM(i.cod_persona) = TRIM(p.cod_persona))
+                        ) AS ruc
+                 FROM personas p
+                 WHERE p.id_propietario = ?
+                   AND (
+                       UPPER(TRIM(SUBSTRING_INDEX(COALESCE(p.ruc, ''), '-', 1))) = ?
+                       OR UPPER(TRIM(COALESCE(p.ci, ''))) = ?
+                       OR EXISTS (
+                           SELECT 1 FROM ident_personas i
+                           WHERE i.id_propietario = p.id_propietario
+                             AND TRIM(i.cod_persona) = TRIM(p.cod_persona)
+                             AND UPPER(TRIM(SUBSTRING_INDEX(i.numero, '-', 1))) = ?
+                       )
+                   )
+                 LIMIT 1",
+                [$idProp, $rucBase, $rucBase, $rucBase]
+            );
+            if ($local && !empty($local['cod_persona'])) {
+                View::json([
+                    'status'      => 'SUCCESS',
+                    'cod_persona' => (string)$local['cod_persona'],
+                    'nombre'      => mb_strtoupper(trim((string)($local['nombre'] ?? '')), 'UTF-8'),
+                    'ruc'         => (string)($local['ruc'] ?: $rucInput),
+                    'origen'      => 'LOCAL',
+                ]);
+                return;
+            }
+        } catch (\Throwable $ignored) {}
+
+        // 2. Consultar automáticamente en la DNIT (turuc.com.py)
+        $url = 'https://turuc.com.py/api/contribuyente?ruc=' . urlencode($rucBase);
+        $raw = false;
+        if (function_exists('curl_init')) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 6,
+                CURLOPT_CONNECTTIMEOUT => 4,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+                CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ContaPro/1.0',
+            ]);
+            $raw = curl_exec($ch);
+            curl_close($ch);
+        }
+        if ($raw === false || $raw === '') {
+            $ctx = stream_context_create([
+                'http' => [
+                    'timeout'       => 5,
+                    'ignore_errors' => true,
+                    'header'        => "Accept: application/json\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) ContaPro/1.0\r\n",
+                ],
+                'ssl' => ['verify_peer' => false, 'verify_peer_name' => false],
+            ]);
+            $raw = @file_get_contents($url, false, $ctx);
+        }
+
+        if (is_string($raw) && $raw !== '') {
+            $json = json_decode($raw, true);
+            $d = $json['data'] ?? null;
+            if (is_array($d) && !empty($d['razonSocial'])) {
+                $razonSocial = mb_strtoupper(trim((string)$d['razonSocial']), 'UTF-8');
+                $rucFull = !empty($d['ruc']) ? trim((string)$d['ruc']) : $rucBase;
+                if (isset($d['dv']) && $d['dv'] !== '' && !str_contains($rucFull, '-')) {
+                    $rucFull .= '-' . trim((string)$d['dv']);
+                }
+
+                // Registrar automáticamente en personas e ident_personas para este propietario
+                $codPersona = PersonaService::syncPersonaData(null, $razonSocial, $rucFull, 'RUC');
+
+                View::json([
+                    'status'      => 'SUCCESS',
+                    'cod_persona' => (string)($codPersona ?? ''),
+                    'nombre'      => $razonSocial,
+                    'ruc'         => $rucFull,
+                    'estado'      => (string)($d['estado'] ?? 'ACTIVO'),
+                    'origen'      => 'DNIT',
+                ]);
+                return;
+            }
+        }
+
+        View::json(['status' => 'NOT_FOUND']);
     }
 
     // =========================================================================

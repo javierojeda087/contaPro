@@ -92,11 +92,18 @@ class View {
         );
 
         // Reemplazar fragmento scripts
+        $scriptsReplaced = 0;
         $html = preg_replace_callback(
             '/<div[^>]*th:replace="~\{fragments\/layout\s*::\s*scripts\}"[^>]*>\s*<\/div>/is',
             fn($m) => self::renderScriptsFragment(),
-            $html
+            $html,
+            -1,
+            $scriptsReplaced
         );
+        // Si la vista no incluyó explícitamente el fragmento scripts antes de </body>, inyectarlo automáticamente
+        if ($scriptsReplaced === 0 && stripos($html, '</body>') !== false) {
+            $html = preg_replace('/<\/body>/i', self::renderScriptsFragment() . "\n</body>", $html, 1);
+        }
 
         // Si estamos en contribuyentes.html o usuarios.html, inyectar barra visual del Plan (tope de contribuyentes/usuarios)
         if ($viewName === 'contribuyentes' && $planSummary) {
@@ -308,6 +315,44 @@ class View {
                         VER DETALLE &#8599;
                     </a>
                 </div>
+                <script>
+                    (function () {
+                        const CACHE_KEY = 'contapro_bcp_ticker_v1';
+                        const elC = document.getElementById('bcpNavbarCompra');
+                        const elV = document.getElementById('bcpNavbarVenta');
+                        const elF = document.getElementById('bcpNavbarFechaHora');
+                        if (!elC || !elV) return;
+                        function paint(d) {
+                            if (!d || !d.compraFormatted || !d.ventaFormatted) return;
+                            elC.textContent = 'GS. ' + d.compraFormatted;
+                            elV.textContent = 'GS. ' + d.ventaFormatted;
+                            if (elF) {
+                                const h = d.hora || '13:00';
+                                const f = d.fechaText || '';
+                                elF.textContent = f ? (h + ' \u00b7 ' + f) : h;
+                            }
+                        }
+                        try {
+                            const raw = sessionStorage.getItem(CACHE_KEY);
+                            if (raw) {
+                                const parsed = JSON.parse(raw);
+                                if (parsed && parsed.data) {
+                                    paint(parsed.data);
+                                    if (parsed.ts && (Date.now() - parsed.ts) < 600000) return;
+                                }
+                            }
+                        } catch (e) {}
+                        fetch('/api/cotizaciones/bcp-actual')
+                            .then(function (r) { return r.json(); })
+                            .then(function (d) {
+                                if (d && d.status === 'success') {
+                                    paint(d);
+                                    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: d })); } catch (e) {}
+                                }
+                            })
+                            .catch(function () {});
+                    })();
+                </script>
             </div>
 
             <div class="user-info">

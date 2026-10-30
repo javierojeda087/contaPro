@@ -170,7 +170,38 @@
             }
         }
 
-        // ---------- Buscador de personas por RUC / nombre ----------
+        // ---------- Buscador de personas por RUC / nombre (con consulta automática a DNIT) ----------
+        const dnitTimers = {};
+        const dnitInFlight = {};
+        const dnitNotFoundCache = new Set();
+
+        function renderPersonaOptionHtml(p) {
+            const badgeDnit = p.origen === 'DNIT'
+                ? `<span style="background:#dcfce7; color:#15803d; font-size:0.68rem; font-weight:800; padding:2px 7px; border-radius:99px; border:1px solid #86efac;">DNIT</span>`
+                : '';
+            return `<div class="persona-opt" data-cod="${p.cod_persona}" style="${p.origen === 'DNIT' ? 'background:#f0fdf4; border-left:3px solid #16a34a;' : ''}">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                            <span style="font-weight:700; color:#0f172a;">${p.nombre}</span>
+                            ${badgeDnit}
+                        </div>
+                        <div style="font-size:0.75rem; color:#64748b;">RUC/CI: ${p.ruc || '-'} &nbsp;·&nbsp; Cód: ${p.cod_persona}</div>
+                    </div>`;
+        }
+
+        function filterPersonasLocal(q) {
+            const qDoc = q.replace(/[^0-9A-Z]/g, '');
+            const qBase = q.split('-')[0].replace(/[^0-9]/g, '');
+            return personasList.filter(p => {
+                const ruc = (p.ruc || '').toUpperCase();
+                const rucClean = ruc.replace(/[^0-9A-Z]/g, '');
+                const rucBase = ruc.split('-')[0].replace(/[^0-9]/g, '');
+                return (qDoc && rucClean.includes(qDoc))
+                    || (qBase.length >= 4 && rucBase === qBase)
+                    || (p.nombre || '').toUpperCase().includes(q)
+                    || String(p.cod_persona) === q;
+            }).slice(0, 15);
+        }
+
         function initPersonaPickers() {
             document.querySelectorAll('.persona-picker').forEach(box => {
                 const id = box.dataset.target;
@@ -180,7 +211,7 @@
                     <div style="position: relative;">
                         <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#16a34a;"></i>
                         <input type="text" id="${id}_txt" class="form-control" autocomplete="off"
-                               placeholder="Buscar por RUC / CI o nombre..."
+                               placeholder="Buscar por RUC / CI o nombre (consulta automática DNIT)..."
                                style="width:100%; border-radius:8px; padding-left:36px; padding-right:32px;">
                         <i class="ph ph-x" id="${id}_clr" title="Quitar" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:#94a3b8; cursor:pointer; display:none;"></i>
                     </div>
@@ -195,28 +226,101 @@
                     if (!personasList.length) await loadPersonasLookup();
                     const q = txt.value.trim().toUpperCase();
                     if (q.length < 1) { res.style.display = 'none'; return; }
-                    const qDoc = q.replace(/[^0-9A-Z]/g, '');
-                    const found = personasList.filter(p => {
-                        const ruc = (p.ruc || '').toUpperCase();
-                        return (qDoc && ruc.replace(/[^0-9A-Z]/g, '').includes(qDoc))
-                            || (p.nombre || '').toUpperCase().includes(q)
-                            || String(p.cod_persona) === q;
-                    }).slice(0, 15);
-                    res.innerHTML = found.length
-                        ? found.map(p => `<div class="persona-opt" data-cod="${p.cod_persona}">
-                                <div style="font-weight:700; color:#0f172a;">${p.nombre}</div>
-                                <div style="font-size:0.75rem; color:#64748b;">RUC/CI: ${p.ruc || '-'} &nbsp;·&nbsp; Cód: ${p.cod_persona}</div>
-                            </div>`).join('')
-                        : '<div style="padding:10px 12px; color:#94a3b8; font-size:0.85rem;">Sin resultados</div>';
+
+                    const found = filterPersonasLocal(q);
+                    if (found.length > 0) {
+                        res.innerHTML = found.map(renderPersonaOptionHtml).join('');
+                        res.style.display = 'block';
+                        return;
+                    }
+
+                    // Si parece un RUC/CI numérico (>= 4 dígitos) y no está en local, consultar automáticamente a la DNIT
+                    const rucBaseDigits = q.split('-')[0].replace(/[^0-9]/g, '');
+                    const looksLikeRuc = /^[0-9.\-\s]+$/.test(q) && rucBaseDigits.length >= 4;
+
+                    if (looksLikeRuc && !dnitNotFoundCache.has(rucBaseDigits)) {
+                        res.innerHTML = `
+                            <div style="padding:10px 12px; color:#15803d; font-size:0.84rem; font-weight:600; display:flex; align-items:center; gap:8px;">
+                                <i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite; font-size:1.1rem;"></i>
+                                <span>Buscando RUC <strong>${q}</strong> en la DNIT...</span>
+                            </div>`;
+                        res.style.display = 'block';
+
+                        if (dnitTimers[id]) clearTimeout(dnitTimers[id]);
+                        dnitTimers[id] = setTimeout(async () => {
+                            const currentQ = txt.value.trim().toUpperCase();
+                            const curBase = currentQ.split('-')[0].replace(/[^0-9]/g, '');
+                            if (curBase !== rucBaseDigits) return;
+
+                            dnitInFlight[id] = true;
+                            try {
+                                const rDnit = await fetch(`/api/coejerci/buscar-dnit?ruc=${encodeURIComponent(currentQ)}`);
+                                const jDnit = await rDnit.json();
+                                if (jDnit && jDnit.status === 'SUCCESS' && jDnit.cod_persona) {
+                                    const newP = {
+                                        cod_persona: String(jDnit.cod_persona),
+                                        nombre: jDnit.nombre || '',
+                                        ruc: jDnit.ruc || currentQ,
+                                        origen: jDnit.origen || 'DNIT'
+                                    };
+                                    const idx = personasList.findIndex(x => String(x.cod_persona) === newP.cod_persona);
+                                    if (idx >= 0) personasList[idx] = newP;
+                                    else personasList.unshift(newP);
+
+                                    // Si el usuario ya salió del campo o escribió el RUC con DV, seleccionarlo o mostrarlo
+                                    if (document.activeElement !== txt) {
+                                        setPersona(id, newP.cod_persona);
+                                    } else {
+                                        const matchesNow = filterPersonasLocal(txt.value.trim().toUpperCase());
+                                        const listToRender = matchesNow.length ? matchesNow : [newP];
+                                        res.innerHTML = listToRender.map(renderPersonaOptionHtml).join('');
+                                        res.style.display = 'block';
+                                    }
+                                    return;
+                                } else {
+                                    dnitNotFoundCache.add(rucBaseDigits);
+                                }
+                            } catch (err) {
+                                console.warn('Error consultando DNIT:', err);
+                            } finally {
+                                dnitInFlight[id] = false;
+                            }
+
+                            if (document.activeElement === txt) {
+                                res.innerHTML = '<div style="padding:10px 12px; color:#94a3b8; font-size:0.85rem;">Sin resultados en BD ni en DNIT</div>';
+                                res.style.display = 'block';
+                            }
+                        }, 280);
+                        return;
+                    }
+
+                    res.innerHTML = '<div style="padding:10px 12px; color:#94a3b8; font-size:0.85rem;">Sin resultados</div>';
                     res.style.display = 'block';
                 };
 
                 txt.addEventListener('input', () => { hid.value = ''; clr.style.display = txt.value ? 'block' : 'none'; render(); });
-                txt.addEventListener('focus', render);
+                txt.addEventListener('focus', () => { if (!hid.value && txt.value.trim()) render(); });
+                txt.addEventListener('keydown', ev => {
+                    if (ev.key === 'Enter') {
+                        const firstOpt = res.querySelector('.persona-opt');
+                        if (firstOpt && res.style.display !== 'none') {
+                            ev.preventDefault();
+                            setPersona(id, firstOpt.dataset.cod);
+                        }
+                    }
+                });
                 txt.addEventListener('blur', () => setTimeout(() => {
+                    if (dnitInFlight[id]) return;
+                    if (!hid.value && txt.value.trim()) {
+                        const matches = filterPersonasLocal(txt.value.trim().toUpperCase());
+                        if (matches.length === 1) {
+                            setPersona(id, matches[0].cod_persona);
+                            return;
+                        }
+                    }
                     res.style.display = 'none';
                     if (!hid.value) { txt.value = ''; clr.style.display = 'none'; }
-                }, 180));
+                }, 220));
                 res.addEventListener('mousedown', ev => {
                     const opt = ev.target.closest('.persona-opt');
                     if (opt) setPersona(id, opt.dataset.cod);
@@ -235,6 +339,13 @@
             txt.value = p ? `${p.nombre}${p.ruc ? ' - ' + p.ruc : ''}` : (cod ? cod : '');
             clr.style.display = hid.value ? 'block' : 'none';
             document.getElementById(id + '_res').style.display = 'none';
+
+            if (id === 'codPerRepresLegal' && p && p.nombre) {
+                const firmaInput = document.getElementById('firmaRepresentante');
+                if (firmaInput && !firmaInput.value.trim()) {
+                    firmaInput.value = p.nombre;
+                }
+            }
         }
 
         async function loadData() {

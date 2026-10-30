@@ -85,7 +85,7 @@
                             <label style="display: block; font-size: 0.77rem; font-weight: 700; color: #334155; margin-bottom: 4px; text-transform: uppercase;">
                                 Código Forma (nom_forma) <span style="color: #dc2626;">*</span>
                             </label>
-                            <input type="text" id="fNomForma" maxlength="8" required placeholder="Ej: CONUEVO1"
+                            <input type="text" id="fNomForma" maxlength="20" required placeholder="Ej: COPERSON" oninput="onTopFormFilterInput()"
                                    style="width: 100%; height: 39px; padding: 0 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-family: monospace; font-weight: 800; text-transform: uppercase; font-size: 0.92rem; color: #0f172a;">
                         </div>
 
@@ -115,7 +115,7 @@
                             <label style="display: block; font-size: 0.77rem; font-weight: 700; color: #334155; margin-bottom: 4px; text-transform: uppercase;">
                                 Título en Menú (titulo) <span style="color: #dc2626;">*</span>
                             </label>
-                            <input type="text" id="fTitulo" maxlength="100" required placeholder="Ej: Registro de Retenciones"
+                            <input type="text" id="fTitulo" maxlength="100" required placeholder="Ej: Personas (filtra la tabla al escribir)" oninput="onTopFormFilterInput()"
                                    style="width: 100%; height: 39px; padding: 0 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-weight: 600; font-size: 0.9rem; color: #0f172a;">
                         </div>
 
@@ -123,7 +123,7 @@
                             <label style="display: block; font-size: 0.77rem; font-weight: 700; color: #334155; margin-bottom: 4px; text-transform: uppercase;">
                                 Descripción (descripcion)
                             </label>
-                            <input type="text" id="fDescripcion" maxlength="80" placeholder="Ej: ABM y control de comprobantes..."
+                            <input type="text" id="fDescripcion" maxlength="80" placeholder="Ej: ABM y control de comprobantes..." oninput="onTopFormFilterInput()"
                                    style="width: 100%; height: 39px; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.88rem; color: #334155;">
                         </div>
 
@@ -226,6 +226,21 @@
     <script>
         let catalogoFormas = [];
         let catalogoGrupos = [];
+        let isEditMode = false;
+
+        function normalizeText(str) {
+            return String(str || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toUpperCase()
+                .trim();
+        }
+
+        function onTopFormFilterInput() {
+            if (!isEditMode) {
+                renderFormasTable();
+            }
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
             cargarFormas();
@@ -297,16 +312,29 @@
             const tbody = document.getElementById('formasTableBody');
             const modFilter = (document.getElementById('filterModulo').value || '').toUpperCase();
             const tipoFilter = (document.getElementById('filterTipo').value || '').toUpperCase();
-            const search = (document.getElementById('searchFormaInput').value || '').trim().toUpperCase();
+            const search = normalizeText(document.getElementById('searchFormaInput').value);
+
+            const topNom = !isEditMode ? normalizeText(document.getElementById('fNomForma')?.value) : '';
+            const topTit = !isEditMode ? normalizeText(document.getElementById('fTitulo')?.value) : '';
+            const topDesc = !isEditMode ? normalizeText(document.getElementById('fDescripcion')?.value) : '';
 
             const filtradas = catalogoFormas.filter(f => {
                 const mod = (f.codModulo || 'CO').toUpperCase();
                 const tipo = (f.tipo || 'D').toUpperCase();
                 if (modFilter && mod !== modFilter) return false;
                 if (tipoFilter && tipo !== tipoFilter) return false;
-                if (!search) return true;
-                const hay = `${f.nomForma} ${f.titulo} ${f.descripcion || ''} ${f.gruposConAcceso || ''}`.toUpperCase();
-                return hay.includes(search);
+
+                const hayNom = normalizeText(f.nomForma);
+                const hayTit = normalizeText(f.titulo);
+                const hayDesc = normalizeText(f.descripcion);
+                const hayAll = `${hayNom} ${hayTit} ${hayDesc} ${normalizeText(f.gruposConAcceso)}`;
+
+                if (search && !hayAll.includes(search)) return false;
+                if (topNom && !hayNom.includes(topNom) && !hayAll.includes(topNom)) return false;
+                if (topTit && !hayTit.includes(topTit) && !hayAll.includes(topTit)) return false;
+                if (topDesc && !hayDesc.includes(topDesc) && !hayAll.includes(topDesc)) return false;
+
+                return true;
             });
 
             if (filtradas.length === 0) {
@@ -377,6 +405,7 @@
         }
 
         function editarForma(f) {
+            isEditMode = true;
             document.getElementById('fNomForma').value = (f.nomForma || '').toUpperCase();
             document.getElementById('fCodModulo').value = (f.codModulo || 'CO').toUpperCase();
             document.getElementById('fTipo').value = (f.tipo || 'D').toUpperCase();
@@ -397,6 +426,7 @@
         }
 
         function limpiarFormularioForma() {
+            isEditMode = false;
             document.getElementById('fNomForma').value = '';
             document.getElementById('fCodModulo').value = 'CO';
             document.getElementById('fTipo').value = 'D';
@@ -404,8 +434,11 @@
             document.getElementById('fDescripcion').value = '';
             document.getElementById('fOrdenMenu').value = '10';
             document.getElementById('fMostrarEnMenu').value = 'S';
+            const searchEl = document.getElementById('searchFormaInput');
+            if (searchEl) searchEl.value = '';
             renderGruposCheckboxes(['CONADM']);
             document.getElementById('formAbmTitle').textContent = 'Nuevo Formulario en Tabla `formas`';
+            renderFormasTable();
             document.getElementById('fNomForma').focus();
         }
 
