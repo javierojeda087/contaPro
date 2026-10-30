@@ -73,7 +73,7 @@
         .nav-menu a.active {
             color: #0f172a;
             font-weight: 600;
-            border-bottom-color: #1d8cf8;
+            border-bottom-color: #16a34a;
         }
 
         /* Botón Ingresar */
@@ -101,7 +101,7 @@
             background: #16a34a;
         }
 
-        /* Hero Section (Estilo Ábaco) */
+        /* Hero Section */
         .hero-section {
             position: relative;
             min-height: 540px;
@@ -112,7 +112,7 @@
             color: #ffffff;
             padding: 80px 24px;
             background:
-                linear-gradient(135deg, rgba(16, 61, 118, 0.84) 0%, rgba(21, 94, 160, 0.80) 60%, rgba(21, 128, 61, 0.76) 100%),
+                linear-gradient(135deg, rgba(6, 78, 59, 0.86) 0%, rgba(21, 128, 61, 0.80) 55%, rgba(22, 163, 74, 0.75) 100%),
                 url('/images/hero_contapro.jpg?v=2') center/cover no-repeat;
         }
         .hero-content {
@@ -134,18 +134,18 @@
         }
         .btn-hero {
             display: inline-block;
-            background: #2b9af3;
+            background: #16a34a;
             color: #ffffff;
             font-weight: 600;
             font-size: 1rem;
             padding: 14px 34px;
             border-radius: 6px;
             text-decoration: none;
-            box-shadow: 0 10px 25px rgba(43, 154, 243, 0.4);
+            box-shadow: 0 10px 25px rgba(22, 163, 74, 0.35);
             transition: all 0.2s;
         }
         .btn-hero:hover {
-            background: #1a85de;
+            background: #15803d;
             transform: translateY(-2px);
         }
 
@@ -191,8 +191,8 @@
             width: 50px;
             height: 50px;
             border-radius: 12px;
-            background: #eff6ff;
-            color: #1d8cf8;
+            background: #f0fdf4;
+            color: #16a34a;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -239,18 +239,18 @@
             border-color: #94a3b8;
         }
         .plan-card.popular {
-            border: 2px solid #1d8cf8;
-            box-shadow: 0 18px 40px rgba(29, 140, 248, 0.16);
+            border: 2px solid #16a34a;
+            box-shadow: 0 18px 40px rgba(22, 163, 74, 0.16);
         }
         .plan-card.popular:hover {
-            border-color: #0284c7;
-            box-shadow: 0 22px 48px rgba(29, 140, 248, 0.24);
+            border-color: #15803d;
+            box-shadow: 0 22px 48px rgba(22, 163, 74, 0.24);
         }
         .badge-popular {
             position: absolute;
             top: -13px;
             right: 24px;
-            background: linear-gradient(135deg, #1d8cf8 0%, #0284c7 100%);
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
             color: #fff;
             font-size: 0.72rem;
             font-weight: 800;
@@ -258,7 +258,7 @@
             border-radius: 99px;
             text-transform: uppercase;
             letter-spacing: 0.04em;
-            box-shadow: 0 4px 12px rgba(29, 140, 248, 0.35);
+            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.35);
         }
         .plan-name {
             font-size: 1.38rem;
@@ -429,19 +429,13 @@
         </div>
     </header>
 
-    <!-- Hero Principal (Idéntico al modelo de referencia) -->
+    <!-- Hero Principal -->
     <section id="inicio" class="hero-section">
         <div class="hero-content">
-            <h1>Simplifica y mejora los procesos de tu empresa o estudio contable</h1>
-            <p>
-                Los <strong>sistemas de gestión, facturación e impuestos ContaPro</strong> se adaptan a múltiples rubros y tamaños de empresas y estudios contables en Paraguay, brindando soluciones específicas para cada contribuyente.
+            <h1>Potenciá la gestión contable e impositiva de tus clientes en un solo lugar</h1>
+            <p style="margin-bottom: 0;">
+                Con <strong>ContaPro</strong> centralizás el registro de comprobantes, libros contables, liquidación de impuestos y generación de archivos RG 90 para Marangatu desde la nube, de forma ágil, segura y pensada para estudios contables y empresas de todo el Paraguay.
             </p>
-            <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
-                <a href="#planes" class="btn-hero">Ver soluciones y planes</a>
-                <a href="/login" class="btn-hero" style="background: #16a34a; box-shadow: 0 10px 25px rgba(22, 163, 74, 0.4);">
-                    <i class="ph ph-sign-in"></i> Ingresar al Sistema
-                </a>
-            </div>
         </div>
     </section>
 
@@ -537,7 +531,7 @@
                         <li><i class="ph ph-check-circle"></i> Exportación RG 90 Marangatu y Consulta CDC</li>
                         <li><i class="ph ph-check-circle"></i> Respaldo en la nube y soporte técnico</li>
                     </ul>
-                    <a href="<?= htmlspecialchars($waPlanUrl) ?>" target="_blank" rel="noopener" class="btn-hero" style="text-align: center; background: <?= $isPopular ? '#1d8cf8' : '#16a34a' ?>;">
+                    <a href="<?= htmlspecialchars($waPlanUrl) ?>" target="_blank" rel="noopener" class="btn-hero" style="text-align: center; background: <?= $isPopular ? '#15803d' : '#16a34a' ?>;">
                         Comenzar con <?= htmlspecialchars($pl['nombre_plan']) ?>
                     </a>
                 </div>
