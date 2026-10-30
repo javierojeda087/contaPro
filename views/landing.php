@@ -16,12 +16,43 @@
             --text-muted: #64748b;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        html {
+            scroll-behavior: smooth;
+            scroll-padding-top: 78px;
+        }
         body {
             font-family: 'Inter', sans-serif;
             color: var(--text-dark);
             background: #ffffff;
             line-height: 1.6;
+            overflow-x: hidden;
         }
+
+        /* =========================================================
+           ANIMACIONES DE ENTRADA Y REVELADO (HERO, SCROLL Y TABS)
+           ========================================================= */
+        .anim-item {
+            opacity: 0;
+            transform: translateY(38px) scale(0.985);
+            filter: blur(5px);
+            transition:
+                opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.85s cubic-bezier(0.22, 1, 0.36, 1),
+                filter 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: opacity, transform, filter;
+        }
+        .anim-item.no-transition {
+            transition: none !important;
+        }
+        .anim-item.is-visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            filter: blur(0);
+        }
+        .anim-delay-1 { transition-delay: 0.18s; }
+        .anim-delay-2 { transition-delay: 0.38s; }
+        .anim-delay-3 { transition-delay: 0.54s; }
+        .anim-delay-4 { transition-delay: 0.70s; }
 
         /* Top Navbar (Estilo Ábaco) */
         .site-header {
@@ -432,8 +463,8 @@
     <!-- Hero Principal -->
     <section id="inicio" class="hero-section">
         <div class="hero-content">
-            <h1>Potenciá la gestión contable e impositiva de tus clientes en un solo lugar</h1>
-            <p style="margin-bottom: 0;">
+            <h1 class="anim-item anim-delay-1">Potenciá la gestión contable e impositiva de tus clientes en un solo lugar</h1>
+            <p class="anim-item anim-delay-2" style="margin-bottom: 0;">
                 Con <strong>ContaPro</strong> centralizás el registro de comprobantes, libros contables, liquidación de impuestos y generación de archivos RG 90 para Marangatu desde la nube, de forma ágil, segura y pensada para estudios contables y empresas de todo el Paraguay.
             </p>
         </div>
@@ -441,28 +472,28 @@
 
     <!-- Sección Sistema Contable -->
     <section id="soluciones" class="section">
-        <div class="section-title">
+        <div class="section-title anim-item">
             <h2>Todo lo que tu Estudio Contable necesita en la Nube</h2>
             <p>Gestión de múltiples contribuyentes y empresas con cumplimiento 100% de normativas DNIT Paraguay</p>
         </div>
 
         <div class="features-grid">
-            <div class="feature-card">
+            <div class="feature-card anim-item anim-delay-1">
                 <div class="feature-icon"><i class="ph ph-qr-code"></i></div>
                 <h3>Integración CDC SIFEN y DNIT</h3>
                 <p>Verificación automática de comprobantes electrónicos por CDC y autocompletado de RUC/Razón Social en línea.</p>
             </div>
-            <div class="feature-card">
+            <div class="feature-card anim-item anim-delay-2">
                 <div class="feature-icon"><i class="ph ph-file-zip"></i></div>
                 <h3>Exportación RG 90/2021 Marangatu</h3>
                 <p>Generación directa del archivo ZIP reglamentario de Compras y Ventas listo para subir al Sistema Marangatu.</p>
             </div>
-            <div class="feature-card">
+            <div class="feature-card anim-item anim-delay-3">
                 <div class="feature-icon"><i class="ph ph-notebook"></i></div>
                 <h3>Formulario 120 y Libros</h3>
                 <p>Cálculo automático del Formulario 120, Libro Compras, Libro Ventas, Libro Diario y Libro Mayor.</p>
             </div>
-            <div class="feature-card">
+            <div class="feature-card anim-item anim-delay-4">
                 <div class="feature-icon"><i class="ph ph-buildings"></i></div>
                 <h3>Múltiples Contribuyentes y Empresas</h3>
                 <p>Gestiona varios contribuyentes y empresas desde un solo lugar, manteniendo sus libros, asientos y movimientos organizados de forma independiente.</p>
@@ -473,14 +504,18 @@
     <!-- Sección Planes Dinámicos -->
     <div id="planes" class="planes-bg">
         <section class="section">
-            <div class="section-title">
+            <div class="section-title anim-item">
                 <h2>Planes pensados para cada etapa</h2>
                 <p>Elige el plan según la cantidad de contribuyentes y usuarios de tu estudio contable</p>
             </div>
 
             <div class="planes-grid">
-                <?php foreach (($planes ?? []) as $idx => $pl):
+                <?php
+                $planStep = 0;
+                foreach (($planes ?? []) as $idx => $pl):
                     if (($pl['codigo_plan'] ?? '') === 'ILIMITADO') continue;
+                    $planStep++;
+                    $delayClass = 'anim-delay-' . min(4, $planStep);
                     $isPopular = ($pl['codigo_plan'] ?? '') === 'MEDIO';
                     $precioActual = (float)($pl['precio_mensual'] ?? 0);
                     $precioAnt    = (float)($pl['precio_anterior'] ?? 0);
@@ -496,7 +531,7 @@
                     $msgPlan = "¡Hola! Estoy interesado en el " . ($pl['nombre_plan'] ?? 'Plan') . " de ContaPro (" . ($tieneDesc ? "Oferta {$precioFmt} Gs/mes, antes {$precioAntFmt} Gs" : "{$precioFmt} Gs/mes") . " - hasta " . (int)$pl['max_contribuyentes'] . " contribuyentes y " . (int)$pl['max_usuarios'] . " usuarios). ¿Me podrían brindar más información para habilitar mi cuenta?";
                     $waPlanUrl = "https://wa.me/{$waDigitsLanding}?text=" . rawurlencode($msgPlan);
                 ?>
-                <div class="plan-card <?= $isPopular ? 'popular' : '' ?> <?= $tieneDesc ? 'has-discount' : '' ?>">
+                <div class="plan-card anim-item <?= $delayClass ?> <?= $isPopular ? 'popular' : '' ?> <?= $tieneDesc ? 'has-discount' : '' ?>">
                     <?php if ($isPopular): ?>
                         <div class="badge-popular">Más elegido</div>
                     <?php endif; ?>
@@ -563,12 +598,104 @@
     <a href="<?= htmlspecialchars($waDefaultUrl) ?>" target="_blank" rel="noopener" class="float-wa" title="Contactar por WhatsApp"><i class="ph ph-whatsapp-logo"></i></a>
 
     <script>
-        document.querySelectorAll('.nav-menu a').forEach(function (link) {
-            link.addEventListener('click', function () {
-                document.querySelectorAll('.nav-menu a').forEach(function (el) { el.classList.remove('active'); });
-                this.classList.add('active');
+        (function () {
+            var navLinks = document.querySelectorAll('.nav-menu a');
+            var sectionIds = ['inicio', 'soluciones', 'planes'];
+            var isManualNav = false;
+
+            function setActiveNav(id) {
+                navLinks.forEach(function (el) {
+                    el.classList.toggle('active', el.getAttribute('href') === '#' + id);
+                });
+            }
+
+            function hideSectionItemsInstant(sectionEl) {
+                if (!sectionEl) return;
+                var items = sectionEl.querySelectorAll('.anim-item');
+                items.forEach(function (item) {
+                    item.classList.add('no-transition');
+                    item.classList.remove('is-visible');
+                });
+                // Forzar reflow para que el navegador aplique el estado oculto de inmediato
+                void sectionEl.offsetWidth;
+                items.forEach(function (item) {
+                    item.classList.remove('no-transition');
+                });
+            }
+
+            function playSectionAnimation(sectionEl, delayMs) {
+                if (!sectionEl) return;
+                var wait = typeof delayMs === 'number' ? delayMs : 120;
+                setTimeout(function () {
+                    var items = sectionEl.querySelectorAll('.anim-item');
+                    items.forEach(function (item) {
+                        item.classList.add('is-visible');
+                    });
+                }, wait);
+            }
+
+            // 1. Al entrar a la página: primero se ve el banner limpio y luego aparece el texto
+            window.addEventListener('DOMContentLoaded', function () {
+                var heroSec = document.getElementById('inicio');
+                hideSectionItemsInstant(heroSec);
+                playSectionAnimation(heroSec, 260);
             });
-        });
+
+            // 2. Al desplazarse hacia abajo / arriba: revelar cada sección y sincronizar menú
+            if ('IntersectionObserver' in window) {
+                var observer = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (entry) {
+                        var sec = entry.target;
+                        if (entry.isIntersecting) {
+                            if (!isManualNav) {
+                                playSectionAnimation(sec, 80);
+                                setActiveNav(sec.id);
+                            }
+                        } else {
+                            // Cuando la sección sale completamente de pantalla, se reinicia para volver a animar al regresar
+                            if (entry.intersectionRatio === 0 && !isManualNav) {
+                                hideSectionItemsInstant(sec);
+                            }
+                        }
+                    });
+                }, {
+                    threshold: [0, 0.22]
+                });
+
+                sectionIds.forEach(function (id) {
+                    var el = document.getElementById(id);
+                    if (el) observer.observe(el);
+                });
+            } else {
+                document.querySelectorAll('.anim-item').forEach(function (el) {
+                    el.classList.add('is-visible');
+                });
+            }
+
+            // 3. Al cambiar de pestaña en el menú superior (Inicio | Sistema Contable | Planes)
+            navLinks.forEach(function (link) {
+                link.addEventListener('click', function (e) {
+                    var href = this.getAttribute('href') || '';
+                    if (href.charAt(0) !== '#') return;
+                    var targetId = href.slice(1);
+                    var targetSec = document.getElementById(targetId);
+                    if (!targetSec) return;
+
+                    e.preventDefault();
+                    isManualNav = true;
+                    setActiveNav(targetId);
+
+                    // Ocultar texto/tarjetas de la sección destino antes de llegar y animarlos enseguida
+                    hideSectionItemsInstant(targetSec);
+                    targetSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    playSectionAnimation(targetSec, 320);
+
+                    setTimeout(function () {
+                        isManualNav = false;
+                    }, 900);
+                });
+            });
+        })();
     </script>
 </body>
 </html>
