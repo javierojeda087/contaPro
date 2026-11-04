@@ -508,7 +508,9 @@ class ReportesContablesController {
                        condicion, cod_cliente, nom_cliente, ruc_cliente,
                        grav10, iva10, grav5, iva5, exentas, tot_iva, valor_total
                 FROM co_ingresos
-                WHERE id_propietario = ? AND cod_empresa = ? ";
+                WHERE id_propietario = ? AND cod_empresa = ?
+                  AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) <> 'LIQ'
+                  AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT LIKE '%LIQUIDAC%' ";
         $params = [$idProp, $codEmpresa];
 
         if ($fechaDesde !== '') {
@@ -1171,6 +1173,20 @@ class ReportesContablesController {
         if (((int)($saved['C62'] ?? 0) === 0) && ((int)($saved['C40'] ?? 0) > 0)) {
             $saved['C62'] = (int)$saved['C40'];
         }
+        if (((int)($saved['C12'] ?? 0) > 0) && ((int)($autoData['C12'] ?? 0) === 0)) {
+            foreach (['C12', 'C18', 'C160', 'C161', 'C25', 'C26', 'C27', 'C30', 'C31', 'C164', 'C43', 'C45', 'C166', 'C47', 'C48', 'C50', 'C55', 'C53', 'C57', 'C54', 'C58'] as $kFix) {
+                if (isset($autoData[$kFix])) {
+                    $saved[$kFix] = (int)$autoData[$kFix];
+                }
+            }
+        }
+        if (((int)($saved['C160'] ?? 0) > 0 || (int)($saved['C26'] ?? 0) > 0) && ((int)($autoData['C160'] ?? 0) === 0)) {
+            foreach (['C160', 'C161', 'C25', 'C26', 'C27', 'C30', 'C31'] as $kFixR2) {
+                if (isset($autoData[$kFixR2])) {
+                    $saved[$kFixR2] = (int)$autoData[$kFixR2];
+                }
+            }
+        }
         if (((int)($saved['C52'] ?? 0) === 0) && ((int)($autoData['C52'] ?? 0) > 0)) {
             $saved['C52'] = (int)$autoData['C52'];
             $c51s = (int)($saved['C51'] ?? 0);
@@ -1302,8 +1318,8 @@ class ReportesContablesController {
             );
         } catch (\Throwable $ignored) {}
 
-        // 1. Ventas del periodo desde co_ingresos
-        $rowsVentas = Database::queryForList(
+        // 1. Ventas del periodo desde co_ingresos (excluyendo Liquidaciones de Salario LIQ y regímenes que no imputan IVA)
+        $rowsVentasRaw = Database::queryForList(
             "SELECT id_ingreso, tip_doc, CAST(COALESCE(cod_regimen, 1) AS UNSIGNED) AS cod_regimen, regimen,
                     nro_factura, nro_timbrado, DATE_FORMAT(fec_ingreso, '%d/%m/%Y') AS fec_fmt,
                     nom_cliente, ruc_cliente, condicion,
@@ -1314,11 +1330,15 @@ class ReportesContablesController {
              WHERE id_propietario = ? AND cod_empresa = ?
                AND fec_ingreso >= ? AND fec_ingreso <= ?
                AND COALESCE(anulada, 'N') <> 'S'
+               AND COALESCE(inutilizado, 'N') <> 'S'
                AND COALESCE(estado, 'A') <> 'I'
+               AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) <> 'LIQ'
+               AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT LIKE '%LIQUIDAC%'
              ORDER BY fec_ingreso ASC, id_ingreso ASC",
             [$idProp, $codEmpresa, $startDateStr, $endDateStr]
         );
 
+        $rowsVentas = [];
         $vBase10 = 0.0; $vIva10 = 0.0;
         $vBase5  = 0.0; $vIva5  = 0.0;
         $vExenta = 0.0;
@@ -1327,7 +1347,15 @@ class ReportesContablesController {
         $vNcrExenta = 0.0;
         $vBrutoTotal = 0.0;
 
-        foreach ($rowsVentas as $rv) {
+        foreach ($rowsVentasRaw as $rv) {
+            $rawRegV = strtoupper(trim((string)($rv['regimen'] ?? $rv['cod_regimen'] ?? '1')));
+            $codRegV = (int)($rv['cod_regimen'] ?? 1);
+            // Excluir ingresos que son exclusivamente IRP (2) o Ganancias de Capital (4)
+            if ($rawRegV === '2' || $rawRegV === 'IRP' || $codRegV === 2 || $rawRegV === '4' || str_contains($rawRegV, 'CAPITAL') || $codRegV === 4) {
+                continue;
+            }
+            $rowsVentas[] = $rv;
+
             $tipDocV = strtoupper(trim((string)($rv['tip_doc'] ?? 'FAC')));
             $isNcr   = ($tipDocV === 'NCR' || str_contains($tipDocV, 'CRED') || str_contains($tipDocV, 'CRÉD'));
 
@@ -1377,21 +1405,30 @@ class ReportesContablesController {
         $c21 = $c156 + $c157 + $c158 + $c159;
         $c24 = $c22 + $c23;
 
-        // 2. Rubro 2 (Versión 4): Acumulado de los últimos 6 meses (incluyendo el periodo que se declara)
+        // 2. Rubro 2 (Versión 4): Acumulado de los últimos 6 meses (incluyendo el periodo que se declara, sin LIQ ni Solo IRP)
         $sixMonthsStart = date('Y-m-01', strtotime("-5 months", strtotime($startDateStr)));
         $rowsVentas6M = Database::queryForList(
-            "SELECT tip_doc, COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
+            "SELECT tip_doc, CAST(COALESCE(cod_regimen, 1) AS UNSIGNED) AS cod_regimen, regimen,
+                    COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
                     COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5, COALESCE(exentas, 0) AS exentas
              FROM co_ingresos
              WHERE id_propietario = ? AND cod_empresa = ?
                AND fec_ingreso >= ? AND fec_ingreso <= ?
                AND COALESCE(anulada, 'N') <> 'S'
-               AND COALESCE(estado, 'A') <> 'I'",
+               AND COALESCE(inutilizado, 'N') <> 'S'
+               AND COALESCE(estado, 'A') <> 'I'
+               AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) <> 'LIQ'
+               AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT LIKE '%LIQUIDAC%'",
             [$idProp, $codEmpresa, $sixMonthsStart, $endDateStr]
         );
         $acumGrav6M = 0.0;
         $acumEx6M   = 0.0;
         foreach ($rowsVentas6M as $rv6) {
+            $rawReg6 = strtoupper(trim((string)($rv6['regimen'] ?? $rv6['cod_regimen'] ?? '1')));
+            $codReg6 = (int)($rv6['cod_regimen'] ?? 1);
+            if ($rawReg6 === '2' || $rawReg6 === 'IRP' || $codReg6 === 2 || $rawReg6 === '4' || str_contains($rawReg6, 'CAPITAL') || $codReg6 === 4) {
+                continue;
+            }
             $tipV6 = strtoupper(trim((string)($rv6['tip_doc'] ?? 'FAC')));
             $sign  = ($tipV6 === 'NCR' || str_contains($tipV6, 'CRED') || str_contains($tipV6, 'CRÉD')) ? -1.0 : 1.0;
             [$b10_6, ] = self::extraerBaseImponibleEImpuesto((float)$rv6['grav10'], (float)$rv6['iva10'], 10);
@@ -1589,6 +1626,18 @@ class ReportesContablesController {
         $c33 = max(0, (int)round($proBase5));
         $c36 = max(0, (int)round($proBase10));
         $c39 = max(0, (int)round($proIva10 + $proIva5));
+
+        // Según instructivo DNIT: si no hay ventas exoneradas (C12/C26 = 0) ni compras sujetas a prorrateo (C39 = 0),
+        // el Rubro 2 queda íntegramente en 0.
+        if ($c12 <= 0 && $c26 <= 0 && $c39 <= 0) {
+            $c160 = 0;
+            $c161 = 0;
+            $c25  = 0;
+            $c26  = 0;
+            $c27  = 0;
+            $c30  = 0;
+            $c31  = 0;
+        }
 
         // Inc. c [164]: Rubro 3, Col. III: Inc. b [39] x (Rubro 2 Inc. a+b / Inc. d)
         $propMercInterno = ($c27 > 0) ? (($c160 + $c161) / $c27) : 1.0;
