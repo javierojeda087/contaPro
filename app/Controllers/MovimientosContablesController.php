@@ -3372,13 +3372,45 @@ class MovimientosContablesController {
     public static function apiRetencionesSufridasComprobantesCliente(): void {
         if (!self::requireAuth()) return;
         self::ensureRetencionesSufridasTables();
-        $idProp     = TenantContext::idPropietario();
-        $empresa    = TenantContext::empresa();
-        $rucCliente = trim((string)($_GET['rucCliente'] ?? ''));
-        $codCliente = trim((string)($_GET['codCliente'] ?? ''));
-        $nroFiltro  = trim((string)($_GET['nroComprobante'] ?? ''));
+        $idProp      = TenantContext::idPropietario();
+        $empresa     = TenantContext::empresa();
+        $rucCliente  = trim((string)($_GET['rucCliente'] ?? ''));
+        $codCliente  = trim((string)($_GET['codCliente'] ?? ''));
+        $nroFiltro   = trim((string)($_GET['nroComprobante'] ?? ''));
+        $idRetActual = !empty($_GET['idRetencion']) ? (int)$_GET['idRetencion'] : 0;
 
         try {
+            // Obtener mapa de facturas ya relacionadas en otras retenciones sufridas activas
+            $yaRelParams = [$idProp, $empresa];
+            $yaRelSql = "SELECT d.id_ingreso, d.nro_comprobante, r.nro_retencion
+                         FROM co_retenciones_sufridas_det d
+                         INNER JOIN co_retenciones_sufridas r
+                            ON r.id_retencion = d.id_retencion
+                           AND r.id_propietario = d.id_propietario
+                         WHERE d.id_propietario = ?
+                           AND d.cod_empresa = ?
+                           AND COALESCE(d.estado, 'A') <> 'I'
+                           AND COALESCE(r.anulada, 'N') <> 'S'
+                           AND COALESCE(r.estado, 'A') <> 'I'";
+            if ($idRetActual > 0) {
+                $yaRelSql .= " AND r.id_retencion <> ?";
+                $yaRelParams[] = $idRetActual;
+            }
+            $rowsRel = Database::queryForList($yaRelSql, $yaRelParams);
+            $mapRelPorId  = [];
+            $mapRelPorNro = [];
+            foreach ($rowsRel as $rr) {
+                $idI  = (int)($rr['id_ingreso'] ?? 0);
+                $nroC = strtoupper(str_replace(['-', ' '], '', trim((string)($rr['nro_comprobante'] ?? ''))));
+                $nroR = (string)($rr['nro_retencion'] ?? '');
+                if ($idI > 0) {
+                    $mapRelPorId[$idI] = $nroR;
+                }
+                if ($nroC !== '') {
+                    $mapRelPorNro[$nroC] = $nroR;
+                }
+            }
+
             $sql = "SELECT i.id_ingreso,
                            COALESCE(i.tip_doc, 'FAC') AS tip_doc,
                            COALESCE(i.nro_timbrado, '') AS nro_timbrado,
@@ -3402,7 +3434,9 @@ class MovimientosContablesController {
                       AND i.cod_empresa = ?
                       AND COALESCE(i.anulada, 'N') <> 'S'
                       AND COALESCE(i.inutilizado, 'N') <> 'S'
-                      AND COALESCE(i.estado, 'A') <> 'I' ";
+                      AND COALESCE(i.estado, 'A') <> 'I'
+                      AND UPPER(TRIM(COALESCE(i.tip_doc, 'FAC'))) IN ('FAC', 'FACTURA')
+                      AND COALESCE(i.nro_factura, '') LIKE '%-%' ";
             $params = [$idProp, $empresa];
 
             if ($rucCliente !== '') {
@@ -3424,9 +3458,9 @@ class MovimientosContablesController {
 
             if ($nroFiltro !== '') {
                 $cleanNro = str_replace(['-', ' '], '', $nroFiltro);
-                $sql .= "AND (REPLACE(i.nro_factura, '-', '') LIKE ? OR i.nro_factura LIKE ?) ";
-                $params[] = '%' . $cleanNro . '%';
-                $params[] = '%' . $nroFiltro . '%';
+                $sql .= "AND (REPLACE(REPLACE(TRIM(i.nro_factura), '-', ''), ' ', '') = ? OR UPPER(TRIM(i.nro_factura)) = UPPER(TRIM(?))) ";
+                $params[] = $cleanNro;
+                $params[] = $nroFiltro;
             }
 
             $sql .= "ORDER BY i.fec_ingreso DESC, i.id_ingreso DESC LIMIT 200";
@@ -3435,32 +3469,44 @@ class MovimientosContablesController {
             $result = [];
             foreach ($facturas as $f) {
                 $tipDocRaw = strtoupper(trim((string)($f['tip_doc'] ?? 'FAC')));
-                $tipLabel  = 'Factura';
-                if (str_contains($tipDocRaw, 'CRED') || $tipDocRaw === 'NCR') $tipLabel = 'Nota de Crédito';
-                elseif (str_contains($tipDocRaw, 'DEB') || $tipDocRaw === 'NDB') $tipLabel = 'Nota de Débito';
-                elseif (str_contains($tipDocRaw, 'AUTO') || $tipDocRaw === 'AUT') $tipLabel = 'Autofactura';
+                if (self::isLiquidacionSalario($tipDocRaw) || !in_array($tipDocRaw, ['FAC', 'FACTURA'], true)) {
+                    continue;
+                }
+                $tipLabel = 'Factura';
+                $idIng    = (int)($f['id_ingreso'] ?? 0);
+                $nroFac   = self::formatNroFactura((string)($f['nro_factura'] ?? ''), $tipDocRaw);
+                $nroNorm  = strtoupper(str_replace(['-', ' '], '', $nroFac));
 
-                $nroFac = self::formatNroFactura((string)($f['nro_factura'] ?? ''), $tipDocRaw);
+                $nroRetAsoc = $mapRelPorId[$idIng] ?? ($mapRelPorNro[$nroNorm] ?? null);
+                $yaRelacionada = ($nroRetAsoc !== null && $nroRetAsoc !== '');
+
+                // En el listado del botón Buscar (sin filtro puntual de número), ocultar las facturas ya relacionadas
+                if ($nroFiltro === '' && $yaRelacionada) {
+                    continue;
+                }
+
                 $result[] = [
-                    'id_ingreso'      => (int)($f['id_ingreso'] ?? 0),
-                    'tip_comprobante' => $tipLabel,
-                    'tip_doc'         => $tipDocRaw,
-                    'nro_timbrado'    => (string)($f['nro_timbrado'] ?? ''),
-                    'nro_comprobante' => $nroFac,
-                    'serie'           => (string)($f['serie'] ?? ''),
-                    'fec_comprobante' => (string)($f['fec_ingreso'] ?? ''),
-                    'fec_fmt'         => (string)($f['fec_ingreso_fmt'] ?? ''),
-                    'ruc_cliente'     => (string)($f['ruc_cliente'] ?? ''),
-                    'nom_cliente'     => (string)($f['nom_cliente'] ?? ''),
-                    'cod_cliente'     => (string)($f['cod_cliente'] ?? ''),
-                    'cod_moneda'      => (string)($f['cod_moneda'] ?? '1'),
-                    'grav10'          => (float)($f['grav10'] ?? 0),
-                    'iva10'           => (float)($f['iva10'] ?? 0),
-                    'grav5'           => (float)($f['grav5'] ?? 0),
-                    'iva5'            => (float)($f['iva5'] ?? 0),
-                    'exentas'         => (float)($f['exentas'] ?? 0),
-                    'tot_iva'         => (float)($f['tot_iva'] ?? 0),
-                    'valor_total'     => (float)($f['valor_total'] ?? 0),
+                    'id_ingreso'         => $idIng,
+                    'tip_comprobante'    => $tipLabel,
+                    'tip_doc'            => $tipDocRaw,
+                    'nro_timbrado'       => (string)($f['nro_timbrado'] ?? ''),
+                    'nro_comprobante'    => $nroFac,
+                    'serie'              => (string)($f['serie'] ?? ''),
+                    'fec_comprobante'    => (string)($f['fec_ingreso'] ?? ''),
+                    'fec_fmt'            => (string)($f['fec_ingreso_fmt'] ?? ''),
+                    'ruc_cliente'        => (string)($f['ruc_cliente'] ?? ''),
+                    'nom_cliente'        => (string)($f['nom_cliente'] ?? ''),
+                    'cod_cliente'        => (string)($f['cod_cliente'] ?? ''),
+                    'cod_moneda'         => (string)($f['cod_moneda'] ?? '1'),
+                    'grav10'             => (float)($f['grav10'] ?? 0),
+                    'iva10'              => (float)($f['iva10'] ?? 0),
+                    'grav5'              => (float)($f['grav5'] ?? 0),
+                    'iva5'               => (float)($f['iva5'] ?? 0),
+                    'exentas'            => (float)($f['exentas'] ?? 0),
+                    'tot_iva'            => (float)($f['tot_iva'] ?? 0),
+                    'valor_total'        => (float)($f['valor_total'] ?? 0),
+                    'ya_relacionada'     => $yaRelacionada,
+                    'nro_retencion_asoc' => $nroRetAsoc ?? '',
                 ];
             }
 
@@ -3715,6 +3761,7 @@ class MovimientosContablesController {
             $detallesRaw = is_array($payload['detalles'] ?? null) ? $payload['detalles'] : [];
             $sumComprobantes = 0.0;
             $detallesLimpios = [];
+            $vistosEnDetalle = [];
             foreach ($detallesRaw as $d) {
                 $nroComp = trim((string)($d['nroComprobante'] ?? $d['comprobante'] ?? ''));
                 if ($nroComp === '') continue;
@@ -3729,12 +3776,58 @@ class MovimientosContablesController {
                 $dTotIva     = (float)($d['totIva'] ?? ($dIva10 + $dIva5));
                 $dValTotal   = (float)($d['valorTotal'] ?? $d['total'] ?? ($dGrav10 + $dGrav5 + $dExentas));
                 $dRetenido   = (float)($d['importeRetenido'] ?? $d['retenido'] ?? 0);
+
+                $nroFmt  = self::formatNroFactura($nroComp, 'FAC');
+                $nroNorm = strtoupper(str_replace(['-', ' '], '', $nroFmt));
+                if (isset($vistosEnDetalle[$nroNorm])) {
+                    continue;
+                }
+                $vistosEnDetalle[$nroNorm] = true;
+
+                // Validar que la factura no esté ya relacionada en otra retención activa
+                $relParams = [$idProp, $empresa];
+                $relConds  = [];
+                if ($idIng) {
+                    $relConds[]  = "d.id_ingreso = ?";
+                    $relParams[] = $idIng;
+                }
+                if ($nroNorm !== '') {
+                    $relConds[]  = "UPPER(REPLACE(REPLACE(TRIM(d.nro_comprobante), '-', ''), ' ', '')) = ?";
+                    $relParams[] = $nroNorm;
+                }
+                if (!empty($relConds)) {
+                    $relSql = "SELECT r.nro_retencion, DATE_FORMAT(r.fec_retencion, '%d/%m/%Y') AS fec_fmt
+                               FROM co_retenciones_sufridas_det d
+                               INNER JOIN co_retenciones_sufridas r
+                                  ON r.id_retencion = d.id_retencion
+                                 AND r.id_propietario = d.id_propietario
+                               WHERE d.id_propietario = ?
+                                 AND d.cod_empresa = ?
+                                 AND (" . implode(' OR ', $relConds) . ")
+                                 AND COALESCE(d.estado, 'A') <> 'I'
+                                 AND COALESCE(r.anulada, 'N') <> 'S'
+                                 AND COALESCE(r.estado, 'A') <> 'I'";
+                    if ($idRetencion) {
+                        $relSql .= " AND r.id_retencion <> ?";
+                        $relParams[] = $idRetencion;
+                    }
+                    $rowsYaRel = Database::queryForList($relSql . " LIMIT 1", $relParams);
+                    if (!empty($rowsYaRel)) {
+                        $rRel = $rowsYaRel[0];
+                        View::json([
+                            'status'  => 'error',
+                            'message' => "La factura N° {$nroFmt} ya se encuentra relacionada con el Comprobante de Retención N° " . ($rRel['nro_retencion'] ?? '-') . " (Fecha: " . ($rRel['fec_fmt'] ?? '-') . "). Cada factura se puede relacionar una sola vez."
+                        ]);
+                        return;
+                    }
+                }
+
                 $sumComprobantes += $dRetenido;
 
                 $detallesLimpios[] = [
                     'id_ingreso'       => $idIng,
                     'tip_comprobante'  => $tipComp,
-                    'nro_comprobante'  => self::formatNroFactura($nroComp, 'FAC'),
+                    'nro_comprobante'  => $nroFmt,
                     'fec_comprobante'  => $fecComp,
                     'grav10'           => $dGrav10,
                     'iva10'            => $dIva10,

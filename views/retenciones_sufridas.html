@@ -753,8 +753,8 @@
                 if (!dl || !json.data) return;
                 dl.innerHTML = '';
                 json.data.forEach(t => {
-                    const nro = t.NRO_TIMBRADO || t.nro_timbrado || '';
-                    if (nro) {
+                    const nro = String(t.NRO_TIMBRADO || t.nro_timbrado || '').trim();
+                    if (nro && !nro.includes('-')) {
                         const opt = document.createElement('option');
                         opt.value = nro;
                         dl.appendChild(opt);
@@ -1423,55 +1423,76 @@
             document.getElementById('compRetenidoInput').value = formatMontoDosDecimales(retSug > 0 ? retSug : impEnc);
         }
 
+        function esSoloFacturaComprobanteRet(c) {
+            if (!c) return false;
+            const tipDoc = String(c.tip_doc || 'FAC').trim().toUpperCase();
+            if (tipDoc.includes('LIQ') || tipDoc.includes('SALARIO') || (tipDoc !== 'FAC' && tipDoc !== 'FACTURA')) {
+                return false;
+            }
+            const nro = String(c.nro_comprobante || '').trim();
+            return nro.includes('-');
+        }
+
         function buscarComprobanteDirectoPorNro() {
             const nro = document.getElementById('compNroInput').value.trim();
-            if (!nro) return;
-            const ruc = document.getElementById('rucClienteRet').value.trim();
-            const cod = document.getElementById('codClienteRet').value.trim();
+            if (!nro) {
+                limpiarCamposComprobanteIndividual();
+                return;
+            }
+            const ruc      = document.getElementById('rucClienteRet').value.trim();
+            const cod      = document.getElementById('codClienteRet').value.trim();
+            const nomCli   = document.getElementById('nomClienteRet').value.trim();
+            const idActual = document.getElementById('idRetencion').value.trim();
 
-            fetch(`/api/retenciones-sufridas/comprobantes-cliente?rucCliente=${encodeURIComponent(ruc)}&codCliente=${encodeURIComponent(cod)}&nroComprobante=${encodeURIComponent(nro)}`)
+            fetch(`/api/retenciones-sufridas/comprobantes-cliente?rucCliente=${encodeURIComponent(ruc)}&codCliente=${encodeURIComponent(cod)}&nroComprobante=${encodeURIComponent(nro)}&idRetencion=${encodeURIComponent(idActual)}`)
                 .then(r => r.json())
                 .then(res => {
-                    if (res.status === 'success' && res.data && res.data.length > 0) {
-                        cargarDatosComprobanteEnFormularioSuperior(res.data[0]);
+                    const soloFacturas = (res.status === 'success' && Array.isArray(res.data))
+                        ? res.data.filter(esSoloFacturaComprobanteRet)
+                        : [];
+                    if (soloFacturas.length > 0) {
+                        const fac = soloFacturas[0];
+                        if (fac.ya_relacionada) {
+                            limpiarCamposComprobanteIndividual();
+                            Swal.fire(
+                                'Factura ya relacionada',
+                                `La factura N° ${fac.nro_comprobante} ya se encuentra relacionada con el Comprobante de Retención N° ${fac.nro_retencion_asoc || '-'}. Una factura solo se puede relacionar una vez.`,
+                                'warning'
+                            );
+                            return;
+                        }
+                        cargarDatosComprobanteEnFormularioSuperior(fac);
                     } else {
-                        // Permitir carga manual con los montos del Encabezado si no existe en co_ingresos
-                        const g10 = parseMontoDecimal(document.getElementById('grav10Ret').value);
-                        const i10 = parseMontoDecimal(document.getElementById('iva10Ret').value);
-                        const g5  = parseMontoDecimal(document.getElementById('grav5Ret').value);
-                        const i5  = parseMontoDecimal(document.getElementById('iva5Ret').value);
-                        const ex  = parseMontoDecimal(document.getElementById('exentasRet').value);
-                        cargarDatosComprobanteEnFormularioSuperior({
-                            id_ingreso: null,
-                            tip_comprobante: 'Factura',
-                            nro_comprobante: nro,
-                            fec_comprobante: document.getElementById('fecRetencion').value,
-                            nom_cliente: document.getElementById('nomClienteRet').value,
-                            grav10: g10,
-                            iva10: i10,
-                            grav5: g5,
-                            iva5: i5,
-                            exentas: ex,
-                            tot_iva: i10 + i5,
-                            valor_total: g10 + g5 + ex
-                        });
+                        limpiarCamposComprobanteIndividual();
+                        Swal.fire(
+                            'Factura no encontrada',
+                            `La factura N° ${nro} no existe en el registro de Ingresos${nomCli ? ' para el cliente ' + nomCli : ''}. Verifique el número o regístrela primero en Ingresos.`,
+                            'warning'
+                        );
                     }
+                })
+                .catch(() => {
+                    limpiarCamposComprobanteIndividual();
+                    Swal.fire('Error', 'No se pudo verificar el comprobante en el servidor.', 'error');
                 });
         }
 
         function abrirSelectorComprobantesCliente() {
-            const ruc = document.getElementById('rucClienteRet').value.trim();
-            const cod = document.getElementById('codClienteRet').value.trim();
+            const ruc      = document.getElementById('rucClienteRet').value.trim();
+            const cod      = document.getElementById('codClienteRet').value.trim();
+            const idActual = document.getElementById('idRetencion').value.trim();
             document.getElementById('busquedaComprobanteCliente').value = '';
             document.getElementById('selectorComprobantesRetOverlay').style.display = 'flex';
 
             const tbody = document.getElementById('tablaSelectorComprobantesBody');
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">Consultando comprobantes de ingreso...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">Consultando facturas de ingreso...</td></tr>';
 
-            fetch(`/api/retenciones-sufridas/comprobantes-cliente?rucCliente=${encodeURIComponent(ruc)}&codCliente=${encodeURIComponent(cod)}`)
+            fetch(`/api/retenciones-sufridas/comprobantes-cliente?rucCliente=${encodeURIComponent(ruc)}&codCliente=${encodeURIComponent(cod)}&idRetencion=${encodeURIComponent(idActual)}`)
                 .then(r => r.json())
                 .then(res => {
-                    cacheComprobantesCliente = (res.status === 'success' && res.data) ? res.data : [];
+                    cacheComprobantesCliente = (res.status === 'success' && Array.isArray(res.data))
+                        ? res.data.filter(c => esSoloFacturaComprobanteRet(c) && !c.ya_relacionada)
+                        : [];
                     filtrarTablaSelectorComprobantes();
                 })
                 .catch(() => {
@@ -1488,14 +1509,20 @@
             const tbody = document.getElementById('tablaSelectorComprobantesBody');
             tbody.innerHTML = '';
 
+            const nrosYaEnGrilla = new Set(
+                (detalleComprobantesRet || []).map(d => String(d.nroComprobante || '').trim().toUpperCase())
+            );
+
             const lista = cacheComprobantesCliente.filter(c => {
+                const nroUpper = String(c.nro_comprobante || '').trim().toUpperCase();
+                if (c.ya_relacionada || nrosYaEnGrilla.has(nroUpper)) return false;
                 if (!q) return true;
-                return String(c.nro_comprobante || '').toUpperCase().includes(q)
+                return nroUpper.includes(q)
                     || String(c.nom_cliente || '').toUpperCase().includes(q);
             });
 
             if (lista.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">No se encontraron facturas emitidas para este filtro.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">No se encontraron facturas disponibles sin retención para este filtro.</td></tr>';
                 return;
             }
 
@@ -1542,6 +1569,14 @@
             const nro = document.getElementById('compNroInput').value.trim();
             if (!nro) {
                 Swal.fire('Atención', 'Indique o busque un número de comprobante antes de presionar +.', 'warning');
+                return;
+            }
+            if (!comprobanteEnEdicionActual || !comprobanteEnEdicionActual.id_ingreso || String(comprobanteEnEdicionActual.nro_comprobante || '').trim().toUpperCase() !== nro.toUpperCase()) {
+                Swal.fire(
+                    'Factura no encontrada',
+                    `El comprobante N° ${nro} no existe en el registro de Ingresos. Verifique el número o regístrelo primero en Ingresos.`,
+                    'warning'
+                );
                 return;
             }
 
@@ -1696,9 +1731,17 @@
                 return;
             }
 
-            // Si el usuario dejó cargado un comprobante en los campos superiores de la pestaña Comprobantes sin pulsar "+", agregarlo automáticamente
+            // Si el usuario dejó cargado un comprobante válido en los campos superiores de la pestaña Comprobantes sin pulsar "+", agregarlo automáticamente
             const compPendNro = document.getElementById('compNroInput').value.trim();
             if (compPendNro && detalleComprobantesRet.length === 0) {
+                if (!comprobanteEnEdicionActual || !comprobanteEnEdicionActual.id_ingreso) {
+                    Swal.fire(
+                        'Factura no encontrada',
+                        `El comprobante N° ${compPendNro} no existe en el registro de Ingresos. Verifique el número o regístrelo primero en Ingresos.`,
+                        'warning'
+                    );
+                    return;
+                }
                 agregarComprobanteAGrilla();
             }
 
@@ -1738,15 +1781,38 @@
             .then(r => r.json())
             .then(res => {
                 if (res.status === 'success') {
-                    cerrarModalRetencion();
+                    // Asegurar que el periodo filtrado incluya la fecha guardada para que se vea inmediatamente abajo
+                    if (payload.fecRetencion && payload.fecRetencion.includes('-')) {
+                        const [anioGuardado, mesGuardado] = payload.fecRetencion.split('-');
+                        const selAnio = document.getElementById('filtroAnio');
+                        const selMes  = document.getElementById('filtroMes');
+                        if (selAnio && selAnio.value !== 'TODOS' && selAnio.value !== anioGuardado) {
+                            selAnio.value = 'TODOS';
+                        }
+                        if (selMes && selMes.value !== 'TODOS' && parseInt(selMes.value, 10) !== parseInt(mesGuardado, 10)) {
+                            selMes.value = 'TODOS';
+                        }
+                    }
+
+                    // 1. Refrescar el listado de abajo inmediatamente
+                    selectedIdRetencion = res.idRetencion || payload.idRetencion || null;
                     cargarRetenciones();
+
+                    // 2. Limpiar el formulario y permanecer en la misma pantalla listo para seguir cargando
+                    limpiarFormularioRetencion();
+                    document.getElementById('modalTitleRetencion').textContent = 'Registrar retención sufrida';
+                    cambiarTabRetencion('encabezado');
+                    setTimeout(() => document.getElementById('rucClienteRet')?.focus(), 80);
+
                     Swal.fire({
                         toast: true,
                         position: 'top-end',
                         icon: 'success',
-                        title: res.message || 'Retención sufrida guardada.',
+                        title: res.message || '¡Retención sufrida guardada!',
+                        text: 'Detalle actualizado. Formulario limpio para el siguiente registro.',
                         showConfirmButton: false,
-                        timer: 2500
+                        timer: 2500,
+                        timerProgressBar: true
                     });
                 } else {
                     Swal.fire('Error', res.message || 'No se pudo guardar la retención sufrida.', 'error');
