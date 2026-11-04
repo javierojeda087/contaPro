@@ -823,13 +823,27 @@
         // =====================================================================
         // CÁLCULOS AUTOMÁTICOS DE ENCABEZADO Y COMPROBANTES
         // =====================================================================
+        function esMonedaGuaraniesRet() {
+            const sel = document.getElementById('codMonedaRet');
+            if (!sel) return true;
+            const cod = String(sel.value || '1').trim();
+            const txt = (sel.options && sel.selectedIndex >= 0)
+                ? String(sel.options[sel.selectedIndex].text || '').toUpperCase()
+                : '';
+            return cod === '1' || txt.includes('GUARAN');
+        }
+
+        function redondearSegunMonedaRet(valor) {
+            const n = Number(valor) || 0;
+            return esMonedaGuaraniesRet() ? Math.round(n) : (Math.round(n * 100) / 100);
+        }
+
         function recalcularDesdeGravadasRet() {
             const grav10  = parseMontoDecimal(document.getElementById('grav10Ret').value);
             const grav5   = parseMontoDecimal(document.getElementById('grav5Ret').value);
-            const exentas = parseMontoDecimal(document.getElementById('exentasRet').value);
 
-            const iva10 = Math.round((grav10 / 11) * 100) / 100;
-            const iva5  = Math.round((grav5 / 21) * 100) / 100;
+            const iva10 = redondearSegunMonedaRet(grav10 / 11);
+            const iva5  = redondearSegunMonedaRet(grav5 / 21);
 
             document.getElementById('iva10Ret').value = formatMontoDosDecimales(iva10);
             document.getElementById('iva5Ret').value  = formatMontoDosDecimales(iva5);
@@ -847,8 +861,8 @@
             const iva5   = parseMontoDecimal(document.getElementById('iva5Ret').value);
             const porc5  = parseMontoDecimal(document.getElementById('porc5Ret').value);
 
-            const ret10 = Math.round((iva10 * (porc10 / 100)) * 100) / 100;
-            const ret5  = Math.round((iva5 * (porc5 / 100)) * 100) / 100;
+            const ret10 = redondearSegunMonedaRet(iva10 * (porc10 / 100));
+            const ret5  = redondearSegunMonedaRet(iva5 * (porc5 / 100));
 
             document.getElementById('ret10Ret').value = formatMontoDosDecimales(ret10);
             document.getElementById('ret5Ret').value  = formatMontoDosDecimales(ret5);
@@ -858,6 +872,17 @@
 
             document.getElementById('valorTotalRet').value      = formatMontoDosDecimales(total);
             document.getElementById('importeRetenidoRet').value = formatMontoDosDecimales(impRetenido);
+
+            if (detalleComprobantesRet.length === 1) {
+                detalleComprobantesRet[0].importeRetenido = impRetenido;
+                renderGrillaComprobantesRet();
+            }
+            if (comprobanteEnEdicionActual) {
+                const i10Comp = parseFloat(comprobanteEnEdicionActual.iva10 || 0);
+                const i5Comp  = parseFloat(comprobanteEnEdicionActual.iva5 || 0);
+                const retSug  = redondearSegunMonedaRet(i10Comp * (porc10 / 100)) + redondearSegunMonedaRet(i5Comp * (porc5 / 100));
+                document.getElementById('compRetenidoInput').value = formatMontoDosDecimales(retSug > 0 ? retSug : impRetenido);
+            }
 
             actualizarResumenTabComprobantes();
         }
@@ -1318,7 +1343,7 @@
             // Sugerir importe retenido según porcentaje del encabezado
             const porc10 = parseMontoDecimal(document.getElementById('porc10Ret').value) || 70;
             const porc5  = parseMontoDecimal(document.getElementById('porc5Ret').value) || 0;
-            const retSug = Math.round(((i10 * (porc10 / 100)) + (i5 * (porc5 / 100))) * 100) / 100;
+            const retSug = redondearSegunMonedaRet(i10 * (porc10 / 100)) + redondearSegunMonedaRet(i5 * (porc5 / 100));
             const impEnc = parseMontoDecimal(document.getElementById('importeRetenidoRet').value);
             document.getElementById('compRetenidoInput').value = formatMontoDosDecimales(retSug > 0 ? retSug : impEnc);
         }

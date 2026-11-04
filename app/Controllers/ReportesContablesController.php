@@ -1171,6 +1171,20 @@ class ReportesContablesController {
         if (((int)($saved['C62'] ?? 0) === 0) && ((int)($saved['C40'] ?? 0) > 0)) {
             $saved['C62'] = (int)$saved['C40'];
         }
+        if (((int)($saved['C52'] ?? 0) === 0) && ((int)($autoData['C52'] ?? 0) > 0)) {
+            $saved['C52'] = (int)$autoData['C52'];
+            $c51s = (int)($saved['C51'] ?? 0);
+            $c52s = (int)$saved['C52'];
+            $c169s = (int)($saved['C169'] ?? 0);
+            $c55s = (int)($saved['C55'] ?? $saved['C50'] ?? 0);
+            $c56s = (int)($saved['C56'] ?? 0);
+            $c53s = $c51s + $c52s + $c169s;
+            $c57s = $c55s + $c56s;
+            $saved['C53'] = $c53s;
+            $saved['C57'] = $c57s;
+            $saved['C54'] = ($c53s > $c57s) ? ($c53s - $c57s) : 0;
+            $saved['C58'] = ($c57s > $c53s) ? ($c57s - $c53s) : 0;
+        }
         foreach ($autoData as $k => $v) {
             if (!array_key_exists($k, $saved) || $saved[$k] === null) {
                 $saved[$k] = $v;
@@ -1195,8 +1209,8 @@ class ReportesContablesController {
         if (!empty($rows)) {
             $autoData = $autoCalc['data'];
             $saved    = self::normalizarSavedForm120V4($rows[0], $autoData);
-            $savedMov = (int)($saved['C10'] ?? 0) + (int)($saved['C151'] ?? 0) + (int)($saved['C12'] ?? 0) + (int)($saved['C32'] ?? 0) + (int)($saved['C35'] ?? 0) + (int)($saved['C62'] ?? 0);
-            $autoMov  = (int)($autoData['C10'] ?? 0) + (int)($autoData['C151'] ?? 0) + (int)($autoData['C12'] ?? 0) + (int)($autoData['C32'] ?? 0) + (int)($autoData['C35'] ?? 0) + (int)($autoData['C62'] ?? 0);
+            $savedMov = (int)($saved['C10'] ?? 0) + (int)($saved['C151'] ?? 0) + (int)($saved['C12'] ?? 0) + (int)($saved['C32'] ?? 0) + (int)($saved['C35'] ?? 0) + (int)($saved['C62'] ?? 0) + (int)($saved['C52'] ?? 0);
+            $autoMov  = (int)($autoData['C10'] ?? 0) + (int)($autoData['C151'] ?? 0) + (int)($autoData['C12'] ?? 0) + (int)($autoData['C32'] ?? 0) + (int)($autoData['C35'] ?? 0) + (int)($autoData['C62'] ?? 0) + (int)($autoData['C52'] ?? 0);
 
             View::json([
                 'status'           => ($savedMov === 0 && $autoMov > 0) ? 'calculated' : 'found',
@@ -1248,6 +1262,7 @@ class ReportesContablesController {
     private static function calcularFormulario120Auto(int $idProp, string $codEmpresa, int $mes, int $anio): array {
         $startDateStr = sprintf('%04d-%02d-01', $anio, $mes);
         $endDateStr   = date('Y-m-t', strtotime($startDateStr));
+        MovimientosContablesController::ensureRetencionesSufridasTables();
 
         // 0. Obtener lista de periodos con movimientos cargados (para navegación rápida en la UI)
         $periodosConDatos = [];
@@ -1272,11 +1287,18 @@ class ReportesContablesController {
                     FROM co_ingresos
                     WHERE id_propietario = ? AND cod_empresa = ? AND COALESCE(anulada, 'N') <> 'S' AND COALESCE(estado, 'A') <> 'I' AND fec_ingreso IS NOT NULL
                     GROUP BY YEAR(fec_ingreso), MONTH(fec_ingreso)
+                    UNION ALL
+                    SELECT YEAR(fec_retencion) AS anio, MONTH(fec_retencion) AS mes,
+                           0 AS cant_egresos, 0 AS total_egresos,
+                           COUNT(*) AS cant_ingresos, COALESCE(SUM(importe_retenido), 0) AS total_ingresos
+                    FROM co_retenciones_sufridas
+                    WHERE id_propietario = ? AND cod_empresa = ? AND COALESCE(anulada, 'N') <> 'S' AND COALESCE(estado, 'A') <> 'I' AND fec_retencion IS NOT NULL
+                    GROUP BY YEAR(fec_retencion), MONTH(fec_retencion)
                  ) p
                  WHERE anio IS NOT NULL AND mes IS NOT NULL
                  GROUP BY anio, mes
                  ORDER BY anio DESC, mes DESC",
-                [$idProp, $codEmpresa, $idProp, $codEmpresa]
+                [$idProp, $codEmpresa, $idProp, $codEmpresa, $idProp, $codEmpresa]
             );
         } catch (\Throwable $ignored) {}
 
@@ -1607,7 +1629,18 @@ class ReportesContablesController {
             "SELECT c54 FROM co_formulario_120 WHERE id_propietario = ? AND cod_empresa = ? AND mes = ? AND anio = ? LIMIT 1",
             [$idProp, $codEmpresa, $prevMes, $prevAnio]
         ) ?? 0);
-        $c52  = 0; // Retenciones computables
+        $rowRetMes = Database::queryForList(
+            "SELECT COUNT(*) AS cant_ret,
+                    COALESCE(SUM(COALESCE(importe_retenido, 0) * COALESCE(NULLIF(tasa_cambio, 0), 1)), 0) AS total_ret
+             FROM co_retenciones_sufridas
+             WHERE id_propietario = ? AND cod_empresa = ?
+               AND fec_retencion >= ? AND fec_retencion <= ?
+               AND COALESCE(anulada, 'N') <> 'S'
+               AND COALESCE(estado, 'A') <> 'I'",
+            [$idProp, $codEmpresa, $startDateStr . ' 00:00:00', $endDateStr . ' 23:59:59']
+        );
+        $cantRetencionesMes = (int)($rowRetMes[0]['cant_ret'] ?? 0);
+        $c52  = max(0, (int)round((float)($rowRetMes[0]['total_ret'] ?? 0))); // Retenciones computables
         $c169 = 0; // Percepciones computables
         $c56  = 0; // Multa por contravención
         $c53  = $c51 + $c52 + $c169;
@@ -1694,6 +1727,8 @@ class ReportesContablesController {
             'comprasExentas'      => $c61 + $c62,
             'comprasTotalIva'     => $c43,
             'montoNoImputaIva'    => (int)round($montoNoImputaIva),
+            'cantRetenciones'     => $cantRetencionesMes,
+            'totalRetenciones'    => $c52,
             'porRegimen'          => array_values($porRegimen),
             'topProveedores'      => $topProveedores,
         ];
