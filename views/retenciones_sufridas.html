@@ -267,9 +267,10 @@
                         <!-- Fila 4: Número : [001-005-0016191]                      Fecha : [26/02/2025] -->
                         <div class="ret-grid-row" style="display: grid; grid-template-columns: 120px 290px 1fr 80px 180px; gap: 10px; align-items: center; margin-bottom: 12px;">
                             <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Número :</label>
-                            <input type="text" id="nroRetencion" placeholder="001-005-0016191" maxlength="20"
-                                   onblur="formatearNumeroComprobanteInput(this)"
-                                   style="border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; background: #ffffff; color: #0f172a;">
+                            <input type="text" id="nroRetencion" placeholder="___-___-_______" maxlength="15"
+                                   oninput="formatearMascaraComprobanteEnVivo(this, event)"
+                                   onblur="formatearNumeroComprobanteInput(this); verificarDuplicadoRetencionLocal();"
+                                   style="border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; letter-spacing: 0.5px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #0f172a;">
                             <div></div>
                             <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Fecha :</label>
                             <input type="date" id="fecRetencion" class="form-control"
@@ -286,7 +287,7 @@
                             <div></div>
                             <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Tasa de Cambio :</label>
                             <input type="text" id="tasaCambioRet" value="1"
-                                   oninput="formatearDecimalInput(this, false)"
+                                   oninput="formatearMilesEnVivoRet(this)"
                                    style="text-align: right; border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; background: #ffffff; color: #0f172a;">
                         </div>
 
@@ -296,19 +297,19 @@
                                 <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Grav. 10% :</label>
                                 <input type="text" id="grav10Ret" value="0,00"
                                        onfocus="seleccionarTextoMonto(this)"
-                                       oninput="recalcularDesdeGravadasRet()"
+                                       oninput="formatearMilesEnVivoRet(this); recalcularDesdeGravadasRet();"
                                        onblur="formatearMontoRetOnBlur(this); recalcularDesdeGravadasRet();"
                                        style="text-align: right; border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; background: #ffffff; color: #0f172a;">
 
                                 <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">I.V.A. 10% :</label>
                                 <input type="text" id="iva10Ret" value="0,00"
                                        onfocus="seleccionarTextoMonto(this)"
-                                       oninput="recalcularRetencionesDesdeIva()"
+                                       oninput="formatearMilesEnVivoRet(this); recalcularRetencionesDesdeIva();"
                                        onblur="formatearMontoRetOnBlur(this); recalcularRetencionesDesdeIva();"
                                        style="text-align: right; border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; background: #f8fafc; color: #15803d;">
 
                                 <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Porc. 10% :</label>
-                                <input type="text" id="porc10Ret" value="70,00"
+                                <input type="text" id="porc10Ret" value="30,00"
                                        onfocus="seleccionarTextoMonto(this)"
                                        oninput="recalcularRetencionesDesdeIva()"
                                        onblur="formatearMontoRetOnBlur(this); recalcularRetencionesDesdeIva();"
@@ -317,7 +318,7 @@
                                 <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Ret. 10% :</label>
                                 <input type="text" id="ret10Ret" value="0,00"
                                        onfocus="seleccionarTextoMonto(this)"
-                                       oninput="recalcularTotalesDirectosRet()"
+                                       oninput="formatearMilesEnVivoRet(this); recalcularTotalesDirectosRet();"
                                        onblur="formatearMontoRetOnBlur(this); recalcularTotalesDirectosRet();"
                                        style="text-align: right; border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; background: #f8fafc; color: #15803d;">
                             </div>
@@ -327,14 +328,14 @@
                                 <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Grav. 05% :</label>
                                 <input type="text" id="grav5Ret" value="0,00"
                                        onfocus="seleccionarTextoMonto(this)"
-                                       oninput="recalcularDesdeGravadasRet()"
+                                       oninput="formatearMilesEnVivoRet(this); recalcularDesdeGravadasRet();"
                                        onblur="formatearMontoRetOnBlur(this); recalcularDesdeGravadasRet();"
                                        style="text-align: right; border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; background: #ffffff; color: #0f172a;">
 
                                 <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">I.V.A. 05% :</label>
                                 <input type="text" id="iva5Ret" value="0,00"
                                        onfocus="seleccionarTextoMonto(this)"
-                                       oninput="recalcularRetencionesDesdeIva()"
+                                       oninput="formatearMilesEnVivoRet(this); recalcularRetencionesDesdeIva();"
                                        onblur="formatearMontoRetOnBlur(this); recalcularRetencionesDesdeIva();"
                                        style="text-align: right; border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; background: #f8fafc; color: #15803d;">
 
@@ -348,7 +349,7 @@
                                 <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Ret. 05% :</label>
                                 <input type="text" id="ret5Ret" value="0,00"
                                        onfocus="seleccionarTextoMonto(this)"
-                                       oninput="recalcularTotalesDirectosRet()"
+                                       oninput="formatearMilesEnVivoRet(this); recalcularTotalesDirectosRet();"
                                        onblur="formatearMontoRetOnBlur(this); recalcularTotalesDirectosRet();"
                                        style="text-align: right; border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; background: #f8fafc; color: #15803d;">
                             </div>
@@ -358,7 +359,7 @@
                                 <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Exentas :</label>
                                 <input type="text" id="exentasRet" value="0,00"
                                        onfocus="seleccionarTextoMonto(this)"
-                                       oninput="recalcularDesdeGravadasRet()"
+                                       oninput="formatearMilesEnVivoRet(this); recalcularDesdeGravadasRet();"
                                        onblur="formatearMontoRetOnBlur(this); recalcularDesdeGravadasRet();"
                                        style="text-align: right; border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; background: #ffffff; color: #0f172a;">
 
@@ -391,10 +392,11 @@
                             <!-- Fila 1: Comprobante [___-___-_______] [Info] [Buscar]         Retenido [     ] -->
                             <div class="ret-grid-row" style="display: grid; grid-template-columns: 110px 185px 1fr 105px 100px 235px; gap: 10px; align-items: center; margin-bottom: 10px;">
                                 <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Comprobante :</label>
-                                <input type="text" id="compNroInput" placeholder="___-___-_______" maxlength="20"
+                                <input type="text" id="compNroInput" placeholder="___-___-_______" maxlength="15"
+                                       oninput="formatearMascaraComprobanteEnVivo(this, event)"
                                        onblur="formatearNumeroComprobanteInput(this); buscarComprobanteDirectoPorNro();"
                                        onkeypress="if(event.key==='Enter'){formatearNumeroComprobanteInput(this); buscarComprobanteDirectoPorNro(); event.preventDefault();}"
-                                       style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; background: #ffffff; color: #0f172a;">
+                                       style="border-radius: 8px; font-size: 0.92rem; height: 38px; padding: 4px 10px; font-weight: 700; letter-spacing: 0.5px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #0f172a;">
                                 <input type="text" id="compDescInput" readonly tabindex="-1" placeholder=""
                                        style="border-radius: 8px; font-size: 0.88rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; background: #f8fafc; color: #1e293b;">
                                 <button type="button" class="btn" onclick="abrirSelectorComprobantesCliente()"
@@ -404,6 +406,7 @@
                                 <label style="text-align: right; font-weight: 700; font-size: 0.88rem; color: #334155;">Retenido :</label>
                                 <input type="text" id="compRetenidoInput" value="0,00"
                                        onfocus="seleccionarTextoMonto(this)"
+                                       oninput="formatearMilesEnVivoRet(this)"
                                        onblur="formatearMontoRetOnBlur(this)"
                                        style="text-align: right; border-radius: 8px; font-size: 0.95rem; height: 38px; padding: 4px 10px; font-weight: 700; border: 1.5px solid #cbd5e1; background: #ffffff; color: #0f172a;">
                             </div>
@@ -800,23 +803,95 @@
             input.value = formatMontoDosDecimales(n);
         }
 
+        function formatearMilesEnVivoRet(input) {
+            const raw = String(input.value || '');
+            if (!raw) return;
+            const tieneComa = raw.includes(',');
+            const parts = raw.split(',');
+            let intDigits = parts[0].replace(/\D/g, '');
+            intDigits = intDigits.replace(/^0+(?=\d)/, '');
+            const intFmt = intDigits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            if (tieneComa) {
+                const decDigits = parts.slice(1).join('').replace(/\D/g, '').slice(0, 2);
+                input.value = (intFmt || '0') + ',' + decDigits;
+            } else {
+                input.value = intFmt;
+            }
+        }
+
         function formatearDecimalInput(input) {
             input.value = input.value.replace(/[^0-9.,]/g, '');
+        }
+
+        function formatearMascaraComprobanteEnVivo(input, ev) {
+            const raw = String(input.value || '');
+            const isDelete = Boolean(ev && ev.inputType && ev.inputType.startsWith('delete'));
+
+            // Si el usuario escribe "-" manualmente tras ingresar 1 o 2 dígitos (ej. "1-" -> "001-", "001-9-" -> "001-009-")
+            if (!isDelete && raw.endsWith('-')) {
+                const parts = raw.split('-');
+                if (parts.length === 2 && parts[0].replace(/\D/g, '').length > 0) {
+                    const p1 = parts[0].replace(/\D/g, '').slice(0, 3).padStart(3, '0');
+                    input.value = p1 + '-';
+                    return;
+                }
+                if (parts.length === 3 && parts[1].replace(/\D/g, '').length > 0) {
+                    const p1 = parts[0].replace(/\D/g, '').slice(0, 3).padStart(3, '0');
+                    const p2 = parts[1].replace(/\D/g, '').slice(0, 3).padStart(3, '0');
+                    input.value = p1 + '-' + p2 + '-';
+                    return;
+                }
+            }
+
+            const digits = raw.replace(/\D/g, '').slice(0, 13);
+            if (digits.length === 0) {
+                input.value = '';
+                return;
+            }
+
+            if (digits.length < 3) {
+                input.value = digits;
+            } else if (digits.length === 3) {
+                input.value = isDelete ? digits : (digits + '-');
+            } else if (digits.length < 6) {
+                input.value = digits.slice(0, 3) + '-' + digits.slice(3);
+            } else if (digits.length === 6) {
+                input.value = isDelete
+                    ? (digits.slice(0, 3) + '-' + digits.slice(3, 6))
+                    : (digits.slice(0, 3) + '-' + digits.slice(3, 6) + '-');
+            } else {
+                input.value = digits.slice(0, 3) + '-' + digits.slice(3, 6) + '-' + digits.slice(6, 13);
+            }
         }
 
         function formatearNumeroComprobanteInput(input) {
             let s = (input.value || '').trim();
             if (!s) return;
             const digits = s.replace(/\D/g, '');
+            if (!digits) {
+                input.value = '';
+                return;
+            }
             if (s.includes('-')) {
                 const p = s.split('-');
                 if (p.length === 3) {
-                    input.value = p[0].trim().padStart(3, '0') + '-' + p[1].trim().padStart(3, '0') + '-' + p[2].trim().padStart(7, '0');
+                    const p1 = p[0].replace(/\D/g, '').slice(0, 3).padStart(3, '0');
+                    const p2 = p[1].replace(/\D/g, '').slice(0, 3).padStart(3, '0');
+                    const p3 = p[2].replace(/\D/g, '').slice(0, 7);
+                    input.value = p3 ? `${p1}-${p2}-${p3.padStart(7, '0')}` : '';
+                    return;
                 }
-            } else if (digits.length > 0 && digits.length <= 7) {
+                if (p.length === 2) {
+                    const p1 = p[0].replace(/\D/g, '').slice(0, 3).padStart(3, '0');
+                    const p2 = p[1].replace(/\D/g, '').slice(0, 7);
+                    input.value = p2 ? `${p1}-001-${p2.padStart(7, '0')}` : '';
+                    return;
+                }
+            }
+            if (digits.length <= 7) {
                 input.value = '001-001-' + digits.padStart(7, '0');
-            } else if (digits.length === 13) {
-                input.value = digits.slice(0, 3) + '-' + digits.slice(3, 6) + '-' + digits.slice(6).padStart(7, '0');
+            } else {
+                input.value = digits.slice(0, 3) + '-' + digits.slice(3, 6) + '-' + digits.slice(6, 13).padStart(7, '0');
             }
         }
 
@@ -1128,7 +1203,7 @@
             document.getElementById('tasaCambioRet').value      = '1';
             document.getElementById('grav10Ret').value          = '0,00';
             document.getElementById('iva10Ret').value           = '0,00';
-            document.getElementById('porc10Ret').value          = '70,00';
+            document.getElementById('porc10Ret').value          = '30,00';
             document.getElementById('ret10Ret').value           = '0,00';
             document.getElementById('grav5Ret').value           = '0,00';
             document.getElementById('iva5Ret').value            = '0,00';
@@ -1341,7 +1416,7 @@
             document.getElementById('compTotal').value    = formatMontoDosDecimales(tot);
 
             // Sugerir importe retenido según porcentaje del encabezado
-            const porc10 = parseMontoDecimal(document.getElementById('porc10Ret').value) || 70;
+            const porc10 = parseMontoDecimal(document.getElementById('porc10Ret').value) || 30;
             const porc5  = parseMontoDecimal(document.getElementById('porc5Ret').value) || 0;
             const retSug = redondearSegunMonedaRet(i10 * (porc10 / 100)) + redondearSegunMonedaRet(i5 * (porc5 / 100));
             const impEnc = parseMontoDecimal(document.getElementById('importeRetenidoRet').value);
@@ -1572,10 +1647,42 @@
         // =====================================================================
         // GUARDAR / ELIMINAR / ANULAR RETENCIÓN SUFRIDA
         // =====================================================================
+        function buscarDuplicadoRetencionLocal(nroRet, rucCliente, idActual) {
+            if (!nroRet) return null;
+            const nroNorm = String(nroRet).trim().toUpperCase();
+            const rucNorm = String(rucCliente || '').replace(/[-\s]/g, '').toUpperCase();
+            return (listRetencionesData || []).find(item => {
+                if (idActual && String(item.ID_RETENCION) === String(idActual)) return false;
+                const itemNro = String(item.NRO_RETENCION || '').trim().toUpperCase();
+                if (itemNro !== nroNorm) return false;
+                if (!rucNorm) return true;
+                const itemRuc = String(item.RUC_CLIENTE || '').replace(/[-\s]/g, '').toUpperCase();
+                return itemRuc === rucNorm;
+            }) || null;
+        }
+
+        function verificarDuplicadoRetencionLocal() {
+            const nroRet     = document.getElementById('nroRetencion').value.trim();
+            const rucCliente = document.getElementById('rucClienteRet').value.trim();
+            const idActual   = document.getElementById('idRetencion').value.trim();
+            const dup = buscarDuplicadoRetencionLocal(nroRet, rucCliente, idActual);
+            if (dup) {
+                Swal.fire(
+                    'Comprobante ya registrado',
+                    `El comprobante de retención N° ${dup.NRO_RETENCION} del cliente ${dup.NOM_CLIENTE || rucCliente} ya está cargado (Fecha: ${dup.FEC_RETENCION_FMT || dup.FEC_RETENCION || '-'}).`,
+                    'warning'
+                );
+                return true;
+            }
+            return false;
+        }
+
         function guardarRetencionSufrida() {
             const rucCliente  = document.getElementById('rucClienteRet').value.trim();
             const nomCliente  = document.getElementById('nomClienteRet').value.trim();
+            formatearNumeroComprobanteInput(document.getElementById('nroRetencion'));
             const nroRet      = document.getElementById('nroRetencion').value.trim();
+            const idActual    = document.getElementById('idRetencion').value.trim();
 
             if (!rucCliente || !nomCliente) {
                 Swal.fire('Atención', 'Ingrese el RUC y verifique los datos del Cliente.', 'warning');
@@ -1583,6 +1690,9 @@
             }
             if (!nroRet) {
                 Swal.fire('Atención', 'Ingrese el Número del comprobante de retención.', 'warning');
+                return;
+            }
+            if (verificarDuplicadoRetencionLocal()) {
                 return;
             }
 

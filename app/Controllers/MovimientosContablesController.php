@@ -3302,7 +3302,7 @@ class MovimientosContablesController {
               `tasa_cambio` decimal(15,4) DEFAULT '1.0000',
               `grav10` decimal(15,2) DEFAULT '0.00',
               `iva10` decimal(15,2) DEFAULT '0.00',
-              `porc10` decimal(8,2) DEFAULT '70.00',
+              `porc10` decimal(8,2) DEFAULT '30.00',
               `ret10` decimal(15,2) DEFAULT '0.00',
               `grav5` decimal(15,2) DEFAULT '0.00',
               `iva5` decimal(15,2) DEFAULT '0.00',
@@ -3667,6 +3667,31 @@ class MovimientosContablesController {
                 return;
             }
 
+            // Validar que no exista otro comprobante de retención igual para el mismo cliente y empresa
+            $rucNorm = strtoupper(str_replace(['-', ' '], '', $rucCliente));
+            $dupParams = [$idProp, $empresa, $nroRetencion, $rucNorm];
+            $dupSql = "SELECT id_retencion, DATE_FORMAT(fec_retencion, '%d/%m/%Y') AS fec_fmt, nom_cliente
+                       FROM co_retenciones_sufridas
+                       WHERE id_propietario = ?
+                         AND cod_empresa = ?
+                         AND UPPER(TRIM(nro_retencion)) = UPPER(TRIM(?))
+                         AND UPPER(REPLACE(REPLACE(TRIM(COALESCE(ruc_cliente, '')), '-', ''), ' ', '')) = ?
+                         AND COALESCE(estado, 'A') <> 'I'";
+            if ($idRetencion) {
+                $dupSql .= " AND id_retencion <> ?";
+                $dupParams[] = $idRetencion;
+            }
+            $dupRows = Database::queryForList($dupSql . " LIMIT 1", $dupParams);
+            if (!empty($dupRows)) {
+                $dRow = $dupRows[0];
+                $fecDup = $dRow['fec_fmt'] ?? '-';
+                View::json([
+                    'status'  => 'error',
+                    'message' => "El Comprobante de Retención N° {$nroRetencion} del cliente {$nomCliente} ({$rucCliente}) ya se encuentra registrado (Fecha: {$fecDup}). No se permiten comprobantes repetidos."
+                ]);
+                return;
+            }
+
             $fecRetencion = self::parseSqlDate((string)($payload['fecRetencion'] ?? '')) ?: date('Y-m-d');
             $codMoneda    = trim((string)($payload['codMoneda'] ?? '1')) ?: '1';
             $tasaCambio   = (float)($payload['tasaCambio'] ?? 1);
@@ -3674,7 +3699,7 @@ class MovimientosContablesController {
 
             $grav10       = (float)($payload['grav10'] ?? 0);
             $iva10        = (float)($payload['iva10'] ?? 0);
-            $porc10       = (float)($payload['porc10'] ?? 70);
+            $porc10       = (float)($payload['porc10'] ?? 30);
             $ret10        = (float)($payload['ret10'] ?? 0);
             $grav5        = (float)($payload['grav5'] ?? 0);
             $iva5         = (float)($payload['iva5'] ?? 0);
