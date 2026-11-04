@@ -2,6 +2,7 @@
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Retenciones Sufridas - Sistema Contable')}">
 </head>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <body style="background: var(--bg-color);">
 
     <!-- Left Sidebar -->
@@ -36,6 +37,12 @@
 
                         <button type="button" class="btn" onclick="anularRetencionSeleccionada()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.93rem; color: #b91c1c; height: 44px; padding: 0 18px; border-radius: 9px; display: flex; align-items: center; gap: 7px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 0.2s;" onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#fca5a5'" onmouseout="this.style.background='white'; this.style.borderColor='#cbd5e1'">
                             <i class="ph ph-prohibit" style="font-size: 1.25rem; color: #dc2626;"></i> Anular
+                        </button>
+
+                        <div style="height: 28px; width: 1px; background: #cbd5e1; margin: 0 4px;"></div>
+
+                        <button type="button" class="btn" onclick="abrirModalImportarExcelRet()" style="background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1.5px solid #16a34a; font-weight: 800; font-size: 0.93rem; color: #15803d; height: 44px; padding: 0 18px; border-radius: 9px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(22,163,74,0.14); transition: all 0.2s;" onmouseover="this.style.background='#bbf7d0'" onmouseout="this.style.background='linear-gradient(135deg, #f0fdf4, #dcfce7)'">
+                            <i class="ph ph-microsoft-excel-logo" style="color: #16a34a; font-size: 1.3rem;"></i> Importar Marangatu / Excel
                         </button>
                     </div>
 
@@ -590,6 +597,131 @@
             <div style="background: #f8fafc; border-top: 1px solid #cbd5e1; padding: 10px 20px; display: flex; justify-content: flex-end;">
                 <button type="button" class="btn" onclick="cerrarSelectorComprobantesRet()" style="background: white; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.86rem; padding: 6px 18px; border-radius: 6px;">Cerrar</button>
             </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL: IMPORTACIÓN MASIVA DESDE EXCEL / MARANGATU (RETENCIONES SUFRIDAS)  -->
+    <!-- ========================================================================= -->
+    <div id="importarExcelRetModalOverlay" style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.72); backdrop-filter: blur(4px); z-index: 2650; display: none; align-items: center; justify-content: center; padding: 14px;">
+        <div style="background: #f8fafc; border-radius: 16px; border: 1px solid #cbd5e1; box-shadow: 0 25px 60px rgba(0,0,0,0.45); width: 99vw; max-width: 1750px; height: 93vh; display: flex; flex-direction: column; overflow: hidden;">
+
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #0f172a, #1e293b); color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 44px; height: 44px; border-radius: 11px; background: rgba(22, 163, 74, 0.22); border: 1px solid rgba(74, 222, 128, 0.4); display: flex; align-items: center; justify-content: center;">
+                        <i class="ph ph-microsoft-excel-logo" style="font-size: 1.65rem; color: #4ade80;"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: white;">Importar Comprobantes de Retención Sufrida (Marangatu / Tesaka / Excel)</h3>
+                        <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600;">
+                            Vincula automáticamente cada retención con su Factura de Ingreso (FAC), calcula el DV del RUC y marca en <b style="color: #fca5a5;">ROJO</b> las retenciones duplicadas o facturas ya relacionadas.
+                        </div>
+                    </div>
+                </div>
+                <button type="button" onclick="cerrarModalImportarExcelRet()" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <i class="ph ph-x" style="font-size: 1.2rem;"></i>
+                </button>
+            </div>
+
+            <!-- Barra de controles y archivo -->
+            <div style="padding: 14px 24px; background: white; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <label for="inputExcelRetFile" style="background: #16a34a; color: white; font-weight: 800; font-size: 0.88rem; padding: 9px 16px; border-radius: 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 3px 10px rgba(22,163,74,0.25); margin: 0;">
+                        <i class="ph ph-upload-simple" style="font-size: 1.15rem;"></i> Seleccionar Archivo Excel / CSV
+                    </label>
+                    <input type="file" id="inputExcelRetFile" accept=".xlsx,.xls,.csv,.txt" style="display: none;" onchange="procesarArchivoExcelRetenciones(event)">
+
+                    <button type="button" class="btn" onclick="abrirDialogoPegarExcelRet()" style="background: #eff6ff; border: 1.5px solid #93c5fd; color: #1d4ed8; font-weight: 800; font-size: 0.86rem; padding: 8px 15px; border-radius: 9px; display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="ph ph-clipboard-text" style="font-size: 1.15rem;"></i> Pegar desde Excel
+                    </button>
+
+                    <span id="excelRetFileNameLabel" style="font-size: 0.84rem; font-weight: 700; color: #475569; background: #f1f5f9; padding: 6px 12px; border-radius: 7px; border: 1px solid #cbd5e1;">
+                        Ningún archivo seleccionado
+                    </span>
+
+                    <!-- Timbrado de Retención en lote -->
+                    <div style="display: inline-flex; align-items: center; gap: 6px; background: #f8fafc; padding: 4px 10px; border-radius: 8px; border: 1px solid #cbd5e1;">
+                        <span style="font-size: 0.78rem; font-weight: 800; color: #334155;">Timbrado Ret.:</span>
+                        <input type="text" id="timbradoLoteRetInput" placeholder="Ej: 11572575" maxlength="15"
+                               style="width: 110px; height: 30px; border: 1px solid #94a3b8; border-radius: 6px; padding: 2px 8px; font-size: 0.82rem; font-weight: 800; color: #15803d;">
+                        <button type="button" class="btn" onclick="aplicarTimbradoLoteRet()" style="background: #dcfce7; border: 1px solid #86efac; color: #15803d; font-weight: 800; font-size: 0.76rem; padding: 4px 10px; border-radius: 6px;">
+                            Aplicar a todos
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filtros y Acciones Rápidas -->
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <div style="display: inline-flex; background: #f1f5f9; padding: 4px; border-radius: 9px; border: 1px solid #cbd5e1; gap: 4px;">
+                        <button type="button" id="btnFiltroRetImpTodos" onclick="setFiltroImportRet('TODOS')" style="border: none; background: #0f172a; color: white; font-weight: 800; font-size: 0.8rem; padding: 6px 12px; border-radius: 6px; cursor: pointer;">
+                            Todos (<span id="cntRetImpTodos">0</span>)
+                        </button>
+                        <button type="button" id="btnFiltroRetImpValidos" onclick="setFiltroImportRet('VALIDOS')" style="border: none; background: transparent; color: #15803d; font-weight: 800; font-size: 0.8rem; padding: 6px 12px; border-radius: 6px; cursor: pointer;">
+                            Válidos (<span id="cntRetImpValidos">0</span>)
+                        </button>
+                        <button type="button" id="btnFiltroRetImpRojos" onclick="setFiltroImportRet('ROJOS')" style="border: none; background: transparent; color: #dc2626; font-weight: 800; font-size: 0.8rem; padding: 6px 12px; border-radius: 6px; cursor: pointer;">
+                            En Rojo (<span id="cntRetImpRojos">0</span>)
+                        </button>
+                    </div>
+
+                    <button type="button" id="btnEliminarTodosRojosRet" onclick="eliminarTodosEnRojoRet()" style="display: none; background: #fef2f2; border: 1.5px solid #ef4444; color: #b91c1c; font-weight: 800; font-size: 0.82rem; padding: 7px 14px; border-radius: 8px; cursor: pointer; align-items: center; gap: 6px;">
+                        <i class="ph ph-trash" style="font-size: 1.05rem;"></i> Eliminar Todos en Rojo (<span id="cntBtnRojosRet">0</span>)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabla de Previsualización Editable -->
+            <div style="flex: 1; overflow: auto; padding: 14px 20px;">
+                <div style="background: white; border: 1px solid #cbd5e1; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                    <table class="table table-bordered align-middle m-0" style="font-size: 0.8rem; min-width: 1480px;">
+                        <thead style="background: #f1f5f9; color: #1e293b; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; position: sticky; top: 0; z-index: 5;">
+                            <tr>
+                                <th style="width: 40px; text-align: center;">#</th>
+                                <th style="width: 195px; text-align: center;">Estado / Validación</th>
+                                <th style="width: 125px; text-align: center;">Fecha Ret.</th>
+                                <th style="width: 150px;">N° Retención</th>
+                                <th style="width: 115px;">Timbrado Ret.</th>
+                                <th style="width: 120px;">RUC Cliente</th>
+                                <th style="min-width: 210px;">Razón Social Cliente (Agente)</th>
+                                <th style="width: 155px;">Factura Relacionada</th>
+                                <th style="width: 105px; text-align: center;">Fecha Fac.</th>
+                                <th style="width: 125px; text-align: right;">Grav. 10% Fac.</th>
+                                <th style="width: 115px; text-align: right;">IVA 10% Fac.</th>
+                                <th style="width: 75px; text-align: center;">Porc. %</th>
+                                <th style="width: 130px; text-align: right;">Importe Retenido</th>
+                                <th style="width: 52px; text-align: center;">Quitar</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaPreviewImportRetBody">
+                            <tr>
+                                <td colspan="14" class="text-center py-5 text-muted">
+                                    <i class="ph ph-microsoft-excel-logo" style="font-size: 2.6rem; color: #16a34a; display: block; margin-bottom: 8px;"></i>
+                                    Seleccione un archivo <b>Excel (.xlsx / .xls / .csv)</b> de Marangatu / Tesaka o presione <b>"Pegar desde Excel"</b> para previsualizar las retenciones sufridas antes de importar.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Footer de Confirmación -->
+            <div style="padding: 14px 24px; background: white; border-top: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; gap: 16px; font-size: 0.86rem; font-weight: 700; color: #334155; flex-wrap: wrap;">
+                    <span><i class="ph ph-check-circle" style="color: #16a34a;"></i> Válidos para importar: <b id="lblTotalValidosImportRet" style="color: #16a34a; font-size: 1rem;">0</b></span>
+                    <span><i class="ph ph-warning-circle" style="color: #dc2626;"></i> En rojo (no se importarán): <b id="lblTotalRojosImportRet" style="color: #dc2626; font-size: 1rem;">0</b></span>
+                    <span><i class="ph ph-coins" style="color: #0284c7;"></i> Total Retenido Válido: <b id="lblSumaTotalImportRet" style="color: #0f172a; font-family: monospace; font-size: 1rem;">0</b> Gs.</span>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" class="btn" onclick="cerrarModalImportarExcelRet()" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; font-weight: 700; padding: 9px 18px; border-radius: 9px;">
+                        Cancelar
+                    </button>
+                    <button type="button" id="btnConfirmarImportacionRet" class="btn" onclick="confirmarImportacionExcelRet()" style="background: linear-gradient(135deg, #16a34a, #15803d); border: none; color: white; font-weight: 800; padding: 9px 24px; border-radius: 9px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(22,163,74,0.3);">
+                        <i class="ph ph-database" style="font-size: 1.15rem;"></i> Importar Comprobantes Válidos
+                    </button>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -1893,6 +2025,705 @@
                         }
                     });
                 }
+            });
+        }
+
+        // =========================================================================
+        // IMPORTACIÓN MASIVA DESDE EXCEL / MARANGATU / TESAKA (RETENCIONES SUFRIDAS)
+        // =========================================================================
+        let importRetPreviewItems = [];
+        let filtroVistaImportRet = 'TODOS'; // 'TODOS' | 'VALIDOS' | 'ROJOS'
+        let validacionRetServer = {
+            existingRetenciones: {},
+            facturasRelacionadas: {},
+            facturasMap: {},
+            clientesMap: {},
+            timbradosPorCliente: {}
+        };
+
+        function calcularDvModulo11JS(rucSinDv) {
+            const numero = String(rucSinDv || '').trim().toUpperCase();
+            if (!numero) return 0;
+            const baseMax = 11;
+            let k = 2;
+            let total = 0;
+            for (let i = numero.length - 1; i >= 0; i--) {
+                if (k > baseMax) k = 2;
+                const ch = numero[i];
+                const n = (ch >= '0' && ch <= '9') ? parseInt(ch, 10) : ch.charCodeAt(0);
+                total += n * k;
+                k++;
+            }
+            const resto = total % 11;
+            return resto > 1 ? (11 - resto) : 0;
+        }
+
+        function normalizarRucConDvImportRet(rawRuc) {
+            let r = String(rawRuc || '').trim().toUpperCase().replace(/\s+/g, '');
+            if (!r) return '';
+            if (r.includes('-')) {
+                const parts = r.split('-');
+                const base = parts[0].replace(/^0+/, '') || parts[0];
+                const dv = (parts[1] || '').trim();
+                if (dv !== '') return base + '-' + dv;
+                r = base;
+            }
+            const baseClean = r.replace(/\D/g, '').replace(/^0+/, '');
+            if (!baseClean) return r;
+            const dvCalc = calcularDvModulo11JS(baseClean);
+            return baseClean + '-' + dvCalc;
+        }
+
+        function formatearNroCompImportRet(raw) {
+            const s = String(raw || '').trim();
+            if (!s) return '';
+            if (s.includes('-')) {
+                const p = s.split('-').map(x => x.trim().replace(/\D/g, '')).filter(Boolean);
+                if (p.length === 3) {
+                    return p[0].padStart(3, '0') + '-' + p[1].padStart(3, '0') + '-' + p[2].padStart(7, '0');
+                }
+                if (p.length === 2) {
+                    return '001-' + p[0].padStart(3, '0') + '-' + p[1].padStart(7, '0');
+                }
+            }
+            const digits = s.replace(/\D/g, '');
+            if (digits.length >= 13) {
+                return digits.slice(0, 3) + '-' + digits.slice(3, 6) + '-' + digits.slice(6, 13);
+            }
+            if (digits.length > 0) {
+                return '001-001-' + digits.padStart(7, '0');
+            }
+            return s.toUpperCase();
+        }
+
+        function parseFechaExcelImportRet(val) {
+            if (val === null || val === undefined || val === '') return '';
+            if (typeof val === 'number' && val > 20000 && val < 80000) {
+                const utcDays = Math.floor(val - 25569);
+                const d = new Date(utcDays * 86400 * 1000);
+                const yyyy = d.getUTCFullYear();
+                const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+                const dd = String(d.getUTCDate()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
+            }
+            const s = String(val).trim();
+            if (/^\d{2}\/\d{2}\/\d{4}/.test(s)) {
+                const [dd, mm, yyyy] = s.substring(0, 10).split('/');
+                return `${yyyy}-${mm}-${dd}`;
+            }
+            if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+                return s.substring(0, 10);
+            }
+            if (/^\d{2}-\d{2}-\d{4}/.test(s)) {
+                const [dd, mm, yyyy] = s.substring(0, 10).split('-');
+                return `${yyyy}-${mm}-${dd}`;
+            }
+            return '';
+        }
+
+        function parseNumeroImportRet(val) {
+            if (typeof val === 'number') return isNaN(val) ? 0 : Math.round(val);
+            let s = String(val || '').trim();
+            if (!s) return 0;
+            // Si tiene puntos de miles como "180.000" o "207.273" o "7.600.000,00"
+            if (s.includes(',') && s.includes('.')) {
+                s = s.replace(/\./g, '').replace(',', '.');
+            } else if (s.includes(',')) {
+                s = s.replace(',', '.');
+            } else if (/^\d{1,3}(\.\d{3})+$/.test(s)) {
+                s = s.replace(/\./g, '');
+            } else {
+                s = s.replace(/[^\d.-]/g, '');
+            }
+            const n = parseFloat(s);
+            return isNaN(n) ? 0 : Math.round(n);
+        }
+
+        async function cargarDatosValidacionRetServer() {
+            try {
+                const res = await fetch('/api/retenciones-sufridas/validar-importacion');
+                const data = await res.json();
+                if (data && data.status === 'success') {
+                    validacionRetServer.existingRetenciones  = data.existingRetenciones  || {};
+                    validacionRetServer.facturasRelacionadas = data.facturasRelacionadas || {};
+                    validacionRetServer.facturasMap          = data.facturasMap          || {};
+                    validacionRetServer.clientesMap          = data.clientesMap          || {};
+                    validacionRetServer.timbradosPorCliente  = data.timbradosPorCliente  || {};
+
+                    // Si hay algún timbrado conocido (ej. 11572575), pre-cargarlo en el input de timbrado por lote si está vacío
+                    const inpTimb = document.getElementById('timbradoLoteRetInput');
+                    if (inpTimb && !inpTimb.value.trim()) {
+                        const timbs = Object.values(validacionRetServer.timbradosPorCliente).filter(Boolean);
+                        if (timbs.length > 0) {
+                            inpTimb.value = timbs[0];
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Error cargando validación de importación de retenciones:', e);
+            }
+        }
+
+        async function abrirModalImportarExcelRet() {
+            document.getElementById('importarExcelRetModalOverlay').style.display = 'flex';
+            const fileInp = document.getElementById('inputExcelRetFile');
+            if (fileInp) fileInp.value = '';
+            document.getElementById('excelRetFileNameLabel').textContent = 'Ningún archivo seleccionado';
+            importRetPreviewItems = [];
+            filtroVistaImportRet = 'TODOS';
+            await cargarDatosValidacionRetServer();
+            renderTablaPreviewImportRet();
+        }
+
+        function cerrarModalImportarExcelRet() {
+            document.getElementById('importarExcelRetModalOverlay').style.display = 'none';
+        }
+
+        function setFiltroImportRet(modo) {
+            filtroVistaImportRet = modo;
+            const bTodos   = document.getElementById('btnFiltroRetImpTodos');
+            const bValidos = document.getElementById('btnFiltroRetImpValidos');
+            const bRojos   = document.getElementById('btnFiltroRetImpRojos');
+
+            bTodos.style.background   = modo === 'TODOS'   ? '#0f172a' : 'transparent';
+            bTodos.style.color        = modo === 'TODOS'   ? 'white'   : '#334155';
+            bValidos.style.background = modo === 'VALIDOS' ? '#16a34a' : 'transparent';
+            bValidos.style.color      = modo === 'VALIDOS' ? 'white'   : '#15803d';
+            bRojos.style.background   = modo === 'ROJOS'   ? '#dc2626' : 'transparent';
+            bRojos.style.color        = modo === 'ROJOS'   ? 'white'   : '#dc2626';
+
+            renderTablaPreviewImportRet();
+        }
+
+        function aplicarTimbradoLoteRet() {
+            const val = (document.getElementById('timbradoLoteRetInput')?.value || '').trim().replace(/\D/g, '');
+            if (!val) {
+                Swal.fire('Atención', 'Ingrese un número de Timbrado de Retención para aplicar a las filas.', 'warning');
+                return;
+            }
+            importRetPreviewItems.forEach(it => {
+                it.nroTimbrado = val;
+            });
+            revalidarListaImportacionRet();
+            renderTablaPreviewImportRet();
+        }
+
+        async function procesarArchivoExcelRetenciones(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('excelRetFileNameLabel').textContent = file.name;
+            await cargarDatosValidacionRetServer();
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array', raw: true });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[firstSheetName];
+                    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+                    cargarFilasEnPreviewRet(rows);
+                } catch (err) {
+                    console.error(err);
+                    Swal.fire('Error', 'No se pudo leer el archivo Excel: ' + err.message, 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function abrirDialogoPegarExcelRet() {
+            Swal.fire({
+                title: 'Pegar Planilla de Retenciones (Marangatu / Excel)',
+                html: `
+                    <div style="text-align: left; font-size: 0.84rem; color: #475569; margin-bottom: 8px;">
+                        Copie las filas directamente desde el Excel de Marangatu / Tesaka y péguelas aquí:
+                    </div>
+                    <textarea id="swalTextareaPegarRet" rows="10" placeholder="RETENCION\tAceptado\t\t001-009-0051498\t80003241\tCONCRET-MIX SA..."
+                              style="width: 100%; font-family: monospace; font-size: 0.78rem; padding: 10px; border-radius: 8px; border: 1.5px solid #cbd5e1; white-space: pre; overflow-x: auto;"></textarea>
+                `,
+                width: '850px',
+                showCancelButton: true,
+                confirmButtonColor: '#16a34a',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Procesar Filas',
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => {
+                    const txt = document.getElementById('swalTextareaPegarRet')?.value || '';
+                    if (!txt.trim()) {
+                        Swal.showValidationMessage('Pegue al menos una fila de retención.');
+                        return false;
+                    }
+                    return txt;
+                }
+            }).then(async r => {
+                if (r.isConfirmed && r.value) {
+                    document.getElementById('excelRetFileNameLabel').textContent = 'Texto pegado desde portapapeles';
+                    await cargarDatosValidacionRetServer();
+                    const lines = r.value.split(/\r?\n/).filter(l => l.trim() !== '');
+                    const rows = lines.map(l => l.split('\t'));
+                    cargarFilasEnPreviewRet(rows);
+                }
+            });
+        }
+
+        function cargarFilasEnPreviewRet(rows) {
+            if (!rows || rows.length === 0) {
+                Swal.fire('Atención', 'No se encontraron filas para procesar.', 'warning');
+                return;
+            }
+            const parsed = extraerFilasMatrizRetenciones(rows);
+            if (parsed.length === 0) {
+                Swal.fire('Sin comprobantes', 'No se detectaron comprobantes de retención válidos en la planilla.', 'info');
+                return;
+            }
+            importRetPreviewItems = parsed;
+            revalidarListaImportacionRet();
+            setFiltroImportRet('TODOS');
+        }
+
+        function extraerFilasMatrizRetenciones(rows) {
+            const result = [];
+            const timbLoteDefault = (document.getElementById('timbradoLoteRetInput')?.value || '').trim().replace(/\D/g, '');
+
+            for (let i = 0; i < rows.length; i++) {
+                const r = rows[i];
+                if (!Array.isArray(r) || r.length < 4) continue;
+
+                const col0 = String(r[0] ?? '').trim().toUpperCase();
+                const col1 = String(r[1] ?? '').trim().toUpperCase();
+
+                // Ignorar fila de encabezados si existe
+                if (
+                    col0.includes('TIPO DE COMPROBANTE') ||
+                    col0 === 'TIPO' ||
+                    String(r[3] ?? '').toUpperCase().includes('NRO') ||
+                    String(r[3] ?? '').toUpperCase().includes('NUMERO') ||
+                    String(r[4] ?? '').toUpperCase().includes('RUC')
+                ) {
+                    continue;
+                }
+
+                // Detectar formato Marangatu / Tesaka de Retenciones (20+ columnas o donde col0 === 'RETENCION')
+                // Estructura exacta enviada por el usuario:
+                // [0] RETENCION | [1] Aceptado | [2] "" | [3] 001-009-0051498 | [4] 80003241 | [5] CONCRET-MIX SA
+                // [6] RUC | [7] 5567097 | [8] "" | [9] OJEDA SANDOVAL... | [10] 99830956 | [11] 08/01/2026
+                // [12] 0 | [13] 001-001-0000002 | [14] "" | [15] 18510648 | [16] "" | [17] 08/01/2026
+                // [18] ENLINEA | [19] IVA.1 | [20] "" | [21] 180.000 | [22] 0 | [23] 0
+                if (col0.includes('RETENC') || (r.length >= 18 && /\d{3}-\d{3}-\d{7}/.test(String(r[3] ?? '')))) {
+                    if (col1.includes('ANULAD') || col1.includes('CANCELAD')) {
+                        continue;
+                    }
+
+                    const rawNroRet  = String(r[3] ?? '').trim();
+                    const rawRucCli  = String(r[4] ?? '').trim();
+                    const rawNomCli  = String(r[5] ?? '').trim().toUpperCase();
+                    const codControl = String(r[10] ?? '').trim();
+                    const rawFecRet  = r[11] ?? '';
+                    const rawNroFac  = String(r[13] ?? '').trim();
+                    const rawTimbCol = String(r[15] ?? '').trim().replace(/\D/g, '');
+                    const rawFecFac  = r[17] ?? rawFecRet;
+                    const modalidad  = String(r[18] ?? '').trim().toUpperCase();
+                    const impRet     = parseNumeroImportRet(r[21]);
+
+                    if (!rawNroRet || !rawRucCli) continue;
+
+                    const nroRetencion   = formatearNroCompImportRet(rawNroRet);
+                    const rucCliente     = normalizarRucConDvImportRet(rawRucCli);
+                    const rucBase        = rucCliente.split('-')[0].replace(/\D/g, '').replace(/^0+/, '');
+                    const fecRetencion   = parseFechaExcelImportRet(rawFecRet);
+                    const nroComprobante = rawNroFac ? formatearNroCompImportRet(rawNroFac) : '';
+                    const fecComprobante = parseFechaExcelImportRet(rawFecFac) || fecRetencion;
+                    const tipTimbrado    = modalidad.includes('ELECTR') ? 'Electrónico' : 'Virtual';
+
+                    // Priorizar el timbrado de retención conocido para este cliente (ej: 11572575 de CONCRET-MIX SA)
+                    const timbCliente = (rucBase && validacionRetServer.timbradosPorCliente[rucBase])
+                        ? validacionRetServer.timbradosPorCliente[rucBase]
+                        : (timbLoteDefault || '');
+
+                    result.push({
+                        rowId:           'ret_imp_' + i + '_' + Date.now(),
+                        fecRetencion:    fecRetencion,
+                        nroRetencion:    nroRetencion,
+                        nroTimbrado:     timbCliente,
+                        timbradoFactura: rawTimbCol,
+                        tipTimbrado:     tipTimbrado,
+                        rucCliente:      rucCliente,
+                        nomCliente:      rawNomCli,
+                        nroComprobante:  nroComprobante,
+                        fecComprobante:  fecComprobante,
+                        codControl:      codControl,
+                        observacion:     codControl ? ('Cód. Control: ' + codControl) : '',
+                        grav10:          0,
+                        iva10:           0,
+                        grav5:           0,
+                        iva5:            0,
+                        exentas:         0,
+                        valorTotal:      0,
+                        porc10:          30,
+                        importeRetenido: impRet,
+                        idIngreso:       null,
+                        facturaEncontrada: false,
+                        clienteExiste:   false,
+                        esRojo:          false,
+                        motivoRojo:      '',
+                        detalleRojo:     ''
+                    });
+                }
+            }
+            return result;
+        }
+
+        function revalidarListaImportacionRet() {
+            const vistosRetBatch = {};
+            const vistosFacBatch = {};
+
+            importRetPreviewItems.forEach((item, idx) => {
+                item.nroRetencion   = formatearNroCompImportRet(item.nroRetencion);
+                item.rucCliente     = normalizarRucConDvImportRet(item.rucCliente);
+                item.nroComprobante = item.nroComprobante ? formatearNroCompImportRet(item.nroComprobante) : '';
+
+                const retClean  = String(item.nroRetencion || '').replace(/[-\s]/g, '').toUpperCase();
+                const rucBase   = String(item.rucCliente || '').split('-')[0].replace(/\D/g, '').replace(/^0+/, '');
+                const compClean = String(item.nroComprobante || '').replace(/[-\s]/g, '').toUpperCase();
+
+                // Autocompletar cliente si ya existe en co_clientes
+                if (rucBase && validacionRetServer.clientesMap[rucBase]) {
+                    item.clienteExiste = true;
+                    if (!item.nomCliente) {
+                        item.nomCliente = validacionRetServer.clientesMap[rucBase].nombre;
+                    }
+                    if (!item.nroTimbrado && validacionRetServer.clientesMap[rucBase].ultimoTimbrado) {
+                        item.nroTimbrado = validacionRetServer.clientesMap[rucBase].ultimoTimbrado;
+                    }
+                } else {
+                    item.clienteExiste = false;
+                }
+
+                // Buscar la factura relacionada en co_ingresos (solo FAC, no LIQ)
+                const facInfo = (compClean && validacionRetServer.facturasMap[compClean + '|' + rucBase])
+                    || (compClean && validacionRetServer.facturasMap[compClean])
+                    || null;
+
+                if (facInfo) {
+                    item.facturaEncontrada = true;
+                    item.idIngreso      = facInfo.idIngreso;
+                    item.fecComprobante = facInfo.fecIngreso || item.fecComprobante;
+                    item.grav10         = Math.round(Number(facInfo.grav10 || 0));
+                    item.iva10          = Math.round(Number(facInfo.iva10 || Math.round(item.grav10 / 11)));
+                    item.grav5          = Math.round(Number(facInfo.grav5 || 0));
+                    item.iva5           = Math.round(Number(facInfo.iva5 || 0));
+                    item.exentas        = Math.round(Number(facInfo.exentas || 0));
+                    item.valorTotal     = Math.round(Number(facInfo.valorTotal || (item.grav10 + item.grav5 + item.exentas)));
+                    if (item.iva10 > 0 && item.importeRetenido > 0) {
+                        const calcPorc = Math.round(((item.importeRetenido / item.iva10) * 100) * 100) / 100;
+                        if (Math.abs(calcPorc - 30) < 0.5) item.porc10 = 30;
+                        else if (Math.abs(calcPorc - 70) < 0.5) item.porc10 = 70;
+                        else if (Math.abs(calcPorc - 100) < 0.5) item.porc10 = 100;
+                        else item.porc10 = calcPorc;
+                    } else {
+                        item.porc10 = 30;
+                    }
+                } else {
+                    item.facturaEncontrada = false;
+                    item.idIngreso  = null;
+                    item.porc10     = 30;
+                    item.iva10      = item.importeRetenido > 0 ? Math.round(item.importeRetenido / 0.30) : 0;
+                    item.grav10     = item.iva10 * 11;
+                    item.valorTotal = item.grav10;
+                }
+
+                // Evaluar si debe marcarse en ROJO:
+                // 1) Datos incompletos
+                // 2) Retención ya existente en BD o repetida en la misma planilla
+                // 3) Factura ya relacionada en otra retención o repetida en la misma planilla
+                // 4) Factura no existe en Ingresos (FAC)
+                item.esRojo = false;
+                item.motivoRojo = '';
+                item.detalleRojo = '';
+
+                const keyRet = retClean + '|' + rucBase;
+                const exRet  = validacionRetServer.existingRetenciones[keyRet] || validacionRetServer.existingRetenciones[retClean];
+                const exRel  = compClean ? validacionRetServer.facturasRelacionadas[compClean] : null;
+
+                if (!item.fecRetencion || !retClean || !rucBase || !item.nomCliente) {
+                    item.esRojo = true;
+                    item.motivoRojo = 'DATOS INCOMPLETOS';
+                    item.detalleRojo = 'Verifique Fecha, N° Retención y RUC';
+                } else if (exRet) {
+                    item.esRojo = true;
+                    item.motivoRojo = 'RETENCIÓN YA EXISTE';
+                    item.detalleRojo = `Reg. el ${exRet.fecRetencion || '-'}`;
+                } else if (vistosRetBatch[keyRet] !== undefined) {
+                    item.esRojo = true;
+                    item.motivoRojo = 'RETENCIÓN REPETIDA';
+                    item.detalleRojo = `Duplicada con fila #${vistosRetBatch[keyRet] + 1}`;
+                } else if (!compClean) {
+                    item.esRojo = true;
+                    item.motivoRojo = 'SIN FACTURA ASOCIADA';
+                    item.detalleRojo = 'Indique el N° de Factura';
+                } else if (!item.facturaEncontrada) {
+                    item.esRojo = true;
+                    item.motivoRojo = 'FACTURA NO EXISTE';
+                    item.detalleRojo = `No existe FAC ${item.nroComprobante} en Ingresos`;
+                } else if (exRel) {
+                    item.esRojo = true;
+                    item.motivoRojo = 'FACTURA YA VINCULADA';
+                    item.detalleRojo = `Asociada a Ret. ${exRel.nroRetencion}`;
+                } else if (vistosFacBatch[compClean] !== undefined) {
+                    item.esRojo = true;
+                    item.motivoRojo = 'FACTURA REPETIDA';
+                    item.detalleRojo = `Ya usada en fila #${vistosFacBatch[compClean] + 1}`;
+                } else {
+                    vistosRetBatch[keyRet] = idx;
+                    vistosFacBatch[compClean] = idx;
+                }
+            });
+
+            actualizarContadoresImportRet();
+        }
+
+        function actualizarContadoresImportRet() {
+            const total   = importRetPreviewItems.length;
+            const rojos   = importRetPreviewItems.filter(x => x.esRojo).length;
+            const validos = total - rojos;
+            const sumaValidos = importRetPreviewItems
+                .filter(x => !x.esRojo)
+                .reduce((acc, x) => acc + (Number(x.importeRetenido) || 0), 0);
+
+            document.getElementById('cntRetImpTodos').textContent   = total;
+            document.getElementById('cntRetImpValidos').textContent = validos;
+            document.getElementById('cntRetImpRojos').textContent   = rojos;
+            document.getElementById('cntBtnRojosRet').textContent   = rojos;
+
+            const btnElimRojos = document.getElementById('btnEliminarTodosRojosRet');
+            if (btnElimRojos) {
+                btnElimRojos.style.display = rojos > 0 ? 'inline-flex' : 'none';
+            }
+
+            document.getElementById('lblTotalValidosImportRet').textContent = validos;
+            document.getElementById('lblTotalRojosImportRet').textContent   = rojos;
+            document.getElementById('lblSumaTotalImportRet').textContent    = Math.round(sumaValidos).toLocaleString('es-PY');
+        }
+
+        function renderTablaPreviewImportRet() {
+            const tbody = document.getElementById('tablaPreviewImportRetBody');
+            if (!tbody) return;
+
+            actualizarContadoresImportRet();
+
+            const list = importRetPreviewItems.map((item, idx) => ({ item, idx })).filter(({ item }) => {
+                if (filtroVistaImportRet === 'VALIDOS') return !item.esRojo;
+                if (filtroVistaImportRet === 'ROJOS')   return item.esRojo;
+                return true;
+            });
+
+            if (list.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="14" class="text-center py-5 text-muted">
+                            ${importRetPreviewItems.length === 0
+                                ? '<i class="ph ph-microsoft-excel-logo" style="font-size: 2.5rem; color: #16a34a; display: block; margin-bottom: 8px;"></i>Seleccione un archivo <b>Excel (.xlsx / .xls / .csv)</b> o presione <b>"Pegar desde Excel"</b> para previsualizar las retenciones sufridas.'
+                                : 'No hay filas que coincidan con el filtro seleccionado.'}
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.map(({ item, idx }) => {
+                const rowBg = item.esRojo ? '#fef2f2' : '#ffffff';
+                const borderLeft = item.esRojo ? '4px solid #dc2626' : '4px solid #16a34a';
+
+                const badgeEstado = item.esRojo
+                    ? `<div style="background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; padding: 3px 8px; border-radius: 6px; font-weight: 800; font-size: 0.7rem; display: inline-flex; align-items: center; gap: 4px;">
+                           <i class="ph ph-warning-octagon"></i> ${item.motivoRojo}
+                       </div>
+                       <div style="font-size: 0.68rem; color: #dc2626; font-weight: 700; margin-top: 2px;">${item.detalleRojo || ''}</div>`
+                    : `<div style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 3px 8px; border-radius: 6px; font-weight: 800; font-size: 0.7rem; display: inline-flex; align-items: center; gap: 4px;">
+                           <i class="ph ph-check-circle"></i> NUEVO · FAC OK
+                       </div>
+                       <div style="font-size: 0.67rem; color: #166534; font-weight: 700; margin-top: 2px;">ID Ingreso #${item.idIngreso}</div>`;
+
+                const badgeCli = item.clienteExiste
+                    ? `<span style="background:#dcfce7; color:#166534; font-size:0.65rem; padding:1px 5px; border-radius:4px; font-weight:800;">Registrado</span>`
+                    : `<span style="background:#dbeafe; color:#1e40af; font-size:0.65rem; padding:1px 5px; border-radius:4px; font-weight:800;">Se creará</span>`;
+
+                const fecFacFmt = item.fecComprobante && item.fecComprobante.includes('-')
+                    ? item.fecComprobante.split('-').reverse().join('/')
+                    : (item.fecComprobante || '-');
+
+                return `
+                    <tr style="background: ${rowBg}; border-left: ${borderLeft};">
+                        <td style="text-align: center; font-weight: 800; color: #475569;">${idx + 1}</td>
+                        <td style="text-align: center;">${badgeEstado}</td>
+                        <td>
+                            <input type="date" value="${item.fecRetencion || ''}"
+                                   onchange="onChangeCampoImportRet(${idx}, 'fecRetencion', this.value)"
+                                   style="width: 100%; border: 1px solid #cbd5e1; border-radius: 5px; padding: 3px 5px; font-size: 0.77rem; font-weight: 700;">
+                        </td>
+                        <td>
+                            <input type="text" value="${item.nroRetencion || ''}"
+                                   onchange="onChangeCampoImportRet(${idx}, 'nroRetencion', this.value)"
+                                   style="width: 100%; border: 1px solid #cbd5e1; border-radius: 5px; padding: 3px 6px; font-size: 0.78rem; font-weight: 800; color: #15803d; font-family: monospace;">
+                        </td>
+                        <td>
+                            <input type="text" value="${item.nroTimbrado || ''}" placeholder="Timbrado"
+                                   onchange="onChangeCampoImportRet(${idx}, 'nroTimbrado', this.value)"
+                                   style="width: 100%; border: 1px solid #cbd5e1; border-radius: 5px; padding: 3px 6px; font-size: 0.78rem; font-weight: 700; font-family: monospace;">
+                        </td>
+                        <td>
+                            <input type="text" value="${item.rucCliente || ''}"
+                                   onchange="onChangeCampoImportRet(${idx}, 'rucCliente', this.value)"
+                                   style="width: 100%; border: 1px solid #cbd5e1; border-radius: 5px; padding: 3px 6px; font-size: 0.78rem; font-weight: 800; font-family: monospace;">
+                        </td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 4px;">
+                                <input type="text" value="${(item.nomCliente || '').replace(/"/g, '&quot;')}"
+                                       onchange="onChangeCampoImportRet(${idx}, 'nomCliente', this.value)"
+                                       style="flex: 1; border: 1px solid #cbd5e1; border-radius: 5px; padding: 3px 6px; font-size: 0.77rem; font-weight: 700; text-transform: uppercase;">
+                                ${badgeCli}
+                            </div>
+                        </td>
+                        <td>
+                            <input type="text" value="${item.nroComprobante || ''}"
+                                   onchange="onChangeCampoImportRet(${idx}, 'nroComprobante', this.value)"
+                                   style="width: 100%; border: 1px solid ${item.facturaEncontrada ? '#86efac' : '#fca5a5'}; background: ${item.facturaEncontrada ? '#f0fdf4' : '#fff1f2'}; border-radius: 5px; padding: 3px 6px; font-size: 0.78rem; font-weight: 800; color: ${item.facturaEncontrada ? '#166534' : '#b91c1c'}; font-family: monospace;">
+                        </td>
+                        <td style="text-align: center; font-weight: 700; color: #475569; font-size: 0.78rem;">
+                            ${fecFacFmt}
+                        </td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 700; color: #0f172a;">
+                            ${Math.round(item.grav10 || 0).toLocaleString('es-PY')}
+                        </td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 700; color: #0284c7;">
+                            ${Math.round(item.iva10 || 0).toLocaleString('es-PY')}
+                        </td>
+                        <td style="text-align: center; font-weight: 800; color: #334155;">
+                            ${Number(item.porc10 || 30).toLocaleString('es-PY')}%
+                        </td>
+                        <td>
+                            <input type="text" value="${Math.round(item.importeRetenido || 0).toLocaleString('es-PY')}"
+                                   onchange="onChangeCampoImportRet(${idx}, 'importeRetenido', this.value)"
+                                   style="width: 100%; text-align: right; border: 1.5px solid #86efac; background: #dcfce7; border-radius: 5px; padding: 3px 6px; font-size: 0.82rem; font-weight: 900; color: #15803d; font-family: monospace;">
+                        </td>
+                        <td style="text-align: center;">
+                            <button type="button" onclick="eliminarFilaImportRet(${idx})" title="Quitar fila"
+                                    style="background: #fee2e2; border: 1px solid #fca5a5; color: #dc2626; width: 28px; height: 28px; border-radius: 6px; font-weight: 900; cursor: pointer;">
+                                &times;
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function onChangeCampoImportRet(idx, campo, valor) {
+            const item = importRetPreviewItems[idx];
+            if (!item) return;
+
+            if (campo === 'importeRetenido') {
+                item.importeRetenido = parseNumeroImportRet(valor);
+            } else if (campo === 'nroTimbrado') {
+                item.nroTimbrado = String(valor || '').replace(/\D/g, '');
+            } else {
+                item[campo] = String(valor || '').trim();
+            }
+
+            revalidarListaImportacionRet();
+            renderTablaPreviewImportRet();
+        }
+
+        function eliminarFilaImportRet(idx) {
+            importRetPreviewItems.splice(idx, 1);
+            revalidarListaImportacionRet();
+            renderTablaPreviewImportRet();
+        }
+
+        function eliminarTodosEnRojoRet() {
+            const cantRojos = importRetPreviewItems.filter(x => x.esRojo).length;
+            if (cantRojos === 0) return;
+
+            importRetPreviewItems = importRetPreviewItems.filter(x => !x.esRojo);
+            revalidarListaImportacionRet();
+            if (filtroVistaImportRet === 'ROJOS') {
+                setFiltroImportRet('TODOS');
+            } else {
+                renderTablaPreviewImportRet();
+            }
+        }
+
+        function confirmarImportacionExcelRet() {
+            revalidarListaImportacionRet();
+            const validos = importRetPreviewItems.filter(x => !x.esRojo);
+            const rojos   = importRetPreviewItems.filter(x => x.esRojo);
+
+            if (validos.length === 0) {
+                Swal.fire(
+                    'Sin comprobantes válidos',
+                    'No hay comprobantes de retención válidos para importar. Verifique los registros marcados en rojo.',
+                    'warning'
+                );
+                return;
+            }
+
+            Swal.fire({
+                title: '¿Confirmar Importación de Retenciones?',
+                html: `
+                    <div style="text-align: left; font-size: 0.9rem; line-height: 1.6;">
+                        <div>✅ <b>Retenciones válidas a importar:</b> ${validos.length}</div>
+                        ${rojos.length > 0 ? `<div style="color: #dc2626;">⚠️ <b>En rojo (se omitirán):</b> ${rojos.length}</div>` : ''}
+                        <div style="margin-top: 6px;">Se vinculará automáticamente cada retención con su Factura de Ingreso y se actualizará la Casilla 52 del Formulario 120.</div>
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#16a34a',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: `Sí, importar (${validos.length})`,
+                cancelButtonText: 'Cancelar'
+            }).then(r => {
+                if (!r.isConfirmed) return;
+
+                const btn = document.getElementById('btnConfirmarImportacionRet');
+                if (btn) btn.disabled = true;
+
+                fetch('/api/retenciones-sufridas/importar-lote', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items: validos })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (btn) btn.disabled = false;
+                    if (data.status === 'success') {
+                        cerrarModalImportarExcelRet();
+
+                        // Ajustar filtro de periodo para mostrar todos los comprobantes recién importados
+                        const selAnio = document.getElementById('filtroAnio');
+                        const selMes  = document.getElementById('filtroMes');
+                        if (data.minFecha && data.maxFecha) {
+                            const anioMin = data.minFecha.substring(0, 4);
+                            const anioMax = data.maxFecha.substring(0, 4);
+                            const mesMin  = String(parseInt(data.minFecha.substring(5, 7), 10));
+                            const mesMax  = String(parseInt(data.maxFecha.substring(5, 7), 10));
+                            if (selAnio) selAnio.value = (anioMin === anioMax) ? anioMin : 'TODOS';
+                            if (selMes)  selMes.value  = (anioMin === anioMax && mesMin === mesMax) ? mesMin : 'TODOS';
+                        } else {
+                            if (selAnio) selAnio.value = 'TODOS';
+                            if (selMes)  selMes.value  = 'TODOS';
+                        }
+
+                        cargarRetenciones();
+                        Swal.fire('¡Importación Exitosa!', data.message || 'Retenciones importadas correctamente.', 'success');
+                    } else {
+                        Swal.fire('Error', data.message || 'No se pudo completar la importación.', 'error');
+                    }
+                })
+                .catch(() => {
+                    if (btn) btn.disabled = false;
+                    Swal.fire('Error', 'Fallo de conexión al importar el lote de retenciones.', 'error');
+                });
             });
         }
     </script>
