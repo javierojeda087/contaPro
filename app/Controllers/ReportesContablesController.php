@@ -1890,14 +1890,15 @@ class ReportesContablesController {
         $calc = self::calcularFormulario120Auto($idProp, $codEmpresa, $mes, $anio);
         $autoData = $calc['data'];
 
+        $origen = strtolower(trim((string)($_GET['origen'] ?? '')));
         $rows = Database::queryForListUpper(
             "SELECT * FROM co_formulario_120 WHERE id_propietario = ? AND cod_empresa = ? AND mes = ? AND anio = ? LIMIT 1",
             [$idProp, $codEmpresa, $mes, $anio]
         );
-        if (!empty($rows)) {
+        if (!empty($rows) && $origen !== 'calc') {
             $saved    = self::normalizarSavedForm120V4($rows[0], $autoData);
-            $savedMov = (int)($saved['C10'] ?? 0) + (int)($saved['C151'] ?? 0) + (int)($saved['C12'] ?? 0) + (int)($saved['C32'] ?? 0) + (int)($saved['C35'] ?? 0) + (int)($saved['C62'] ?? 0);
-            $autoMov  = (int)($autoData['C10'] ?? 0) + (int)($autoData['C151'] ?? 0) + (int)($autoData['C12'] ?? 0) + (int)($autoData['C32'] ?? 0) + (int)($autoData['C35'] ?? 0) + (int)($autoData['C62'] ?? 0);
+            $savedMov = (int)($saved['C10'] ?? 0) + (int)($saved['C151'] ?? 0) + (int)($saved['C12'] ?? 0) + (int)($saved['C32'] ?? 0) + (int)($saved['C35'] ?? 0) + (int)($saved['C62'] ?? 0) + (int)($saved['C52'] ?? 0);
+            $autoMov  = (int)($autoData['C10'] ?? 0) + (int)($autoData['C151'] ?? 0) + (int)($autoData['C12'] ?? 0) + (int)($autoData['C32'] ?? 0) + (int)($autoData['C35'] ?? 0) + (int)($autoData['C62'] ?? 0) + (int)($autoData['C52'] ?? 0);
             $data = ($savedMov === 0 && $autoMov > 0) ? $autoData : $saved;
         } else {
             $data = $autoData;

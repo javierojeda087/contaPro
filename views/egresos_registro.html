@@ -34,8 +34,11 @@
 
                         <div style="height: 28px; width: 1px; background: #cbd5e1; margin: 0 4px;"></div>
 
-                        <button type="button" class="btn" onclick="importarMarangatu()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.93rem; color: #475569; height: 44px; padding: 0 18px; border-radius: 9px; display: flex; align-items: center; gap: 7px;">
+                        <button type="button" class="btn" onclick="importarMarangatu()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.93rem; color: #475569; height: 44px; padding: 0 18px; border-radius: 9px; display: flex; align-items: center; gap: 7px; transition: all 0.2s;" onmouseover="this.style.borderColor='#16a34a'; this.style.color='#16a34a'" onmouseout="this.style.borderColor='#cbd5e1'; this.style.color='#475569'">
                             <i class="ph ph-download-simple" style="font-size: 1.25rem; color: #16a34a;"></i> Importar Marangatu
+                        </button>
+                        <button type="button" class="btn" onclick="exportarExcelMarangatu()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.93rem; color: #475569; height: 44px; padding: 0 18px; border-radius: 9px; display: flex; align-items: center; gap: 7px; transition: all 0.2s;" onmouseover="this.style.borderColor='#0284c7'; this.style.color='#0284c7'" onmouseout="this.style.borderColor='#cbd5e1'; this.style.color='#475569'" title="Exportar listado a Excel con el formato de Marangatu">
+                            <i class="ph ph-file-xls" style="font-size: 1.25rem; color: #0284c7;"></i> Exportar Excel
                         </button>
                         <button type="button" class="btn" onclick="importarComprobante()" style="display: none; background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.93rem; color: #475569; height: 44px; padding: 0 18px; border-radius: 9px; align-items: center; gap: 7px;">
                             <i class="ph ph-upload-simple" style="font-size: 1.25rem; color: #16a34a;"></i> Importar
@@ -3907,6 +3910,196 @@
 
         function importarMarangatu() {
             abrirModalImportarExcel();
+        }
+
+        function exportarExcelMarangatu() {
+            const baseList = (_vistaActualEgresos === 'anual' && Array.isArray(_listEgresosAnualRaw) && _listEgresosAnualRaw.length > 0)
+                ? aplicarFiltrosLocalesListaEgresos(_listEgresosAnualRaw)
+                : ((Array.isArray(_ultimoListadoFiltrado) && _ultimoListadoFiltrado.length > 0)
+                    ? _ultimoListadoFiltrado
+                    : aplicarFiltrosLocalesListaEgresos(listEgresosData));
+
+            if (!baseList || baseList.length === 0) {
+                Swal.fire('Atención', 'No hay comprobantes en el listado actual para exportar.', 'warning');
+                return;
+            }
+
+            // Ordenar por fecha ascendente y número de comprobante (igual que en Marangatu)
+            const sorted = [...baseList].sort((a, b) => {
+                const fa = String(a.FEC_EGRESO || a.fec_egreso || '');
+                const fb = String(b.FEC_EGRESO || b.fec_egreso || '');
+                if (fa !== fb) return fa.localeCompare(fb);
+                const na = String(a.NRO_FACTURA || a.nro_factura || '');
+                const nb = String(b.NRO_FACTURA || b.nro_factura || '');
+                return na.localeCompare(nb);
+            });
+
+            // Encabezado oficial de 28 columnas (Formato RG90 / Marangatu Compras)
+            const headers = [
+                'Tipo de Registro',
+                'Código Tipo de Identificación del Proveedor',
+                'RUC / Número de Identificación del Proveedor',
+                'DV del Proveedor',
+                'Nombre o Razón Social del Proveedor',
+                'Código Tipo de Comprobante',
+                'Tipo de Comprobante',
+                'Fecha de Emisión',
+                'Código Condición de Compra',
+                'Condición de Compra',
+                'Operación en Moneda Extranjera',
+                'Número de Timbrado',
+                'Número de Comprobante',
+                'CDC',
+                'Monto Gravado 10% (IVA Incluido)',
+                'IVA 10% Liquidado',
+                'Monto Gravado 5% (IVA Incluido)',
+                'IVA 5% Liquidado',
+                'Monto No Gravado o Exento',
+                'Total Comprobante',
+                'Imputa al IVA',
+                'Imputa al IRE',
+                'Imputa al IRP-RSP',
+                'No Imputa',
+                'Número de Comprobante de Venta Asociado',
+                'Timbrado del Comprobante Asociado',
+                'Cuotas',
+                'Origen de la Información'
+            ];
+
+            const rows = [headers];
+
+            sorted.forEach(item => {
+                const rawRuc = String(item.RUC_PROVEEDOR || item.ruc_proveedor || '').trim();
+                let rucSinDv = rawRuc;
+                let rucDv = '';
+                if (rawRuc.includes('-')) {
+                    const parts = rawRuc.split('-');
+                    rucSinDv = parts[0].replace(/\D/g, '');
+                    rucDv = (parts[1] || '').trim();
+                } else {
+                    rucSinDv = rawRuc.replace(/\D/g, '');
+                    rucDv = rucSinDv ? String(calcularDvParaguayJS(rucSinDv)) : '';
+                }
+
+                const nomProv = String(item.NOM_PROVEEDOR || item.nom_proveedor || '').trim().toUpperCase();
+                const tipDocRaw = String(item.TIP_DOC || item.tip_doc || 'FAC').trim().toUpperCase();
+                let codTipComp = '109';
+                let descTipComp = 'FACTURA';
+                if (tipDocRaw === 'NCR' || tipDocRaw.includes('CRED') || tipDocRaw.includes('CRÉD')) {
+                    codTipComp = '110';
+                    descTipComp = 'NOTA DE CREDITO';
+                } else if (tipDocRaw === 'DEB' || tipDocRaw.includes('DEB') || tipDocRaw.includes('DÉB')) {
+                    codTipComp = '111';
+                    descTipComp = 'NOTA DE DEBITO';
+                } else if (tipDocRaw === 'AUT' || tipDocRaw.includes('AUTO')) {
+                    codTipComp = '101';
+                    descTipComp = 'AUTOFACTURA';
+                }
+
+                const fecFmt = formatFechaTabla(item.FEC_EGRESO_FMT || item.fec_egreso_fmt || item.FEC_EGRESO || item.fec_egreso || '');
+                const condRaw = String(item.CONDICION || item.condicion || 'CON').trim().toUpperCase();
+                const esCred = condRaw.startsWith('CR') || condRaw.includes('CRED');
+                const codCond = esCred ? '2' : '1';
+                const descCond = esCred ? 'CREDITO' : 'CONTADO';
+
+                const codMon = String(item.COD_MONEDA || item.cod_moneda || '1').trim();
+                const monExtr = (codMon !== '1' && codMon.toUpperCase() !== 'GS' && codMon.toUpperCase() !== 'PYG') ? 'SI' : 'NO';
+
+                const timbrado = String(item.NRO_TIMBRADO || item.nro_timbrado || '').trim();
+                const nroFac = formatNroFactura(item.NRO_FACTURA || item.nro_factura || '', tipDocRaw);
+                const cdcClean = String(item.CDC || item.cdc || '').replace(/\D/g, '');
+                const tipTimb = String(item.TIP_TIMB || item.tip_timb || '').toUpperCase();
+                const esElectr = (cdcClean.length === 44 || tipTimb.includes('ELECTR'));
+
+                const grav10 = Math.round(parseFloat(item.GRAV10 || item.grav10 || 0));
+                const iva10  = Math.round(parseFloat(item.IVA10  || item.iva10  || 0));
+                const grav5  = Math.round(parseFloat(item.GRAV5  || item.grav5  || 0));
+                const iva5   = Math.round(parseFloat(item.IVA5   || item.iva5   || 0));
+                const exenta = Math.round(parseFloat(item.EXENTAS || item.exentas || 0));
+                const total  = Math.round(parseFloat(item.VALOR_TOTAL || item.valor_total || 0));
+
+                const rawReg = String(item.COD_REGIMEN || item.cod_regimen || item.REGIMEN || item.regimen || '1').trim().toUpperCase();
+                let regNum = '1';
+                if (rawReg === '2' || rawReg === 'IRP') regNum = '2';
+                else if (rawReg === '3' || rawReg === 'IVA') regNum = '3';
+                else if (rawReg === '4' || rawReg.includes('CAPITAL')) regNum = '4';
+
+                const impIva = (regNum === '1' || regNum === '3') ? 'SI' : 'NO';
+                const impIre = 'NO';
+                const impIrp = (regNum === '1' || regNum === '2') ? 'SI' : 'NO';
+                const noImp  = (regNum === '4') ? 'SI' : 'NO';
+                const cuotas = esCred ? 1 : 0;
+                const origenInfo = esElectr ? 'ELECTRONICO' : 'MANUAL';
+
+                rows.push([
+                    2,
+                    11,
+                    rucSinDv,
+                    rucDv,
+                    nomProv,
+                    codTipComp,
+                    descTipComp,
+                    fecFmt,
+                    codCond,
+                    descCond,
+                    monExtr,
+                    timbrado,
+                    nroFac !== '-' ? nroFac : '',
+                    esElectr ? cdcClean : '',
+                    grav10,
+                    iva10,
+                    grav5,
+                    iva5,
+                    exenta,
+                    total,
+                    impIva,
+                    impIre,
+                    impIrp,
+                    noImp,
+                    '',
+                    '',
+                    cuotas,
+                    origenInfo
+                ]);
+            });
+
+            // Construir nombre de archivo descriptivo según el periodo activo
+            let sufijoPeriodo = '';
+            if (_modoFiltroPeriodo === 'RANGO') {
+                const fd = (document.getElementById('filtroFechaDesde')?.value || '').replace(/-/g, '');
+                const fh = (document.getElementById('filtroFechaHasta')?.value || '').replace(/-/g, '');
+                sufijoPeriodo = `${fd}_${fh}`;
+            } else {
+                const a = document.getElementById('filtroAnio')?.value || 'TODOS';
+                const m = document.getElementById('filtroMes')?.value || 'TODOS';
+                sufijoPeriodo = (m !== 'TODOS' ? String(m).padStart(2, '0') + '_' : '') + a;
+            }
+            const fileName = `Egresos_Marangatu_${sufijoPeriodo}.xlsx`;
+
+            if (typeof XLSX !== 'undefined') {
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+                ws['!cols'] = [
+                    { wch: 6 },  { wch: 6 },  { wch: 13 }, { wch: 5 },  { wch: 38 },
+                    { wch: 8 },  { wch: 16 }, { wch: 12 }, { wch: 6 },  { wch: 11 },
+                    { wch: 8 },  { wch: 12 }, { wch: 17 }, { wch: 46 }, { wch: 15 },
+                    { wch: 13 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 15 },
+                    { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 16 },
+                    { wch: 14 }, { wch: 8 },  { wch: 14 }
+                ];
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Compras_Marangatu');
+                XLSX.writeFile(wb, fileName);
+            } else {
+                // Fallback CSV separado por punto y coma si SheetJS no estuviera cargado
+                const csvContent = '\uFEFF' + rows.map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n');
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = fileName.replace('.xlsx', '.csv');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
         }
 
         function importarComprobante() {

@@ -1360,7 +1360,9 @@
         function imprimirFormulario() {
             const mes = document.getElementById('selMes').value;
             const anio = document.getElementById('selAnio').value;
-            window.open(`/app/formulario-120/print?mes=${mes}&anio=${anio}`, '_blank');
+            const badge = document.getElementById('badgeEstadoOrigenForm');
+            const esCalc = badge && badge.innerText.includes('Calculado');
+            window.open(`/app/formulario-120/print?mes=${mes}&anio=${anio}${esCalc ? '&origen=calc' : ''}`, '_blank');
         }
 
         function exportarXlsFormulario120() {
