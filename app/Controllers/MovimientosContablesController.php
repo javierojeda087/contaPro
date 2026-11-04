@@ -119,13 +119,15 @@ class MovimientosContablesController {
         if (!self::requireAuth(false)) return;
         $idProp = TenantContext::idPropietario();
         $emp = TenantContext::empresa();
-        $contribuyenteNombre = trim((string)(Database::queryForValue(
-            "SELECT descripcion FROM empresas WHERE id_propietario = ? AND cod_empresa = ? LIMIT 1",
+        $empRow = Database::queryForMap(
+            "SELECT descripcion, ruc_empresa FROM empresas WHERE id_propietario = ? AND cod_empresa = ? LIMIT 1",
             [$idProp, $emp]
-        ) ?? ''));
+        ) ?: [];
+        $contribuyenteNombre = trim((string)($empRow['descripcion'] ?? ''));
         if ($contribuyenteNombre === '') {
             $contribuyenteNombre = TenantContext::nomEmpresa();
         }
+        $contribuyenteRuc = trim((string)($empRow['ruc_empresa'] ?? ''));
         if ($contribuyenteNombre !== '') {
             try {
                 Database::update(
@@ -145,6 +147,7 @@ class MovimientosContablesController {
 
         self::renderFormPage('egresos_registro', [
             'contribuyenteNombre' => $contribuyenteNombre,
+            'contribuyenteRuc'    => $contribuyenteRuc,
             'empresaDesc'         => $contribuyenteNombre,
             'defFechaDesde'       => $defFechaDesde,
             'defFechaHasta'       => $defFechaHasta,
@@ -573,7 +576,25 @@ class MovimientosContablesController {
             $sql .= "ORDER BY fec_egreso DESC, id_egreso DESC";
 
             $list = Database::queryForListUpper($sql, $params);
-            View::json(['status' => 'success', 'data' => $list]);
+
+            $empRow = Database::queryForMap(
+                "SELECT descripcion, ruc_empresa FROM empresas WHERE id_propietario = ? AND cod_empresa = ? LIMIT 1",
+                [$idProp, $empresa]
+            ) ?: [];
+            $rawRucEmp = trim((string)($empRow['ruc_empresa'] ?? ''));
+            $rucInformante = preg_replace('/\D/', '', explode('-', $rawRucEmp)[0]);
+            $rawNomEmp = trim((string)($empRow['descripcion'] ?? ''));
+            if ($rawNomEmp === '') {
+                $rawNomEmp = TenantContext::nomEmpresa();
+            }
+            $nombreInformante = trim((string)preg_replace('/\s+/', ' ', str_replace(',', ' ', strtoupper($rawNomEmp))));
+
+            View::json([
+                'status'           => 'success',
+                'data'             => $list,
+                'rucInformante'    => $rucInformante,
+                'nombreInformante' => $nombreInformante,
+            ]);
         } catch (\Throwable $e) {
             View::json(['status' => 'error', 'message' => 'Error al listar egresos: ' . $e->getMessage()]);
         }
@@ -966,6 +987,17 @@ class MovimientosContablesController {
         $idEgreso = (int)($payload['idEgreso'] ?? 0);
 
         try {
+            $asientos = Database::queryForList(
+                "SELECT num_asiento FROM co_asientos_cab
+                 WHERE id_propietario = ? AND cod_empresa = ? AND origen_comprobante = 'COEGRES' AND id_comprobante = ?",
+                [$idProp, $empresa, (string)$idEgreso]
+            );
+            foreach ($asientos as $asRow) {
+                $num = (int)$asRow['num_asiento'];
+                Database::update("DELETE FROM co_asientos_det WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ?", [$idProp, $empresa, $num]);
+                Database::update("DELETE FROM co_asientos_cab WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ?", [$idProp, $empresa, $num]);
+            }
+
             Database::update(
                 "DELETE FROM co_egresos WHERE id_propietario = ? AND id_egreso = ? AND cod_empresa = ?",
                 [$idProp, $idEgreso, $empresa]
@@ -973,6 +1005,126 @@ class MovimientosContablesController {
             View::json(['status' => 'success', 'message' => "Egreso #{$idEgreso} eliminado con éxito."]);
         } catch (\Throwable $e) {
             View::json(['status' => 'error', 'message' => 'Error al eliminar egreso: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiEgresosDeleteMes(): void {
+        if (!self::requireAuth()) return;
+        $idProp  = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $payload = self::getInput();
+
+        $rawAnio    = trim((string)($payload['anio'] ?? ''));
+        $rawMes     = trim((string)($payload['mes'] ?? ''));
+        $fechaDesde = self::parseSqlDate((string)($payload['fechaDesde'] ?? ''));
+        $fechaHasta = self::parseSqlDate((string)($payload['fechaHasta'] ?? ''));
+
+        // Si se envió rango de fechas, validar que ambas pertenezcan exactamente al mismo año y mes
+        if ($fechaDesde !== null || $fechaHasta !== null) {
+            if ($fechaDesde === null || $fechaHasta === null || $fechaDesde > $fechaHasta) {
+                View::json([
+                    'status'  => 'error',
+                    'message' => 'El rango de fechas indicado no es válido.',
+                ]);
+                return;
+            }
+            $ymDesde = substr($fechaDesde, 0, 7);
+            $ymHasta = substr($fechaHasta, 0, 7);
+            if ($ymDesde !== $ymHasta) {
+                View::json([
+                    'status'  => 'error',
+                    'message' => 'Por seguridad, solo se permite eliminar comprobantes dentro del rango de un único mes (por ejemplo, solo Septiembre).',
+                ]);
+                return;
+            }
+            $anio = (int)substr($fechaDesde, 0, 4);
+            $mes  = (int)substr($fechaDesde, 5, 2);
+        } else {
+            if ($rawAnio === '' || strcasecmp($rawAnio, 'TODOS') === 0 || !ctype_digit($rawAnio)) {
+                View::json([
+                    'status'  => 'error',
+                    'message' => 'Debe seleccionar un Año específico (no se permite "Todos").',
+                ]);
+                return;
+            }
+            if ($rawMes === '' || strcasecmp($rawMes, 'TODOS') === 0 || strcasecmp($rawMes, 'RANGO') === 0 || !ctype_digit($rawMes)) {
+                View::json([
+                    'status'  => 'error',
+                    'message' => 'Debe seleccionar un único Mes específico (por ejemplo, Septiembre). No se permite borrar cuando el mes está en "Todos".',
+                ]);
+                return;
+            }
+            $anio = (int)$rawAnio;
+            $mes  = (int)$rawMes;
+        }
+
+        if ($anio < 1990 || $anio > 2100 || $mes < 1 || $mes > 12) {
+            View::json([
+                'status'  => 'error',
+                'message' => 'El periodo (Año/Mes) seleccionado no es válido para la eliminación masiva.',
+            ]);
+            return;
+        }
+
+        try {
+            $whereSql = "id_propietario = ? AND cod_empresa = ? AND YEAR(fec_egreso) = ? AND MONTH(fec_egreso) = ?";
+            $params   = [$idProp, $empresa, $anio, $mes];
+
+            if ($fechaDesde !== null && $fechaHasta !== null) {
+                $whereSql .= " AND DATE(fec_egreso) >= ? AND DATE(fec_egreso) <= ?";
+                $params[] = $fechaDesde;
+                $params[] = $fechaHasta;
+            }
+
+            $rowsToDelete = Database::queryForList(
+                "SELECT id_egreso FROM co_egresos WHERE {$whereSql}",
+                $params
+            );
+            $cant = count($rowsToDelete);
+
+            if ($cant === 0) {
+                View::json([
+                    'status'     => 'error',
+                    'message'    => 'No se encontraron comprobantes registrados en el mes seleccionado para eliminar.',
+                    'eliminados' => 0,
+                ]);
+                return;
+            }
+
+            // Eliminar asientos contables asociados a esos egresos
+            foreach ($rowsToDelete as $eg) {
+                $idEg = (string)$eg['id_egreso'];
+                $asientos = Database::queryForList(
+                    "SELECT num_asiento FROM co_asientos_cab
+                     WHERE id_propietario = ? AND cod_empresa = ? AND origen_comprobante = 'COEGRES' AND id_comprobante = ?",
+                    [$idProp, $empresa, $idEg]
+                );
+                foreach ($asientos as $asRow) {
+                    $num = (int)$asRow['num_asiento'];
+                    Database::update("DELETE FROM co_asientos_det WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ?", [$idProp, $empresa, $num]);
+                    Database::update("DELETE FROM co_asientos_cab WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ?", [$idProp, $empresa, $num]);
+                }
+            }
+
+            Database::update("DELETE FROM co_egresos WHERE {$whereSql}", $params);
+
+            $nombresMeses = [
+                1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+                5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
+                9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre',
+            ];
+            $nomMes = $nombresMeses[$mes] ?? (string)$mes;
+
+            View::json([
+                'status'     => 'success',
+                'eliminados' => $cant,
+                'message'    => "Se eliminaron correctamente {$cant} comprobante(s) de {$nomMes} {$anio}.",
+            ]);
+        } catch (\Throwable $e) {
+            View::json([
+                'status'  => 'error',
+                'message' => 'Error al eliminar los comprobantes del mes: ' . $e->getMessage(),
+            ]);
         }
     }
 

@@ -31,6 +31,9 @@
                         <button type="button" class="btn" onclick="eliminarEgreso()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.93rem; color: #ef4444; height: 44px; padding: 0 18px; border-radius: 9px; display: flex; align-items: center; gap: 7px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 0.2s;" onmouseover="this.style.background='#fef2f2'; this.style.borderColor='#fca5a5'" onmouseout="this.style.background='white'; this.style.borderColor='#cbd5e1'">
                             <i class="ph ph-trash" style="font-size: 1.25rem;"></i> Eliminar
                         </button>
+                        <button type="button" class="btn" onclick="eliminarEgresosDelMes()" style="background: #fef2f2; border: 1.5px solid #fca5a5; font-weight: 700; font-size: 0.93rem; color: #dc2626; height: 44px; padding: 0 18px; border-radius: 9px; display: flex; align-items: center; gap: 7px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 0.2s;" onmouseover="this.style.background='#fee2e2'; this.style.borderColor='#ef4444'" onmouseout="this.style.background='#fef2f2'; this.style.borderColor='#fca5a5'" title="Eliminar todos los comprobantes del mes seleccionado">
+                            <i class="ph ph-calendar-x" style="font-size: 1.25rem;"></i> Eliminar Mes
+                        </button>
 
                         <div style="height: 28px; width: 1px; background: #cbd5e1; margin: 0 4px;"></div>
 
@@ -886,6 +889,9 @@
     <script th:inline="javascript">
         const _rawContribuyenteNombre = /*[[${contribuyenteNombre != null ? contribuyenteNombre : (empresaDesc != null ? empresaDesc : session.empresaDesc)}]]*/ '';
         const CONTRIBUYENTE_NOMBRE = (_rawContribuyenteNombre && !String(_rawContribuyenteNombre).includes('[[${')) ? _rawContribuyenteNombre : '';
+        const _rawContribuyenteRuc = /*[[${contribuyenteRuc != null ? contribuyenteRuc : ''}]]*/ '';
+        let _rucInformanteActual = (_rawContribuyenteRuc && !String(_rawContribuyenteRuc).includes('[[${')) ? String(_rawContribuyenteRuc).split('-')[0].replace(/\D/g, '') : '';
+        let _nombreInformanteActual = CONTRIBUYENTE_NOMBRE ? String(CONTRIBUYENTE_NOMBRE).replace(/,/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase() : '';
 
         function obtenerNombreContribuyente() {
             if (CONTRIBUYENTE_NOMBRE) return CONTRIBUYENTE_NOMBRE;
@@ -1232,6 +1238,8 @@
                 .then(res => {
                     if (res.status === 'success') {
                         listEgresosData = res.data || [];
+                        if (res.rucInformante) _rucInformanteActual = String(res.rucInformante).trim();
+                        if (res.nombreInformante) _nombreInformanteActual = String(res.nombreInformante).trim();
                         filtrarEgresos();
                     }
                 })
@@ -3030,6 +3038,106 @@
             });
         }
 
+        function eliminarEgresosDelMes() {
+            const nombresMeses = {
+                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+                5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+                9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+            };
+
+            let payload = {};
+            let etiquetaPeriodo = '';
+
+            if (_modoFiltroPeriodo === 'RANGO') {
+                const fDesde = (document.getElementById('filtroFechaDesde')?.value || '').trim();
+                const fHasta = (document.getElementById('filtroFechaHasta')?.value || '').trim();
+                if (!fDesde || !fHasta || fDesde > fHasta) {
+                    Swal.fire('Atención', 'Debe indicar un rango de fechas válido (Desde y Hasta).', 'warning');
+                    return;
+                }
+                const ymDesde = fDesde.substring(0, 7);
+                const ymHasta = fHasta.substring(0, 7);
+                if (ymDesde !== ymHasta) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Solo se permite borrar un único mes',
+                        html: 'El rango de fechas seleccionado abarca más de un mes.<br><br>Por seguridad, esta opción solo permite eliminar comprobantes dentro del rango de <b>un único mes</b> (por ejemplo, solo Septiembre).',
+                        confirmButtonColor: '#dc2626'
+                    });
+                    return;
+                }
+                const anioNum = parseInt(fDesde.substring(0, 4), 10);
+                const mesNum  = parseInt(fDesde.substring(5, 7), 10);
+                payload = { anio: String(anioNum), mes: String(mesNum), fechaDesde: fDesde, fechaHasta: fHasta };
+                etiquetaPeriodo = `${nombresMeses[mesNum] || mesNum} ${anioNum} (${formatFechaTabla(fDesde)} al ${formatFechaTabla(fHasta)})`;
+            } else {
+                const anioVal = (document.getElementById('filtroAnio')?.value || 'TODOS').trim();
+                const mesVal  = (document.getElementById('filtroMes')?.value || 'TODOS').trim();
+                const anioNum = parseInt(anioVal, 10);
+                const mesNum  = parseInt(mesVal, 10);
+
+                if (anioVal === 'TODOS' || isNaN(anioNum) || mesVal === 'TODOS' || mesVal === 'RANGO' || isNaN(mesNum) || mesNum < 1 || mesNum > 12) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Seleccione un Mes específico',
+                        html: 'Para eliminar todos los comprobantes, debe tener seleccionado un <b>Año</b> y un <b>Mes específico</b> (por ejemplo: <b>Septiembre</b>).<br><br>No se permite borrar cuando el filtro está en <b>"Todos"</b>.',
+                        confirmButtonColor: '#dc2626'
+                    });
+                    return;
+                }
+                payload = { anio: String(anioNum), mes: String(mesNum) };
+                etiquetaPeriodo = `${nombresMeses[mesNum] || mesNum} ${anioNum}`;
+            }
+
+            const totalEnLista = Array.isArray(listEgresosData) ? listEgresosData.length : 0;
+            if (totalEnLista === 0) {
+                Swal.fire('Atención', `No hay comprobantes registrados en ${etiquetaPeriodo} para eliminar.`, 'info');
+                return;
+            }
+
+            let sumaTotalMes = 0;
+            listEgresosData.forEach(item => {
+                sumaTotalMes += Math.round(parseFloat(item.VALOR_TOTAL || item.valor_total || 0));
+            });
+
+            Swal.fire({
+                icon: 'warning',
+                title: `¿Eliminar TODOS los comprobantes de ${etiquetaPeriodo}?`,
+                html: `Se eliminarán permanentemente los <b>${totalEnLista.toLocaleString('es-PY')} comprobante(s)</b> registrados en <b>${etiquetaPeriodo}</b> (Total: <b>Gs. ${sumaTotalMes.toLocaleString('es-PY')}</b>) junto con sus asientos asociados.<br><br><span style="color:#dc2626; font-weight:700;">Esta acción no se puede deshacer.</span>`,
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: `Sí, eliminar los ${totalEnLista} comprobantes`,
+                cancelButtonText: 'Cancelar'
+            }).then(result => {
+                if (!result.isConfirmed) return;
+
+                fetch('/api/egresos/delete-mes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        selectedIdEgreso = null;
+                        cargarEgresos();
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Comprobantes Eliminados',
+                            text: data.message,
+                            confirmButtonColor: '#16a34a'
+                        });
+                    } else {
+                        Swal.fire('Error', data.message || 'No se pudieron eliminar los comprobantes.', 'error');
+                    }
+                })
+                .catch(() => {
+                    Swal.fire('Error', 'Fallo de conexión al eliminar los comprobantes del mes.', 'error');
+                });
+            });
+        }
+
         let importPreviewList = [];
         let importManualOmitidosCount = 0;
         let importFiltroEstado = 'TODOS'; // 'TODOS' | 'VALIDOS' | 'ROJOS'
@@ -3924,8 +4032,16 @@
                 return;
             }
 
-            // Ordenar por fecha ascendente y número de comprobante (igual que en Marangatu)
+            // Ordenar igual que en Marangatu: primero MANUALES, luego ELECTRÓNICOS, por fecha y número de comprobante
             const sorted = [...baseList].sort((a, b) => {
+                const cdcA = String(a.CDC || a.cdc || '').replace(/\D/g, '');
+                const cdcB = String(b.CDC || b.cdc || '').replace(/\D/g, '');
+                const tipA = String(a.TIP_TIMB || a.tip_timb || '').toUpperCase();
+                const tipB = String(b.TIP_TIMB || b.tip_timb || '').toUpperCase();
+                const elA = (cdcA.length === 44 || tipA.includes('ELECTR')) ? 1 : 0;
+                const elB = (cdcB.length === 44 || tipB.includes('ELECTR')) ? 1 : 0;
+                if (elA !== elB) return elA - elB;
+
                 const fa = String(a.FEC_EGRESO || a.fec_egreso || '');
                 const fb = String(b.FEC_EGRESO || b.fec_egreso || '');
                 if (fa !== fb) return fa.localeCompare(fb);
@@ -3934,35 +4050,38 @@
                 return na.localeCompare(nb);
             });
 
-            // Encabezado oficial de 28 columnas (Formato RG90 / Marangatu Compras)
+            const rucInformante = _rucInformanteActual || '';
+            const nomInformante = _nombreInformanteActual || obtenerNombreContribuyente().replace(/,/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
+
+            // Encabezado exacto de 28 columnas descargado de Marangatu (Consulta de Comprobantes Registrados)
             const headers = [
+                'RUC del Informante',
+                'Nombre o Razon Social del Informante',
+                'RUC / Nº de Identificacion del Informado',
+                'Tipo de Identificación del Informado',
+                'Nombre o Razón Social del Informado',
                 'Tipo de Registro',
-                'Código Tipo de Identificación del Proveedor',
-                'RUC / Número de Identificación del Proveedor',
-                'DV del Proveedor',
-                'Nombre o Razón Social del Proveedor',
-                'Código Tipo de Comprobante',
                 'Tipo de Comprobante',
                 'Fecha de Emisión',
-                'Código Condición de Compra',
-                'Condición de Compra',
+                'Periodo de Emisión',
+                'Condicion de la Operacion',
                 'Operación en Moneda Extranjera',
-                'Número de Timbrado',
-                'Número de Comprobante',
+                'Timbrado del Comprobante',
+                'Numero de Comprobante',
                 'CDC',
-                'Monto Gravado 10% (IVA Incluido)',
-                'IVA 10% Liquidado',
-                'Monto Gravado 5% (IVA Incluido)',
-                'IVA 5% Liquidado',
-                'Monto No Gravado o Exento',
+                'Monto Gravado 10%',
+                'IVA 10%',
+                'Monto Gravado 5%',
+                'IVA 5%',
+                'Monto No Gravado / Exento ',
                 'Total Comprobante',
-                'Imputa al IVA',
-                'Imputa al IRE',
-                'Imputa al IRP-RSP',
-                'No Imputa',
-                'Número de Comprobante de Venta Asociado',
+                'Imputa IVA',
+                'Imputa IRE',
+                'Imputa IRP',
+                'No Imputar',
+                'Numero de Comprobante Asociado',
                 'Timbrado del Comprobante Asociado',
-                'Cuotas',
+                'Fecha de Registro',
                 'Origen de la Información'
             ];
 
@@ -3970,46 +4089,37 @@
 
             sorted.forEach(item => {
                 const rawRuc = String(item.RUC_PROVEEDOR || item.ruc_proveedor || '').trim();
-                let rucSinDv = rawRuc;
-                let rucDv = '';
-                if (rawRuc.includes('-')) {
-                    const parts = rawRuc.split('-');
-                    rucSinDv = parts[0].replace(/\D/g, '');
-                    rucDv = (parts[1] || '').trim();
-                } else {
-                    rucSinDv = rawRuc.replace(/\D/g, '');
-                    rucDv = rucSinDv ? String(calcularDvParaguayJS(rucSinDv)) : '';
-                }
+                const rucSinDv = rawRuc.includes('-')
+                    ? rawRuc.split('-')[0].replace(/\D/g, '')
+                    : rawRuc.replace(/\D/g, '');
 
                 const nomProv = String(item.NOM_PROVEEDOR || item.nom_proveedor || '').trim().toUpperCase();
                 const tipDocRaw = String(item.TIP_DOC || item.tip_doc || 'FAC').trim().toUpperCase();
-                let codTipComp = '109';
                 let descTipComp = 'FACTURA';
                 if (tipDocRaw === 'NCR' || tipDocRaw.includes('CRED') || tipDocRaw.includes('CRÉD')) {
-                    codTipComp = '110';
                     descTipComp = 'NOTA DE CREDITO';
                 } else if (tipDocRaw === 'DEB' || tipDocRaw.includes('DEB') || tipDocRaw.includes('DÉB')) {
-                    codTipComp = '111';
                     descTipComp = 'NOTA DE DEBITO';
                 } else if (tipDocRaw === 'AUT' || tipDocRaw.includes('AUTO')) {
-                    codTipComp = '101';
                     descTipComp = 'AUTOFACTURA';
                 }
 
                 const fecFmt = formatFechaTabla(item.FEC_EGRESO_FMT || item.fec_egreso_fmt || item.FEC_EGRESO || item.fec_egreso || '');
+                const periodoEmision = (fecFmt && fecFmt.length === 10) ? fecFmt.substring(3, 10) : '';
+
                 const condRaw = String(item.CONDICION || item.condicion || 'CON').trim().toUpperCase();
                 const esCred = condRaw.startsWith('CR') || condRaw.includes('CRED');
-                const codCond = esCred ? '2' : '1';
-                const descCond = esCred ? 'CREDITO' : 'CONTADO';
-
-                const codMon = String(item.COD_MONEDA || item.cod_moneda || '1').trim();
-                const monExtr = (codMon !== '1' && codMon.toUpperCase() !== 'GS' && codMon.toUpperCase() !== 'PYG') ? 'SI' : 'NO';
+                const descCond = esCred ? 'CRÉDITO' : 'CONTADO';
 
                 const timbrado = String(item.NRO_TIMBRADO || item.nro_timbrado || '').trim();
                 const nroFac = formatNroFactura(item.NRO_FACTURA || item.nro_factura || '', tipDocRaw);
                 const cdcClean = String(item.CDC || item.cdc || '').replace(/\D/g, '');
                 const tipTimb = String(item.TIP_TIMB || item.tip_timb || '').toUpperCase();
                 const esElectr = (cdcClean.length === 44 || tipTimb.includes('ELECTR'));
+
+                const codMon = String(item.COD_MONEDA || item.cod_moneda || '1').trim();
+                const esExtranjera = (codMon !== '1' && codMon.toUpperCase() !== 'GS' && codMon.toUpperCase() !== 'PYG');
+                const monExtr = esExtranjera ? 'SI' : (esElectr ? '' : 'NO');
 
                 const grav10 = Math.round(parseFloat(item.GRAV10 || item.grav10 || 0));
                 const iva10  = Math.round(parseFloat(item.IVA10  || item.iva10  || 0));
@@ -4028,19 +4138,18 @@
                 const impIre = 'NO';
                 const impIrp = (regNum === '1' || regNum === '2') ? 'SI' : 'NO';
                 const noImp  = (regNum === '4') ? 'SI' : 'NO';
-                const cuotas = esCred ? 1 : 0;
                 const origenInfo = esElectr ? 'ELECTRONICO' : 'MANUAL';
 
                 rows.push([
-                    2,
-                    11,
+                    rucInformante,
+                    nomInformante,
                     rucSinDv,
-                    rucDv,
+                    'RUC',
                     nomProv,
-                    codTipComp,
+                    'COMPRAS',
                     descTipComp,
                     fecFmt,
-                    codCond,
+                    periodoEmision,
                     descCond,
                     monExtr,
                     timbrado,
@@ -4058,7 +4167,7 @@
                     noImp,
                     '',
                     '',
-                    cuotas,
+                    fecFmt,
                     origenInfo
                 ]);
             });
@@ -4078,20 +4187,35 @@
 
             if (typeof XLSX !== 'undefined') {
                 const ws = XLSX.utils.aoa_to_sheet(rows);
+                // Aplicar formato numérico con separador de miles (#,##0) a las columnas de montos (14 a 19)
+                for (let r = 1; r < rows.length; r++) {
+                    for (let c = 14; c <= 19; c++) {
+                        const cellRef = XLSX.utils.encode_cell({ r, c });
+                        if (ws[cellRef]) {
+                            ws[cellRef].t = 'n';
+                            ws[cellRef].z = '#,##0';
+                        }
+                    }
+                }
                 ws['!cols'] = [
-                    { wch: 6 },  { wch: 6 },  { wch: 13 }, { wch: 5 },  { wch: 38 },
-                    { wch: 8 },  { wch: 16 }, { wch: 12 }, { wch: 6 },  { wch: 11 },
-                    { wch: 8 },  { wch: 12 }, { wch: 17 }, { wch: 46 }, { wch: 15 },
+                    { wch: 14 }, { wch: 32 }, { wch: 14 }, { wch: 8 },  { wch: 38 },
+                    { wch: 11 }, { wch: 14 }, { wch: 12 }, { wch: 11 }, { wch: 11 },
+                    { wch: 10 }, { wch: 12 }, { wch: 17 }, { wch: 46 }, { wch: 15 },
                     { wch: 13 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 15 },
                     { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 16 },
-                    { wch: 14 }, { wch: 8 },  { wch: 14 }
+                    { wch: 14 }, { wch: 12 }, { wch: 15 }
                 ];
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, 'Compras_Marangatu');
                 XLSX.writeFile(wb, fileName);
             } else {
                 // Fallback CSV separado por punto y coma si SheetJS no estuviera cargado
-                const csvContent = '\uFEFF' + rows.map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n');
+                const csvContent = '\uFEFF' + rows.map((r, rIdx) => r.map((c, cIdx) => {
+                    const val = (rIdx > 0 && cIdx >= 14 && cIdx <= 19 && typeof c === 'number')
+                        ? c.toLocaleString('es-PY')
+                        : String(c ?? '');
+                    return `"${val.replace(/"/g, '""')}"`;
+                }).join(';')).join('\r\n');
                 const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
