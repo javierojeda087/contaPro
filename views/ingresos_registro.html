@@ -1717,6 +1717,42 @@
             }
         }
 
+        function calcularSiguienteNroLiquidacionLocal() {
+            let maxNum = 0;
+            (listIngresosData || []).forEach(it => {
+                const td = String(it.TIP_DOC || it.tip_doc || '');
+                if (!esLiquidacionSalario(td)) return;
+                let raw = String(it.NRO_FACTURA || it.nro_factura || '').trim();
+                if (!raw) return;
+                if (raw.includes('-')) {
+                    const parts = raw.split('-');
+                    raw = parts[parts.length - 1];
+                }
+                const digits = raw.replace(/\D/g, '');
+                if (digits) {
+                    const n = parseInt(digits, 10);
+                    if (!isNaN(n) && n > maxNum) maxNum = n;
+                }
+            });
+            return String(maxNum + 1).padStart(7, '0');
+        }
+
+        function cargarSiguienteNroLiquidacionSalario() {
+            const facNroEl = document.getElementById('facNro');
+            const idIng = (document.getElementById('idIngreso')?.value || '').trim();
+            if (!facNroEl || idIng) return;
+
+            facNroEl.value = calcularSiguienteNroLiquidacionLocal();
+            fetch('/api/ingresos/siguiente-nro')
+                .then(r => r.json())
+                .then(d => {
+                    if (d && d.status === 'success' && d.siguienteNro && esLiquidacionSalario() && !(document.getElementById('idIngreso')?.value || '').trim()) {
+                        facNroEl.value = d.siguienteNro;
+                    }
+                })
+                .catch(() => {});
+        }
+
         function aplicarModoLiquidacionSalarioUI(cambioPorUsuario = false) {
             const isLiq = esLiquidacionSalario();
             const g10El   = document.getElementById('grav10');
@@ -1732,6 +1768,7 @@
             const lblComp = document.getElementById('lblNroComprobanteIngreso');
             const facEst  = document.getElementById('facEst');
             const facPto  = document.getElementById('facPto');
+            const facNroEl = document.getElementById('facNro');
             const sep1    = document.getElementById('sepFac1');
             const sep2    = document.getElementById('sepFac2');
             const boxSer  = document.getElementById('boxSerieIngreso');
@@ -1773,6 +1810,14 @@
                 if (sep2)    sep2.style.display   = 'none';
                 if (boxSer)  boxSer.style.visibility = 'hidden';
 
+                if (facNroEl) {
+                    facNroEl.readOnly = true;
+                    facNroEl.style.backgroundColor = '#f1f5f9';
+                    facNroEl.style.color = '#15803d';
+                    facNroEl.style.cursor = 'not-allowed';
+                    facNroEl.title = 'Número de comprobante autogenerado correlativamente';
+                }
+
                 if (lblEx)   lblEx.innerText  = 'Ingr. Gravado :';
                 if (lblNoG)  lblNoG.innerText = 'Ingreso No Gravado :';
                 if (btnSifen) btnSifen.style.display = 'none';
@@ -1798,10 +1843,9 @@
                             }
                         }
                     }
-                    const facNroEl = document.getElementById('facNro');
-                    if (facNroEl && !facNroEl.value.trim()) {
-                        facNroEl.value = '0000001';
-                    }
+                }
+                if (!(document.getElementById('idIngreso')?.value || '').trim()) {
+                    cargarSiguienteNroLiquidacionSalario();
                 }
             } else {
                 if (g10El) {
@@ -1817,6 +1861,16 @@
                     g5El.style.backgroundColor = '#ffffff';
                     g5El.style.color = '#0f172a';
                     g5El.style.cursor = 'text';
+                }
+                if (facNroEl) {
+                    facNroEl.readOnly = false;
+                    facNroEl.style.backgroundColor = '#ffffff';
+                    facNroEl.style.color = '#0f172a';
+                    facNroEl.style.cursor = 'text';
+                    facNroEl.title = '';
+                    if (cambioPorUsuario) {
+                        facNroEl.value = '';
+                    }
                 }
                 if (rowCdc)  rowCdc.style.display = 'none';
                 if (lblTimb) lblTimb.style.visibility = 'visible';
@@ -2598,7 +2652,7 @@
             const selectTip = document.getElementById('tipIngreso');
             if (selectTip && selectTip.options.length > 0) selectTip.value = '1';
 
-            actualizarTimbradosPorTipoDoc();
+            actualizarTimbradosPorTipoDoc(esLiquidacionSalario());
             recalcularTotales();
 
             // Foco directo en el campo RUC para seguir registrando de inmediato

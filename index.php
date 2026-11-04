@@ -646,6 +646,7 @@ $exactApiRoutes = [
     '/api/egresos/importar-lote'                   => [MovimientosContablesController::class, 'apiEgresosImportarLote'],
     '/api/ingresos/verificar-cdc'                  => [MovimientosContablesController::class, 'apiVerificarCdc'],
     '/api/ingresos/tipos-documentos'               => [MovimientosContablesController::class, 'apiIngresosTiposDocumentos'],
+    '/api/ingresos/siguiente-nro'                  => [MovimientosContablesController::class, 'apiIngresosSiguienteNro'],
     '/api/ingresos/list'                           => [MovimientosContablesController::class, 'apiIngresosList'],
     '/api/ingresos/save'                           => [MovimientosContablesController::class, 'apiIngresosSave'],
     '/api/ingresos/delete'                         => [MovimientosContablesController::class, 'apiIngresosDelete'],

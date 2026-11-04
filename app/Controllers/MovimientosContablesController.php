@@ -1381,6 +1381,43 @@ class MovimientosContablesController {
         View::json($list);
     }
 
+    private static function obtenerSiguienteNroLiquidacionSalario(int $idProp, string $codEmpresa): string {
+        $rows = Database::queryForList(
+            "SELECT nro_factura FROM co_ingresos
+             WHERE id_propietario = ? AND cod_empresa = ?
+               AND (UPPER(TRIM(tip_doc)) = 'LIQ' OR UPPER(tip_doc) LIKE '%LIQUIDAC%')",
+            [$idProp, $codEmpresa]
+        );
+        $maxNum = 0;
+        foreach ($rows as $r) {
+            $raw = trim((string)($r['nro_factura'] ?? ''));
+            if ($raw === '') continue;
+            if (str_contains($raw, '-')) {
+                $parts = explode('-', $raw);
+                $raw = end($parts);
+            }
+            $digits = preg_replace('/\D/', '', (string)$raw);
+            if ($digits !== '') {
+                $num = (int)$digits;
+                if ($num > $maxNum) {
+                    $maxNum = $num;
+                }
+            }
+        }
+        return str_pad((string)($maxNum + 1), 7, '0', STR_PAD_LEFT);
+    }
+
+    public static function apiIngresosSiguienteNro(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $siguienteNro = self::obtenerSiguienteNroLiquidacionSalario($idProp, $empresa);
+        View::json([
+            'status'       => 'success',
+            'siguienteNro' => $siguienteNro,
+        ]);
+    }
+
     public static function apiIngresosList(): void {
         if (!self::requireAuth()) return;
         $idProp = TenantContext::idPropietario();
@@ -1566,6 +1603,11 @@ class MovimientosContablesController {
             }
 
             $idIngreso = !empty($payload['idIngreso']) ? (int)$payload['idIngreso'] : null;
+
+            // Autogenerar correlativo (0000001, 0000002...) para nuevas Liquidaciones de Salario
+            if ($esLiqSal && ($idIngreso === null || $nroFactura === '')) {
+                $nroFactura = self::obtenerSiguienteNroLiquidacionSalario($idProp, $empresa);
+            }
 
             $isFactura = str_starts_with(strtoupper($tipDoc), 'FAC') && !str_contains(strtoupper($tipDoc), 'AUTO');
             if ($isFactura && $nroFactura !== '' && $nroTimbrado && $nroTimbrado !== '') {
