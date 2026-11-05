@@ -37,6 +37,13 @@
 
                 <!-- Cuerpo del Formulario -->
                 <form id="marangatuForm" method="GET" action="/api/marangatu/exportar-zip">
+                    <input type="hidden" name="ventas" value="false">
+                    <input type="hidden" name="otrosIngresos" value="false">
+                    <input type="hidden" name="recibosCobro" value="false">
+                    <input type="hidden" name="compras" value="false">
+                    <input type="hidden" name="otrosEgresos" value="false">
+                    <input type="hidden" name="recibosPago" value="false">
+                    <input type="hidden" name="incluirExentas" value="false">
                     <div style="padding: 1.25rem 1.5rem; background: #fafafa; border-bottom: 1px solid #f1f5f9;">
                         <!-- Filtros rápidos de período -->
                         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 1rem;">
