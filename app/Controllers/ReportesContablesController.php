@@ -2861,50 +2861,64 @@ class ReportesContablesController {
 
     public static function apiFormulario515Obtener(): void {
         if (!self::requireAuth()) return;
-        self::ensureFormulario515Table();
-        $idProp      = TenantContext::idPropietario();
-        $codEmpresa  = TenantContext::empresa();
-        $anio        = (int)($_GET['anio'] ?? date('Y'));
-        $modoEgresos = strtoupper(trim((string)($_GET['modoEgresos'] ?? 'SIN_IVA')));
+        try {
+            self::ensureFormulario515Table();
+            $idProp      = TenantContext::idPropietario();
+            $codEmpresa  = TenantContext::empresa();
+            $anio        = (int)($_GET['anio'] ?? date('Y'));
+            $modoEgresos = strtoupper(trim((string)($_GET['modoEgresos'] ?? 'SIN_IVA')));
 
-        $autoCalc = self::calcularFormulario515Auto($idProp, $codEmpresa, $anio, $modoEgresos);
+            $autoCalc = self::calcularFormulario515Auto($idProp, $codEmpresa, $anio, $modoEgresos);
 
-        $rows = Database::queryForListUpper(
-            "SELECT * FROM co_formulario_515 WHERE id_propietario = ? AND cod_empresa = ? AND anio = ? LIMIT 1",
-            [$idProp, $codEmpresa, $anio]
-        );
-        if (!empty($rows) && !isset($_GET['modoEgresos'])) {
-            $saved    = $rows[0];
-            $autoData = $autoCalc['data'];
-            foreach ($autoData as $k => $v) {
-                if (!array_key_exists($k, $saved) || $saved[$k] === null) {
-                    $saved[$k] = $v;
+            $rows = Database::queryForListUpper(
+                "SELECT * FROM co_formulario_515 WHERE id_propietario = ? AND cod_empresa = ? AND anio = ? LIMIT 1",
+                [$idProp, $codEmpresa, $anio]
+            );
+            if (!empty($rows) && !isset($_GET['forzarRecalculo'])) {
+                $saved    = $rows[0];
+                $autoData = $autoCalc['data'];
+                foreach ($autoData as $k => $v) {
+                    if (!array_key_exists($k, $saved) || $saved[$k] === null) {
+                        $saved[$k] = $v;
+                    }
                 }
-            }
-            $savedMov = (int)($saved['C14'] ?? 0) + (int)($saved['C24'] ?? 0) + (int)($saved['C41'] ?? 0);
-            $autoMov  = (int)($autoData['C14'] ?? 0) + (int)($autoData['C24'] ?? 0) + (int)($autoData['C41'] ?? 0);
+                $savedMov = (int)($saved['C14'] ?? 0) + (int)($saved['C24'] ?? 0) + (int)($saved['C41'] ?? 0);
+                $autoMov  = (int)($autoData['C14'] ?? 0) + (int)($autoData['C24'] ?? 0) + (int)($autoData['C41'] ?? 0);
 
+                View::json([
+                    'status'          => ($savedMov === 0 && $autoMov > 0) ? 'calculated' : 'found',
+                    'data'            => ($savedMov === 0 && $autoMov > 0) ? $autoData : $saved,
+                    'calculadoLibros' => $autoData,
+                    'resumenLibros'   => $autoCalc['resumenLibros'],
+                    'aniosConDatos'   => $autoCalc['aniosConDatos'],
+                    'empresa'         => self::fetchForm120EmpresaInfo($codEmpresa),
+                ]);
+                return;
+            }
+            View::json($autoCalc);
+        } catch (\Throwable $e) {
             View::json([
-                'status'          => ($savedMov === 0 && $autoMov > 0) ? 'calculated' : 'found',
-                'data'            => ($savedMov === 0 && $autoMov > 0) ? $autoData : $saved,
-                'calculadoLibros' => $autoData,
-                'resumenLibros'   => $autoCalc['resumenLibros'],
-                'aniosConDatos'   => $autoCalc['aniosConDatos'],
-                'empresa'         => self::fetchForm120EmpresaInfo($codEmpresa),
-            ]);
-            return;
+                'status'  => 'error',
+                'message' => 'Error al obtener Formulario 515: ' . $e->getMessage(),
+            ], 500);
         }
-        View::json($autoCalc);
     }
 
     public static function apiFormulario515Calcular(): void {
         if (!self::requireAuth()) return;
-        self::ensureFormulario515Table();
-        $idProp      = TenantContext::idPropietario();
-        $codEmpresa  = TenantContext::empresa();
-        $anio        = (int)($_GET['anio'] ?? date('Y'));
-        $modoEgresos = strtoupper(trim((string)($_GET['modoEgresos'] ?? 'SIN_IVA')));
-        View::json(self::calcularFormulario515Auto($idProp, $codEmpresa, $anio, $modoEgresos));
+        try {
+            self::ensureFormulario515Table();
+            $idProp      = TenantContext::idPropietario();
+            $codEmpresa  = TenantContext::empresa();
+            $anio        = (int)($_GET['anio'] ?? date('Y'));
+            $modoEgresos = strtoupper(trim((string)($_GET['modoEgresos'] ?? 'SIN_IVA')));
+            View::json(self::calcularFormulario515Auto($idProp, $codEmpresa, $anio, $modoEgresos));
+        } catch (\Throwable $e) {
+            View::json([
+                'status'  => 'error',
+                'message' => 'Error al calcular Formulario 515: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     private static function calcularFormulario515Auto(int $idProp, string $codEmpresa, int $anio, string $modoEgresos = 'SIN_IVA'): array {
@@ -3229,19 +3243,23 @@ class ReportesContablesController {
         ) ?? 0);
 
         // Retenciones IRP sufridas en el ejercicio
-        $rowRetIrp = Database::queryForList(
-            "SELECT COUNT(*) AS cant_ret,
-                    COALESCE(SUM(COALESCE(importe_retenido, 0) * COALESCE(NULLIF(tasa_cambio, 0), 1)), 0) AS total_ret
-             FROM co_retenciones_sufridas
-             WHERE id_propietario = ? AND cod_empresa = ?
-               AND fec_retencion >= ? AND fec_retencion <= ?
-               AND COALESCE(anulada, 'N') <> 'S'
-               AND COALESCE(estado, 'A') <> 'I'
-               AND (UPPER(COALESCE(impuesto, '')) LIKE '%IRP%' OR UPPER(COALESCE(observacion, '')) LIKE '%IRP%' OR UPPER(COALESCE(observacion, '')) LIKE '%RENTA%')",
-            [$idProp, $codEmpresa, $startDateStr . ' 00:00:00', $endDateStr . ' 23:59:59']
-        );
-        $cantRetIrp = (int)($rowRetIrp[0]['cant_ret'] ?? 0);
-        $c41 = max(0, (int)round((float)($rowRetIrp[0]['total_ret'] ?? 0)));
+        $cantRetIrp = 0;
+        $c41        = 0;
+        try {
+            $rowRetIrp = Database::queryForList(
+                "SELECT COUNT(*) AS cant_ret,
+                        COALESCE(SUM(COALESCE(importe_retenido, 0) * COALESCE(NULLIF(tasa_cambio, 0), 1)), 0) AS total_ret
+                 FROM co_retenciones_sufridas
+                 WHERE id_propietario = ? AND cod_empresa = ?
+                   AND fec_retencion >= ? AND fec_retencion <= ?
+                   AND COALESCE(anulada, 'N') <> 'S'
+                   AND COALESCE(estado, 'A') <> 'I'
+                   AND (UPPER(COALESCE(observacion, '')) LIKE '%IRP%' OR UPPER(COALESCE(observacion, '')) LIKE '%RENTA%' OR UPPER(COALESCE(form_145, '')) LIKE '%IRP%')",
+                [$idProp, $codEmpresa, $startDateStr . ' 00:00:00', $endDateStr . ' 23:59:59']
+            );
+            $cantRetIrp = (int)($rowRetIrp[0]['cant_ret'] ?? 0);
+            $c41        = max(0, (int)round((float)($rowRetIrp[0]['total_ret'] ?? 0)));
+        } catch (\Throwable $ignored) {}
         $c42 = 0;
         $c49 = 0;
 
