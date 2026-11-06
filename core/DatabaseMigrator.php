@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 29;
+    private const SCHEMA_VERSION = 30;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -557,7 +557,7 @@ class DatabaseMigrator {
             true
         );
 
-        // 8. Registrar CORESIRP (Resumen IRP) en Contabilidad > Reportes
+        // 8. Registrar CORESIRP (Resumen IRP) y COF51500 (Formulario 515 IRP V1) en Contabilidad > Reportes
         Database::execute(
             "INSERT INTO `formas` (`id_propietario`, `cod_modulo`, `nom_forma`, `titulo`, `descripcion`, `esta`, `mostrar_en_menu`, `cod_modulo_menu`, `tipo`, `orden_en_menu`)
              SELECT DISTINCT p.id_prop, 'CO', 'CORESIRP', 'Resumen IRP', 'RESUMEN DE IMPUESTO A LA RENTA PERSONAL', 'A', 'S', 'CO', 'R', 8
@@ -599,6 +599,84 @@ class DatabaseMigrator {
                  WHERE x.`id_propietario` = g.id_prop
                    AND UPPER(TRIM(x.`cod_grupo`)) = g.cod_grp
                    AND UPPER(TRIM(x.`nom_forma`)) = 'CORESIRP'
+             )",
+            true
+        );
+
+        Database::execute("
+            CREATE TABLE IF NOT EXISTS `co_formulario_515` (
+              `id_propietario` INT NOT NULL DEFAULT 1,
+              `cod_empresa` VARCHAR(10) NOT NULL,
+              `anio` INT NOT NULL,
+              `tipo_declaracion` VARCHAR(1) DEFAULT 'O',
+              `num_orden` VARCHAR(30) DEFAULT NULL,
+              `num_orden_rect` VARCHAR(30) DEFAULT NULL,
+              `caracter_cese` VARCHAR(1) DEFAULT 'N',
+              `modo_egresos` VARCHAR(15) DEFAULT 'SIN_IVA',
+              `c10` BIGINT DEFAULT 0, `c12` BIGINT DEFAULT 0,
+              `c11` BIGINT DEFAULT 0, `c13` BIGINT DEFAULT 0,
+              `c14` BIGINT DEFAULT 0,
+              `c15` BIGINT DEFAULT 0, `c16` BIGINT DEFAULT 0, `c17` BIGINT DEFAULT 0,
+              `c18` BIGINT DEFAULT 0, `c19` BIGINT DEFAULT 0, `c20` BIGINT DEFAULT 0,
+              `c21` BIGINT DEFAULT 0, `c22` BIGINT DEFAULT 0, `c23` BIGINT DEFAULT 0, `c24` BIGINT DEFAULT 0,
+              `c25` BIGINT DEFAULT 0, `c26` BIGINT DEFAULT 0, `c27` BIGINT DEFAULT 0,
+              `c28` BIGINT DEFAULT 0, `c29` BIGINT DEFAULT 0, `c30` BIGINT DEFAULT 0,
+              `c31` BIGINT DEFAULT 0, `c32` BIGINT DEFAULT 0,
+              `c33` BIGINT DEFAULT 0, `c34` BIGINT DEFAULT 0, `c35` BIGINT DEFAULT 0,
+              `c36` BIGINT DEFAULT 0, `c37` BIGINT DEFAULT 0, `c38` BIGINT DEFAULT 0, `c39` BIGINT DEFAULT 0,
+              `c45` BIGINT DEFAULT 0, `c46` BIGINT DEFAULT 0, `c47` BIGINT DEFAULT 0, `c48` BIGINT DEFAULT 0,
+              `c40` BIGINT DEFAULT 0, `c41` BIGINT DEFAULT 0, `c42` BIGINT DEFAULT 0, `c49` BIGINT DEFAULT 0,
+              `c43` BIGINT DEFAULT 0, `c50` BIGINT DEFAULT 0, `c44` BIGINT DEFAULT 0, `c51` BIGINT DEFAULT 0,
+              `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id_propietario`, `cod_empresa`, `anio`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ", true);
+
+        Database::execute(
+            "INSERT INTO `formas` (`id_propietario`, `cod_modulo`, `nom_forma`, `titulo`, `descripcion`, `esta`, `mostrar_en_menu`, `cod_modulo_menu`, `tipo`, `orden_en_menu`)
+             SELECT DISTINCT p.id_prop, 'CO', 'COF51500', 'Formulario 515 (IRP)', 'FORMULARIO 515 - IMPUESTO A LA RENTA PERSONAL (VERSION 1)', 'A', 'S', 'CO', 'R', 9
+             FROM (
+                 SELECT `id_propietario` AS id_prop FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop FROM `formas`
+                 UNION
+                 SELECT 1 AS id_prop
+             ) p
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM `formas` f
+                 WHERE f.`id_propietario` = p.id_prop AND UPPER(TRIM(f.`nom_forma`)) = 'COF51500'
+             )",
+            true
+        );
+        Database::execute(
+            "INSERT INTO `accesos_grupos` (
+                 `id_propietario`, `cod_grupo`, `cod_modulo`, `nom_forma`,
+                 `puede_insertar`, `puede_borrar`, `puede_actualizar`, `puede_consultar`,
+                 `item_menu`, `mostrar_en_menu`
+             )
+             SELECT DISTINCT g.id_prop, g.cod_grp, 'CO', 'COF51500', 'S', 'S', 'S', 'S', 'Formulario 515 (IRP)', 'S'
+             FROM (
+                 SELECT `id_propietario` AS id_prop, UPPER(TRIM(`cod_grupo`)) AS cod_grp
+                 FROM `usuarios`
+                 WHERE TRIM(COALESCE(`cod_grupo`, '')) <> ''
+                 UNION
+                 SELECT `id_propietario` AS id_prop, 'CONADM' AS cod_grp FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop, 'CONTA' AS cod_grp FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop, 'CONTAM' AS cod_grp FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop, 'CONTAP' AS cod_grp FROM `propietarios`
+                 UNION
+                 SELECT 1 AS id_prop, 'CONADM' AS cod_grp
+                 UNION
+                 SELECT 1 AS id_prop, 'CONTA' AS cod_grp
+             ) g
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM `accesos_grupos` x
+                 WHERE x.`id_propietario` = g.id_prop
+                   AND UPPER(TRIM(x.`cod_grupo`)) = g.cod_grp
+                   AND UPPER(TRIM(x.`nom_forma`)) = 'COF51500'
              )",
             true
         );

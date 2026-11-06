@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sistema - Formulario 515 (IRP Servicios Personales V1)')}">
+</head>
+<body style="background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+
+    <!-- Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="main-content">
+        <div th:replace="~{fragments/layout :: navbar('Formulario N° 515 - Impuesto a la Renta Personal (Servicios Personales V1)')}"></div>
+
+        <div class="content-area" style="padding: 18px;">
+
+            <!-- Top Action Bar -->
+            <div style="max-width: 1140px; margin: 0 auto 14px auto; background: white; border-radius: 10px; padding: 12px 18px; border: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+
+                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-weight: 800; font-size: 0.82rem; color: #334155;">EJERCICIO FISCAL:</label>
+                        <select id="selAnio" class="form-control" onchange="cargarFormulario()" style="width: 105px; font-weight: 800; height: 36px; border-radius: 7px; border: 1.5px solid #cbd5e1;">
+                            <option value="2026" th:selected="${defAnio == 2026}">2026</option>
+                            <option value="2025" th:selected="${defAnio == 2025}">2025</option>
+                            <option value="2024" th:selected="${defAnio == 2024}">2024</option>
+                            <option value="2023" th:selected="${defAnio == 2023}">2023</option>
+                            <option value="2022" th:selected="${defAnio == 2022}">2022</option>
+                            <option value="2021" th:selected="${defAnio == 2021}">2021</option>
+                            <option value="2020" th:selected="${defAnio == 2020}">2020</option>
+                        </select>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <label style="font-weight: 800; font-size: 0.78rem; color: #475569;">CRITERIO EGRESOS:</label>
+                        <select id="selModoEgresos" class="form-control" onchange="recalcularLibros()" style="width: 245px; font-weight: 700; font-size: 0.8rem; height: 36px; border-radius: 7px; border: 1.5px solid #cbd5e1;">
+                            <option value="SIN_IVA">Sin IVA (Neto Imponible - Casilla 15)</option>
+                            <option value="SEPARAR_PERSONALES">Sin IVA (Separar Personales en Casilla 16)</option>
+                            <option value="MIXTO">Mixto (Sin IVA en Actividad / Con IVA en IRP)</option>
+                            <option value="CON_IVA">Con IVA Incluido (Total Factura)</option>
+                        </select>
+                    </div>
+
+                    <!-- Ejercicios con movimientos cargados -->
+                    <div id="aniosConDatosBar" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"></div>
+                </div>
+
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <span id="badgeEstadoOrigenForm" style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-size: 0.73rem; font-weight: 800; padding: 5px 10px; border-radius: 6px;">Calculado desde Movimientos</span>
+
+                    <button type="button" class="btn" onclick="recalcularLibros()"
+                            style="background: #e0f2fe; color: #0369a1; border: 1.5px solid #7dd3fc; padding: 7px 13px; border-radius: 7px; font-weight: 800; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <i class="ph ph-arrows-clockwise" style="font-size: 1.05rem;"></i> Recalcular Libros
+                    </button>
+
+                    <button type="button" class="btn" onclick="guardarFormulario()"
+                            style="background: #16a34a; color: white; border: none; padding: 7px 14px; border-radius: 7px; font-weight: 800; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; box-shadow: 0 2px 4px rgba(22,163,74,0.28);">
+                        <i class="ph ph-floppy-disk" style="font-size: 1.05rem;"></i> Guardar DDJJ
+                    </button>
+
+                    <button type="button" class="btn" onclick="exportarXlsFormulario515()"
+                            style="background: #0891b2; color: white; border: none; padding: 7px 14px; border-radius: 7px; font-weight: 800; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <i class="ph ph-file-csv" style="font-size: 1.05rem;"></i> Exportar XLS
+                    </button>
+
+                    <button type="button" class="btn" onclick="imprimirFormulario()"
+                            style="background: #0284c7; color: white; border: none; padding: 7px 14px; border-radius: 7px; font-weight: 800; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <i class="ph ph-printer" style="font-size: 1.05rem;"></i> Imprimir Form 515 V1
+                    </button>
+                </div>
+            </div>
+
+            <!-- RESUMEN EJECUTIVO DE DATOS CARGADOS EN EL EJERCICIO -->
+            <div style="max-width: 1140px; margin: 0 auto 14px auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(245px, 1fr)); gap: 10px;">
+                <div style="background: white; border: 1px solid #cbd5e1; border-left: 4px solid #0284c7; border-radius: 8px; padding: 10px 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-size: 0.72rem; font-weight: 800; color: #0369a1; text-transform: uppercase;">Ingresos Gravados (Rubro 1)</span>
+                        <span id="resBadgeCantIng" style="background: #e0f2fe; color: #0369a1; font-weight: 800; font-size: 0.72rem; padding: 1px 7px; border-radius: 10px;">0 comp.</span>
+                    </div>
+                    <div style="font-size: 1.08rem; font-weight: 900; color: #0f172a;">Gs. <span id="resIngGravados">0</span> <small style="font-size: 0.68rem; color: #64748b;">[14]</small></div>
+                    <div style="font-size: 0.74rem; color: #475569; display: flex; justify-content: space-between; margin-top: 2px;">
+                        <span>Exonerados [10]: <b id="resIngExonerados">0</b></span>
+                        <span>Facturas: <b id="resCantFact">0</b> | Sal.: <b id="resCantLiq">0</b></span>
+                    </div>
+                </div>
+
+                <div style="background: white; border: 1px solid #cbd5e1; border-left: 4px solid #16a34a; border-radius: 8px; padding: 10px 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-size: 0.72rem; font-weight: 800; color: #15803d; text-transform: uppercase;">Egresos Deducibles (Rubro 2)</span>
+                        <span id="resBadgeCantEgr" style="background: #dcfce7; color: #15803d; font-weight: 800; font-size: 0.72rem; padding: 1px 7px; border-radius: 10px;">0 comp.</span>
+                    </div>
+                    <div style="font-size: 1.08rem; font-weight: 900; color: #0f172a;">Gs. <span id="resEgrDeducibles">0</span> <small style="font-size: 0.68rem; color: #64748b;">[24]</small></div>
+                    <div style="font-size: 0.74rem; color: #475569; display: flex; justify-content: space-between; margin-top: 2px;">
+                        <span>Sin IVA: <b id="resEgrSinIva">0</b></span>
+                        <span>Con IVA: <b id="resEgrConIva">0</b></span>
+                    </div>
+                </div>
+
+                <div style="background: white; border: 1px solid #cbd5e1; border-left: 4px solid #0d9488; border-radius: 8px; padding: 10px 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-size: 0.72rem; font-weight: 800; color: #0f766e; text-transform: uppercase;">Renta Neta Imponible (Rubro 5)</span>
+                        <span style="background: #ccfbf1; color: #0f766e; font-weight: 800; font-size: 0.7rem; padding: 1px 7px; border-radius: 10px;">Casilla [45]</span>
+                    </div>
+                    <div style="font-size: 1.08rem; font-weight: 900; color: #0f766e;">Gs. <span id="resRentaNeta">0</span></div>
+                    <div style="font-size: 0.73rem; color: #475569; display: flex; justify-content: space-between; margin-top: 2px;">
+                        <span>8%: <b id="resTramo8">0</b> | 9%: <b id="resTramo9">0</b></span>
+                        <span>10%: <b id="resTramo10">0</b></span>
+                    </div>
+                </div>
+
+                <div id="cardResultadoFiscal" style="background: #fef2f2; border: 1px solid #fca5a5; border-left: 4px solid #dc2626; border-radius: 8px; padding: 10px 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span id="lblTituloResultadoCard" style="font-size: 0.72rem; font-weight: 800; color: #dc2626; text-transform: uppercase;">Saldo a Ingresar al Fisco</span>
+                        <span id="lblCasillaResultadoCard" style="background: white; color: #dc2626; font-weight: 800; font-size: 0.7rem; padding: 1px 7px; border-radius: 10px; border: 1px solid #fca5a5;">Casilla [51]</span>
+                    </div>
+                    <div style="font-size: 1.12rem; font-weight: 900; color: #dc2626;" id="valResultadoCard">Gs. 0</div>
+                    <div style="font-size: 0.72rem; color: #475569; margin-top: 2px;" id="subResultadoCard">Impuesto IRP determinado en el ejercicio fiscal</div>
+                </div>
+            </div>
+
+            <!-- ======================================================================= -->
+            <!-- DOCUMENTO OFICIAL: FORMULARIO N° 515 - IRP SERVICIOS PERSONALES V1      -->
+            <!-- ======================================================================= -->
+            <div class="dnit-v1-sheet">
+
+                <!-- ENCABEZADO OFICIAL DNIT FORMULARIO 515 VERSIÓN 1 -->
+                <table class="dnit-hdr-tbl">
+                    <tbody>
+                        <tr class="dnit-hdr-top-note">
+                            <td rowspan="7" class="dnit-logo-box">
+                                <div class="dnit-brand-mark">
+                                    <span class="dnit-word">DNIT</span>
+                                    <div class="dnit-sub">Dirección Nacional de<br>Ingresos Tributarios</div>
+                                </div>
+                                <div class="form-tax-title">
+                                    IMPUESTO A LA RENTA PERSONAL<br>
+                                    RENTAS DERIVADAS DE LA<br>
+                                    PRESTACIÓN DE SERVICIOS<br>
+                                    PERSONALES<br>
+                                    <span class="form-ver">VERSION 1</span>
+                                </div>
+                                <div class="form-big-num">515</div>
+                            </td>
+                            <td colspan="4" class="text-center font-bold" style="font-size: 10px; background: #e3ecef;">PARA LLENAR LEA EL INSTRUCTIVO DISPONIBLE EN LA WEB</td>
+                            <td colspan="4" class="text-center font-bold" style="font-size: 10px; background: #e3ecef;">LOS IMPORTES SE CONSIGNARÁN SIN CÉNTIMOS</td>
+                        </tr>
+                        <tr>
+                            <td colspan="4" style="width: 46%;">
+                                <div class="hdr-lbl">Número de Orden</div>
+                                <input type="text" id="f_numOrden" class="hdr-input" placeholder="Ej: 51500968098">
+                            </td>
+                            <td colspan="3" style="width: 34%;">
+                                <div class="hdr-lbl">RUC</div>
+                                <div id="txtRucNum" class="hdr-val" th:text="${empresa.rucNum}">5567097</div>
+                            </td>
+                            <td style="width: 8%;">
+                                <div class="hdr-lbl">DV</div>
+                                <div id="txtRucDv" class="hdr-val text-center" th:text="${empresa.rucDv}">0</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="4">
+                                <div class="hdr-lbl">Razón Social/Primer Apellido</div>
+                                <div id="txtPrimerApellido" class="hdr-val" th:text="${empresa.primer_apellido}">OJEDA</div>
+                            </td>
+                            <td colspan="4">
+                                <div class="hdr-lbl">Segundo Apellido</div>
+                                <div id="txtSegundoApellido" class="hdr-val" th:text="${empresa.segundo_apellido}">SANDOVAL</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="8">
+                                <div class="hdr-lbl">Nombres</div>
+                                <div id="txtNombres" class="hdr-val" th:text="${empresa.nombres != '' ? empresa.nombres : empresa.razon_social}">CARLOS JAVIER</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="width: 26px;" class="cas-hdr">01</td>
+                            <td style="width: 28px;" class="text-center">
+                                <input type="checkbox" id="chkDeclOrig" checked onchange="cambiarTipoDeclaracion('O')">
+                            </td>
+                            <td colspan="2" style="font-size: 10.5px;">Declaración Jurada Original</td>
+                            <td colspan="4" style="font-size: 10.5px; font-weight: bold;">Número de Orden de Declaración se rectifica</td>
+                        </tr>
+                        <tr>
+                            <td class="cas-hdr">02</td>
+                            <td class="text-center">
+                                <input type="checkbox" id="chkDeclRect" onchange="cambiarTipoDeclaracion('R')">
+                            </td>
+                            <td colspan="2" style="font-size: 10.5px;">Declaración Jurada Rectificativa</td>
+                            <td class="cas-hdr" style="width: 26px;">03</td>
+                            <td colspan="3">
+                                <input type="text" id="f_numOrdenRect" class="hdr-input" value="0">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="cas-hdr">05</td>
+                            <td class="text-center">
+                                <input type="checkbox" id="chkCese">
+                            </td>
+                            <td colspan="2" style="font-size: 10px; line-height: 1.15;">Declaración Jurada en Carácter de Cese de Actividades, Clausura o Cierre Definitivo</td>
+                            <td class="cas-hdr">04</td>
+                            <td colspan="3" style="padding: 2px 6px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-size: 10px; font-weight: bold;">Periodo / Ejercicio Fiscal</span>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 9px; color: #334155;">Año</div>
+                                        <div id="boxAnioDigits" style="display: inline-flex;">
+                                            <span class="yr-digit">2</span>
+                                            <span class="yr-digit">0</span>
+                                            <span class="yr-digit">2</span>
+                                            <span class="yr-digit">5</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="dnit-sub-banner">
+                    PARA PERSONAS FÍSICAS CONTRIBUYENTES DEL IMPUESTO A LA RENTA PERSONAL POR RENTAS DERIVADAS DE LA PRESTACIÓN DE SERVICIOS PERSONALES
+                </div>
+
+                <!-- Solapas Oficiales Marangatu V1 -->
+                <div class="dnit-tabs-bar">
+                    <span class="dnit-tab active">Declaración</span>
+                    <span class="dnit-tab">Anexo</span>
+                </div>
+
+                <!-- =============================================================== -->
+                <!-- RUBRO 1: INGRESOS OBTENIDOS POR LA PRESTACIÓN DE SERVICIOS      -->
+                <!-- =============================================================== -->
+                <table class="dnit-rubro-tbl">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" class="col-inc">INC.</th>
+                            <th rowspan="2" class="col-desc">RUBRO 1 - INGRESOS OBTENIDOS POR LA PRESTACIÓN DE SERVICIOS PERSONALES</th>
+                            <th colspan="2" style="text-align: center;">IMPORTE</th>
+                        </tr>
+                        <tr>
+                            <th class="col-num">EXONERADOS<br>-I-</th>
+                            <th class="col-num">GRAVADOS<br>-II-</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="inc-cell">a</td>
+                            <td>Ingresos del ejercicio fiscal por la prestación de servicios personales, conforme a lo señalado en el Art. 62 de la Ley N° 6.380/2019</td>
+                            <td class="val-cell"><span class="cas">10</span><input type="text" id="c10" class="f-num" onchange="recalcTodo()"></td>
+                            <td class="val-cell"><span class="cas">12</span><input type="text" id="c12" class="f-num" onchange="recalcTodo()"></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">b</td>
+                            <td>Ingresos del ejercicio fiscal en carácter de padres, tutores o curadores por las rentas que obtengan los hijos bajo su patria potestad o las personas bajo su tutela o curatela, conforme al Art. 4° del Anexo del Decreto N° 3.184/2019</td>
+                            <td class="val-cell"><span class="cas">11</span><input type="text" id="c11" class="f-num" onchange="recalcTodo()"></td>
+                            <td class="val-cell"><span class="cas">13</span><input type="text" id="c13" class="f-num" onchange="recalcTodo()"></td>
+                        </tr>
+                        <tr class="row-total">
+                            <td class="inc-cell font-bold">c</td>
+                            <td class="font-bold">TOTAL INGRESOS BRUTOS GRAVADOS PERCIBIDOS EN EL EJERCICIO FISCAL (Suma de las casillas 12 y 13)</td>
+                            <td class="shaded-cell"></td>
+                            <td class="val-cell"><span class="cas">14</span><input type="text" id="c14" class="f-num" readonly></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- =============================================================== -->
+                <!-- RUBRO 2: EGRESOS DEDUCIBLES DEL EJERCICIO FISCAL                -->
+                <!-- =============================================================== -->
+                <table class="dnit-rubro-tbl">
+                    <thead>
+                        <tr>
+                            <th class="col-inc">INC.</th>
+                            <th class="col-desc">RUBRO 2 - EGRESOS DEDUCIBLES DEL EJERCICIO FISCAL</th>
+                            <th class="col-num-wide">IMPORTE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="inc-cell">a</td>
+                            <td>Egresos directamente relacionados con la actividad gravada</td>
+                            <td class="val-cell"><span class="cas">15</span><input type="text" id="c15" class="f-num" onchange="recalcTodo()"></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">b</td>
+                            <td>Egresos personales y a favor de familiares a cargo realizados en el país (con excepción de los egresos señalados en los incisos d e i del presente rubro)</td>
+                            <td class="val-cell"><span class="cas">16</span><input type="text" id="c16" class="f-num" onchange="recalcTodo()"></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">c</td>
+                            <td>Egresos personales y a favor de familiares a cargo realizados en el exterior destinados exclusivamente a la salud y a la educación</td>
+                            <td class="val-cell"><span class="cas">17</span><input type="text" id="c17" class="f-num" onchange="recalcTodo()"></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">d</td>
+                            <td>Egreso personal por la adquisición de un autovehículo cada 3 (tres) años</td>
+                            <td class="val-cell"><span class="cas">18</span><input type="text" id="c18" class="f-num" onchange="recalcTodo()"></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">e</td>
+                            <td>Aporte patronal a favor del trabajador realizado al Sistema de Seguridad Social creado o admitido por Ley o Decreto-Ley</td>
+                            <td class="val-cell"><span class="cas">19</span><input type="text" id="c19" class="f-num" onchange="recalcTodo()"></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">f</td>
+                            <td>Aporte a un Sistema privado de seguridad social realizado por el prestador de servicio personal independiente</td>
+                            <td class="val-cell"><span class="cas">20</span><input type="text" id="c20" class="f-num" onchange="recalcTodo()"></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">g</td>
+                            <td>Cuotas, aportes, diezmos y donaciones realizadas a favor del Estado y demás asociaciones o entidades civiles reconocidas como de beneficio público por la Administración Tributaria (hasta el 5% de la renta bruta gravada)</td>
+                            <td class="val-cell"><span class="cas">21</span><input type="text" id="c21" class="f-num" onchange="recalcTodo()"></td>
+                        </tr>
+                        <tr class="row-total">
+                            <td class="inc-cell font-bold">h</td>
+                            <td class="font-bold">EGRESOS DEDUCIDOS EN EL EJERCICIO FISCAL (Sumatoria de las casillas 15 al 21)</td>
+                            <td class="val-cell"><span class="cas">22</span><input type="text" id="c22" class="f-num" readonly></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell font-bold">i</td>
+                            <td class="font-bold">EGRESO PERSONAL POR LA ADQUISICIÓN AL CONTADO DE UN INMUEBLE PARA LA VIVIENDA CADA 5 (CINCO) AÑOS</td>
+                            <td class="val-cell"><span class="cas">23</span><input type="text" id="c23" class="f-num" onchange="recalcTodo()"></td>
+                        </tr>
+                        <tr class="row-total">
+                            <td class="inc-cell font-bold">j</td>
+                            <td class="font-bold">TOTAL DE EGRESOS DEDUCIBLES EN EL EJERCICIO FISCAL (Suma de las casillas 22 y 23)</td>
+                            <td class="val-cell"><span class="cas">24</span><input type="text" id="c24" class="f-num" readonly></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- =============================================================== -->
+                <!-- RUBRO 3: RESULTADO OBTENIDO LUEGO DE APLICAR LAS DEDUCCIONES    -->
+                <!-- =============================================================== -->
+                <table class="dnit-rubro-tbl">
+                    <thead>
+                        <tr>
+                            <th class="col-inc">INC.</th>
+                            <th class="col-desc">RUBRO 3 - RESULTADO OBTENIDO LUEGO DE APLICAR LAS DEDUCCIONES ADMITIDAS PARA LA LIQUIDACIÓN DEL IMPUESTO</th>
+                            <th class="col-num-wide">IMPORTE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="inc-cell">a</td>
+                            <td>Ingresos brutos gravados del ejercicio fiscal (proviene de la casilla 14 del Rubro 1)</td>
+                            <td class="val-cell"><span class="cas">25</span><input type="text" id="c25" class="f-num" readonly></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">b</td>
+                            <td>Menos: Egresos deducidos del ejercicio fiscal (proviene de la casilla 22 del Rubro 2, limitado hasta el monto de la casilla 25)</td>
+                            <td class="val-cell"><span class="cas">26</span><input type="text" id="c26" class="f-num" readonly></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">c</td>
+                            <td>Resultado después de descontar los Egresos Deducibles (Diferencia entre las casillas 25 y 26)</td>
+                            <td class="val-cell"><span class="cas">27</span><input type="text" id="c27" class="f-num" readonly></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">d</td>
+                            <td>Menos: Egreso personal por la adquisición al contado de un inmueble para la vivienda cada 5 (cinco) años (proviene de la casilla 23 del Rubro 2, hasta el monto de la casilla 27)</td>
+                            <td class="val-cell"><span class="cas">28</span><input type="text" id="c28" class="f-num" readonly></td>
+                        </tr>
+                        <tr class="row-total">
+                            <td class="inc-cell font-bold">e</td>
+                            <td class="font-bold">SUBTOTAL RENTA NETA IMPONIBLE ANTES DE CONSIDERAR EL SALDO ARRASTRABLE DE PÉRDIDAS DE EJERCICIOS ANTERIORES (Diferencia entre las casillas 27 y 28)</td>
+                            <td class="val-cell"><span class="cas">29</span><input type="text" id="c29" class="f-num" readonly></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">f</td>
+                            <td>Monto total o porción de los préstamos o financiaciones obtenidos y utilizados en el ejercicio o el remanente de los ingresos gravados de los 5 (cinco) últimos ejercicios (proviene de la casilla 102 del Anexo, cuando el monto consignado en la casilla 23 sea mayor a la casilla 27)</td>
+                            <td class="val-cell"><span class="cas">30</span><input type="text" id="c30" class="f-num" onchange="recalcTodo()"></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">g</td>
+                            <td>Saldo de egresos por la adquisición de un inmueble para la vivienda no arrastrable (Pérdida fiscal no arrastrable)</td>
+                            <td class="val-cell"><span class="cas">31</span><input type="text" id="c31" class="f-num" readonly></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">h</td>
+                            <td>Pérdida Fiscal por adquisición de un inmueble, arrastrable al siguiente ejercicio fiscal</td>
+                            <td class="val-cell"><span class="cas">32</span><input type="text" id="c32" class="f-num" readonly></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- =============================================================== -->
+                <!-- RUBRO 4: PÉRDIDA FISCAL ARRASTRABLE POR ADQUISICIÓN DE INMUEBLE -->
+                <!-- =============================================================== -->
+                <table class="dnit-rubro-tbl">
+                    <thead>
+                        <tr>
+                            <th class="col-inc">INC.</th>
+                            <th class="col-desc">RUBRO 4 - PÉRDIDA FISCAL ARRASTRABLE POR LA ADQUISICIÓN DE UN INMUEBLE PARA LA VIVIENDA</th>
+                            <th class="col-num-wide">IMPORTE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="inc-cell">a</td>
+                            <td>Pérdida Fiscal arrastrable por la adquisición de un inmueble para la vivienda, producida en el ejercicio fiscal que se liquida (proviene de la casilla 32 del Rubro 3)</td>
+                            <td class="val-cell"><span class="cas">33</span><input type="text" id="c33" class="f-num" readonly></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">b</td>
+                            <td>Más: Pérdida Fiscal arrastrable por la adquisición de un inmueble para la vivienda, proveniente del ejercicio fiscal anterior</td>
+                            <td class="val-cell"><span class="cas">34</span><input type="text" id="c34" class="f-num" onchange="recalcTodo()"></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">c</td>
+                            <td>Acumulado de Pérdida Fiscal por la adquisición de inmueble (Suma de las casillas 33 y 34)</td>
+                            <td class="val-cell"><span class="cas">35</span><input type="text" id="c35" class="f-num" readonly></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">d</td>
+                            <td>Menos: Porción de Pérdida Fiscal arrastrable que debe excluirse por haber superado los 5 (cinco) años de arrastre</td>
+                            <td class="val-cell"><span class="cas">36</span><input type="text" id="c36" class="f-num" onchange="recalcTodo()"></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">e</td>
+                            <td>Saldo de Pérdida Fiscal arrastrable susceptible de ser compensado en la liquidación del impuesto (Diferencia entre las casillas 35 y 36)</td>
+                            <td class="val-cell"><span class="cas">37</span><input type="text" id="c37" class="f-num" readonly></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">f</td>
+                            <td>Menos: Porción de Pérdida Fiscal proveniente de ejercicios fiscales anteriores que se compensa con la renta neta de la casilla 29 del Rubro 3 (limitada al 20% de la Renta Neta del ejercicio que se liquida)</td>
+                            <td class="val-cell"><span class="cas">38</span><input type="text" id="c38" class="f-num" readonly></td>
+                        </tr>
+                        <tr class="row-total">
+                            <td class="inc-cell font-bold">g</td>
+                            <td class="font-bold">Saldo de Pérdida Fiscal arrastrable susceptible de ser trasladado al ejercicio siguiente (Diferencia entre las casillas 37 y 38)</td>
+                            <td class="val-cell"><span class="cas">39</span><input type="text" id="c39" class="f-num" readonly></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- =============================================================== -->
+                <!-- RUBRO 5: DETERMINACIÓN DEL IMPUESTO Y LIQUIDACIÓN FINAL         -->
+                <!-- =============================================================== -->
+                <table class="dnit-rubro-tbl">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" class="col-inc">INC.</th>
+                            <th rowspan="2" class="col-desc">RUBRO 5 - DETERMINACIÓN DEL IMPUESTO Y LIQUIDACIÓN FINAL</th>
+                            <th colspan="2" style="text-align: center;">IMPORTE A FAVOR DEL:</th>
+                        </tr>
+                        <tr>
+                            <th class="col-num">CONTRIBUYENTE<br>-I-</th>
+                            <th class="col-num">FISCO<br>-II-</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="row-total">
+                            <td class="inc-cell font-bold">a</td>
+                            <td><strong>RENTA NETA IMPONIBLE</strong> (Diferencia entre las casillas 29 del Rubro 3 y 38 del Rubro 4)</td>
+                            <td class="shaded-cell"></td>
+                            <td class="val-cell"><span class="cas">45</span><input type="text" id="c45" class="f-num" readonly></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">b</td>
+                            <td><strong>IMPUESTO DETERMINADO A LA TASA DEL 8%</strong> Por la porción de la Renta Neta hasta G. 50.000.000</td>
+                            <td class="shaded-cell"></td>
+                            <td class="val-cell"><span class="cas">46</span><input type="text" id="c46" class="f-num" readonly></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">c</td>
+                            <td><strong>IMPUESTO DETERMINADO A LA TASA DEL 9%</strong> Por la porción de la Renta Neta desde G. 50.000.001 hasta G. 150.000.000</td>
+                            <td class="shaded-cell"></td>
+                            <td class="val-cell"><span class="cas">47</span><input type="text" id="c47" class="f-num" readonly></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">d</td>
+                            <td><strong>IMPUESTO DETERMINADO A LA TASA DEL 10%</strong> Por la porción de la Renta Neta mayor a G. 150.000.000</td>
+                            <td class="shaded-cell"></td>
+                            <td class="val-cell"><span class="cas">48</span><input type="text" id="c48" class="f-num" readonly></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">e</td>
+                            <td>Saldo a favor del contribuyente del ejercicio fiscal anterior (Proviene de la casilla 44 del ejercicio anterior)</td>
+                            <td class="val-cell"><span class="cas">40</span><input type="text" id="c40" class="f-num" onchange="recalcTodo()"></td>
+                            <td class="shaded-cell"></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">f</td>
+                            <td><strong>RETENCIONES:</strong> Monto de las retenciones computables a favor del contribuyente</td>
+                            <td class="val-cell"><span class="cas">41</span><input type="text" id="c41" class="f-num" onchange="recalcTodo()"></td>
+                            <td class="shaded-cell"></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">g</td>
+                            <td><strong>PERCEPCIONES:</strong> Monto de las percepciones computables a favor del contribuyente</td>
+                            <td class="val-cell"><span class="cas">42</span><input type="text" id="c42" class="f-num" onchange="recalcTodo()"></td>
+                            <td class="shaded-cell"></td>
+                        </tr>
+                        <tr>
+                            <td class="inc-cell">h</td>
+                            <td>Multa por presentar la Declaración Jurada con posterioridad al vencimiento</td>
+                            <td class="shaded-cell"></td>
+                            <td class="val-cell"><span class="cas">49</span><input type="text" id="c49" class="f-num" onchange="recalcTodo()"></td>
+                        </tr>
+                        <tr class="row-total">
+                            <td class="inc-cell font-bold">i</td>
+                            <td><strong>SUBTOTAL</strong> (Columna I: Sumatoria de las casillas 40 al 42); (Columna II: Sumatoria de las casillas 46 al 49)</td>
+                            <td class="val-cell"><span class="cas">43</span><input type="text" id="c43" class="f-num" readonly></td>
+                            <td class="val-cell"><span class="cas">50</span><input type="text" id="c50" class="f-num" readonly></td>
+                        </tr>
+                        <tr class="row-total">
+                            <td class="inc-cell font-bold">j</td>
+                            <td><strong>SALDO A FAVOR DEL CONTRIBUYENTE</strong> (Diferencia entre las casillas 43 y 50, cuando la casilla 43 sea mayor)</td>
+                            <td class="val-cell"><span class="cas">44</span><input type="text" id="c44" class="f-num" readonly style="color: #15803d;"></td>
+                            <td class="shaded-cell"></td>
+                        </tr>
+                        <tr class="row-total">
+                            <td class="inc-cell font-bold">k</td>
+                            <td><strong>SALDO A INGRESAR A FAVOR DEL FISCO</strong> (Diferencia entre las casillas 50 y 43, cuando la casilla 50 sea mayor)</td>
+                            <td class="shaded-cell"></td>
+                            <td class="val-cell"><span class="cas">51</span><input type="text" id="c51" class="f-num" readonly style="color: #dc2626;"></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Pie Oficial del Formulario 515 V1 -->
+                <div style="border: 1px solid #83a8b5; padding: 6px 10px; font-size: 10.5px; margin-bottom: 4px; background: #fff;">
+                    <strong>Estimado Contribuyente:</strong> Le recordamos que los pagos que efectúe, emergentes de esta liquidación, serán imputados en su cuenta corriente conforme a lo señalado en la Ley N° 125/1991, Art. 162.
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; color: #111; padding: 2px 4px;">
+                    <span>(*) Ley N° 7143/2023 «Que crea la Dirección Nacional de Ingresos Tributarios»</span>
+                    <span>Versión - Noviembre/2020</span>
+                </div>
+
+            </div>
+
+            <!-- ANEXO DE CONCILIACIÓN CON MOVIMIENTOS IRP DEL EJERCICIO -->
+            <div style="max-width: 1140px; margin: 16px auto 0 auto; background: white; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px;">
+                <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <h4 style="margin: 0; font-size: 0.92rem; font-weight: 800; color: #0f172a;"><i class="ph ph-chart-bar" style="color: #16a34a;"></i> Resumen de Conciliación con Egresos e Ingresos del Ejercicio</h4>
+                        <div style="font-size: 0.76rem; color: #64748b;">Desglose por inciso del Rubro 2 y principales proveedores computados en el ejercicio seleccionado.</div>
+                    </div>
+                    <a href="/app/resumen_irp" style="font-size: 0.78rem; font-weight: 800; color: #0284c7; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="ph ph-arrow-square-out"></i> Ver Hoja de Trabajo Resumen IRP
+                    </a>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px;">
+                    <div>
+                        <div style="font-size: 0.76rem; font-weight: 800; color: #334155; margin-bottom: 6px; text-transform: uppercase;">Clasificación de Egresos por Inciso (Rubro 2)</div>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem; border: 1px solid #cbd5e1;">
+                            <thead style="background: #f1f5f9; font-weight: 800; color: #1e293b;">
+                                <tr style="border-bottom: 1px solid #cbd5e1;">
+                                    <th style="padding: 6px 8px; text-align: left;">Inc. / Casilla</th>
+                                    <th style="padding: 6px 6px; text-align: center;">Comp.</th>
+                                    <th style="padding: 6px 8px; text-align: right;">Monto Sin IVA</th>
+                                    <th style="padding: 6px 8px; text-align: right;">Total Con IVA</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyAnexoIncisos">
+                                <tr><td colspan="4" style="text-align: center; padding: 14px; color: #64748b;">Sin movimientos en el ejercicio.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div>
+                        <div style="font-size: 0.76rem; font-weight: 800; color: #334155; margin-bottom: 6px; text-transform: uppercase;">Principales Proveedores del Ejercicio (Top 15)</div>
+                        <div style="max-height: 225px; overflow-y: auto; border: 1px solid #cbd5e1;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem;">
+                                <thead style="position: sticky; top: 0; background: #f1f5f9; font-weight: 800; color: #1e293b;">
+                                    <tr style="border-bottom: 1px solid #cbd5e1;">
+                                        <th style="padding: 6px 8px; text-align: left;">RUC / Proveedor</th>
+                                        <th style="padding: 6px 6px; text-align: center;">Cant.</th>
+                                        <th style="padding: 6px 8px; text-align: right;">Sin IVA</th>
+                                        <th style="padding: 6px 8px; text-align: right;">Total Con IVA</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyAnexoProveedores">
+                                    <tr><td colspan="4" style="text-align: center; padding: 14px; color: #64748b;">Sin proveedores registrados en el ejercicio.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <style>
+        /* Diseño fiel al Formulario 515 Versión 1 de la DNIT */
+        .dnit-v1-sheet {
+            max-width: 1140px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 3px solid #83a8b5;
+            padding: 8px;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #111;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.07);
+        }
+        .dnit-hdr-tbl {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 6px;
+        }
+        .dnit-hdr-tbl td {
+            border: 1px solid #83a8b5;
+            padding: 3px 6px;
+            vertical-align: middle;
+        }
+        .dnit-logo-box {
+            width: 185px;
+            text-align: center;
+            vertical-align: middle !important;
+            background: #fff;
+            padding: 8px 6px !important;
+        }
+        .dnit-brand-mark {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+        .dnit-word {
+            font-weight: 900;
+            font-size: 22px;
+            color: #1e3a8a;
+            line-height: 1;
+            letter-spacing: 0.5px;
+        }
+        .dnit-sub {
+            font-size: 7.5px;
+            color: #334155;
+            font-weight: bold;
+            text-align: left;
+            line-height: 1.1;
+        }
+        .form-tax-title {
+            font-size: 9.5px;
+            line-height: 1.18;
+            color: #111;
+            margin-top: 4px;
+        }
+        .form-ver {
+            font-weight: bold;
+            font-size: 10.5px;
+        }
+        .form-big-num {
+            font-size: 34px;
+            font-weight: 900;
+            line-height: 1.05;
+            margin-top: 4px;
+            color: #000;
+        }
+        .hdr-lbl {
+            font-size: 10px;
+            color: #222;
+            margin-bottom: 2px;
+        }
+        .hdr-val {
+            font-size: 12px;
+            font-weight: bold;
+            color: #000;
+            min-height: 17px;
+            background: #f8fafc;
+            padding: 1px 4px;
+        }
+        .hdr-input {
+            width: 100%;
+            border: none;
+            background: #f8fafc;
+            font-size: 11.5px;
+            font-weight: bold;
+            padding: 2px 4px;
+            box-sizing: border-box;
+        }
+        .cas-hdr {
+            text-align: center;
+            font-weight: bold;
+            font-size: 10.5px;
+            background: #eef4f6;
+        }
+        .yr-digit {
+            display: inline-block;
+            width: 20px;
+            height: 18px;
+            line-height: 17px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 11px;
+            border: 1px solid #83a8b5;
+            margin-left: -1px;
+            background: #fff;
+        }
+        .dnit-sub-banner {
+            background: #e3ecef;
+            border: 1px solid #83a8b5;
+            text-align: center;
+            font-weight: bold;
+            font-size: 10.5px;
+            padding: 5px;
+            margin-bottom: 6px;
+        }
+        .dnit-tabs-bar {
+            background: #88a7b0;
+            padding: 5px 10px;
+            display: flex;
+            gap: 18px;
+            margin-bottom: 6px;
+            border: 1px solid #72939d;
+        }
+        .dnit-tab {
+            color: #e2ecef;
+            font-size: 11.5px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+        .dnit-tab.active {
+            color: #ffffff;
+            background: rgba(255,255,255,0.2);
+            text-decoration: underline;
+        }
+        .dnit-rubro-tbl {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 8px;
+            font-size: 11px;
+        }
+        .dnit-rubro-tbl th {
+            background: #d3dfe3;
+            border: 1px solid #83a8b5;
+            padding: 4px 6px;
+            font-weight: bold;
+            color: #000;
+            font-size: 10.5px;
+        }
+        .dnit-rubro-tbl td {
+            border: 1px solid #83a8b5;
+            padding: 3px 6px;
+            vertical-align: middle;
+        }
+        .col-inc {
+            width: 32px;
+            text-align: center;
+        }
+        .col-desc {
+            text-align: left;
+        }
+        .col-num {
+            width: 185px;
+            text-align: center;
+        }
+        .col-num-wide {
+            width: 215px;
+            text-align: center;
+        }
+        .inc-cell {
+            text-align: center;
+            font-weight: normal;
+            background: #f9fbfc;
+        }
+        .val-cell {
+            padding: 0 !important;
+            background: #ffffff;
+            height: 25px;
+            display: table-cell;
+            position: relative;
+        }
+        .val-cell .cas {
+            display: inline-block;
+            width: 26px;
+            text-align: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: #111;
+            border-right: 1px solid #83a8b5;
+            background: #eef4f6;
+            line-height: 24px;
+            vertical-align: middle;
+        }
+        .val-cell .f-num {
+            width: calc(100% - 28px);
+            border: none;
+            padding: 2px 6px;
+            text-align: right;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11.5px;
+            font-weight: bold;
+            box-sizing: border-box;
+            background: transparent;
+            vertical-align: middle;
+            outline: none;
+        }
+        .val-cell .f-num:focus {
+            background: #fef9c3;
+        }
+        .val-cell .f-num[readonly] {
+            background: #f8fafc;
+        }
+        .shaded-cell {
+            background: repeating-linear-gradient(
+                to bottom,
+                #dce5e8,
+                #dce5e8 2px,
+                #cbd6da 2px,
+                #cbd6da 4px
+            );
+        }
+        .row-total td {
+            background: #f2f6f8;
+        }
+        .text-center { text-align: center; }
+        .font-bold { font-weight: bold; }
+    </style>
+
+    <script>
+        const ALL_515_KEYS = [
+            'c10','c12','c11','c13','c14',
+            'c15','c16','c17','c18','c19','c20','c21','c22','c23','c24',
+            'c25','c26','c27','c28','c29','c30','c31','c32',
+            'c33','c34','c35','c36','c37','c38','c39',
+            'c45','c46','c47','c48','c40','c41','c42','c49','c43','c50','c44','c51'
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const qAnio = params.get('anio');
+            if (qAnio && document.getElementById('selAnio')) {
+                const sel = document.getElementById('selAnio');
+                if (![...sel.options].some(o => o.value === qAnio)) {
+                    const opt = document.createElement('option');
+                    opt.value = qAnio;
+                    opt.textContent = qAnio;
+                    sel.appendChild(opt);
+                }
+                sel.value = qAnio;
+            }
+            cargarFormulario();
+        });
+
+        function cambiarTipoDeclaracion(tipo) {
+            document.getElementById('chkDeclOrig').checked = (tipo === 'O');
+            document.getElementById('chkDeclRect').checked = (tipo === 'R');
+        }
+
+        function seleccionarAnioChip(anio) {
+            const sel = document.getElementById('selAnio');
+            if (![...sel.options].some(o => o.value === String(anio))) {
+                const opt = document.createElement('option');
+                opt.value = String(anio);
+                opt.textContent = String(anio);
+                sel.appendChild(opt);
+            }
+            sel.value = String(anio);
+            cargarFormulario();
+        }
+
+        function actualizarDigitosAnio(anio) {
+            const box = document.getElementById('boxAnioDigits');
+            if (!box) return;
+            const str = String(anio).padStart(4, '0').slice(-4);
+            box.innerHTML = str.split('').map(d => `<span class="yr-digit">${d}</span>`).join('');
+        }
+
+        function cargarFormulario() {
+            const anio = document.getElementById('selAnio').value;
+            const modoEgresos = document.getElementById('selModoEgresos').value;
+            actualizarDigitosAnio(anio);
+
+            fetch(`/api/formulario-515/obtener?anio=${anio}&modoEgresos=${encodeURIComponent(modoEgresos)}`)
+                .then(res => res.json())
+                .then(res => {
+                    if (res.data) {
+                        poblarCampos(res.data);
+                    }
+                    if (res.resumenLibros) {
+                        renderResumenLibros(res.resumenLibros, res.status);
+                    }
+                    if (res.aniosConDatos) {
+                        renderAniosConDatos(res.aniosConDatos, parseInt(anio, 10));
+                    }
+                })
+                .catch(err => console.error('Error cargando formulario 515:', err));
+        }
+
+        function renderAniosConDatos(anios, curAnio) {
+            const bar = document.getElementById('aniosConDatosBar');
+            if (!bar) return;
+            if (!Array.isArray(anios) || anios.length === 0) {
+                bar.innerHTML = '';
+                return;
+            }
+            let html = '<span style="font-size: 0.74rem; font-weight: 700; color: #64748b;">Con datos:</span>';
+            anios.forEach(p => {
+                const a = parseInt(p.anio, 10);
+                const totComp = parseInt(p.cant_egresos || 0, 10) + parseInt(p.cant_ingresos || 0, 10);
+                const active = (a === curAnio);
+                const bg = active ? '#15803d' : '#f1f5f9';
+                const col = active ? '#ffffff' : '#334155';
+                const bdr = active ? '#15803d' : '#cbd5e1';
+
+                html += `<button type="button" onclick="seleccionarAnioChip(${a})" style="background: ${bg}; color: ${col}; border: 1px solid ${bdr}; border-radius: 6px; padding: 3px 9px; font-size: 0.74rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                    <i class="ph ph-calendar-check"></i> ${a} <span>(${totComp})</span>
+                </button>`;
+            });
+            bar.innerHTML = html;
+        }
+
+        function renderResumenLibros(res, statusOrigen) {
+            const setTxt = (id, v) => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = v;
+            };
+
+            const badgeOrigen = document.getElementById('badgeEstadoOrigenForm');
+            if (badgeOrigen) {
+                if (statusOrigen === 'found') {
+                    badgeOrigen.style.background = '#e0f2fe';
+                    badgeOrigen.style.color = '#0369a1';
+                    badgeOrigen.style.borderColor = '#7dd3fc';
+                    badgeOrigen.innerText = 'DDJJ Guardada en BD';
+                } else {
+                    badgeOrigen.style.background = '#dcfce7';
+                    badgeOrigen.style.color = '#15803d';
+                    badgeOrigen.style.borderColor = '#86efac';
+                    badgeOrigen.innerText = 'Calculado desde Movimientos';
+                }
+            }
+
+            setTxt('resBadgeCantIng', `${res.cantIngresos || 0} comp.`);
+            setTxt('resIngGravados', formatNumber(getNum('c14')));
+            setTxt('resIngExonerados', formatNumber(getNum('c10') + getNum('c11')));
+            setTxt('resCantFact', res.cantFacturas || 0);
+            setTxt('resCantLiq', res.cantLiqSalario || 0);
+
+            setTxt('resBadgeCantEgr', `${res.cantEgresos || 0} comp.`);
+            setTxt('resEgrDeducibles', formatNumber(getNum('c24')));
+            setTxt('resEgrSinIva', formatNumber(res.egrTotalSinIva || 0));
+            setTxt('resEgrConIva', formatNumber(res.egrTotalConIva || 0));
+
+            const tbInc = document.getElementById('tbodyAnexoIncisos');
+            if (tbInc && Array.isArray(res.porInciso)) {
+                const activos = res.porInciso.filter(r => (r.cantidad || 0) > 0);
+                if (activos.length === 0) {
+                    tbInc.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 14px; color: #64748b;">No hay egresos cargados en este ejercicio.</td></tr>';
+                } else {
+                    tbInc.innerHTML = activos.map(r => `
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 6px 8px;"><strong>Inc. ${r.inciso} [${r.casilla}]</strong> - ${r.nombre}</td>
+                            <td style="padding: 6px 6px; text-align: center; font-weight: 700;">${r.cantidad}</td>
+                            <td style="padding: 6px 8px; text-align: right; font-family: monospace; font-weight: 800; color: #15803d;">${formatNumber(Math.round(r.sinIva || 0))}</td>
+                            <td style="padding: 6px 8px; text-align: right; font-family: monospace; font-weight: 700; color: #475569;">${formatNumber(Math.round(r.conIva || 0))}</td>
+                        </tr>
+                    `).join('');
+                }
+            }
+
+            const tbProv = document.getElementById('tbodyAnexoProveedores');
+            if (tbProv && Array.isArray(res.topProveedores)) {
+                if (res.topProveedores.length === 0) {
+                    tbProv.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 14px; color: #64748b;">Sin proveedores en este ejercicio.</td></tr>';
+                } else {
+                    tbProv.innerHTML = res.topProveedores.map(p => `
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 5px 8px;"><strong style="color: #0f172a;">${p.nombre}</strong> <small style="color: #64748b;">(${p.ruc})</small></td>
+                            <td style="padding: 5px 6px; text-align: center; font-weight: 700;">${p.cantidad}</td>
+                            <td style="padding: 5px 8px; text-align: right; font-family: monospace; font-weight: 700; color: #15803d;">${formatNumber(Math.round(p.sinIva || 0))}</td>
+                            <td style="padding: 5px 8px; text-align: right; font-family: monospace; font-weight: 800;">${formatNumber(Math.round(p.conIva || 0))}</td>
+                        </tr>
+                    `).join('');
+                }
+            }
+        }
+
+        function actualizarCardResultadoFiscal() {
+            const setTxt = (id, v) => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = v;
+            };
+            setTxt('resIngGravados', formatNumber(getNum('c14')));
+            setTxt('resIngExonerados', formatNumber(getNum('c10') + getNum('c11')));
+            setTxt('resEgrDeducibles', formatNumber(getNum('c24')));
+            setTxt('resRentaNeta', formatNumber(getNum('c45')));
+            setTxt('resTramo8', formatNumber(getNum('c46')));
+            setTxt('resTramo9', formatNumber(getNum('c47')));
+            setTxt('resTramo10', formatNumber(getNum('c48')));
+
+            const c44 = getNum('c44');
+            const c51 = getNum('c51');
+            const card = document.getElementById('cardResultadoFiscal');
+            const tit = document.getElementById('lblTituloResultadoCard');
+            const cas = document.getElementById('lblCasillaResultadoCard');
+            const val = document.getElementById('valResultadoCard');
+            const sub = document.getElementById('subResultadoCard');
+            if (!card) return;
+
+            if (c44 > 0 && c51 === 0) {
+                card.style.background = '#f0fdf4';
+                card.style.borderColor = '#86efac';
+                card.style.borderLeft = '4px solid #16a34a';
+                tit.style.color = '#15803d';
+                tit.innerText = 'Saldo a Favor Contribuyente';
+                cas.style.color = '#15803d';
+                cas.style.borderColor = '#86efac';
+                cas.innerText = 'Casilla [44]';
+                val.style.color = '#15803d';
+                val.innerText = `Gs. ${formatNumber(c44)}`;
+                sub.innerText = 'Saldo a trasladar al siguiente ejercicio fiscal';
+            } else {
+                card.style.background = '#fef2f2';
+                card.style.borderColor = '#fca5a5';
+                card.style.borderLeft = '4px solid #dc2626';
+                tit.style.color = '#dc2626';
+                tit.innerText = 'Saldo a Ingresar al Fisco';
+                cas.style.color = '#dc2626';
+                cas.style.borderColor = '#fca5a5';
+                cas.innerText = 'Casilla [51]';
+                val.style.color = '#dc2626';
+                val.innerText = `Gs. ${formatNumber(c51)}`;
+                sub.innerText = 'Impuesto IRP determinado a ingresar';
+            }
+        }
+
+        function poblarCampos(data) {
+            ALL_515_KEYS.forEach(k => {
+                const input = document.getElementById(k);
+                if (input) {
+                    const dbVal = data[k.toUpperCase()] ?? data[k];
+                    input.value = dbVal !== undefined && dbVal !== null ? formatNumber(Math.round(parseFloat(dbVal) || 0)) : '0';
+                }
+            });
+
+            const tipo = (data.TIPO_DECLARACION || data.tipo_declaracion || 'O').toUpperCase();
+            cambiarTipoDeclaracion(tipo === 'R' ? 'R' : 'O');
+            document.getElementById('f_numOrden').value = data.NUM_ORDEN || data.num_orden || '';
+            document.getElementById('f_numOrdenRect').value = data.NUM_ORDEN_RECT || data.num_orden_rect || '0';
+            document.getElementById('chkCese').checked = ((data.CARACTER_CESE || data.caracter_cese || 'N') === 'S');
+            if (data.MODO_EGRESOS || data.modo_egresos) {
+                const m = data.MODO_EGRESOS || data.modo_egresos;
+                const selM = document.getElementById('selModoEgresos');
+                if (selM && [...selM.options].some(o => o.value === m)) {
+                    selM.value = m;
+                }
+            }
+            recalcTodo();
+        }
+
+        function getNum(id) {
+            const el = document.getElementById(id);
+            if (!el || !el.value) return 0;
+            const clean = el.value.toString().replace(/\./g, '').replace(',', '.');
+            const n = parseFloat(clean);
+            return isNaN(n) ? 0 : Math.max(0, Math.round(n));
+        }
+
+        function setNum(id, val) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.value = formatNumber(Math.max(0, Math.round(val)));
+            }
+        }
+
+        function formatNumber(num) {
+            return (Math.round(num) || 0).toLocaleString('es-PY');
+        }
+
+        function recalcTodo() {
+            // Rubro 1
+            const c10 = getNum('c10');
+            const c12 = getNum('c12');
+            const c11 = getNum('c11');
+            const c13 = getNum('c13');
+            const c14 = c12 + c13;
+            setNum('c10', c10);
+            setNum('c12', c12);
+            setNum('c11', c11);
+            setNum('c13', c13);
+            setNum('c14', c14);
+
+            // Rubro 2
+            const c15 = getNum('c15');
+            const c16 = getNum('c16');
+            const c17 = getNum('c17');
+            const c18 = getNum('c18');
+            const c19 = getNum('c19');
+            const c20 = getNum('c20');
+            let c21   = getNum('c21');
+            if (c14 > 0) {
+                const tope21 = Math.round(c14 * 0.05);
+                if (c21 > tope21) c21 = tope21;
+            }
+            const c22 = c15 + c16 + c17 + c18 + c19 + c20 + c21;
+            const c23 = getNum('c23');
+            const c24 = c22 + c23;
+
+            setNum('c15', c15);
+            setNum('c16', c16);
+            setNum('c17', c17);
+            setNum('c18', c18);
+            setNum('c19', c19);
+            setNum('c20', c20);
+            setNum('c21', c21);
+            setNum('c22', c22);
+            setNum('c23', c23);
+            setNum('c24', c24);
+
+            // Rubro 3
+            const c25 = c14;
+            const c26 = Math.min(c22, c25);
+            const c27 = Math.max(0, c25 - c26);
+            const c28 = Math.min(c23, c27);
+            const c29 = Math.max(0, c27 - c28);
+            const c30 = (c23 > c27) ? getNum('c30') : 0;
+            const excesoInmueble = Math.max(0, c23 - c28);
+            const c31 = Math.max(0, excesoInmueble - c30);
+            const c32 = Math.min(excesoInmueble, c30);
+
+            setNum('c25', c25);
+            setNum('c26', c26);
+            setNum('c27', c27);
+            setNum('c28', c28);
+            setNum('c29', c29);
+            setNum('c30', c30);
+            setNum('c31', c31);
+            setNum('c32', c32);
+
+            // Rubro 4
+            const c33 = c32;
+            const c34 = getNum('c34');
+            const c35 = c33 + c34;
+            const c36 = Math.min(getNum('c36'), c34);
+            const c37 = Math.max(0, c35 - c36);
+            const saldoAntCompensable = Math.max(0, c34 - c36);
+            const c38 = Math.min(saldoAntCompensable, Math.round(c29 * 0.20));
+            const c39 = Math.max(0, c37 - c38);
+
+            setNum('c33', c33);
+            setNum('c34', c34);
+            setNum('c35', c35);
+            setNum('c36', c36);
+            setNum('c37', c37);
+            setNum('c38', c38);
+            setNum('c39', c39);
+
+            // Rubro 5: Escala progresiva Art. 69 Ley N° 6380/2019
+            const c45 = Math.max(0, c29 - c38);
+            const c46 = Math.round(Math.min(c45, 50000000) * 0.08);
+            const c47 = Math.round(Math.max(0, Math.min(c45, 150000000) - 50000000) * 0.09);
+            const c48 = Math.round(Math.max(0, c45 - 150000000) * 0.10);
+
+            const c40 = getNum('c40');
+            const c41 = getNum('c41');
+            const c42 = getNum('c42');
+            const c49 = getNum('c49');
+
+            const c43 = c40 + c41 + c42;
+            const c50 = c46 + c47 + c48 + c49;
+            const c44 = (c43 > c50) ? (c43 - c50) : 0;
+            const c51 = (c50 > c43) ? (c50 - c43) : 0;
+
+            setNum('c45', c45);
+            setNum('c46', c46);
+            setNum('c47', c47);
+            setNum('c48', c48);
+            setNum('c40', c40);
+            setNum('c41', c41);
+            setNum('c42', c42);
+            setNum('c49', c49);
+            setNum('c43', c43);
+            setNum('c50', c50);
+            setNum('c44', c44);
+            setNum('c51', c51);
+
+            actualizarCardResultadoFiscal();
+        }
+
+        function recalcularLibros() {
+            const anio = document.getElementById('selAnio').value;
+            const modoEgresos = document.getElementById('selModoEgresos').value;
+
+            fetch(`/api/formulario-515/calcular?anio=${anio}&modoEgresos=${encodeURIComponent(modoEgresos)}`)
+                .then(res => res.json())
+                .then(res => {
+                    if (res.data) {
+                        poblarCampos(res.data);
+                        if (res.resumenLibros) {
+                            renderResumenLibros(res.resumenLibros, 'calculated');
+                        }
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: 'success',
+                                title: `Formulario 515 V1 (${anio}) recalculado desde los movimientos.`,
+                                showConfirmButton: false,
+                                timer: 2400
+                            });
+                        }
+                    }
+                })
+                .catch(err => console.error('Error calculando formulario 515:', err));
+        }
+
+        function guardarFormulario() {
+            const anio = document.getElementById('selAnio').value;
+            const modoEgresos = document.getElementById('selModoEgresos').value;
+
+            const payload = {
+                anio: anio,
+                modoEgresos: modoEgresos,
+                tipoDeclaracion: document.getElementById('chkDeclRect').checked ? 'R' : 'O',
+                numOrden: document.getElementById('f_numOrden').value.trim(),
+                numOrdenRect: document.getElementById('f_numOrdenRect').value.trim() || '0',
+                caracterCese: document.getElementById('chkCese').checked ? 'S' : 'N'
+            };
+
+            ALL_515_KEYS.forEach(k => {
+                payload[k] = getNum(k);
+            });
+
+            fetch('/api/formulario-515/guardar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    const badgeOrigen = document.getElementById('badgeEstadoOrigenForm');
+                    if (badgeOrigen) {
+                        badgeOrigen.style.background = '#e0f2fe';
+                        badgeOrigen.style.color = '#0369a1';
+                        badgeOrigen.style.borderColor = '#7dd3fc';
+                        badgeOrigen.innerText = 'DDJJ Guardada en BD';
+                    }
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Declaración Guardada',
+                            text: res.message,
+                            confirmButtonColor: '#16a34a'
+                        });
+                    } else {
+                        alert(res.message);
+                    }
+                } else {
+                    alert(res.message || 'Error al guardar.');
+                }
+            })
+            .catch(err => console.error('Error guardando formulario 515:', err));
+        }
+
+        function imprimirFormulario() {
+            const anio = document.getElementById('selAnio').value;
+            const modoEgresos = document.getElementById('selModoEgresos').value;
+            const badge = document.getElementById('badgeEstadoOrigenForm');
+            const esCalc = badge && badge.innerText.includes('Calculado');
+            window.open(`/app/formulario-515/print?anio=${anio}&modoEgresos=${encodeURIComponent(modoEgresos)}${esCalc ? '&origen=calc' : ''}`, '_blank');
+        }
+
+        function exportarXlsFormulario515() {
+            const anio = document.getElementById('selAnio').value;
+            const modoEgresos = document.getElementById('selModoEgresos').value;
+            window.location.href = `/api/formulario-515/exportar-xls?anio=${anio}&modoEgresos=${encodeURIComponent(modoEgresos)}`;
+        }
+    </script>
+</body>
+</html>

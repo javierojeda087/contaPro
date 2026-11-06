@@ -1185,7 +1185,11 @@ class ReportesContablesController {
         if (((int)($saved['C166'] ?? 0) === 0) && ((int)($saved['C47'] ?? 0) > 0)) {
             $saved['C166'] = (int)$saved['C47'];
         }
-        if (((int)($saved['C62'] ?? 0) === 0) && ((int)($saved['C40'] ?? 0) > 0)) {
+        if (((int)($saved['C12'] ?? 0) === 0) && ((int)($autoData['C12'] ?? 0) === 0) && ((int)($autoData['C62'] ?? 0) === 0)) {
+            foreach (['C40', 'C41', 'C59', 'C65', 'C60', 'C66', 'C61', 'C62', 'C64'] as $kFixR6) {
+                $saved[$kFixR6] = (int)($autoData[$kFixR6] ?? 0);
+            }
+        } elseif (((int)($saved['C62'] ?? 0) === 0) && ((int)($saved['C40'] ?? 0) > 0)) {
             $saved['C62'] = (int)$saved['C40'];
         }
         if (((int)($saved['C12'] ?? 0) > 0) && ((int)($autoData['C12'] ?? 0) === 0)) {
@@ -1600,9 +1604,10 @@ class ReportesContablesController {
             $proveedoresResumen[$pKey]['total']   += $sign * $totRaw;
 
             $f120Modo = strtoupper(trim((string)($rc['form_120'] ?? 'DIRECTO')));
-            $esProrrateo = str_contains($f120Modo, 'PRORRAT') || str_contains($f120Modo, 'INDIST');
+            $esProrrateo  = str_contains($f120Modo, 'PRORRAT') || str_contains($f120Modo, 'INDIST');
+            $esExonerada  = str_contains($f120Modo, 'EXONER') || str_contains($f120Modo, 'RUBRO6') || str_contains($f120Modo, 'EXENTA');
 
-            if ($imputaIva) {
+            if ($imputaIva && !$esExonerada) {
                 $cantCompImputaIva++;
                 if ($esProrrateo) {
                     $proBase10 += $sign * $b10;
@@ -1615,16 +1620,17 @@ class ReportesContablesController {
                     $dirIva10  += $sign * $i10;
                     $dirBase5  += $sign * $b5;
                     $dirIva5   += $sign * $i5;
-                    $compExentasDirecto += $sign * $exRaw;
                 }
             } else {
                 $cantCompSoloIrp++;
                 $montoNoImputaIva += $sign * $totRaw;
-                $noIvaBase10 += $sign * $b10;
-                $noIva10     += $sign * $i10;
-                $noIvaBase5  += $sign * $b5;
-                $noIva5      += $sign * $i5;
-                $compExentasDirecto += $sign * $exRaw;
+                if ($esExonerada) {
+                    $noIvaBase10 += $sign * $b10;
+                    $noIva10     += $sign * $i10;
+                    $noIvaBase5  += $sign * $b5;
+                    $noIva5      += $sign * $i5;
+                    $compExentasDirecto += $sign * $exRaw;
+                }
             }
         }
 
@@ -1713,14 +1719,17 @@ class ReportesContablesController {
         $c58  = ($c57 > $c53) ? ($c57 - $c53) : 0;
 
         // 6. Información de las Compras vinculadas a operaciones exoneradas o no alcanzadas (Rubro 6 Versión 4)
-        $c59  = max(0, (int)round($noIvaBase10));
-        $c65  = max(0, (int)round($noIva10));
-        $c60  = max(0, (int)round($noIvaBase5));
-        $c66  = max(0, (int)round($noIva5));
-        $c61  = max(0, (int)round($compExentasIndistinto));
-        $c62  = max(0, (int)round($compExentasDirecto));
+        // Según instructivo DNIT, si el contribuyente no realiza operaciones exoneradas o no alcanzadas (C12=0 y C26=0),
+        // las compras exentas vinculadas a su actividad gravada no se declaran en el Rubro 6.
+        $tieneOpExoneradas = ($c12 > 0 || $c26 > 0);
+        $c59  = $tieneOpExoneradas ? max(0, (int)round($noIvaBase10)) : 0;
+        $c65  = $tieneOpExoneradas ? max(0, (int)round($noIva10)) : 0;
+        $c60  = $tieneOpExoneradas ? max(0, (int)round($noIvaBase5)) : 0;
+        $c66  = $tieneOpExoneradas ? max(0, (int)round($noIva5)) : 0;
+        $c61  = $tieneOpExoneradas ? max(0, (int)round($compExentasIndistinto)) : 0;
+        $c62  = $tieneOpExoneradas ? max(0, (int)round($compExentasDirecto)) : 0;
         $c63  = 0;
-        $c64  = max(0, $c65 + $c66 + max(0, $c39 - $c164)); // IVA Costo o Gasto deducible en IRE o IRP
+        $c64  = $tieneOpExoneradas ? max(0, $c65 + $c66 + max(0, $c39 - $c164)) : 0; // IVA Costo o Gasto deducible en IRE o IRP
         $c170 = $c167;
 
         $form = [
@@ -2770,5 +2779,725 @@ class ReportesContablesController {
                 'impuestoAPagar'       => $impuestoAPagar,
             ],
         ];
+    }
+
+    // =========================================================================
+    // 9. FORMULARIO N° 515 - IMPUESTO A LA RENTA PERSONAL (VERSIÓN 1 - DNIT)
+    // =========================================================================
+    private static function ensureFormulario515Table(): void {
+        try {
+            Database::execute("
+                CREATE TABLE IF NOT EXISTS `co_formulario_515` (
+                  `id_propietario` INT NOT NULL DEFAULT 1,
+                  `cod_empresa` VARCHAR(10) NOT NULL,
+                  `anio` INT NOT NULL,
+                  `tipo_declaracion` VARCHAR(1) DEFAULT 'O',
+                  `num_orden` VARCHAR(30) DEFAULT NULL,
+                  `num_orden_rect` VARCHAR(30) DEFAULT NULL,
+                  `caracter_cese` VARCHAR(1) DEFAULT 'N',
+                  `modo_egresos` VARCHAR(15) DEFAULT 'SIN_IVA',
+                  `c10` BIGINT DEFAULT 0, `c12` BIGINT DEFAULT 0,
+                  `c11` BIGINT DEFAULT 0, `c13` BIGINT DEFAULT 0,
+                  `c14` BIGINT DEFAULT 0,
+                  `c15` BIGINT DEFAULT 0, `c16` BIGINT DEFAULT 0, `c17` BIGINT DEFAULT 0,
+                  `c18` BIGINT DEFAULT 0, `c19` BIGINT DEFAULT 0, `c20` BIGINT DEFAULT 0,
+                  `c21` BIGINT DEFAULT 0, `c22` BIGINT DEFAULT 0, `c23` BIGINT DEFAULT 0, `c24` BIGINT DEFAULT 0,
+                  `c25` BIGINT DEFAULT 0, `c26` BIGINT DEFAULT 0, `c27` BIGINT DEFAULT 0,
+                  `c28` BIGINT DEFAULT 0, `c29` BIGINT DEFAULT 0, `c30` BIGINT DEFAULT 0,
+                  `c31` BIGINT DEFAULT 0, `c32` BIGINT DEFAULT 0,
+                  `c33` BIGINT DEFAULT 0, `c34` BIGINT DEFAULT 0, `c35` BIGINT DEFAULT 0,
+                  `c36` BIGINT DEFAULT 0, `c37` BIGINT DEFAULT 0, `c38` BIGINT DEFAULT 0, `c39` BIGINT DEFAULT 0,
+                  `c45` BIGINT DEFAULT 0, `c46` BIGINT DEFAULT 0, `c47` BIGINT DEFAULT 0, `c48` BIGINT DEFAULT 0,
+                  `c40` BIGINT DEFAULT 0, `c41` BIGINT DEFAULT 0, `c42` BIGINT DEFAULT 0, `c49` BIGINT DEFAULT 0,
+                  `c43` BIGINT DEFAULT 0, `c50` BIGINT DEFAULT 0, `c44` BIGINT DEFAULT 0, `c51` BIGINT DEFAULT 0,
+                  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id_propietario`, `cod_empresa`, `anio`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ", true);
+        } catch (\Throwable $ignored) {}
+    }
+
+    public static function pageFormulario515(): void {
+        if (!self::requireAuth(false)) return;
+        self::ensureFormulario515Table();
+        $idProp     = TenantContext::idPropietario();
+        $codEmpresa = TenantContext::empresa();
+        $ejercicio  = (int)EjercicioService::getEjercicio();
+        $defAnio    = isset($_GET['anio']) && (int)$_GET['anio'] >= 2018 ? (int)$_GET['anio'] : ($ejercicio > 0 ? $ejercicio : (int)date('Y'));
+
+        if (!isset($_GET['anio'])) {
+            try {
+                $bestYear = Database::queryForRow(
+                    "SELECT anio, SUM(cnt) AS total_comp FROM (
+                        SELECT YEAR(fec_egreso) AS anio, COUNT(*) AS cnt
+                        FROM co_egresos
+                        WHERE id_propietario = ? AND cod_empresa = ? AND COALESCE(estado, 'A') <> 'I' AND fec_egreso IS NOT NULL
+                        GROUP BY YEAR(fec_egreso)
+                        UNION ALL
+                        SELECT YEAR(fec_ingreso) AS anio, COUNT(*) AS cnt
+                        FROM co_ingresos
+                        WHERE id_propietario = ? AND cod_empresa = ? AND COALESCE(anulada, 'N') <> 'S' AND COALESCE(estado, 'A') <> 'I' AND fec_ingreso IS NOT NULL
+                        GROUP BY YEAR(fec_ingreso)
+                    ) t
+                    WHERE anio IS NOT NULL
+                    GROUP BY anio
+                    ORDER BY total_comp DESC, anio DESC
+                    LIMIT 1",
+                    [$idProp, $codEmpresa, $idProp, $codEmpresa]
+                );
+                if ($bestYear && !empty($bestYear['anio'])) {
+                    $defAnio = (int)$bestYear['anio'];
+                }
+            } catch (\Throwable $ignored) {}
+        }
+
+        self::renderFormPage('formulario_515', [
+            'empresa'     => self::fetchForm120EmpresaInfo($codEmpresa),
+            'nomForma'    => 'COF51500',
+            'tituloForma' => 'Formulario N° 515 - Impuesto a la Renta Personal (Versión 1)',
+            'defAnio'     => $defAnio,
+        ]);
+    }
+
+    public static function apiFormulario515Obtener(): void {
+        if (!self::requireAuth()) return;
+        self::ensureFormulario515Table();
+        $idProp      = TenantContext::idPropietario();
+        $codEmpresa  = TenantContext::empresa();
+        $anio        = (int)($_GET['anio'] ?? date('Y'));
+        $modoEgresos = strtoupper(trim((string)($_GET['modoEgresos'] ?? 'SIN_IVA')));
+
+        $autoCalc = self::calcularFormulario515Auto($idProp, $codEmpresa, $anio, $modoEgresos);
+
+        $rows = Database::queryForListUpper(
+            "SELECT * FROM co_formulario_515 WHERE id_propietario = ? AND cod_empresa = ? AND anio = ? LIMIT 1",
+            [$idProp, $codEmpresa, $anio]
+        );
+        if (!empty($rows) && !isset($_GET['modoEgresos'])) {
+            $saved    = $rows[0];
+            $autoData = $autoCalc['data'];
+            foreach ($autoData as $k => $v) {
+                if (!array_key_exists($k, $saved) || $saved[$k] === null) {
+                    $saved[$k] = $v;
+                }
+            }
+            $savedMov = (int)($saved['C14'] ?? 0) + (int)($saved['C24'] ?? 0) + (int)($saved['C41'] ?? 0);
+            $autoMov  = (int)($autoData['C14'] ?? 0) + (int)($autoData['C24'] ?? 0) + (int)($autoData['C41'] ?? 0);
+
+            View::json([
+                'status'          => ($savedMov === 0 && $autoMov > 0) ? 'calculated' : 'found',
+                'data'            => ($savedMov === 0 && $autoMov > 0) ? $autoData : $saved,
+                'calculadoLibros' => $autoData,
+                'resumenLibros'   => $autoCalc['resumenLibros'],
+                'aniosConDatos'   => $autoCalc['aniosConDatos'],
+                'empresa'         => self::fetchForm120EmpresaInfo($codEmpresa),
+            ]);
+            return;
+        }
+        View::json($autoCalc);
+    }
+
+    public static function apiFormulario515Calcular(): void {
+        if (!self::requireAuth()) return;
+        self::ensureFormulario515Table();
+        $idProp      = TenantContext::idPropietario();
+        $codEmpresa  = TenantContext::empresa();
+        $anio        = (int)($_GET['anio'] ?? date('Y'));
+        $modoEgresos = strtoupper(trim((string)($_GET['modoEgresos'] ?? 'SIN_IVA')));
+        View::json(self::calcularFormulario515Auto($idProp, $codEmpresa, $anio, $modoEgresos));
+    }
+
+    private static function calcularFormulario515Auto(int $idProp, string $codEmpresa, int $anio, string $modoEgresos = 'SIN_IVA'): array {
+        $startDateStr = sprintf('%04d-01-01', $anio);
+        $endDateStr   = sprintf('%04d-12-31', $anio);
+        MovimientosContablesController::ensureRetencionesSufridasTables();
+
+        // 0. Ejercicios con movimientos cargados para barra de acceso rápido
+        $aniosConDatos = [];
+        try {
+            $aniosConDatos = Database::queryForList(
+                "SELECT anio,
+                        SUM(cant_egresos) AS cant_egresos,
+                        SUM(total_egresos) AS total_egresos,
+                        SUM(cant_ingresos) AS cant_ingresos,
+                        SUM(total_ingresos) AS total_ingresos
+                 FROM (
+                    SELECT YEAR(fec_egreso) AS anio,
+                           COUNT(*) AS cant_egresos, COALESCE(SUM(valor_total), 0) AS total_egresos,
+                           0 AS cant_ingresos, 0 AS total_ingresos
+                    FROM co_egresos
+                    WHERE id_propietario = ? AND cod_empresa = ? AND COALESCE(estado, 'A') <> 'I' AND fec_egreso IS NOT NULL
+                    GROUP BY YEAR(fec_egreso)
+                    UNION ALL
+                    SELECT YEAR(fec_ingreso) AS anio,
+                           0 AS cant_egresos, 0 AS total_egresos,
+                           COUNT(*) AS cant_ingresos, COALESCE(SUM(valor_total), 0) AS total_ingresos
+                    FROM co_ingresos
+                    WHERE id_propietario = ? AND cod_empresa = ? AND COALESCE(anulada, 'N') <> 'S' AND COALESCE(estado, 'A') <> 'I' AND fec_ingreso IS NOT NULL
+                    GROUP BY YEAR(fec_ingreso)
+                 ) y
+                 WHERE anio IS NOT NULL
+                 GROUP BY anio
+                 ORDER BY anio DESC",
+                [$idProp, $codEmpresa, $idProp, $codEmpresa]
+            );
+        } catch (\Throwable $ignored) {}
+
+        // 1. Ingresos del ejercicio fiscal (Rubro 1)
+        $rowsIng = Database::queryForList(
+            "SELECT id_ingreso, tip_doc, CAST(COALESCE(cod_regimen, 1) AS UNSIGNED) AS cod_regimen, regimen,
+                    COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
+                    COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
+                    COALESCE(exentas, 0) AS exentas, COALESCE(no_gravado, 0) AS no_gravado,
+                    COALESCE(tot_iva, 0) AS tot_iva, COALESCE(valor_total, 0) AS valor_total
+             FROM co_ingresos
+             WHERE id_propietario = ? AND cod_empresa = ?
+               AND fec_ingreso >= ? AND fec_ingreso <= ?
+               AND COALESCE(anulada, 'N') <> 'S'
+               AND COALESCE(inutilizado, 'N') <> 'S'
+               AND COALESCE(estado, 'A') <> 'I'
+             ORDER BY fec_ingreso ASC, id_ingreso ASC",
+            [$idProp, $codEmpresa, $startDateStr, $endDateStr]
+        );
+
+        $cantIngresos   = 0;
+        $cantFacturas   = 0;
+        $cantLiqSalario = 0;
+        $ingBrutoTotal  = 0.0;
+        $ingExonerados  = 0.0;
+        $ingGravados    = 0.0;
+
+        foreach ($rowsIng as $ri) {
+            $rawReg = strtoupper(trim((string)($ri['regimen'] ?? $ri['cod_regimen'] ?? '1')));
+            $codReg = (int)($ri['cod_regimen'] ?? 1);
+            // Excluir ingresos que sean exclusivamente IVA (3) o Ganancias de Capital (4 - Form. 516)
+            if ($rawReg === '3' || $rawReg === 'IVA' || $codReg === 3 || $rawReg === '4' || str_contains($rawReg, 'CAPITAL') || $codReg === 4) {
+                continue;
+            }
+            $cantIngresos++;
+
+            $tipDoc   = strtoupper(trim((string)($ri['tip_doc'] ?? 'FAC')));
+            $esLiqSal = ($tipDoc === 'LIQ' || str_contains($tipDoc, 'LIQUIDAC'));
+            if ($esLiqSal) {
+                $cantLiqSalario++;
+            } else {
+                $cantFacturas++;
+            }
+
+            $sign  = ($tipDoc === 'NCR' || str_contains($tipDoc, 'CRED') || str_contains($tipDoc, 'CRÉD')) ? -1.0 : 1.0;
+            $tot   = max(0.0, (float)$ri['valor_total']);
+            $g10   = max(0.0, (float)$ri['grav10']);
+            $i10   = max(0.0, (float)$ri['iva10']);
+            $g5    = max(0.0, (float)$ri['grav5']);
+            $i5    = max(0.0, (float)$ri['iva5']);
+            $ex    = max(0.0, (float)$ri['exentas']);
+            $noGrv = max(0.0, (float)$ri['no_gravado']);
+
+            [$b10, ] = self::extraerBaseImponibleEImpuesto($g10, $i10, 10);
+            [$b5,  ] = self::extraerBaseImponibleEImpuesto($g5,  $i5,  5);
+            $gravIrp = $b10 + $b5 + $ex;
+
+            if ($tot > 0 && $gravIrp <= 0 && !$esLiqSal && $noGrv <= 0) {
+                $totIva  = max(0.0, (float)$ri['tot_iva']);
+                $gravIrp = $totIva > 0 ? max(0.0, $tot - $totIva) : round($tot / 1.1);
+            }
+
+            $ingBrutoTotal += $sign * $tot;
+            $ingExonerados += $sign * $noGrv;
+            $ingGravados   += $sign * $gravIrp;
+        }
+
+        $c10 = max(0, (int)round($ingExonerados));
+        $c12 = max(0, (int)round($ingGravados));
+        $c11 = 0;
+        $c13 = 0;
+        $c14 = $c12 + $c13;
+
+        // 2. Mapas de Tipos de Egreso y Clasificación de Gastos
+        $mapTiposEgreso = [];
+        $mapClasifGasto = [];
+        try {
+            foreach (Database::queryForList("SELECT cod_tipo, descripcion FROM co_tipos_egreso WHERE id_propietario = ?", [$idProp]) as $te) {
+                $k1 = trim((string)($te['cod_tipo'] ?? ''));
+                $k2 = (string)(int)((float)($te['cod_tipo'] ?? 0));
+                $desc = strtoupper(trim((string)($te['descripcion'] ?? '')));
+                if ($k1 !== '') $mapTiposEgreso[$k1] = $desc;
+                if ($k2 !== '') $mapTiposEgreso[$k2] = $desc;
+            }
+        } catch (\Throwable $ignored) {}
+        try {
+            foreach (Database::queryForList("SELECT cod_clasificacion, descripcion FROM co_clasificacion_gasto WHERE id_propietario = ?", [$idProp]) as $cg) {
+                $k1 = trim((string)($cg['cod_clasificacion'] ?? ''));
+                $k2 = (string)(int)((float)($cg['cod_clasificacion'] ?? 0));
+                $desc = strtoupper(trim((string)($cg['descripcion'] ?? '')));
+                if ($k1 !== '') $mapClasifGasto[$k1] = $desc;
+                if ($k2 !== '') $mapClasifGasto[$k2] = $desc;
+            }
+        } catch (\Throwable $ignored) {}
+
+        // 3. Egresos Deducibles del Ejercicio Fiscal (Rubro 2)
+        $rowsEgr = Database::queryForList(
+            "SELECT id_egreso, tip_doc, tip_egreso, clasificacion_gasto, observacion,
+                    CAST(COALESCE(cod_regimen, 1) AS UNSIGNED) AS cod_regimen, regimen,
+                    nom_proveedor, ruc_proveedor,
+                    COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
+                    COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
+                    COALESCE(exentas, 0) AS exentas, COALESCE(tot_iva, 0) AS tot_iva,
+                    COALESCE(valor_total, 0) AS valor_total
+             FROM co_egresos
+             WHERE id_propietario = ? AND cod_empresa = ?
+               AND fec_egreso >= ? AND fec_egreso <= ?
+               AND COALESCE(estado, 'A') <> 'I'
+             ORDER BY fec_egreso ASC, id_egreso ASC",
+            [$idProp, $codEmpresa, $startDateStr, $endDateStr]
+        );
+
+        $cantEgresos       = 0;
+        $egrTotalSinIva    = 0.0;
+        $egrTotalConIva    = 0.0;
+        $sumC15 = 0.0; // Actividad gravada
+        $sumC16 = 0.0; // Personales y familiares en el país
+        $sumC17 = 0.0; // Personales en el exterior (salud y educación)
+        $sumC18 = 0.0; // Autovehículo cada 3 años
+        $sumC19 = 0.0; // Aporte patronal seguridad social
+        $sumC20 = 0.0; // Aporte sistema privado seguridad social
+        $sumC21 = 0.0; // Donaciones, cuotas, diezmos (tope 5% de C14)
+        $sumC23 = 0.0; // Adquisición al contado de inmueble para vivienda cada 5 años
+
+        $porIncisoResumen = [
+            '15' => ['casilla' => '15', 'inciso' => 'a', 'nombre' => 'Egresos directamente relacionados con la actividad gravada', 'cantidad' => 0, 'sinIva' => 0.0, 'conIva' => 0.0],
+            '16' => ['casilla' => '16', 'inciso' => 'b', 'nombre' => 'Egresos personales y a favor de familiares a cargo en el país', 'cantidad' => 0, 'sinIva' => 0.0, 'conIva' => 0.0],
+            '17' => ['casilla' => '17', 'inciso' => 'c', 'nombre' => 'Egresos personales y familiares en el exterior (salud/educación)', 'cantidad' => 0, 'sinIva' => 0.0, 'conIva' => 0.0],
+            '18' => ['casilla' => '18', 'inciso' => 'd', 'nombre' => 'Adquisición de un autovehículo cada 3 (tres) años', 'cantidad' => 0, 'sinIva' => 0.0, 'conIva' => 0.0],
+            '19' => ['casilla' => '19', 'inciso' => 'e', 'nombre' => 'Aporte patronal al Sistema de Seguridad Social', 'cantidad' => 0, 'sinIva' => 0.0, 'conIva' => 0.0],
+            '20' => ['casilla' => '20', 'inciso' => 'f', 'nombre' => 'Aporte a un Sistema privado de seguridad social independiente', 'cantidad' => 0, 'sinIva' => 0.0, 'conIva' => 0.0],
+            '21' => ['casilla' => '21', 'inciso' => 'g', 'nombre' => 'Cuotas, aportes, diezmos y donaciones (hasta 5% renta bruta)', 'cantidad' => 0, 'sinIva' => 0.0, 'conIva' => 0.0],
+            '23' => ['casilla' => '23', 'inciso' => 'i', 'nombre' => 'Adquisición al contado de un inmueble para la vivienda cada 5 años', 'cantidad' => 0, 'sinIva' => 0.0, 'conIva' => 0.0],
+        ];
+        $proveedoresResumen = [];
+
+        foreach ($rowsEgr as $re) {
+            $rawRegE = strtoupper(trim((string)($re['regimen'] ?? $re['cod_regimen'] ?? '1')));
+            $codRegE = (int)($re['cod_regimen'] ?? 1);
+            // Excluir comprobantes que sean exclusivamente IVA (3) o Ganancias de Capital (4)
+            if ($rawRegE === '3' || $rawRegE === 'IVA' || $codRegE === 3 || $rawRegE === '4' || str_contains($rawRegE, 'CAPITAL') || $codRegE === 4) {
+                continue;
+            }
+            $cantEgresos++;
+
+            $tipDocE = strtoupper(trim((string)($re['tip_doc'] ?? 'FAC')));
+            $sign    = ($tipDocE === 'NCR' || str_contains($tipDocE, 'CRED') || str_contains($tipDocE, 'CRÉD')) ? -1.0 : 1.0;
+
+            $tot = max(0.0, (float)$re['valor_total']);
+            $g10 = max(0.0, (float)$re['grav10']);
+            $i10 = max(0.0, (float)$re['iva10']);
+            $g5  = max(0.0, (float)$re['grav5']);
+            $i5  = max(0.0, (float)$re['iva5']);
+            $ex  = max(0.0, (float)$re['exentas']);
+
+            [$b10, ] = self::extraerBaseImponibleEImpuesto($g10, $i10, 10);
+            [$b5,  ] = self::extraerBaseImponibleEImpuesto($g5,  $i5,  5);
+            $sinIva  = $b10 + $b5 + $ex;
+
+            if ($tot > 0 && $sinIva <= 0) {
+                $totIva = max(0.0, (float)$re['tot_iva']);
+                $sinIva = $totIva > 0 ? max(0.0, $tot - $totIva) : round($tot / 1.1);
+            }
+
+            $egrTotalSinIva += $sign * $sinIva;
+            $egrTotalConIva += $sign * $tot;
+
+            $codTe  = trim((string)($re['tip_egreso'] ?? ''));
+            $codCg  = trim((string)($re['clasificacion_gasto'] ?? '1'));
+            if (is_numeric($codCg)) {
+                $codCg = (string)(int)round((float)$codCg);
+            }
+            $descTe = $mapTiposEgreso[$codTe] ?? '';
+            $descCg = $mapClasifGasto[$codCg] ?? '';
+            $obs    = strtoupper(trim((string)($re['observacion'] ?? '')));
+            $texto  = strtoupper($codTe . ' ' . $descTe . ' ' . $codCg . ' ' . $descCg . ' ' . $obs);
+
+            $esPersonal = ($codCg === '3' || $codCg === '4' || str_contains($descCg, 'PERSONAL') || str_contains($descCg, 'FAMILIAR'));
+            $esSoloIrp  = ($rawRegE === '2' || $rawRegE === 'IRP' || $codRegE === 2);
+
+            if ($modoEgresos === 'CON_IVA') {
+                $montoElegido = $tot;
+            } elseif ($modoEgresos === 'MIXTO') {
+                $montoElegido = ($esSoloIrp || $esPersonal) ? $tot : $sinIva;
+            } else {
+                $montoElegido = $sinIva;
+            }
+
+            // Determinar casilla de Rubro 2 según tipo de egreso y clasificación
+            if (str_contains($texto, 'DONAC') || str_contains($texto, 'DIEZMO')) {
+                $casTarget = '21';
+                $sumC21 += $sign * $montoElegido;
+            } elseif (str_contains($texto, 'PATRONAL')) {
+                $casTarget = '19';
+                $sumC19 += $sign * $montoElegido;
+            } elseif (str_contains($texto, 'PRIVADO') && str_contains($texto, 'SEGURIDAD')) {
+                $casTarget = '20';
+                $sumC20 += $sign * $montoElegido;
+            } elseif (str_contains($texto, 'AUTOVEH') || str_contains($texto, 'RODADO')) {
+                $casTarget = '18';
+                $sumC18 += $sign * $montoElegido;
+            } elseif (str_contains($texto, 'INMUEBLE') && str_contains($texto, 'VIVIENDA') && str_contains($texto, 'CONTADO')) {
+                $casTarget = '23';
+                $sumC23 += $sign * $montoElegido;
+            } elseif (str_contains($texto, 'EXTERIOR')) {
+                $casTarget = '17';
+                $sumC17 += $sign * $montoElegido;
+            } elseif ($esPersonal && $modoEgresos === 'SEPARAR_PERSONALES') {
+                $casTarget = '16';
+                $sumC16 += $sign * $montoElegido;
+            } else {
+                // Por defecto (y tal como declara el contador en el ejemplo adjunto), va a Casilla 15
+                $casTarget = '15';
+                $sumC15 += $sign * $montoElegido;
+            }
+
+            $porIncisoResumen[$casTarget]['cantidad']++;
+            $porIncisoResumen[$casTarget]['sinIva'] += $sign * $sinIva;
+            $porIncisoResumen[$casTarget]['conIva'] += $sign * $tot;
+
+            $rucP = trim((string)($re['ruc_proveedor'] ?? 'S/RUC'));
+            $nomP = trim((string)($re['nom_proveedor'] ?? 'PROVEEDOR'));
+            $pKey = $rucP ?: $nomP;
+            if (!isset($proveedoresResumen[$pKey])) {
+                $proveedoresResumen[$pKey] = [
+                    'ruc'      => $rucP,
+                    'nombre'   => $nomP,
+                    'cantidad' => 0,
+                    'sinIva'   => 0.0,
+                    'conIva'   => 0.0,
+                ];
+            }
+            $proveedoresResumen[$pKey]['cantidad']++;
+            $proveedoresResumen[$pKey]['sinIva'] += $sign * $sinIva;
+            $proveedoresResumen[$pKey]['conIva'] += $sign * $tot;
+        }
+
+        $topProveedores = array_values($proveedoresResumen);
+        usort($topProveedores, fn($a, $b) => $b['sinIva'] <=> $a['sinIva']);
+        $topProveedores = array_slice($topProveedores, 0, 15);
+
+        // Rubro 2 (Casillas 15 a 24)
+        $c15 = max(0, (int)round($sumC15));
+        $c16 = max(0, (int)round($sumC16));
+        $c17 = max(0, (int)round($sumC17));
+        $c18 = max(0, (int)round($sumC18));
+        $c19 = max(0, (int)round($sumC19));
+        $c20 = max(0, (int)round($sumC20));
+        $topeDonaciones = $c14 > 0 ? (int)round($c14 * 0.05) : (int)round($sumC21);
+        $c21 = max(0, min((int)round($sumC21), $topeDonaciones));
+        $c22 = $c15 + $c16 + $c17 + $c18 + $c19 + $c20 + $c21;
+        $c23 = max(0, (int)round($sumC23));
+        $c24 = $c22 + $c23;
+
+        // Rubro 3 (Casillas 25 a 32)
+        $c25 = $c14;
+        $c26 = min($c22, $c25);
+        $c27 = max(0, $c25 - $c26);
+        $c28 = min($c23, $c27);
+        $c29 = max(0, $c27 - $c28);
+        $c30 = 0; // Préstamos/financiaciones o remanente últimos 5 ejercicios (Casilla 102 Anexo)
+        $excesoInmueble = max(0, $c23 - $c28);
+        $c31 = max(0, $excesoInmueble - $c30);
+        $c32 = min($excesoInmueble, $c30);
+
+        // Rubro 4 (Casillas 33 a 39)
+        $c33 = $c32;
+        $c34 = (int)(Database::queryForValue(
+            "SELECT c39 FROM co_formulario_515 WHERE id_propietario = ? AND cod_empresa = ? AND anio = ? LIMIT 1",
+            [$idProp, $codEmpresa, $anio - 1]
+        ) ?? 0);
+        $c35 = $c33 + $c34;
+        $c36 = 0;
+        $c37 = max(0, $c35 - $c36);
+        $c38 = min(max(0, $c34 - $c36), (int)round($c29 * 0.20));
+        $c39 = max(0, $c37 - $c38);
+
+        // Rubro 5 (Casillas 40 a 51)
+        $c45 = max(0, $c29 - $c38);
+        $c46 = (int)round(min($c45, 50000000) * 0.08);
+        $c47 = (int)round(max(0, min($c45, 150000000) - 50000000) * 0.09);
+        $c48 = (int)round(max(0, $c45 - 150000000) * 0.10);
+
+        $c40 = (int)(Database::queryForValue(
+            "SELECT c44 FROM co_formulario_515 WHERE id_propietario = ? AND cod_empresa = ? AND anio = ? LIMIT 1",
+            [$idProp, $codEmpresa, $anio - 1]
+        ) ?? 0);
+
+        // Retenciones IRP sufridas en el ejercicio
+        $rowRetIrp = Database::queryForList(
+            "SELECT COUNT(*) AS cant_ret,
+                    COALESCE(SUM(COALESCE(importe_retenido, 0) * COALESCE(NULLIF(tasa_cambio, 0), 1)), 0) AS total_ret
+             FROM co_retenciones_sufridas
+             WHERE id_propietario = ? AND cod_empresa = ?
+               AND fec_retencion >= ? AND fec_retencion <= ?
+               AND COALESCE(anulada, 'N') <> 'S'
+               AND COALESCE(estado, 'A') <> 'I'
+               AND (UPPER(COALESCE(impuesto, '')) LIKE '%IRP%' OR UPPER(COALESCE(observacion, '')) LIKE '%IRP%' OR UPPER(COALESCE(observacion, '')) LIKE '%RENTA%')",
+            [$idProp, $codEmpresa, $startDateStr . ' 00:00:00', $endDateStr . ' 23:59:59']
+        );
+        $cantRetIrp = (int)($rowRetIrp[0]['cant_ret'] ?? 0);
+        $c41 = max(0, (int)round((float)($rowRetIrp[0]['total_ret'] ?? 0)));
+        $c42 = 0;
+        $c49 = 0;
+
+        $c43 = $c40 + $c41 + $c42;
+        $c50 = $c46 + $c47 + $c48 + $c49;
+        $c44 = ($c43 > $c50) ? ($c43 - $c50) : 0;
+        $c51 = ($c50 > $c43) ? ($c50 - $c43) : 0;
+
+        $form = [
+            'COD_EMPRESA'      => $codEmpresa,
+            'ANIO'             => $anio,
+            'TIPO_DECLARACION' => 'O',
+            'NUM_ORDEN'        => '',
+            'NUM_ORDEN_RECT'   => '0',
+            'CARACTER_CESE'    => 'N',
+            'MODO_EGRESOS'     => $modoEgresos,
+            // Rubro 1
+            'C10' => $c10, 'C12' => $c12, 'C11' => $c11, 'C13' => $c13, 'C14' => $c14,
+            // Rubro 2
+            'C15' => $c15, 'C16' => $c16, 'C17' => $c17, 'C18' => $c18,
+            'C19' => $c19, 'C20' => $c20, 'C21' => $c21, 'C22' => $c22,
+            'C23' => $c23, 'C24' => $c24,
+            // Rubro 3
+            'C25' => $c25, 'C26' => $c26, 'C27' => $c27, 'C28' => $c28,
+            'C29' => $c29, 'C30' => $c30, 'C31' => $c31, 'C32' => $c32,
+            // Rubro 4
+            'C33' => $c33, 'C34' => $c34, 'C35' => $c35, 'C36' => $c36,
+            'C37' => $c37, 'C38' => $c38, 'C39' => $c39,
+            // Rubro 5
+            'C45' => $c45, 'C46' => $c46, 'C47' => $c47, 'C48' => $c48,
+            'C40' => $c40, 'C41' => $c41, 'C42' => $c42, 'C49' => $c49,
+            'C43' => $c43, 'C50' => $c50, 'C44' => $c44, 'C51' => $c51,
+        ];
+
+        $resumenLibros = [
+            'anio'            => $anio,
+            'cantIngresos'    => $cantIngresos,
+            'cantFacturas'    => $cantFacturas,
+            'cantLiqSalario'  => $cantLiqSalario,
+            'ingBrutoTotal'   => (int)round($ingBrutoTotal),
+            'ingExonerados'   => $c10,
+            'ingGravados'     => $c14,
+            'cantEgresos'     => $cantEgresos,
+            'egrTotalSinIva'  => (int)round($egrTotalSinIva),
+            'egrTotalConIva'  => (int)round($egrTotalConIva),
+            'egrDeducibles'   => $c24,
+            'rentaNeta'       => $c45,
+            'impuestoTotal'   => $c50,
+            'cantRetIrp'      => $cantRetIrp,
+            'totalRetIrp'     => $c41,
+            'porInciso'       => array_values($porIncisoResumen),
+            'topProveedores'  => $topProveedores,
+        ];
+
+        return [
+            'status'          => 'calculated',
+            'data'            => $form,
+            'calculadoLibros' => $form,
+            'resumenLibros'   => $resumenLibros,
+            'aniosConDatos'   => $aniosConDatos,
+            'empresa'         => self::fetchForm120EmpresaInfo($codEmpresa),
+        ];
+    }
+
+    public static function apiFormulario515Guardar(): void {
+        if (!self::requireAuth()) return;
+        self::ensureFormulario515Table();
+        $idProp     = TenantContext::idPropietario();
+        $codEmpresa = TenantContext::empresa();
+        $payload    = self::getInput();
+
+        $anio         = (int)($payload['anio'] ?? date('Y'));
+        $tipoDecl     = trim((string)($payload['tipoDeclaracion'] ?? 'O')) ?: 'O';
+        $numOrden     = trim((string)($payload['numOrden'] ?? ''));
+        $numRect      = trim((string)($payload['numOrdenRect'] ?? '0'));
+        $caracterCese = trim((string)($payload['caracterCese'] ?? 'N')) ?: 'N';
+        $modoEgresos  = trim((string)($payload['modoEgresos'] ?? 'SIN_IVA')) ?: 'SIN_IVA';
+
+        $allFields = [
+            'c10','c12','c11','c13','c14',
+            'c15','c16','c17','c18','c19','c20','c21','c22','c23','c24',
+            'c25','c26','c27','c28','c29','c30','c31','c32',
+            'c33','c34','c35','c36','c37','c38','c39',
+            'c45','c46','c47','c48','c40','c41','c42','c49','c43','c50','c44','c51'
+        ];
+
+        try {
+            $exists = (int)Database::queryForValue(
+                "SELECT COUNT(*) FROM co_formulario_515 WHERE id_propietario = ? AND cod_empresa = ? AND anio = ?",
+                [$idProp, $codEmpresa, $anio]
+            );
+
+            if ($exists > 0) {
+                $sets   = ['tipo_declaracion = ?', 'num_orden = ?', 'num_orden_rect = ?', 'caracter_cese = ?', 'modo_egresos = ?'];
+                $params = [$tipoDecl, $numOrden, $numRect, $caracterCese, $modoEgresos];
+                foreach ($allFields as $f) {
+                    $sets[]   = "{$f} = ?";
+                    $params[] = (int)round((float)($payload[$f] ?? $payload[strtoupper($f)] ?? 0));
+                }
+                $params[] = $idProp;
+                $params[] = $codEmpresa;
+                $params[] = $anio;
+
+                Database::update(
+                    "UPDATE co_formulario_515 SET " . implode(', ', $sets) . " WHERE id_propietario = ? AND cod_empresa = ? AND anio = ?",
+                    $params
+                );
+            } else {
+                $cols   = ['id_propietario', 'cod_empresa', 'anio', 'tipo_declaracion', 'num_orden', 'num_orden_rect', 'caracter_cese', 'modo_egresos'];
+                $params = [$idProp, $codEmpresa, $anio, $tipoDecl, $numOrden, $numRect, $caracterCese, $modoEgresos];
+                foreach ($allFields as $f) {
+                    $cols[]   = $f;
+                    $params[] = (int)round((float)($payload[$f] ?? $payload[strtoupper($f)] ?? 0));
+                }
+                $placeholders = implode(', ', array_fill(0, count($cols), '?'));
+                Database::update(
+                    "INSERT INTO co_formulario_515 (" . implode(', ', $cols) . ") VALUES ({$placeholders})",
+                    $params
+                );
+            }
+
+            View::json(['status' => 'success', 'message' => "Declaración Jurada Formulario N° 515 (IRP Versión 1 - Ejercicio {$anio}) guardada correctamente."]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al guardar Formulario 515: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function printFormulario515(): void {
+        if (!self::requireAuth(false)) return;
+        self::ensureFormulario515Table();
+        $idProp      = TenantContext::idPropietario();
+        $codEmpresa  = TenantContext::empresa();
+        $anio        = (int)($_GET['anio'] ?? date('Y'));
+        $modoEgresos = strtoupper(trim((string)($_GET['modoEgresos'] ?? 'SIN_IVA')));
+        $origen      = strtolower(trim((string)($_GET['origen'] ?? '')));
+
+        $calc     = self::calcularFormulario515Auto($idProp, $codEmpresa, $anio, $modoEgresos);
+        $autoData = $calc['data'];
+
+        $rows = Database::queryForListUpper(
+            "SELECT * FROM co_formulario_515 WHERE id_propietario = ? AND cod_empresa = ? AND anio = ? LIMIT 1",
+            [$idProp, $codEmpresa, $anio]
+        );
+        if (!empty($rows) && $origen !== 'calc') {
+            $saved    = $rows[0];
+            foreach ($autoData as $k => $v) {
+                if (!array_key_exists($k, $saved) || $saved[$k] === null) {
+                    $saved[$k] = $v;
+                }
+            }
+            $savedMov = (int)($saved['C14'] ?? 0) + (int)($saved['C24'] ?? 0) + (int)($saved['C41'] ?? 0);
+            $autoMov  = (int)($autoData['C14'] ?? 0) + (int)($autoData['C24'] ?? 0) + (int)($autoData['C41'] ?? 0);
+            $data     = ($savedMov === 0 && $autoMov > 0) ? $autoData : $saved;
+        } else {
+            $data = $autoData;
+        }
+
+        View::render('formulario_515_print', [
+            'f'       => $data,
+            'resumen' => $calc['resumenLibros'],
+            'empresa' => self::fetchForm120EmpresaInfo($codEmpresa),
+            'anio'    => $anio,
+        ]);
+    }
+
+    public static function exportarXlsFormulario515(): void {
+        if (!self::requireAuth(false)) return;
+        self::ensureFormulario515Table();
+        $idProp      = TenantContext::idPropietario();
+        $codEmpresa  = TenantContext::empresa();
+        $anio        = (int)($_GET['anio'] ?? date('Y'));
+        $modoEgresos = strtoupper(trim((string)($_GET['modoEgresos'] ?? 'SIN_IVA')));
+
+        $empData         = self::fetchForm120EmpresaInfo($codEmpresa);
+        $rucNum          = $empData['rucNum'] ?? '5555';
+        $rucDv           = $empData['rucDv'] ?? '7';
+        $primerApellido  = $empData['primer_apellido'] ?? $empData['razon_social'] ?? '';
+        $segundoApellido = $empData['segundo_apellido'] ?? '';
+        $nombres         = $empData['nombres'] ?? '';
+
+        $calc     = self::calcularFormulario515Auto($idProp, $codEmpresa, $anio, $modoEgresos);
+        $autoData = $calc['data'] ?? [];
+
+        $rows = Database::queryForListUpper(
+            "SELECT * FROM co_formulario_515 WHERE id_propietario = ? AND cod_empresa = ? AND anio = ? LIMIT 1",
+            [$idProp, $codEmpresa, $anio]
+        );
+        if (!empty($rows)) {
+            $saved    = $rows[0];
+            $savedMov = (int)($saved['C14'] ?? 0) + (int)($saved['C24'] ?? 0);
+            $autoMov  = (int)($autoData['C14'] ?? 0) + (int)($autoData['C24'] ?? 0);
+            $d        = ($savedMov === 0 && $autoMov > 0) ? $autoData : $saved;
+        } else {
+            $d = $autoData;
+        }
+        $v = fn(string $k): int => (int)round((float)($d[$k] ?? $d[strtolower($k)] ?? 0));
+
+        $lines = [
+            "IMPUESTO A LA RENTA PERSONAL - RENTAS DERIVADAS DE LA PRESTACIÓN DE SERVICIOS PERSONALES - VERSIÓN 1 (FORMULARIO 515),,PARA LLENAR LEA EL INSTRUCTIVO DISPONIBLE EN LA WEB,,,,LOS IMPORTES SE CONSIGNARÁN SIN CÉNTIMOS",
+            "Número de Orden:,\"{$d['NUM_ORDEN']}\",RUC:,{$rucNum},DV:,{$rucDv},Periodo / Ejercicio Fiscal:,{$anio}",
+            "Razón Social/Primer Apellido:,\"{$primerApellido}\",Segundo Apellido:,\"{$segundoApellido}\",Nombres:,\"{$nombres}\",,",
+            ",,,,,,,",
+            "INC.,RUBRO 1 - INGRESOS OBTENIDOS POR LA PRESTACIÓN DE SERVICIOS PERSONALES,CAS.,EXONERADOS -I-,CAS.,GRAVADOS -II-,,",
+            "a,\"Ingresos del ejercicio fiscal por la prestación de servicios personales, conforme a lo señalado en el Art. 62 de la Ley N° 6.380/2019\",10,{$v('C10')},12,{$v('C12')},,",
+            "b,\"Ingresos del ejercicio fiscal en carácter de padres, tutores o curadores por las rentas que obtengan los hijos bajo su patria potestad o las personas bajo su tutela o curatela, conforme al Art. 4° del Anexo del Decreto N° 3.184/2019\",11,{$v('C11')},13,{$v('C13')},,",
+            "c,TOTAL INGRESOS BRUTOS GRAVADOS PERCIBIDOS EN EL EJERCICIO FISCAL,,,14,{$v('C14')},,",
+            ",,,,,,,",
+            "INC.,RUBRO 2 - EGRESOS DEDUCIBLES DEL EJERCICIO FISCAL,,,CAS.,IMPORTE,,",
+            "a,Egresos directamente relacionados con la actividad gravada,,,15,{$v('C15')},,",
+            "b,\"Egresos personales y a favor de familiares a cargo realizados en el país (con excepción de los egresos señalados en los incisos d e i del presente rubro)\",,,16,{$v('C16')},,",
+            "c,Egresos personales y a favor de familiares a cargo realizados en el exterior destinados exclusivamente a la salud y a la educación,,,17,{$v('C17')},,",
+            "d,Egreso personal por la adquisición de un autovehículo cada 3 (tres) años,,,18,{$v('C18')},,",
+            "e,Aporte patronal a favor del trabajador realizado al Sistema de Seguridad Social creado o admitido por Ley o Decreto-Ley,,,19,{$v('C19')},,",
+            "f,Aporte a un Sistema privado de seguridad social realizado por el prestador de servicio personal independiente,,,20,{$v('C20')},,",
+            "g,\"Cuotas, aportes, diezmos y donaciones realizadas a favor del Estado y demás asociaciones (hasta el 5% de la renta bruta gravada)\",,,21,{$v('C21')},,",
+            "h,EGRESOS DEDUCIDOS EN EL EJERCICIO FISCAL (Sumatoria de las casillas 15 al 21),,,22,{$v('C22')},,",
+            "i,EGRESO PERSONAL POR LA ADQUISICIÓN AL CONTADO DE UN INMUEBLE PARA LA VIVIENDA CADA 5 (CINCO) AÑOS,,,23,{$v('C23')},,",
+            "j,TOTAL DE EGRESOS DEDUCIBLES EN EL EJERCICIO FISCAL (Suma de las casillas 22 y 23),,,24,{$v('C24')},,",
+            ",,,,,,,",
+            "INC.,RUBRO 3 - RESULTADO OBTENIDO LUEGO DE APLICAR LAS DEDUCCIONES ADMITIDAS PARA LA LIQUIDACIÓN DEL IMPUESTO,,,CAS.,IMPORTE,,",
+            "a,Ingresos brutos gravados del ejercicio fiscal (Casilla 14 del Rubro 1),,,25,{$v('C25')},,",
+            "b,\"Menos: Egresos deducidos del ejercicio fiscal (Casilla 22, limitado hasta Casilla 25)\",,,26,{$v('C26')},,",
+            "c,Resultado después de descontar los Egresos Deducibles (Diferencia entre Casillas 25 y 26),,,27,{$v('C27')},,",
+            "d,\"Menos: Egreso personal por la adquisición al contado de un inmueble para la vivienda cada 5 (cinco) años (Casilla 23, hasta Casilla 27)\",,,28,{$v('C28')},,",
+            "e,SUBTOTAL RENTA NETA IMPONIBLE ANTES DE CONSIDERAR EL SALDO ARRASTRABLE DE PÉRDIDAS DE EJERCICIOS ANTERIORES (Casillas 27 - 28),,,29,{$v('C29')},,",
+            "f,Monto total o porción de los préstamos/financiaciones obtenidos y utilizados en el ejercicio o el remanente de los ingresos gravados de los 5 últimos ejercicios,,,30,{$v('C30')},,",
+            "g,Saldo de egresos por la adquisición de un inmueble para la vivienda no arrastrable (Pérdida fiscal no arrastrable),,,31,{$v('C31')},,",
+            "h,\"Pérdida Fiscal por adquisición de un inmueble, arrastrable al siguiente ejercicio fiscal\",,,32,{$v('C32')},,",
+            ",,,,,,,",
+            "INC.,RUBRO 4 - PÉRDIDA FISCAL ARRASTRABLE POR LA ADQUISICIÓN DE UN INMUEBLE PARA LA VIVIENDA,,,CAS.,IMPORTE,,",
+            "a,\"Pérdida Fiscal arrastrable por la adquisición de un inmueble para la vivienda, producida en el ejercicio fiscal que se liquida (Casilla 32)\",,,33,{$v('C33')},,",
+            "b,\"Más: Pérdida Fiscal arrastrable por la adquisición de un inmueble para la vivienda, proveniente del ejercicio fiscal anterior\",,,34,{$v('C34')},,",
+            "c,Acumulado de Pérdida Fiscal por la adquisición de inmueble (Casillas 33 + 34),,,35,{$v('C35')},,",
+            "d,Menos: Porción de Pérdida Fiscal arrastrable que debe excluirse por haber superado los 5 años de arrastre,,,36,{$v('C36')},,",
+            "e,Saldo de Pérdida Fiscal arrastrable susceptible de ser compensado en la liquidación del impuesto (Casillas 35 - 36),,,37,{$v('C37')},,",
+            "f,\"Menos: Porción de Pérdida Fiscal proveniente de ejercicios fiscales anteriores que se compensa con la renta neta (limitada al 20% de Casilla 29)\",,,38,{$v('C38')},,",
+            "g,Saldo de Pérdida Fiscal arrastrable susceptible de ser trasladado al ejercicio siguiente (Casillas 37 - 38),,,39,{$v('C39')},,",
+            ",,,,,,,",
+            "INC.,RUBRO 5 - DETERMINACIÓN DEL IMPUESTO Y LIQUIDACIÓN FINAL,CAS.,CONTRIBUYENTE -I-,CAS.,FISCO -II-,,",
+            "a,RENTA NETA IMPONIBLE (Diferencia entre las casillas 29 y 38),,,45,{$v('C45')},,",
+            "b,IMPUESTO DETERMINADO A LA TASA DEL 8% Por la porción de la Renta Neta hasta G. 50.000.000,,,46,{$v('C46')},,",
+            "c,IMPUESTO DETERMINADO A LA TASA DEL 9% Por la porción de la Renta Neta desde G. 50.000.001 hasta G. 150.000.000,,,47,{$v('C47')},,",
+            "d,IMPUESTO DETERMINADO A LA TASA DEL 10% Por la porción de la Renta Neta mayor a G. 150.000.000,,,48,{$v('C48')},,",
+            "e,Saldo a favor del contribuyente del ejercicio fiscal anterior (Casilla 44 del ejercicio anterior),40,{$v('C40')},,,,",
+            "f,RETENCIONES: Monto de las retenciones computables a favor del contribuyente,41,{$v('C41')},,,,",
+            "g,PERCEPCIONES: Monto de las percepciones computables a favor del contribuyente,42,{$v('C42')},,,,",
+            "h,Multa por presentar la Declaración Jurada con posterioridad al vencimiento,,,49,{$v('C49')},,",
+            "i,SUBTOTAL (Columna I: Sumatoria de las casillas 40 al 42); (Columna II: Sumatoria de las casillas 46 al 49),43,{$v('C43')},50,{$v('C50')},,",
+            "j,\"SALDO A FAVOR DEL CONTRIBUYENTE (Diferencia entre las casillas 43 y 50, cuando la casilla 43 sea mayor)\",44,{$v('C44')},,,,",
+            "k,\"SALDO A INGRESAR A FAVOR DEL FISCO (Diferencia entre las casillas 50 y 43, cuando la casilla 50 sea mayor)\",,,51,{$v('C51')},,",
+        ];
+
+        $filename = sprintf('FORM515_V1_%s_%04d.csv', $rucNum, $anio);
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        echo "\xEF\xBB\xBF" . implode("\r\n", $lines) . "\r\n";
+        exit;
     }
 }

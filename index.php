@@ -259,6 +259,14 @@ if ($uri === '/api/formulario-120/exportar-xls' || $uri === '/app/formulario-120
     ReportesContablesController::exportarXlsFormulario120();
     exit;
 }
+if ($uri === '/app/formulario-515/print' || $uri === '/formulario_515/print') {
+    ReportesContablesController::printFormulario515();
+    exit;
+}
+if ($uri === '/api/formulario-515/exportar-xls' || $uri === '/app/formulario-515/exportar-xls') {
+    ReportesContablesController::exportarXlsFormulario515();
+    exit;
+}
 if ($uri === '/app/kude/print' || $uri === '/kude/print') {
     MovimientosContablesController::pagePrintKude();
     exit;
@@ -393,6 +401,10 @@ if (preg_match('#^/app/([^/]+)$#', $uri, $m)) {
         'CORESIRP'              => [ReportesContablesController::class, 'pageResumenIrp'],
         'RESUMEN-IRP'           => [ReportesContablesController::class, 'pageResumenIrp'],
         'RESUMEN_IRP'           => [ReportesContablesController::class, 'pageResumenIrp'],
+        'COF51500'              => [ReportesContablesController::class, 'pageFormulario515'],
+        'FORMULARIO-515'        => [ReportesContablesController::class, 'pageFormulario515'],
+        'FORMULARIO_515'        => [ReportesContablesController::class, 'pageFormulario515'],
+        'FORM515'               => [ReportesContablesController::class, 'pageFormulario515'],
     ];
 
     if (isset($formaMap[$upper])) {
@@ -706,6 +718,9 @@ $exactApiRoutes = [
     '/api/resumen-comparativo/data'                => [ReportesContablesController::class, 'apiResumenComparativoData'],
     '/api/reportes/resumen-irp'                    => [ReportesContablesController::class, 'apiResumenIrpData'],
     '/api/reportes/resumen-irp/data'               => [ReportesContablesController::class, 'apiResumenIrpData'],
+    '/api/formulario-515/obtener'                  => [ReportesContablesController::class, 'apiFormulario515Obtener'],
+    '/api/formulario-515/calcular'                 => [ReportesContablesController::class, 'apiFormulario515Calcular'],
+    '/api/formulario-515/guardar'                  => [ReportesContablesController::class, 'apiFormulario515Guardar'],
 ];
 
 if (isset($exactApiRoutes[$uri])) {

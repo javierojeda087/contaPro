@@ -93,6 +93,10 @@ class RouteHelper {
         'CORESIRP'              => 'resumen-irp',
         'RESUMEN_IRP'           => 'resumen-irp',
         'RESUMEN-IRP'           => 'resumen-irp',
+        'COF51500'              => 'formulario_515',
+        'FORMULARIO_515'        => 'formulario_515',
+        'FORMULARIO-515'        => 'formulario_515',
+        'FORM515'               => 'formulario_515',
     ];
 
     public static function getRoute(?string $nomForma): string {
