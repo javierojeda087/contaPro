@@ -2573,6 +2573,39 @@ class ReportesContablesController {
         exit;
     }
 
+    private static function resolveNombreTipoComprobante(string $rawCode, array $mapTiposComp = []): string {
+        $code = strtoupper(trim($rawCode));
+        if ($code === '') $code = 'FAC';
+        if (!empty($mapTiposComp[$code])) {
+            return $mapTiposComp[$code];
+        }
+        $defaults = [
+            'FAC'      => 'FACTURA',
+            'FACTURA'  => 'FACTURA',
+            'LIQ'      => 'LIQUIDACIÓN DE SALARIO',
+            'AUT'      => 'AUTOFACTURA',
+            'NCR'      => 'NOTA DE CRÉDITO',
+            'NDB'      => 'NOTA DE DÉBITO',
+            'BOL'      => 'BOLETA DE VENTA / TICKET',
+            'TIC'      => 'TICKET / COMPROBANTE',
+            'REC'      => 'RECIBO / COMPROBANTE',
+            'DES'      => 'DESPACHO DE IMPORTACIÓN',
+            'EXT'      => 'EXTRACTO DE CUENTA / TARJETA',
+            'RES'      => 'COMPROBANTE DE RETENCIÓN',
+            'COM'      => 'COMPROBANTE DE INGRESO/EGRESO',
+            'OTR'      => 'OTROS COMPROBANTES',
+        ];
+        if (isset($defaults[$code])) {
+            return $defaults[$code];
+        }
+        if (str_contains($code, 'LIQUIDAC')) return 'LIQUIDACIÓN DE SALARIO';
+        if (str_contains($code, 'AUTO')) return 'AUTOFACTURA';
+        if (str_contains($code, 'CRED') || str_contains($code, 'CRÉD')) return 'NOTA DE CRÉDITO';
+        if (str_contains($code, 'DEB') || str_contains($code, 'DÉB')) return 'NOTA DE DÉBITO';
+        if (str_contains($code, 'BOLET') || str_contains($code, 'TICK')) return 'BOLETA DE VENTA / TICKET';
+        return $code;
+    }
+
     private static function procesarReporteResumenIrp(
         string $codEmpresa, string $ejercicio, string $fechaDesde, string $fechaHasta, bool $incluirAnulados
     ): array {
@@ -2580,60 +2613,10 @@ class ReportesContablesController {
         $empresaInfo = self::fetchEmpresaInfo($codEmpresa, $ejercicio);
         $anioPeriodo = strlen($fechaHasta) >= 4 ? substr($fechaHasta, 0, 4) : $ejercicio;
 
-        // 1. Consultar Ingresos del rango
-        $sqlIng = "SELECT id_ingreso, tip_doc,
-                          COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
-                          COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
-                          COALESCE(exentas, 0) AS exentas, COALESCE(no_gravado, 0) AS no_gravado,
-                          COALESCE(tot_iva, 0) AS tot_iva,
-                          COALESCE(valor_total, 0) AS valor_total,
-                          COALESCE(anulada, 'N') AS anulada
-                   FROM co_ingresos
-                   WHERE id_propietario = ? AND cod_empresa = ?
-                     AND fec_ingreso >= ? AND fec_ingreso <= ?";
-        $paramsIng = [$idProp, $codEmpresa, $fechaDesde, $fechaHasta];
-        if (!$incluirAnulados) {
-            $sqlIng .= " AND (anulada IS NULL OR UPPER(anulada) <> 'S')";
-        }
-        $rowsIng = Database::queryForList($sqlIng, $paramsIng);
-
-        $ingresosImporte    = 0.0;
-        $ingresosDeducibles = 0.0;
-        $cantIngresos       = 0;
-
-        foreach ($rowsIng as $r) {
-            $anulada = strcasecmp((string)($r['anulada'] ?? 'N'), 'S') === 0;
-            if ($anulada) continue;
-
-            $tot   = (float)($r['valor_total'] ?? 0);
-            $g10   = (float)($r['grav10'] ?? 0);
-            $i10   = (float)($r['iva10'] ?? 0);
-            $g5    = (float)($r['grav5'] ?? 0);
-            $i5    = (float)($r['iva5'] ?? 0);
-            $ex    = (float)($r['exentas'] ?? 0);
-            $noGrv = (float)($r['no_gravado'] ?? 0);
-            $tipDoc = strtoupper(trim((string)($r['tip_doc'] ?? 'FAC')));
-            $esLiqSal = ($tipDoc === 'LIQ' || str_contains($tipDoc, 'LIQUIDAC'));
-
-            [$b10, $iv10] = self::extraerBaseImponibleEImpuesto($g10, $i10, 10);
-            [$b5,  $iv5]  = self::extraerBaseImponibleEImpuesto($g5,  $i5,  5);
-            $deducible    = $b10 + $b5 + $ex;
-
-            if ($tot > 0 && $deducible <= 0 && !$esLiqSal && $noGrv <= 0) {
-                $totIva    = (float)($r['tot_iva'] ?? 0);
-                $deducible = $totIva > 0 ? max(0.0, $tot - $totIva) : round($tot / 1.1);
-            }
-
-            $sign   = ($tipDoc === 'NCR') ? -1.0 : 1.0;
-
-            $ingresosImporte    += ($sign * $tot);
-            $ingresosDeducibles += ($sign * $deducible);
-            $cantIngresos++;
-        }
-
         // Mapas auxiliares opcionales en PHP (evita problemas de collation en JOIN SQL)
         $mapTiposEgreso = [];
         $mapClasifGasto = [];
+        $mapTiposComp   = [];
         try {
             foreach (Database::queryForList("SELECT cod_tipo, descripcion FROM co_tipos_egreso WHERE id_propietario = ?", [$idProp]) as $te) {
                 $k1 = trim((string)($te['cod_tipo'] ?? ''));
@@ -2652,14 +2635,106 @@ class ReportesContablesController {
                 if ($k2 !== '') $mapClasifGasto[$k2] = $desc;
             }
         } catch (\Throwable $ignored) {}
+        try {
+            foreach (Database::queryForList("SELECT tip_comprobante, descripcion FROM co_tipos_comprobantes WHERE id_propietario = ?", [$idProp]) as $tc) {
+                $k = strtoupper(trim((string)($tc['tip_comprobante'] ?? '')));
+                $d = strtoupper(trim((string)($tc['descripcion'] ?? '')));
+                if ($k !== '' && $d !== '') $mapTiposComp[$k] = $d;
+            }
+        } catch (\Throwable $ignored) {}
+
+        $nombresMes = [
+            1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+            5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
+            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
+        ];
+        $porMes = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $porMes[$m] = [
+                'mes'            => $m,
+                'nombreMes'      => $nombresMes[$m],
+                'cantIng'        => 0,
+                'ingImporte'     => 0,
+                'ingDeducible'   => 0,
+                'cantEgr'        => 0,
+                'egrImporte'     => 0,
+                'egrDeducible'   => 0,
+                'saldoDeducible' => 0,
+            ];
+        }
+
+        // 1. Consultar Ingresos del rango
+        $sqlIng = "SELECT *, DATE_FORMAT(fec_ingreso, '%Y-%m-%d') AS fec_str
+                   FROM co_ingresos
+                   WHERE id_propietario = ? AND cod_empresa = ?
+                     AND fec_ingreso >= ? AND fec_ingreso <= ?";
+        $paramsIng = [$idProp, $codEmpresa, $fechaDesde, $fechaHasta];
+        if (!$incluirAnulados) {
+            $sqlIng .= " AND (anulada IS NULL OR UPPER(anulada) <> 'S')";
+        }
+        $rowsIng = Database::queryForList($sqlIng, $paramsIng);
+
+        $ingresosImporte    = 0.0;
+        $ingresosDeducibles = 0.0;
+        $cantIngresos       = 0;
+        $mapCompIng         = [];
+
+        foreach ($rowsIng as $r) {
+            $anulada = strcasecmp((string)($r['anulada'] ?? 'N'), 'S') === 0;
+            if ($anulada && !$incluirAnulados) continue;
+            if ($anulada) continue;
+
+            $tot    = (float)($r['valor_total'] ?? 0);
+            $g10    = (float)($r['grav10'] ?? 0);
+            $i10    = (float)($r['iva10'] ?? 0);
+            $g5     = (float)($r['grav5'] ?? 0);
+            $i5     = (float)($r['iva5'] ?? 0);
+            $ex     = (float)($r['exentas'] ?? 0);
+            $noGrv  = (float)($r['no_gravado'] ?? 0);
+            $tipDoc = strtoupper(trim((string)($r['tip_doc'] ?? 'FAC')));
+            if ($tipDoc === '') $tipDoc = 'FAC';
+            $esLiqSal = ($tipDoc === 'LIQ' || str_contains($tipDoc, 'LIQUIDAC'));
+
+            [$b10, ] = self::extraerBaseImponibleEImpuesto($g10, $i10, 10);
+            [$b5,  ] = self::extraerBaseImponibleEImpuesto($g5,  $i5,  5);
+            $deducible = $b10 + $b5 + $ex;
+
+            if ($tot > 0 && $deducible <= 0 && !$esLiqSal && $noGrv <= 0) {
+                $totIva    = (float)($r['tot_iva'] ?? 0);
+                $deducible = $totIva > 0 ? max(0.0, $tot - $totIva) : round($tot / 1.1);
+            }
+
+            $sign = ($tipDoc === 'NCR' || str_contains($tipDoc, 'CRED') || str_contains($tipDoc, 'CRÉD')) ? -1.0 : 1.0;
+
+            $ingresosImporte    += ($sign * $tot);
+            $ingresosDeducibles += ($sign * $deducible);
+            $cantIngresos++;
+
+            $fecStr = (string)($r['fec_str'] ?? $r['fec_ingreso'] ?? '');
+            $mesNum = strlen($fecStr) >= 7 ? (int)substr($fecStr, 5, 2) : 0;
+            if (isset($porMes[$mesNum])) {
+                $porMes[$mesNum]['cantIng']++;
+                $porMes[$mesNum]['ingImporte']   += (int)round($sign * $tot);
+                $porMes[$mesNum]['ingDeducible'] += (int)round($sign * $deducible);
+            }
+
+            if (!isset($mapCompIng[$tipDoc])) {
+                $mapCompIng[$tipDoc] = [
+                    'operacion' => 'INGRESO',
+                    'codigo'    => $tipDoc,
+                    'nombre'    => self::resolveNombreTipoComprobante($tipDoc, $mapTiposComp),
+                    'cantidad'  => 0,
+                    'importe'   => 0.0,
+                    'deducible' => 0.0,
+                ];
+            }
+            $mapCompIng[$tipDoc]['cantidad']++;
+            $mapCompIng[$tipDoc]['importe']   += ($sign * $tot);
+            $mapCompIng[$tipDoc]['deducible'] += ($sign * $deducible);
+        }
 
         // 2. Consultar Egresos del rango
-        $sqlEgr = "SELECT id_egreso, tip_doc, tip_egreso, clasificacion_gasto, observacion,
-                          COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
-                          COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
-                          COALESCE(exentas, 0) AS exentas, COALESCE(tot_iva, 0) AS tot_iva,
-                          COALESCE(valor_total, 0) AS valor_total,
-                          COALESCE(estado, 'A') AS estado
+        $sqlEgr = "SELECT *, DATE_FORMAT(fec_egreso, '%Y-%m-%d') AS fec_str
                    FROM co_egresos
                    WHERE id_propietario = ? AND cod_empresa = ?
                      AND fec_egreso >= ? AND fec_egreso <= ?";
@@ -2674,6 +2749,8 @@ class ReportesContablesController {
         $donacionesImporte    = 0.0;
         $donacionesDeducibles = 0.0;
         $cantEgresos          = 0;
+        $mapCompEgr           = [];
+        $mapClasifResumen     = [];
 
         foreach ($rowsEgr as $r) {
             $anulada = strcasecmp((string)($r['estado'] ?? 'A'), 'I') === 0;
@@ -2686,9 +2763,9 @@ class ReportesContablesController {
             $i5  = (float)($r['iva5'] ?? 0);
             $ex  = (float)($r['exentas'] ?? 0);
 
-            [$b10, $iv10] = self::extraerBaseImponibleEImpuesto($g10, $i10, 10);
-            [$b5,  $iv5]  = self::extraerBaseImponibleEImpuesto($g5,  $i5,  5);
-            $deducible    = $b10 + $b5 + $ex;
+            [$b10, ] = self::extraerBaseImponibleEImpuesto($g10, $i10, 10);
+            [$b5,  ] = self::extraerBaseImponibleEImpuesto($g5,  $i5,  5);
+            $deducible = $b10 + $b5 + $ex;
 
             if ($tot > 0 && $deducible <= 0) {
                 $totIva    = (float)($r['tot_iva'] ?? 0);
@@ -2696,10 +2773,11 @@ class ReportesContablesController {
             }
 
             $tipDoc = strtoupper(trim((string)($r['tip_doc'] ?? 'FAC')));
-            $sign   = ($tipDoc === 'NCR') ? -1.0 : 1.0;
+            if ($tipDoc === '') $tipDoc = 'FAC';
+            $sign   = ($tipDoc === 'NCR' || str_contains($tipDoc, 'CRED') || str_contains($tipDoc, 'CRÉD')) ? -1.0 : 1.0;
 
-            $codTe = trim((string)($r['tip_egreso'] ?? ''));
-            $codCg = trim((string)($r['clasificacion_gasto'] ?? ''));
+            $codTe  = trim((string)($r['tip_egreso'] ?? ''));
+            $codCg  = trim((string)($r['clasificacion_gasto'] ?? ''));
             $descTe = $mapTiposEgreso[$codTe] ?? '';
             $descCg = $mapClasifGasto[$codCg] ?? '';
 
@@ -2721,7 +2799,48 @@ class ReportesContablesController {
                 $egresosDeducibles += ($sign * $deducible);
             }
             $cantEgresos++;
+
+            $fecStr = (string)($r['fec_str'] ?? $r['fec_egreso'] ?? '');
+            $mesNum = strlen($fecStr) >= 7 ? (int)substr($fecStr, 5, 2) : 0;
+            if (isset($porMes[$mesNum])) {
+                $porMes[$mesNum]['cantEgr']++;
+                $porMes[$mesNum]['egrImporte']   += (int)round($sign * $tot);
+                $porMes[$mesNum]['egrDeducible'] += (int)round($sign * $deducible);
+            }
+
+            if (!isset($mapCompEgr[$tipDoc])) {
+                $mapCompEgr[$tipDoc] = [
+                    'operacion' => 'EGRESO',
+                    'codigo'    => $tipDoc,
+                    'nombre'    => self::resolveNombreTipoComprobante($tipDoc, $mapTiposComp),
+                    'cantidad'  => 0,
+                    'importe'   => 0.0,
+                    'deducible' => 0.0,
+                ];
+            }
+            $mapCompEgr[$tipDoc]['cantidad']++;
+            $mapCompEgr[$tipDoc]['importe']   += ($sign * $tot);
+            $mapCompEgr[$tipDoc]['deducible'] += ($sign * $deducible);
+
+            $catLabel = $descCg !== '' ? $descCg : ($descTe !== '' ? $descTe : ($esDonacionOAporte ? 'DONACIONES Y APORTES' : 'GASTOS DE LA ACTIVIDAD'));
+            $catKey   = $catLabel;
+            if (!isset($mapClasifResumen[$catKey])) {
+                $mapClasifResumen[$catKey] = [
+                    'nombre'    => $catLabel,
+                    'cantidad'  => 0,
+                    'importe'   => 0.0,
+                    'deducible' => 0.0,
+                ];
+            }
+            $mapClasifResumen[$catKey]['cantidad']++;
+            $mapClasifResumen[$catKey]['importe']   += ($sign * $tot);
+            $mapClasifResumen[$catKey]['deducible'] += ($sign * $deducible);
         }
+
+        foreach ($porMes as $m => &$pm) {
+            $pm['saldoDeducible'] = $pm['ingDeducible'] - $pm['egrDeducible'];
+        }
+        unset($pm);
 
         $ingImpRound  = (int)round($ingresosImporte);
         $ingDedRound  = (int)round($ingresosDeducibles);
@@ -2729,6 +2848,55 @@ class ReportesContablesController {
         $egrDedRound  = (int)round($egresosDeducibles);
         $donImpRound  = (int)round($donacionesImporte);
         $donDedRound  = (int)round($donacionesDeducibles);
+
+        $totEgrConDonImp = $egrImpRound + $donImpRound;
+        $totEgrConDonDed = $egrDedRound + $donDedRound;
+
+        $porTipoComprobanteIng = array_values(array_map(function (array $it) use ($ingImpRound, $ingDedRound): array {
+            $imp = (int)round($it['importe']);
+            $ded = (int)round($it['deducible']);
+            return [
+                'operacion'    => 'INGRESO',
+                'codigo'       => $it['codigo'],
+                'nombre'       => $it['nombre'],
+                'cantidad'     => $it['cantidad'],
+                'importe'      => $imp,
+                'deducible'    => $ded,
+                'pctImporte'   => $ingImpRound > 0 ? round(($imp / $ingImpRound) * 100, 1) : 0.0,
+                'pctDeducible' => $ingDedRound > 0 ? round(($ded / $ingDedRound) * 100, 1) : 0.0,
+            ];
+        }, $mapCompIng));
+        usort($porTipoComprobanteIng, fn($a, $b) => $b['importe'] <=> $a['importe']);
+
+        $porTipoComprobanteEgr = array_values(array_map(function (array $it) use ($totEgrConDonImp, $totEgrConDonDed): array {
+            $imp = (int)round($it['importe']);
+            $ded = (int)round($it['deducible']);
+            return [
+                'operacion'    => 'EGRESO',
+                'codigo'       => $it['codigo'],
+                'nombre'       => $it['nombre'],
+                'cantidad'     => $it['cantidad'],
+                'importe'      => $imp,
+                'deducible'    => $ded,
+                'pctImporte'   => $totEgrConDonImp > 0 ? round(($imp / $totEgrConDonImp) * 100, 1) : 0.0,
+                'pctDeducible' => $totEgrConDonDed > 0 ? round(($ded / $totEgrConDonDed) * 100, 1) : 0.0,
+            ];
+        }, $mapCompEgr));
+        usort($porTipoComprobanteEgr, fn($a, $b) => $b['importe'] <=> $a['importe']);
+
+        $porClasificacionEgreso = array_values(array_map(function (array $it) use ($totEgrConDonImp, $totEgrConDonDed): array {
+            $imp = (int)round($it['importe']);
+            $ded = (int)round($it['deducible']);
+            return [
+                'nombre'       => $it['nombre'],
+                'cantidad'     => $it['cantidad'],
+                'importe'      => $imp,
+                'deducible'    => $ded,
+                'pctImporte'   => $totEgrConDonImp > 0 ? round(($imp / $totEgrConDonImp) * 100, 1) : 0.0,
+                'pctDeducible' => $totEgrConDonDed > 0 ? round(($ded / $totEgrConDonDed) * 100, 1) : 0.0,
+            ];
+        }, $mapClasifResumen));
+        usort($porClasificacionEgreso, fn($a, $b) => $b['deducible'] <=> $a['deducible']);
 
         $saldoImporte    = $ingImpRound - $egrImpRound - $donImpRound;
         $saldoDeducibles = $ingDedRound - $egrDedRound - $donDedRound;
@@ -2752,15 +2920,19 @@ class ReportesContablesController {
         $impuestoAPagar = $impuesto8 + $impuesto9 + $impuesto10;
 
         return [
-            'status'        => 'success',
-            'empresa'       => $empresaInfo,
-            'ejercicio'     => $ejercicio,
-            'anioPeriodo'   => $anioPeriodo,
-            'fechaDesde'    => $fechaDesde,
-            'fechaHasta'    => $fechaHasta,
-            'fechaDesdeFmt' => self::formatDateDmy($fechaDesde),
-            'fechaHastaFmt' => self::formatDateDmy($fechaHasta),
-            'irp'           => [
+            'status'                 => 'success',
+            'empresa'                => $empresaInfo,
+            'ejercicio'              => $ejercicio,
+            'anioPeriodo'            => $anioPeriodo,
+            'fechaDesde'             => $fechaDesde,
+            'fechaHasta'             => $fechaHasta,
+            'fechaDesdeFmt'          => self::formatDateDmy($fechaDesde),
+            'fechaHastaFmt'          => self::formatDateDmy($fechaHasta),
+            'porTipoComprobanteIng'  => $porTipoComprobanteIng,
+            'porTipoComprobanteEgr'  => $porTipoComprobanteEgr,
+            'porClasificacionEgreso' => $porClasificacionEgreso,
+            'porMes'                 => array_values($porMes),
+            'irp'                    => [
                 'cantIngresos'         => $cantIngresos,
                 'cantEgresos'          => $cantEgresos,
                 'ingresosImporte'      => $ingImpRound,
@@ -2827,7 +2999,7 @@ class ReportesContablesController {
 
         if (!isset($_GET['anio'])) {
             try {
-                $bestYear = Database::queryForRow(
+                $bestYear = Database::queryForMap(
                     "SELECT anio, SUM(cnt) AS total_comp FROM (
                         SELECT YEAR(fec_egreso) AS anio, COUNT(*) AS cnt
                         FROM co_egresos
@@ -2836,7 +3008,7 @@ class ReportesContablesController {
                         UNION ALL
                         SELECT YEAR(fec_ingreso) AS anio, COUNT(*) AS cnt
                         FROM co_ingresos
-                        WHERE id_propietario = ? AND cod_empresa = ? AND COALESCE(anulada, 'N') <> 'S' AND COALESCE(estado, 'A') <> 'I' AND fec_ingreso IS NOT NULL
+                        WHERE id_propietario = ? AND cod_empresa = ? AND COALESCE(anulada, 'N') <> 'S' AND fec_ingreso IS NOT NULL
                         GROUP BY YEAR(fec_ingreso)
                     ) t
                     WHERE anio IS NOT NULL
@@ -2924,7 +3096,9 @@ class ReportesContablesController {
     private static function calcularFormulario515Auto(int $idProp, string $codEmpresa, int $anio, string $modoEgresos = 'SIN_IVA'): array {
         $startDateStr = sprintf('%04d-01-01', $anio);
         $endDateStr   = sprintf('%04d-12-31', $anio);
-        MovimientosContablesController::ensureRetencionesSufridasTables();
+        try {
+            MovimientosContablesController::ensureRetencionesSufridasTables();
+        } catch (\Throwable $ignored) {}
 
         // 0. Ejercicios con movimientos cargados para barra de acceso rápido
         $aniosConDatos = [];
@@ -2947,7 +3121,7 @@ class ReportesContablesController {
                            0 AS cant_egresos, 0 AS total_egresos,
                            COUNT(*) AS cant_ingresos, COALESCE(SUM(valor_total), 0) AS total_ingresos
                     FROM co_ingresos
-                    WHERE id_propietario = ? AND cod_empresa = ? AND COALESCE(anulada, 'N') <> 'S' AND COALESCE(estado, 'A') <> 'I' AND fec_ingreso IS NOT NULL
+                    WHERE id_propietario = ? AND cod_empresa = ? AND COALESCE(anulada, 'N') <> 'S' AND fec_ingreso IS NOT NULL
                     GROUP BY YEAR(fec_ingreso)
                  ) y
                  WHERE anio IS NOT NULL
@@ -2959,17 +3133,9 @@ class ReportesContablesController {
 
         // 1. Ingresos del ejercicio fiscal (Rubro 1)
         $rowsIng = Database::queryForList(
-            "SELECT id_ingreso, tip_doc, CAST(COALESCE(cod_regimen, 1) AS UNSIGNED) AS cod_regimen, regimen,
-                    COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
-                    COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
-                    COALESCE(exentas, 0) AS exentas, COALESCE(no_gravado, 0) AS no_gravado,
-                    COALESCE(tot_iva, 0) AS tot_iva, COALESCE(valor_total, 0) AS valor_total
-             FROM co_ingresos
+            "SELECT * FROM co_ingresos
              WHERE id_propietario = ? AND cod_empresa = ?
                AND fec_ingreso >= ? AND fec_ingreso <= ?
-               AND COALESCE(anulada, 'N') <> 'S'
-               AND COALESCE(inutilizado, 'N') <> 'S'
-               AND COALESCE(estado, 'A') <> 'I'
              ORDER BY fec_ingreso ASC, id_ingreso ASC",
             [$idProp, $codEmpresa, $startDateStr, $endDateStr]
         );
@@ -2980,8 +3146,22 @@ class ReportesContablesController {
         $ingBrutoTotal  = 0.0;
         $ingExonerados  = 0.0;
         $ingGravados    = 0.0;
+        $mapTiposComp   = [];
+        try {
+            foreach (Database::queryForList("SELECT cod_tipo, descripcion FROM co_tipos_comprobante WHERE id_propietario = ?", [$idProp]) as $tc) {
+                $k = strtoupper(trim((string)($tc['cod_tipo'] ?? '')));
+                $d = trim((string)($tc['descripcion'] ?? ''));
+                if ($k !== '' && $d !== '') $mapTiposComp[$k] = $d;
+            }
+        } catch (\Throwable $ignored) {}
+        $mapCompIng = [];
+        $mapCompEgr = [];
 
         foreach ($rowsIng as $ri) {
+            if (strcasecmp((string)($ri['anulada'] ?? 'N'), 'S') === 0) continue;
+            if (strcasecmp((string)($ri['inutilizado'] ?? 'N'), 'S') === 0) continue;
+            if (strcasecmp((string)($ri['estado'] ?? 'A'), 'I') === 0) continue;
+
             $rawReg = strtoupper(trim((string)($ri['regimen'] ?? $ri['cod_regimen'] ?? '1')));
             $codReg = (int)($ri['cod_regimen'] ?? 1);
             // Excluir ingresos que sean exclusivamente IVA (3) o Ganancias de Capital (4 - Form. 516)
@@ -2990,7 +3170,8 @@ class ReportesContablesController {
             }
             $cantIngresos++;
 
-            $tipDoc   = strtoupper(trim((string)($ri['tip_doc'] ?? 'FAC')));
+            $tipDoc = strtoupper(trim((string)($ri['tip_doc'] ?? 'FAC')));
+            if ($tipDoc === '') $tipDoc = 'FAC';
             $esLiqSal = ($tipDoc === 'LIQ' || str_contains($tipDoc, 'LIQUIDAC'));
             if ($esLiqSal) {
                 $cantLiqSalario++;
@@ -2999,26 +3180,40 @@ class ReportesContablesController {
             }
 
             $sign  = ($tipDoc === 'NCR' || str_contains($tipDoc, 'CRED') || str_contains($tipDoc, 'CRÉD')) ? -1.0 : 1.0;
-            $tot   = max(0.0, (float)$ri['valor_total']);
-            $g10   = max(0.0, (float)$ri['grav10']);
-            $i10   = max(0.0, (float)$ri['iva10']);
-            $g5    = max(0.0, (float)$ri['grav5']);
-            $i5    = max(0.0, (float)$ri['iva5']);
-            $ex    = max(0.0, (float)$ri['exentas']);
-            $noGrv = max(0.0, (float)$ri['no_gravado']);
+            $tot   = max(0.0, (float)($ri['valor_total'] ?? 0));
+            $g10   = max(0.0, (float)($ri['grav10'] ?? 0));
+            $i10   = max(0.0, (float)($ri['iva10'] ?? 0));
+            $g5    = max(0.0, (float)($ri['grav5'] ?? 0));
+            $i5    = max(0.0, (float)($ri['iva5'] ?? 0));
+            $ex    = max(0.0, (float)($ri['exentas'] ?? 0));
+            $noGrv = max(0.0, (float)($ri['no_gravado'] ?? 0));
 
             [$b10, ] = self::extraerBaseImponibleEImpuesto($g10, $i10, 10);
             [$b5,  ] = self::extraerBaseImponibleEImpuesto($g5,  $i5,  5);
             $gravIrp = $b10 + $b5 + $ex;
 
             if ($tot > 0 && $gravIrp <= 0 && !$esLiqSal && $noGrv <= 0) {
-                $totIva  = max(0.0, (float)$ri['tot_iva']);
+                $totIva  = max(0.0, (float)($ri['tot_iva'] ?? 0));
                 $gravIrp = $totIva > 0 ? max(0.0, $tot - $totIva) : round($tot / 1.1);
             }
 
             $ingBrutoTotal += $sign * $tot;
             $ingExonerados += $sign * $noGrv;
             $ingGravados   += $sign * $gravIrp;
+
+            if (!isset($mapCompIng[$tipDoc])) {
+                $mapCompIng[$tipDoc] = [
+                    'operacion' => 'INGRESO',
+                    'codigo'    => $tipDoc,
+                    'nombre'    => self::resolveNombreTipoComprobante($tipDoc, $mapTiposComp),
+                    'cantidad'  => 0,
+                    'importe'   => 0.0,
+                    'deducible' => 0.0,
+                ];
+            }
+            $mapCompIng[$tipDoc]['cantidad']++;
+            $mapCompIng[$tipDoc]['importe']   += $sign * $tot;
+            $mapCompIng[$tipDoc]['deducible'] += $sign * $gravIrp;
         }
 
         $c10 = max(0, (int)round($ingExonerados));
@@ -3051,17 +3246,9 @@ class ReportesContablesController {
 
         // 3. Egresos Deducibles del Ejercicio Fiscal (Rubro 2)
         $rowsEgr = Database::queryForList(
-            "SELECT id_egreso, tip_doc, tip_egreso, clasificacion_gasto, observacion,
-                    CAST(COALESCE(cod_regimen, 1) AS UNSIGNED) AS cod_regimen, regimen,
-                    nom_proveedor, ruc_proveedor,
-                    COALESCE(grav10, 0) AS grav10, COALESCE(iva10, 0) AS iva10,
-                    COALESCE(grav5, 0) AS grav5, COALESCE(iva5, 0) AS iva5,
-                    COALESCE(exentas, 0) AS exentas, COALESCE(tot_iva, 0) AS tot_iva,
-                    COALESCE(valor_total, 0) AS valor_total
-             FROM co_egresos
+            "SELECT * FROM co_egresos
              WHERE id_propietario = ? AND cod_empresa = ?
                AND fec_egreso >= ? AND fec_egreso <= ?
-               AND COALESCE(estado, 'A') <> 'I'
              ORDER BY fec_egreso ASC, id_egreso ASC",
             [$idProp, $codEmpresa, $startDateStr, $endDateStr]
         );
@@ -3091,6 +3278,9 @@ class ReportesContablesController {
         $proveedoresResumen = [];
 
         foreach ($rowsEgr as $re) {
+            if (strcasecmp((string)($re['estado'] ?? 'A'), 'I') === 0) continue;
+            if (strcasecmp((string)($re['anulada'] ?? 'N'), 'S') === 0) continue;
+
             $rawRegE = strtoupper(trim((string)($re['regimen'] ?? $re['cod_regimen'] ?? '1')));
             $codRegE = (int)($re['cod_regimen'] ?? 1);
             // Excluir comprobantes que sean exclusivamente IVA (3) o Ganancias de Capital (4)
@@ -3102,19 +3292,19 @@ class ReportesContablesController {
             $tipDocE = strtoupper(trim((string)($re['tip_doc'] ?? 'FAC')));
             $sign    = ($tipDocE === 'NCR' || str_contains($tipDocE, 'CRED') || str_contains($tipDocE, 'CRÉD')) ? -1.0 : 1.0;
 
-            $tot = max(0.0, (float)$re['valor_total']);
-            $g10 = max(0.0, (float)$re['grav10']);
-            $i10 = max(0.0, (float)$re['iva10']);
-            $g5  = max(0.0, (float)$re['grav5']);
-            $i5  = max(0.0, (float)$re['iva5']);
-            $ex  = max(0.0, (float)$re['exentas']);
+            $tot = max(0.0, (float)($re['valor_total'] ?? 0));
+            $g10 = max(0.0, (float)($re['grav10'] ?? 0));
+            $i10 = max(0.0, (float)($re['iva10'] ?? 0));
+            $g5  = max(0.0, (float)($re['grav5'] ?? 0));
+            $i5  = max(0.0, (float)($re['iva5'] ?? 0));
+            $ex  = max(0.0, (float)($re['exentas'] ?? 0));
 
             [$b10, ] = self::extraerBaseImponibleEImpuesto($g10, $i10, 10);
             [$b5,  ] = self::extraerBaseImponibleEImpuesto($g5,  $i5,  5);
             $sinIva  = $b10 + $b5 + $ex;
 
             if ($tot > 0 && $sinIva <= 0) {
-                $totIva = max(0.0, (float)$re['tot_iva']);
+                $totIva = max(0.0, (float)($re['tot_iva'] ?? 0));
                 $sinIva = $totIva > 0 ? max(0.0, $tot - $totIva) : round($tot / 1.1);
             }
 
@@ -3189,7 +3379,59 @@ class ReportesContablesController {
             $proveedoresResumen[$pKey]['cantidad']++;
             $proveedoresResumen[$pKey]['sinIva'] += $sign * $sinIva;
             $proveedoresResumen[$pKey]['conIva'] += $sign * $tot;
+
+            if ($tipDocE === '') $tipDocE = 'FAC';
+            if (!isset($mapCompEgr[$tipDocE])) {
+                $mapCompEgr[$tipDocE] = [
+                    'operacion' => 'EGRESO',
+                    'codigo'    => $tipDocE,
+                    'nombre'    => self::resolveNombreTipoComprobante($tipDocE, $mapTiposComp),
+                    'cantidad'  => 0,
+                    'importe'   => 0.0,
+                    'deducible' => 0.0,
+                ];
+            }
+            $mapCompEgr[$tipDocE]['cantidad']++;
+            $mapCompEgr[$tipDocE]['importe']   += $sign * $tot;
+            $mapCompEgr[$tipDocE]['deducible'] += $sign * $sinIva;
         }
+
+        $ingBrutoRound   = (int)round($ingBrutoTotal);
+        $ingGravRound    = max(0, (int)round($ingGravados));
+        $egrConIvaRound  = (int)round($egrTotalConIva);
+        $egrSinIvaRound  = (int)round($egrTotalSinIva);
+
+        $porTipoComprobanteIng = array_values(array_map(function (array $it) use ($ingBrutoRound, $ingGravRound): array {
+            $imp = (int)round($it['importe']);
+            $ded = (int)round($it['deducible']);
+            return [
+                'operacion'    => 'INGRESO',
+                'codigo'       => $it['codigo'],
+                'nombre'       => $it['nombre'],
+                'cantidad'     => $it['cantidad'],
+                'importe'      => $imp,
+                'deducible'    => $ded,
+                'pctImporte'   => $ingBrutoRound > 0 ? round(($imp / $ingBrutoRound) * 100, 1) : 0.0,
+                'pctDeducible' => $ingGravRound > 0 ? round(($ded / $ingGravRound) * 100, 1) : 0.0,
+            ];
+        }, $mapCompIng));
+        usort($porTipoComprobanteIng, fn($a, $b) => $b['importe'] <=> $a['importe']);
+
+        $porTipoComprobanteEgr = array_values(array_map(function (array $it) use ($egrConIvaRound, $egrSinIvaRound): array {
+            $imp = (int)round($it['importe']);
+            $ded = (int)round($it['deducible']);
+            return [
+                'operacion'    => 'EGRESO',
+                'codigo'       => $it['codigo'],
+                'nombre'       => $it['nombre'],
+                'cantidad'     => $it['cantidad'],
+                'importe'      => $imp,
+                'deducible'    => $ded,
+                'pctImporte'   => $egrConIvaRound > 0 ? round(($imp / $egrConIvaRound) * 100, 1) : 0.0,
+                'pctDeducible' => $egrSinIvaRound > 0 ? round(($ded / $egrSinIvaRound) * 100, 1) : 0.0,
+            ];
+        }, $mapCompEgr));
+        usort($porTipoComprobanteEgr, fn($a, $b) => $b['importe'] <=> $a['importe']);
 
         $topProveedores = array_values($proveedoresResumen);
         usort($topProveedores, fn($a, $b) => $b['sinIva'] <=> $a['sinIva']);
@@ -3310,8 +3552,10 @@ class ReportesContablesController {
             'impuestoTotal'   => $c50,
             'cantRetIrp'      => $cantRetIrp,
             'totalRetIrp'     => $c41,
-            'porInciso'       => array_values($porIncisoResumen),
-            'topProveedores'  => $topProveedores,
+            'porInciso'             => array_values($porIncisoResumen),
+            'topProveedores'        => $topProveedores,
+            'porTipoComprobanteIng' => $porTipoComprobanteIng,
+            'porTipoComprobanteEgr' => $porTipoComprobanteEgr,
         ];
 
         return [

@@ -24,7 +24,15 @@
                             <p style="margin: 0; font-size: 0.8rem; color: #64748b; font-weight: 500;">Módulo Contabilidad - Resumen de Impuesto a la Renta Personal</p>
                         </div>
                     </div>
-                    <div>
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <div style="display: inline-flex; background: #f1f5f9; padding: 4px; border-radius: 10px; border: 1px solid #e2e8f0; gap: 4px;">
+                            <button type="button" id="tabBtnHoja" class="irp-tab-btn active" onclick="cambiarTabIrp('hoja')">
+                                <i class="ph ph-table"></i> Hoja Resumen IRP
+                            </button>
+                            <button type="button" id="tabBtnGraficos" class="irp-tab-btn" onclick="cambiarTabIrp('graficos')">
+                                <i class="ph ph-chart-bar"></i> Gráficos
+                            </button>
+                        </div>
                         <a href="/app/formulario-515" onclick="const fd=document.getElementById('fechaDesde')?.value||''; if(fd.length>=4){this.href='/app/formulario-515?anio='+fd.substring(0,4);}"
                            style="height: 38px; padding: 0 1rem; background: #1e3a8a; color: white; border: none; border-radius: 8px; font-weight: 800; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; box-shadow: 0 2px 6px rgba(30,58,138,0.22);">
                             <i class="ph ph-file-text" style="font-size: 1.05rem;"></i> Abrir Formulario N° 515 (DNIT V1)
@@ -77,7 +85,7 @@
             </div>
 
             <!-- KPI Cards Summary -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.15rem;">
                 <div style="background: white; border-radius: 12px; padding: 1.2rem; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
                     <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Ingresos Deducibles (Sin IVA)</div>
                     <div id="kpiIngDeducibles" style="font-size: 1.35rem; font-weight: 800; color: #16a34a; margin-top: 4px;">Gs. 0</div>
@@ -96,8 +104,23 @@
                 </div>
             </div>
 
+            <!-- Barra de Pestañas: Hoja Resumen IRP vs Informe en Gráficos -->
+            <div class="no-print" style="margin-bottom: 1.15rem; padding: 8px 14px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" id="btnTabVistaHoja" class="irp-tab-btn active" onclick="cambiarTabIrp('hoja')" style="padding: 9px 18px; font-size: 0.86rem;">
+                        <i class="ph ph-file-text" style="font-size: 1.1rem;"></i> Hoja Resumen IRP
+                    </button>
+                    <button type="button" id="btnTabVistaGraficos" class="irp-tab-btn" onclick="cambiarTabIrp('graficos')" style="padding: 9px 18px; font-size: 0.86rem;">
+                        <i class="ph ph-chart-bar" style="font-size: 1.1rem; color: #0284c7;"></i> Informe en Gráficos (Totales y por Tipo de Comprobante)
+                    </button>
+                </div>
+                <div style="font-size: 0.76rem; color: #64748b; font-weight: 600;">
+                    <i class="ph ph-info"></i> Visualice el balance de ingresos/egresos y el total por tipo de comprobante
+                </div>
+            </div>
+
             <!-- Hoja Oficial de Resumen IRP -->
-            <div style="background: #ffffff; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 4px 16px rgba(0,0,0,0.04); padding: 2rem 2.25rem; font-family: Arial, Helvetica, sans-serif; color: #000000;">
+            <div id="panelHojaIrp" style="background: #ffffff; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 4px 16px rgba(0,0,0,0.04); padding: 2rem 2.25rem; font-family: Arial, Helvetica, sans-serif; color: #000000;">
 
                 <!-- Título -->
                 <div style="text-align: center; margin-bottom: 1.4rem;">
@@ -279,10 +302,197 @@
 
             </div>
 
+            <!-- Pestaña: Gráficos y Total por Tipo de Comprobante -->
+            <div id="panelGraficosIrp" style="display: none;">
+
+                <!--Fila 1: Balance General IRP + Composición por Tramos -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem;">
+                    <!-- Card 1: Balance General IRP (Total Ingresos vs Egresos vs Renta Neta) -->
+                    <div class="card" style="height: auto !important; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 1.35rem 1.5rem; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <div>
+                                <h4 style="margin: 0; font-size: 0.96rem; font-weight: 800; color: #0f172a;">
+                                    <i class="ph ph-scales" style="color: #2563eb; margin-right: 4px;"></i> Balance General IRP (Ingresos vs. Egresos)
+                                </h4>
+                                <p style="margin: 2px 0 0 0; font-size: 0.76rem; color: #64748b;">Comparativa entre Importe Total con IVA y Monto Deducible IRP (Sin IVA)</p>
+                            </div>
+                        </div>
+                        <div id="chartBalanceIrp"></div>
+                    </div>
+
+                    <!-- Card 2: Liquidación Progresiva IRP por Tramos (8%, 9%, 10%) -->
+                    <div class="card" style="height: auto !important; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 1.35rem 1.5rem; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <div>
+                                <h4 style="margin: 0; font-size: 0.96rem; font-weight: 800; color: #0f172a;">
+                                    <i class="ph ph-chart-Donut" style="color: #dc2626; margin-right: 4px;"></i> Liquidación del Impuesto IRP por Tramos
+                                </h4>
+                                <p style="margin: 2px 0 0 0; font-size: 0.76rem; color: #64748b;">Distribución de la Renta Neta Imponible según escala progresiva (Ley 6380/19)</p>
+                            </div>
+                        </div>
+                        <div id="chartTramosIrp"></div>
+                    </div>
+                </div>
+
+                <!-- Fila 2: Gráficos de Total por Tipo de Comprobante (Ingresos y Egresos) -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem;">
+                    <!-- Ingresos por Tipo de Comprobante -->
+                    <div class="card" style="height: auto !important; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 1.35rem 1.5rem; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <div>
+                                <h4 style="margin: 0; font-size: 0.96rem; font-weight: 800; color: #0f172a;">
+                                    <i class="ph ph-trend-up" style="color: #16a34a; margin-right: 4px;"></i> Total Ingresos por Tipo de Comprobante
+                                </h4>
+                                <p style="margin: 2px 0 0 0; font-size: 0.76rem; color: #64748b;">Participación de Facturas, Liquidaciones de Salario y otros comprobantes de ingreso</p>
+                            </div>
+                            <span id="badgeCantCompIng" style="background: #dcfce7; color: #166534; font-size: 0.72rem; font-weight: 800; padding: 4px 10px; border-radius: 999px;">0 comp.</span>
+                        </div>
+                        <div id="chartTipoCompIng"></div>
+                    </div>
+
+                    <!-- Egresos por Tipo de Comprobante -->
+                    <div class="card" style="height: auto !important; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 1.35rem 1.5rem; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <div>
+                                <h4 style="margin: 0; font-size: 0.96rem; font-weight: 800; color: #0f172a;">
+                                    <i class="ph ph-trend-down" style="color: #0284c7; margin-right: 4px;"></i> Total Egresos por Tipo de Comprobante
+                                </h4>
+                                <p style="margin: 2px 0 0 0; font-size: 0.76rem; color: #64748b;">Participación de Facturas, Boletas, Autofacturas, Recibos y Notas de Crédito</p>
+                            </div>
+                            <span id="badgeCantCompEgr" style="background: #e0f2fe; color: #075985; font-size: 0.72rem; font-weight: 800; padding: 4px 10px; border-radius: 999px;">0 comp.</span>
+                        </div>
+                        <div id="chartTipoCompEgr"></div>
+                    </div>
+                </div>
+
+                <!-- Fila 3: Cuadro Consolidado de Totales por Tipo de Comprobante -->
+                <div class="card" style="height: auto !important; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 1.35rem 1.5rem; box-shadow: 0 4px 16px rgba(0,0,0,0.03); margin-bottom: 1.5rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 8px;">
+                        <div>
+                            <h4 style="margin: 0; font-size: 0.98rem; font-weight: 800; color: #0f172a;">
+                                <i class="ph ph-receipt" style="color: #1e3a8a; margin-right: 4px;"></i> Resumen Consolidado: Total por Tipo de Comprobante (Ingresos y Egresos)
+                            </h4>
+                            <p style="margin: 2px 0 0 0; font-size: 0.76rem; color: #64748b;">Detalle de cantidad de documentos, importe bruto total y monto deducible sin IVA por tipo de documento</p>
+                        </div>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table class="irp-chart-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 14%;">OPERACIÓN</th>
+                                    <th style="width: 10%; text-align: center;">CÓDIGO</th>
+                                    <th style="width: 28%;">TIPO DE COMPROBANTE</th>
+                                    <th style="width: 10%; text-align: center;">CANTIDAD</th>
+                                    <th style="width: 15%; text-align: right;">TOTAL IMPORTE (GS.)</th>
+                                    <th style="width: 15%; text-align: right;">TOTAL DEDUCIBLE SIN IVA</th>
+                                    <th style="width: 8%; text-align: right;">% PART.</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyTipoComprobanteConsolidado">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; color: #64748b; padding: 1.2rem;">Cargando desglose por tipo de comprobante...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Fila 4: Egresos por Clasificación de Gasto + Evolución Mensual -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.25rem;">
+                    <!-- Clasificación de Egresos -->
+                    <div class="card" style="height: auto !important; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 1.35rem 1.5rem; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
+                        <div style="margin-bottom: 1rem;">
+                            <h4 style="margin: 0; font-size: 0.96rem; font-weight: 800; color: #0f172a;">
+                                <i class="ph ph-folders" style="color: #7c3aed; margin-right: 4px;"></i> Egresos por Clasificación / Rubro IRP
+                            </h4>
+                            <p style="margin: 2px 0 0 0; font-size: 0.76rem; color: #64748b;">Distribución de egresos según su clasificación contable e impositiva</p>
+                        </div>
+                        <div id="chartClasificacionEgr"></div>
+                    </div>
+
+                    <!-- Evolución Mensual IRP (Ene - Dic) -->
+                    <div class="card" style="height: auto !important; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 1.35rem 1.5rem; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 8px;">
+                            <div>
+                                <h4 style="margin: 0; font-size: 0.96rem; font-weight: 800; color: #0f172a;">
+                                    <i class="ph ph-calendar-blank" style="color: #2563eb; margin-right: 4px;"></i> Evolución Mensual (Ingresos vs. Egresos Deducibles)
+                                </h4>
+                                <p style="margin: 2px 0 0 0; font-size: 0.76rem; color: #64748b;">Comparativa mensual sin IVA durante el ejercicio</p>
+                            </div>
+                            <div style="display: flex; gap: 10px; font-size: 0.72rem; font-weight: 700;">
+                                <span style="display: inline-flex; align-items: center; gap: 4px; color: #16a34a;">
+                                    <span style="width: 10px; height: 10px; border-radius: 3px; background: #16a34a;"></span> Ingresos
+                                </span>
+                                <span style="display: inline-flex; align-items: center; gap: 4px; color: #0284c7;">
+                                    <span style="width: 10px; height: 10px; border-radius: 3px; background: #0284c7;"></span> Egresos
+                                </span>
+                            </div>
+                        </div>
+                        <div id="chartEvolucionMensualIrp"></div>
+                    </div>
+                </div>
+
+            </div>
+
         </div>
     </main>
 
     <style>
+        .irp-tab-btn {
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            color: #475569;
+            font-size: 0.82rem;
+            font-weight: 800;
+            padding: 7px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s;
+        }
+        .irp-tab-btn:hover {
+            color: #0f172a;
+            background: #e2e8f0;
+        }
+        .irp-tab-btn.active {
+            background: #15803d;
+            color: #ffffff;
+            border-color: #15803d;
+            box-shadow: 0 2px 6px rgba(21, 128, 61, 0.25);
+        }
+        .irp-tab-btn.active i {
+            color: #ffffff !important;
+        }
+
+        .irp-chart-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.81rem;
+        }
+        .irp-chart-table th {
+            background: #f8fafc;
+            color: #475569;
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 9px 10px;
+            border-bottom: 2px solid #e2e8f0;
+            text-align: left;
+        }
+        .irp-chart-table td {
+            padding: 9px 10px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #1e293b;
+            vertical-align: middle;
+        }
+        .irp-chart-table tr.subtotal-row td {
+            background: #f8fafc;
+            font-weight: 800;
+            border-top: 1px solid #cbd5e1;
+            border-bottom: 2px solid #cbd5e1;
+        }
         .qf-btn {
             background: #ffffff; color: #334155; border: 1px solid #cbd5e1;
             border-radius: 999px; padding: 4px 11px; font-size: 0.75rem;
@@ -402,9 +612,335 @@
             cargarResumenIrp();
         });
 
+        let ultimoResumenIrpData = null;
+
+        function cambiarTabIrp(tab) {
+            const btnHoja = document.getElementById('tabBtnHoja');
+            const btnGraf = document.getElementById('tabBtnGraficos');
+            const btnVistaHoja = document.getElementById('btnTabVistaHoja');
+            const btnVistaGraf = document.getElementById('btnTabVistaGraficos');
+            const panelHoja = document.getElementById('panelHojaIrp');
+            const panelGraf = document.getElementById('panelGraficosIrp');
+            if (tab === 'graficos') {
+                btnHoja?.classList.remove('active');
+                btnVistaHoja?.classList.remove('active');
+                btnGraf?.classList.add('active');
+                btnVistaGraf?.classList.add('active');
+                if (panelHoja) panelHoja.style.display = 'none';
+                if (panelGraf) panelGraf.style.display = 'block';
+                if (ultimoResumenIrpData) renderGraficosIrp(ultimoResumenIrpData);
+            } else {
+                btnGraf?.classList.remove('active');
+                btnVistaGraf?.classList.remove('active');
+                btnHoja?.classList.add('active');
+                btnVistaHoja?.classList.add('active');
+                if (panelGraf) panelGraf.style.display = 'none';
+                if (panelHoja) panelHoja.style.display = 'block';
+            }
+        }
+
         function formatGs(val) {
             const n = Math.round(Number(val) || 0);
             return n.toLocaleString('es-PY');
+        }
+
+        function escHtml(str) {
+            return String(str ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function renderGraficosIrp(data) {
+            const irp = data.irp || {};
+            const compIng = Array.isArray(data.porTipoComprobanteIng) ? data.porTipoComprobanteIng : [];
+            const compEgr = Array.isArray(data.porTipoComprobanteEgr) ? data.porTipoComprobanteEgr : [];
+            const clasifEgr = Array.isArray(data.porClasificacionEgreso) ? data.porClasificacionEgreso : [];
+            const porMes = Array.isArray(data.porMes) ? data.porMes : [];
+
+            const ingImp = Number(irp.ingresosImporte || 0);
+            const ingDed = Number(irp.ingresosDeducibles || 0);
+            const egrImp = Number(irp.egresosImporte || 0) + Number(irp.donacionesImporte || 0);
+            const egrDed = Number(irp.egresosDeducibles || 0) + Number(irp.donacionesDeducibles || 0);
+            const saldoDed = Number(irp.saldoDeducibles || 0);
+            const montoBase = Number(irp.montoBaseIrp || 0);
+            const impTotal = Number(irp.impuestoAPagar || 0);
+
+            // 1. Balance General IRP (Ingresos vs Egresos vs Renta Neta)
+            const maxBal = Math.max(ingImp, ingDed, egrImp, egrDed, Math.abs(saldoDed), 1);
+            const pct = (v) => Math.min(100, Math.max(2, Math.round((Math.abs(v) / maxBal) * 100)));
+            const ratioEgrIng = ingDed > 0 ? Math.min(100, Math.round((egrDed / ingDed) * 1000) / 10) : 0;
+
+            const elBal = document.getElementById('chartBalanceIrp');
+            if (elBal) {
+                elBal.innerHTML = `
+                    <div style="display: flex; flex-direction: column; gap: 14px;">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700; margin-bottom: 4px;">
+                                <span style="color: #15803d;"><i class="ph ph-arrow-up-right"></i> Total Ingresos (${irp.cantIngresos || 0} comp.)</span>
+                                <span style="color: #0f172a;">Deducible: <strong>Gs. ${formatGs(ingDed)}</strong> <span style="color:#64748b; font-weight:600;">(Bruto: Gs. ${formatGs(ingImp)})</span></span>
+                            </div>
+                            <div style="height: 12px; background: #f1f5f9; border-radius: 999px; overflow: hidden;">
+                                <div style="height: 100%; width: ${pct(ingDed)}%; background: linear-gradient(90deg, #16a34a, #22c55e); border-radius: 999px;"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700; margin-bottom: 4px;">
+                                <span style="color: #0369a1;"><i class="ph ph-arrow-down-right"></i> Total Egresos + Donaciones (${irp.cantEgresos || 0} comp.)</span>
+                                <span style="color: #0f172a;">Deducible: <strong>Gs. ${formatGs(egrDed)}</strong> <span style="color:#64748b; font-weight:600;">(Bruto: Gs. ${formatGs(egrImp)})</span></span>
+                            </div>
+                            <div style="height: 12px; background: #f1f5f9; border-radius: 999px; overflow: hidden;">
+                                <div style="height: 100%; width: ${pct(egrDed)}%; background: linear-gradient(90deg, #0284c7, #38bdf8); border-radius: 999px;"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700; margin-bottom: 4px;">
+                                <span style="color: ${saldoDed >= 0 ? '#1e3a8a' : '#dc2626'};"><i class="ph ph-scales"></i> Saldo / Renta Neta del Periodo</span>
+                                <span style="color: ${saldoDed >= 0 ? '#1e3a8a' : '#dc2626'}; font-weight: 800;">Gs. ${formatGs(saldoDed)}</span>
+                            </div>
+                            <div style="height: 12px; background: #f1f5f9; border-radius: 999px; overflow: hidden;">
+                                <div style="height: 100%; width: ${pct(saldoDed)}%; background: ${saldoDed >= 0 ? 'linear-gradient(90deg, #1e3a8a, #3b82f6)' : 'linear-gradient(90deg, #dc2626, #f87171)'}; border-radius: 999px;"></div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 4px; padding: 10px 12px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.78rem;">
+                            <span style="color: #475569; font-weight: 700;">Cobertura de Egresos sobre Ingresos:</span>
+                            <span style="font-weight: 800; color: #0f172a; background: #e2e8f0; padding: 2px 10px; border-radius: 999px;">${ratioEgrIng}% absorbido por egresos</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 2. Liquidación por Tramos IRP (8%, 9%, 10%)
+            const elTramos = document.getElementById('chartTramosIrp');
+            if (elTramos) {
+                const imp8 = Number(irp.impuesto8 || 0);
+                const imp9 = Number(irp.impuesto9 || 0);
+                const imp10 = Number(irp.impuesto10 || 0);
+                const maxT = Math.max(impTotal, 1);
+                const tasaEfectiva = ingDed > 0 ? ((impTotal / ingDed) * 100).toFixed(2) : '0.00';
+
+                elTramos.innerHTML = `
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.79rem; padding-bottom: 6px; border-bottom: 1px dashed #e2e8f0;">
+                            <span style="color:#475569; font-weight:700;">Tramo 1 · 8% (Hasta Gs. 50.000.000)</span>
+                            <strong style="color:#0f172a;">Gs. ${formatGs(imp8)}</strong>
+                        </div>
+                        <div style="height: 8px; background: #f1f5f9; border-radius: 999px; overflow: hidden; margin-top: -6px;">
+                            <div style="height: 100%; width: ${imp8 > 0 ? Math.max(4, Math.round((imp8 / maxT) * 100)) : 0}%; background: #f59e0b; border-radius: 999px;"></div>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; font-size: 0.79rem; padding-bottom: 6px; border-bottom: 1px dashed #e2e8f0;">
+                            <span style="color:#475569; font-weight:700;">Tramo 2 · 9% (De 50M a 150M)</span>
+                            <strong style="color:#0f172a;">Gs. ${formatGs(imp9)}</strong>
+                        </div>
+                        <div style="height: 8px; background: #f1f5f9; border-radius: 999px; overflow: hidden; margin-top: -6px;">
+                            <div style="height: 100%; width: ${imp9 > 0 ? Math.max(4, Math.round((imp9 / maxT) * 100)) : 0}%; background: #ea580c; border-radius: 999px;"></div>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; font-size: 0.79rem; padding-bottom: 6px; border-bottom: 1px dashed #e2e8f0;">
+                            <span style="color:#475569; font-weight:700;">Tramo 3 · 10% (Más de Gs. 150.000.000)</span>
+                            <strong style="color:#0f172a;">Gs. ${formatGs(imp10)}</strong>
+                        </div>
+                        <div style="height: 8px; background: #f1f5f9; border-radius: 999px; overflow: hidden; margin-top: -6px;">
+                            <div style="height: 100%; width: ${imp10 > 0 ? Math.max(4, Math.round((imp10 / maxT) * 100)) : 0}%; background: #dc2626; border-radius: 999px;"></div>
+                        </div>
+
+                        <div style="margin-top: 4px; padding: 10px 12px; background: #fef2f2; border-radius: 10px; border: 1px solid #fecaca; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.8rem;">
+                            <span style="color: #991b1b; font-weight: 800;">Total Impuesto IRP (Tasa efectiva: ${tasaEfectiva}%):</span>
+                            <span style="font-weight: 900; color: #dc2626; font-size: 0.95rem;">Gs. ${formatGs(impTotal)}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 3. Gráfico Total Ingresos por Tipo de Comprobante
+            const badgeIng = document.getElementById('badgeCantCompIng');
+            if (badgeIng) badgeIng.textContent = `${irp.cantIngresos || 0} comp.`;
+            const elCompIng = document.getElementById('chartTipoCompIng');
+            if (elCompIng) {
+                if (compIng.length === 0) {
+                    elCompIng.innerHTML = `<div style="padding: 1.5rem; text-align: center; color: #94a3b8; font-size: 0.82rem;">Sin comprobantes de ingreso en el periodo seleccionado.</div>`;
+                } else {
+                    elCompIng.innerHTML = compIng.map(item => {
+                        const pctBar = Math.min(100, Math.max(3, Number(item.pctDeducible || item.pctImporte || 0)));
+                        return `
+                            <div style="margin-bottom: 12px;">
+                                <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 0.8rem; margin-bottom: 4px; gap: 8px;">
+                                    <div>
+                                        <span style="display:inline-block; background:#dcfce7; color:#166534; font-weight:800; font-size:0.7rem; padding:1px 7px; border-radius:5px; margin-right:5px;">${escHtml(item.codigo)}</span>
+                                        <strong style="color:#0f172a;">${escHtml(item.nombre)}</strong>
+                                        <span style="color:#64748b; font-size:0.74rem; margin-left:4px;">(${item.cantidad} comp.)</span>
+                                    </div>
+                                    <div style="text-align: right; white-space: nowrap;">
+                                        <strong style="color:#15803d;">Gs. ${formatGs(item.deducible)}</strong>
+                                        <span style="color:#64748b; font-size:0.72rem; margin-left:4px;">(${item.pctDeducible}%)</span>
+                                    </div>
+                                </div>
+                                <div style="height: 10px; background: #f1f5f9; border-radius: 999px; overflow: hidden;">
+                                    <div style="height: 100%; width: ${pctBar}%; background: linear-gradient(90deg, #16a34a, #4ade80); border-radius: 999px;"></div>
+                                </div>
+                                <div style="font-size: 0.71rem; color: #64748b; margin-top: 2px; text-align: right;">
+                                    Importe Bruto: Gs. ${formatGs(item.importe)}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+
+            // 4. Gráfico Total Egresos por Tipo de Comprobante
+            const badgeEgr = document.getElementById('badgeCantCompEgr');
+            if (badgeEgr) badgeEgr.textContent = `${irp.cantEgresos || 0} comp.`;
+            const elCompEgr = document.getElementById('chartTipoCompEgr');
+            if (elCompEgr) {
+                if (compEgr.length === 0) {
+                    elCompEgr.innerHTML = `<div style="padding: 1.5rem; text-align: center; color: #94a3b8; font-size: 0.82rem;">Sin comprobantes de egreso en el periodo seleccionado.</div>`;
+                } else {
+                    elCompEgr.innerHTML = compEgr.map(item => {
+                        const pctBar = Math.min(100, Math.max(3, Number(item.pctDeducible || item.pctImporte || 0)));
+                        return `
+                            <div style="margin-bottom: 12px;">
+                                <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 0.8rem; margin-bottom: 4px; gap: 8px;">
+                                    <div>
+                                        <span style="display:inline-block; background:#e0f2fe; color:#075985; font-weight:800; font-size:0.7rem; padding:1px 7px; border-radius:5px; margin-right:5px;">${escHtml(item.codigo)}</span>
+                                        <strong style="color:#0f172a;">${escHtml(item.nombre)}</strong>
+                                        <span style="color:#64748b; font-size:0.74rem; margin-left:4px;">(${item.cantidad} comp.)</span>
+                                    </div>
+                                    <div style="text-align: right; white-space: nowrap;">
+                                        <strong style="color:#0369a1;">Gs. ${formatGs(item.deducible)}</strong>
+                                        <span style="color:#64748b; font-size:0.72rem; margin-left:4px;">(${item.pctDeducible}%)</span>
+                                    </div>
+                                </div>
+                                <div style="height: 10px; background: #f1f5f9; border-radius: 999px; overflow: hidden;">
+                                    <div style="height: 100%; width: ${pctBar}%; background: linear-gradient(90deg, #0284c7, #38bdf8); border-radius: 999px;"></div>
+                                </div>
+                                <div style="font-size: 0.71rem; color: #64748b; margin-top: 2px; text-align: right;">
+                                    Importe Bruto: Gs. ${formatGs(item.importe)}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+
+            // 5. Tabla Consolidada de Totales por Tipo de Comprobante
+            const tbodyComp = document.getElementById('tbodyTipoComprobanteConsolidado');
+            if (tbodyComp) {
+                let rowsHtml = '';
+                if (compIng.length === 0 && compEgr.length === 0) {
+                    rowsHtml = `<tr><td colspan="7" style="text-align:center; color:#94a3b8; padding:1.2rem;">No se registran comprobantes en el rango seleccionado.</td></tr>`;
+                } else {
+                    compIng.forEach(it => {
+                        rowsHtml += `
+                            <tr>
+                                <td><span style="background:#dcfce7; color:#166534; font-weight:800; font-size:0.7rem; padding:2px 8px; border-radius:999px;">INGRESO</span></td>
+                                <td style="text-align:center; font-weight:800; color:#334155;">${escHtml(it.codigo)}</td>
+                                <td style="font-weight:700;">${escHtml(it.nombre)}</td>
+                                <td style="text-align:center; font-weight:700;">${it.cantidad}</td>
+                                <td style="text-align:right; font-variant-numeric:tabular-nums;">${formatGs(it.importe)}</td>
+                                <td style="text-align:right; font-weight:800; color:#15803d; font-variant-numeric:tabular-nums;">${formatGs(it.deducible)}</td>
+                                <td style="text-align:right; font-weight:700; color:#475569;">${it.pctDeducible}%</td>
+                            </tr>
+                        `;
+                    });
+                    if (compIng.length > 0) {
+                        rowsHtml += `
+                            <tr class="subtotal-row">
+                                <td colspan="3" style="color:#166534;">SUBTOTAL INGRESOS POR COMPROBANTE</td>
+                                <td style="text-align:center; color:#166534;">${irp.cantIngresos || 0}</td>
+                                <td style="text-align:right; color:#166534;">${formatGs(ingImp)}</td>
+                                <td style="text-align:right; color:#166534;">${formatGs(ingDed)}</td>
+                                <td style="text-align:right; color:#166534;">100%</td>
+                            </tr>
+                        `;
+                    }
+
+                    compEgr.forEach(it => {
+                        rowsHtml += `
+                            <tr>
+                                <td><span style="background:#e0f2fe; color:#075985; font-weight:800; font-size:0.7rem; padding:2px 8px; border-radius:999px;">EGRESO</span></td>
+                                <td style="text-align:center; font-weight:800; color:#334155;">${escHtml(it.codigo)}</td>
+                                <td style="font-weight:700;">${escHtml(it.nombre)}</td>
+                                <td style="text-align:center; font-weight:700;">${it.cantidad}</td>
+                                <td style="text-align:right; font-variant-numeric:tabular-nums;">${formatGs(it.importe)}</td>
+                                <td style="text-align:right; font-weight:800; color:#0369a1; font-variant-numeric:tabular-nums;">${formatGs(it.deducible)}</td>
+                                <td style="text-align:right; font-weight:700; color:#475569;">${it.pctDeducible}%</td>
+                            </tr>
+                        `;
+                    });
+                    if (compEgr.length > 0) {
+                        rowsHtml += `
+                            <tr class="subtotal-row">
+                                <td colspan="3" style="color:#075985;">SUBTOTAL EGRESOS POR COMPROBANTE</td>
+                                <td style="text-align:center; color:#075985;">${irp.cantEgresos || 0}</td>
+                                <td style="text-align:right; color:#075985;">${formatGs(egrImp)}</td>
+                                <td style="text-align:right; color:#075985;">${formatGs(egrDed)}</td>
+                                <td style="text-align:right; color:#075985;">100%</td>
+                            </tr>
+                        `;
+                    }
+                }
+                tbodyComp.innerHTML = rowsHtml;
+            }
+
+            // 6. Clasificación de Egresos IRP
+            const elClasif = document.getElementById('chartClasificacionEgr');
+            if (elClasif) {
+                if (clasifEgr.length === 0) {
+                    elClasif.innerHTML = `<div style="padding: 1.5rem; text-align: center; color: #94a3b8; font-size: 0.82rem;">Sin egresos clasificados en el periodo.</div>`;
+                } else {
+                    elClasif.innerHTML = clasifEgr.map(item => {
+                        const pctBar = Math.min(100, Math.max(3, Number(item.pctDeducible || 0)));
+                        return `
+                            <div style="margin-bottom: 11px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.79rem; margin-bottom: 4px; gap: 8px;">
+                                    <span style="font-weight: 700; color: #1e293b;">${escHtml(item.nombre)} <span style="color:#64748b; font-weight:500;">(${item.cantidad})</span></span>
+                                    <span style="font-weight: 800; color: #6d28d9; white-space: nowrap;">Gs. ${formatGs(item.deducible)} (${item.pctDeducible}%)</span>
+                                </div>
+                                <div style="height: 9px; background: #f1f5f9; border-radius: 999px; overflow: hidden;">
+                                    <div style="height: 100%; width: ${pctBar}%; background: linear-gradient(90deg, #7c3aed, #a78bfa); border-radius: 999px;"></div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+
+            // 7. Evolución Mensual IRP (Ene - Dic)
+            const elMes = document.getElementById('chartEvolucionMensualIrp');
+            if (elMes) {
+                let maxM = 1;
+                porMes.forEach(m => {
+                    if (m.ingDeducible > maxM) maxM = m.ingDeducible;
+                    if (m.egrDeducible > maxM) maxM = m.egrDeducible;
+                });
+
+                const colsHtml = porMes.map(m => {
+                    const hIng = m.ingDeducible > 0 ? Math.max(4, Math.round((m.ingDeducible / maxM) * 110)) : 2;
+                    const hEgr = m.egrDeducible > 0 ? Math.max(4, Math.round((m.egrDeducible / maxM) * 110)) : 2;
+                    return `
+                        <div style="flex: 1; min-width: 34px; display: flex; flex-direction: column; align-items: center;" title="${m.nombreMes}: Ingresos Gs. ${formatGs(m.ingDeducible)} | Egresos Gs. ${formatGs(m.egrDeducible)}">
+                            <div style="height: 115px; display: flex; align-items: flex-end; gap: 3px; padding-bottom: 4px;">
+                                <div style="width: 10px; height: ${hIng}px; background: #16a34a; border-radius: 3px 3px 0 0;"></div>
+                                <div style="width: 10px; height: ${hEgr}px; background: #0284c7; border-radius: 3px 3px 0 0;"></div>
+                            </div>
+                            <div style="font-size: 0.68rem; font-weight: 800; color: #475569; border-top: 1px solid #cbd5e1; width: 100%; text-align: center; padding-top: 4px;">
+                                ${m.nombreMes}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                elMes.innerHTML = `
+                    <div style="display: flex; align-items: flex-end; gap: 6px; overflow-x: auto; padding: 8px 4px 4px 4px;">
+                        ${colsHtml}
+                    </div>
+                `;
+            }
         }
 
         function cargarResumenIrp() {
@@ -461,6 +997,9 @@
 
                     // Tabla 3
                     document.getElementById('tdImpuestoPagar').textContent = formatGs(irp.impuestoAPagar);
+
+                    ultimoResumenIrpData = data;
+                    renderGraficosIrp(data);
                 })
                 .catch(err => console.error(err));
         }

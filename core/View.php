@@ -13,7 +13,8 @@ class View {
             http_response_code($statusCode);
             header('Content-Type: application/json; charset=UTF-8');
         }
-        echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        echo $json !== false ? $json : '{"status":"error","message":"Error codificando respuesta JSON"}';
     }
 
     public static function renderTemplate(string $viewName, array $model = []): void {
