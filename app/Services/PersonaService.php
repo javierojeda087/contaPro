@@ -13,13 +13,14 @@ class PersonaService {
         ?string $tipoDocumento = 'RUC',
         ?string $direccion = null,
         ?string $telefono = null,
-        ?string $email = null
+        ?string $email = null,
+        ?int $customPropId = null
     ): ?string {
         if ($nombre === null || trim($nombre) === '') {
             return null;
         }
 
-        $propId = TenantContext::idPropietario();
+        $propId = ($customPropId !== null && $customPropId > 0) ? $customPropId : TenantContext::idPropietario();
         $doc = $ruc !== null ? trim($ruc) : '';
         $nom = mb_strtoupper(trim($nombre), 'UTF-8');
         $dir = $direccion !== null ? trim($direccion) : '';

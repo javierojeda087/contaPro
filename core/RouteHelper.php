@@ -97,6 +97,11 @@ class RouteHelper {
         'FORMULARIO_515'        => 'formulario_515',
         'FORMULARIO-515'        => 'formulario_515',
         'FORM515'               => 'formulario_515',
+        'COSALEGR'              => 'saldos-facturas-credito',
+        'SALDOS_EGRESOS'        => 'saldos-facturas-credito',
+        'SALDOS-EGRESOS'        => 'saldos-facturas-credito',
+        'SALDOS_FACTURAS_CREDITO' => 'saldos-facturas-credito',
+        'SALDOS-FACTURAS-CREDITO' => 'saldos-facturas-credito',
     ];
 
     public static function getRoute(?string $nomForma): string {

@@ -316,10 +316,132 @@ class SuperAdminController {
             }
         }
 
+        // Sincronizar y registrar como Persona en el sistema
+        try {
+            if ($ruc !== '' || $nombre !== '') {
+                \App\Services\PersonaService::syncPersonaData(
+                    null, $nombre, $ruc, 'RUC', null, $telefono, $email, $idProp
+                );
+                if ($idProp !== 1) {
+                    \App\Services\PersonaService::syncPersonaData(
+                        null, $nombre, $ruc, 'RUC', null, $telefono, $email, 1
+                    );
+                }
+            }
+        } catch (\Throwable $ignored) {}
+
         return [
             'status'  => 'success',
             'message' => 'Propietario #' . $idProp . ' (' . $nombre . ') guardado con correo ' . $email . ' y asignado al grupo ' . $grupoPlan . '.'
         ];
+    }
+
+    /**
+     * Consulta RUC para SuperAdmin en la BD de propietarios, personas y en la DNIT
+     */
+    public static function consultarRuc(): void {
+        self::checkAccess();
+        $ruc = trim((string)($_GET['ruc'] ?? ''));
+        $idPropExcl = (int)($_GET['idPropietario'] ?? 0);
+        $base = str_contains($ruc, '-') ? trim(explode('-', $ruc)[0]) : $ruc;
+        $base = preg_replace('/[^0-9]/', '', $base);
+
+        if (strlen($base) < 3) {
+            View::json(['status' => 'INVALIDO', 'message' => 'RUC inválido (debe tener al menos 3 dígitos).']);
+            return;
+        }
+
+        // 1. ¿Ya existe en la tabla de propietarios?
+        $prop = Database::queryForMap(
+            "SELECT id_propietario, nombre_propietario, ruc, email, telefono
+             FROM propietarios
+             WHERE UPPER(TRIM(SUBSTRING_INDEX(ruc, '-', 1))) = ?
+               AND id_propietario <> ?
+             LIMIT 1",
+            [$base, $idPropExcl]
+        );
+        if ($prop) {
+            View::json([
+                'status'        => 'PROPIETARIO_EXISTE',
+                'idPropietario' => (int)$prop['id_propietario'],
+                'nombre'        => (string)$prop['nombre_propietario'],
+                'ruc'           => (string)($prop['ruc'] ?? $ruc),
+                'email'         => (string)($prop['email'] ?? ''),
+                'telefono'      => (string)($prop['telefono'] ?? ''),
+            ]);
+            return;
+        }
+
+        // 2. ¿Existe como persona registrada en la BD?
+        $per = Database::queryForMap(
+            "SELECT p.cod_persona, p.nombre, i.numero,
+                    (SELECT num_telefono FROM telef_personas WHERE cod_persona = p.cod_persona AND id_propietario = p.id_propietario ORDER BY CASE WHEN por_defecto = 'S' THEN 0 ELSE 1 END LIMIT 1) AS telefono,
+                    (SELECT detalle FROM direc_personas WHERE cod_persona = p.cod_persona AND id_propietario = p.id_propietario ORDER BY CASE WHEN por_defecto = 'S' THEN 0 ELSE 1 END LIMIT 1) AS direccion
+             FROM ident_personas i
+             JOIN personas p ON p.id_propietario = i.id_propietario AND p.cod_persona = i.cod_persona
+             WHERE UPPER(TRIM(SUBSTRING_INDEX(i.numero, '-', 1))) = ?
+             ORDER BY CASE WHEN p.id_propietario = 1 THEN 0 ELSE 1 END
+             LIMIT 1",
+            [$base]
+        );
+        if ($per) {
+            View::json([
+                'status'     => 'PERSONA_EXISTE',
+                'codPersona' => (string)$per['cod_persona'],
+                'ruc'        => (string)$per['numero'],
+                'nombre'     => (string)$per['nombre'],
+                'telefono'   => (string)($per['telefono'] ?? ''),
+                'direccion'  => (string)($per['direccion'] ?? ''),
+            ]);
+            return;
+        }
+
+        // 3. Consultar servicio DNIT (turuc.com.py)
+        $url = 'https://turuc.com.py/api/contribuyente?ruc=' . urlencode($base);
+        $raw = false;
+        if (function_exists('curl_init')) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 5,
+                CURLOPT_CONNECTTIMEOUT => 3,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+                CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ContaPro/1.0',
+            ]);
+            $raw = curl_exec($ch);
+            curl_close($ch);
+        }
+        if ($raw === false || $raw === '') {
+            $ctx = stream_context_create([
+                'http' => [
+                    'timeout'       => 5,
+                    'ignore_errors' => true,
+                    'header'        => "Accept: application/json\r\nUser-Agent: Mozilla/5.0 ContaPro/1.0\r\n",
+                ],
+                'ssl' => ['verify_peer' => false, 'verify_peer_name' => false],
+            ]);
+            $raw = @file_get_contents($url, false, $ctx);
+        }
+
+        if (is_string($raw) && $raw !== '') {
+            $json = json_decode($raw, true);
+            $d = $json['data'] ?? null;
+            if (is_array($d) && !empty($d['razonSocial'])) {
+                $rucFull = !empty($d['ruc']) ? (string)$d['ruc'] : ($base . (isset($d['dv']) ? '-' . $d['dv'] : ''));
+                View::json([
+                    'status' => 'DNIT',
+                    'ruc'    => $rucFull,
+                    'nombre' => trim((string)$d['razonSocial']),
+                    'estado' => (string)($d['estado'] ?? ''),
+                ]);
+                return;
+            }
+        }
+
+        View::json(['status' => 'NO_ENCONTRADO']);
     }
 
     /**

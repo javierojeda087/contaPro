@@ -184,6 +184,46 @@
             justify-content: center;
             gap: 10px;
         }
+
+        /* Buscador Dinámico de Contribuyentes */
+        .contrib-item {
+            padding: 9px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+            margin-bottom: 3px;
+        }
+        .contrib-item:hover, .contrib-item.keyboard-active {
+            background: #f0fdf4 !important;
+            border-color: #86efac !important;
+            transform: translateX(2px);
+        }
+        .contrib-item.selected {
+            background: #ecfdf5;
+            border-color: #a7f3d0;
+        }
+        .contrib-item-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: #f1f5f9;
+            color: #475569;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+            transition: all 0.15s ease;
+        }
+        .contrib-item:hover .contrib-item-icon, .contrib-item.keyboard-active .contrib-item-icon {
+            background: #dcfce7;
+            color: #15803d;
+        }
+        .contrib-item.selected .contrib-item-icon {
+            background: #16a34a;
+            color: #ffffff;
+        }
         .error-msg { 
             background: #fef2f2; 
             color: #b91c1c; 
@@ -291,14 +331,52 @@
 
         <form id="contribuyenteForm" onsubmit="finalizarLogin(event)" autocomplete="off">
             <div id="step2FieldsWrap">
-                <div class="form-group" style="margin-bottom: 1.15rem;">
-                    <label for="contribuyente">Contribuyente / Empresa</label>
-                    <div class="input-container select-wrapper">
-                        <i class="ph ph-buildings input-icon"></i>
-                        <select id="contribuyente" class="form-control-custom" onchange="onContribuyenteChange()">
-                            <option value="">Cargando contribuyentes...</option>
-                        </select>
-                        <i class="ph ph-caret-down select-arrow"></i>
+                <div class="form-group" style="margin-bottom: 1.15rem; position: relative;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
+                        <label for="contribuyenteSearchInput" style="margin: 0; cursor: pointer;">Contribuyente / Empresa</label>
+                        <span id="contribuyentesCountBadge" style="font-size: 0.72rem; font-weight: 800; color: #15803d; background: #dcfce7; border: 1px solid #bbf7d0; padding: 1px 8px; border-radius: 99px; display: none;"></span>
+                    </div>
+
+                    <!-- Input buscador interactivo -->
+                    <div class="input-container" style="position: relative;">
+                        <i class="ph ph-buildings input-icon" style="z-index: 2;"></i>
+                        <input type="text" id="contribuyenteSearchInput" class="form-control-custom"
+                               placeholder="Buscar por nombre, RUC o código..."
+                               autocomplete="off"
+                               style="padding-right: 68px !important; cursor: pointer; text-overflow: ellipsis; font-weight: 700;"
+                               onfocus="abrirDropdownContribuyentes()"
+                               onclick="abrirDropdownContribuyentes()"
+                               oninput="filtrarContribuyentesEnVivo(this.value)"
+                               onkeydown="manejarTeclasContribuyentes(event)">
+                        
+                        <div style="position: absolute; right: 10px; display: flex; align-items: center; gap: 2px; z-index: 3;">
+                            <button type="button" id="btnLimpiarBusquedaContrib" onclick="limpiarBusquedaContribuyente(event)" title="Limpiar búsqueda" style="display: none; background: #f1f5f9; border: 1px solid #cbd5e1; width: 24px; height: 24px; color: #64748b; cursor: pointer; border-radius: 50%; font-size: 0.82rem; align-items: center; justify-content: center;" onmouseover="this.style.background='#fee2e2'; this.style.borderColor='#fca5a5'; this.style.color='#dc2626'" onmouseout="this.style.background='#f1f5f9'; this.style.borderColor='#cbd5e1'; this.style.color='#64748b'">
+                                <i class="ph ph-x"></i>
+                            </button>
+                            <button type="button" id="btnToggleDropdownContrib" onclick="toggleDropdownContribuyentes(event)" tabindex="-1" style="background: none; border: none; padding: 4px; color: #64748b; cursor: pointer; border-radius: 6px; font-size: 1.15rem; display: flex; align-items: center; justify-content: center;">
+                                <i class="ph ph-caret-down" id="caretIconContrib" style="transition: transform 0.2s ease;"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Select original oculto para total compatibilidad hacia atrás con finalizarLogin y scripts existentes -->
+                    <select id="contribuyente" style="display: none;" onchange="onContribuyenteChange()">
+                        <option value="">Cargando contribuyentes...</option>
+                    </select>
+
+                    <!-- Menú desplegable interactivo flotante -->
+                    <div id="contribuyenteDropdownList" style="display: none; position: absolute; top: calc(100% + 5px); left: 0; right: 0; background: #ffffff; border: 1.5px solid #16a34a; border-radius: 16px; box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.3), 0 0 0 1px rgba(22, 163, 74, 0.15); max-height: 310px; z-index: 1050; overflow: hidden; flex-direction: column;">
+                        
+                        <!-- Barra superior de estado -->
+                        <div style="padding: 8px 14px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-size: 0.74rem; font-weight: 700; color: #64748b; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                            <span id="dropdownHeaderTitle">Contribuyentes disponibles</span>
+                            <span style="font-size: 0.68rem; color: #16a34a; font-weight: 800;"><i class="ph ph-magnifying-glass"></i> Búsqueda en vivo</span>
+                        </div>
+
+                        <!-- Lista scrolleable de contribuyentes -->
+                        <div id="dropdownItemsContainer" style="overflow-y: auto; flex: 1; padding: 6px; max-height: 260px;">
+                            <!-- Opciones inyectadas dinámicamente -->
+                        </div>
                     </div>
                 </div>
 
@@ -475,12 +553,20 @@
                     btnText.innerText = 'INGRESAR Y CREAR CONTRIBUYENTE';
                     select.innerHTML = '<option value="NEW">Nuevo Contribuyente</option>';
                     select.value = 'NEW';
+                    const searchInput = document.getElementById('contribuyenteSearchInput');
+                    if (searchInput) searchInput.value = 'Nuevo Contribuyente';
                     return;
                 }
 
                 notice.style.display = 'none';
                 fieldsWrap.style.display = 'block';
                 btnText.innerText = 'INGRESAR';
+
+                const badgeCount = document.getElementById('contribuyentesCountBadge');
+                if (badgeCount) {
+                    badgeCount.style.display = 'inline-block';
+                    badgeCount.innerText = `${empresasList.length} empresa${empresasList.length === 1 ? '' : 's'}`;
+                }
 
                 let html = '<option value="">Seleccionar contribuyente...</option>';
                 empresasList.forEach(emp => {
@@ -501,11 +587,290 @@
                     select.value = String(empresasList[0].cod_empresa || empresasList[0].codEmpresa || empresasList[0].COD_EMPRESA || '');
                 }
 
+                sincronizarInputConSeleccionado();
+                renderContribuyentesDropdown(empresasList, '');
+
                 await onContribuyenteChange(defaultSucursal);
             } catch (error) {
                 console.error('Error cargando contribuyentes:', error);
             }
         }
+
+        // =========================================================================
+        // CONTROLADOR DEL BUSCADOR DINÁMICO DE CONTRIBUYENTES
+        // =========================================================================
+        let renderedContribuyentesList = [];
+        let highlightedContribuyenteIndex = -1;
+
+        function highlightMatch(text, query) {
+            if (!text) return '';
+            if (!query || !query.trim()) return escapeHtml(text);
+            const rawText = String(text);
+            const q = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(${q})`, 'gi');
+            return escapeHtml(rawText).replace(regex, '<mark style="background: #fef08a; color: #854d0e; padding: 0 3px; border-radius: 4px; font-weight: 800;">$1</mark>');
+        }
+
+        function sincronizarInputConSeleccionado() {
+            const select = document.getElementById('contribuyente');
+            const input = document.getElementById('contribuyenteSearchInput');
+            if (!select || !input) return;
+            const currentVal = select.value;
+            const foundEmp = empresasList.find(e => String(e.cod_empresa || e.codEmpresa || e.COD_EMPRESA || '') === String(currentVal));
+            if (foundEmp) {
+                const cod = (foundEmp.cod_empresa || foundEmp.codEmpresa || foundEmp.COD_EMPRESA || '').trim();
+                const desc = (foundEmp.descripcion || foundEmp.DESCRIPCION || '').trim();
+                input.value = cod ? `${cod} - ${desc}` : desc;
+            } else if (currentVal === 'NEW') {
+                input.value = 'Nuevo Contribuyente';
+            } else {
+                input.value = '';
+            }
+            const btnLimpiar = document.getElementById('btnLimpiarBusquedaContrib');
+            if (btnLimpiar) btnLimpiar.style.display = 'none';
+        }
+
+        function renderContribuyentesDropdown(lista, query = '') {
+            const container = document.getElementById('dropdownItemsContainer');
+            const headerTitle = document.getElementById('dropdownHeaderTitle');
+            if (!container) return;
+
+            renderedContribuyentesList = lista || [];
+            highlightedContribuyenteIndex = -1;
+
+            if (headerTitle) {
+                if (query.trim()) {
+                    headerTitle.innerHTML = `Resultados: <b>${renderedContribuyentesList.length}</b> encontrado(s)`;
+                } else {
+                    headerTitle.innerText = `Todos los contribuyentes (${renderedContribuyentesList.length})`;
+                }
+            }
+
+            if (renderedContribuyentesList.length === 0) {
+                container.innerHTML = `
+                    <div style="padding: 24px 16px; text-align: center; color: #64748b;">
+                        <i class="ph ph-magnifying-glass" style="font-size: 2.2rem; color: #cbd5e1; display: block; margin-bottom: 8px;"></i>
+                        <div style="font-size: 0.88rem; font-weight: 800; color: #334155;">No se encontraron contribuyentes</div>
+                        <div style="font-size: 0.74rem; color: #94a3b8; margin-top: 4px;">Intente buscando por nombre, RUC o código</div>
+                    </div>`;
+                return;
+            }
+
+            const currentVal = String(document.getElementById('contribuyente')?.value || '');
+            let html = '';
+
+            renderedContribuyentesList.forEach((emp, idx) => {
+                const cod = String(emp.cod_empresa || emp.codEmpresa || emp.COD_EMPRESA || '').trim();
+                const desc = String(emp.descripcion || emp.DESCRIPCION || '').trim();
+                const ruc = String(emp.ruc_empresa || emp.rucEmpresa || emp.RUC_EMPRESA || emp.ruc || '').trim();
+                const act = String(emp.actividad || emp.ACTIVIDAD || '').trim();
+                const isSelected = cod === currentVal;
+
+                html += `
+                    <div class="contrib-item ${isSelected ? 'selected' : ''}" 
+                         id="contribOption_${idx}"
+                         data-idx="${idx}"
+                         data-code="${escapeHtml(cod)}"
+                         onclick="seleccionarContribuyenteDirecto('${escapeHtml(cod)}')"
+                         onmouseover="onHoverContribOption(${idx})">
+                        <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
+                            <div class="contrib-item-icon">
+                                <i class="ph ph-buildings"></i>
+                            </div>
+                            <div style="flex: 1; min-width: 0; text-align: left;">
+                                <div style="font-size: 0.9rem; font-weight: 800; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.25;">
+                                    ${highlightMatch(desc, query)}
+                                </div>
+                                <div style="display: flex; gap: 6px; align-items: center; margin-top: 4px; flex-wrap: wrap;">
+                                    <span style="font-size: 0.68rem; font-weight: 800; background: #e2e8f0; color: #334155; padding: 1px 7px; border-radius: 5px;">
+                                        Cód: ${highlightMatch(cod, query)}
+                                    </span>
+                                    ${ruc ? `
+                                        <span style="font-size: 0.68rem; font-weight: 800; background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; padding: 1px 7px; border-radius: 5px; display: inline-flex; align-items: center; gap: 3px;">
+                                            <i class="ph ph-identification-card"></i> ${highlightMatch(ruc, query)}
+                                        </span>
+                                    ` : ''}
+                                    ${act ? `
+                                        <span style="font-size: 0.68rem; font-weight: 600; color: #64748b; max-width: 175px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                            ${highlightMatch(act, query)}
+                                        </span>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            <div style="${isSelected ? 'color: #16a34a;' : 'display: none;'} flex-shrink: 0; padding-left: 6px;">
+                                <i class="ph ph-check-circle" style="font-size: 1.3rem;"></i>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function abrirDropdownContribuyentes() {
+            const dropdown = document.getElementById('contribuyenteDropdownList');
+            const caret = document.getElementById('caretIconContrib');
+            if (!dropdown) return;
+            dropdown.style.display = 'flex';
+            if (caret) caret.style.transform = 'rotate(180deg)';
+
+            const input = document.getElementById('contribuyenteSearchInput');
+            if (input) {
+                input.select();
+                renderContribuyentesDropdown(empresasList, '');
+            }
+        }
+
+        function cerrarDropdownContribuyentes() {
+            const dropdown = document.getElementById('contribuyenteDropdownList');
+            const caret = document.getElementById('caretIconContrib');
+            if (dropdown) dropdown.style.display = 'none';
+            if (caret) caret.style.transform = 'rotate(0deg)';
+            sincronizarInputConSeleccionado();
+        }
+
+        function toggleDropdownContribuyentes(e) {
+            if (e) e.stopPropagation();
+            const dropdown = document.getElementById('contribuyenteDropdownList');
+            if (dropdown && dropdown.style.display === 'flex') {
+                cerrarDropdownContribuyentes();
+            } else {
+                abrirDropdownContribuyentes();
+                document.getElementById('contribuyenteSearchInput')?.focus();
+            }
+        }
+
+        function filtrarContribuyentesEnVivo(query) {
+            const q = String(query || '').trim().toLowerCase();
+            const qNoDash = q.replace(/[-\s]/g, '');
+            const btnLimpiar = document.getElementById('btnLimpiarBusquedaContrib');
+
+            if (btnLimpiar) {
+                btnLimpiar.style.display = query.trim() ? 'flex' : 'none';
+            }
+
+            const dropdown = document.getElementById('contribuyenteDropdownList');
+            if (dropdown && dropdown.style.display !== 'flex') {
+                abrirDropdownContribuyentes();
+            }
+
+            if (!q) {
+                renderContribuyentesDropdown(empresasList, '');
+                return;
+            }
+
+            const filtrados = empresasList.filter(emp => {
+                const desc = String(emp.descripcion || emp.DESCRIPCION || '').toLowerCase();
+                const cod = String(emp.cod_empresa || emp.codEmpresa || emp.COD_EMPRESA || '').toLowerCase();
+                const ruc = String(emp.ruc_empresa || emp.rucEmpresa || emp.RUC_EMPRESA || emp.ruc || '').toLowerCase();
+                const rucClean = ruc.replace(/[-\s]/g, '');
+                const act = String(emp.actividad || emp.ACTIVIDAD || '').toLowerCase();
+
+                return desc.includes(q) ||
+                       cod === q ||
+                       cod.includes(q) ||
+                       ruc.includes(q) ||
+                       rucClean.includes(qNoDash) ||
+                       act.includes(q);
+            });
+
+            renderContribuyentesDropdown(filtrados, query);
+            if (filtrados.length > 0) {
+                highlightedContribuyenteIndex = 0;
+                actualizarHighlightOpcion();
+            }
+        }
+
+        function onHoverContribOption(idx) {
+            highlightedContribuyenteIndex = idx;
+            actualizarHighlightOpcion();
+        }
+
+        function actualizarHighlightOpcion() {
+            document.querySelectorAll('.contrib-item').forEach((el, i) => {
+                el.classList.toggle('keyboard-active', i === highlightedContribuyenteIndex);
+            });
+        }
+
+        function seleccionarContribuyenteDirecto(codEmpresa) {
+            const select = document.getElementById('contribuyente');
+            if (select) {
+                select.value = String(codEmpresa);
+            }
+            sincronizarInputConSeleccionado();
+            cerrarDropdownContribuyentes();
+            onContribuyenteChange();
+        }
+
+        function limpiarBusquedaContribuyente(e) {
+            if (e) e.stopPropagation();
+            const input = document.getElementById('contribuyenteSearchInput');
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+            renderContribuyentesDropdown(empresasList, '');
+            const btnLimpiar = document.getElementById('btnLimpiarBusquedaContrib');
+            if (btnLimpiar) btnLimpiar.style.display = 'none';
+        }
+
+        function manejarTeclasContribuyentes(e) {
+            const dropdown = document.getElementById('contribuyenteDropdownList');
+            const isOpen = dropdown && dropdown.style.display === 'flex';
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (!isOpen) {
+                    abrirDropdownContribuyentes();
+                    return;
+                }
+                if (renderedContribuyentesList.length === 0) return;
+                highlightedContribuyenteIndex = Math.min(renderedContribuyentesList.length - 1, highlightedContribuyenteIndex + 1);
+                actualizarHighlightOpcion();
+                document.getElementById(`contribOption_${highlightedContribuyenteIndex}`)?.scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (!isOpen) {
+                    abrirDropdownContribuyentes();
+                    return;
+                }
+                if (renderedContribuyentesList.length === 0) return;
+                highlightedContribuyenteIndex = Math.max(0, highlightedContribuyenteIndex - 1);
+                actualizarHighlightOpcion();
+                document.getElementById(`contribOption_${highlightedContribuyenteIndex}`)?.scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'Enter') {
+                if (isOpen && highlightedContribuyenteIndex >= 0 && renderedContribuyentesList[highlightedContribuyenteIndex]) {
+                    e.preventDefault();
+                    const emp = renderedContribuyentesList[highlightedContribuyenteIndex];
+                    const cod = emp.cod_empresa || emp.codEmpresa || emp.COD_EMPRESA || '';
+                    seleccionarContribuyenteDirecto(cod);
+                }
+            } else if (e.key === 'Escape') {
+                if (isOpen) {
+                    e.preventDefault();
+                    cerrarDropdownContribuyentes();
+                }
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('contribuyenteDropdownList');
+            const input = document.getElementById('contribuyenteSearchInput');
+            const btnToggle = document.getElementById('btnToggleDropdownContrib');
+            const btnClear = document.getElementById('btnLimpiarBusquedaContrib');
+            if (!dropdown) return;
+            if (
+                !dropdown.contains(e.target) &&
+                e.target !== input &&
+                (!btnToggle || !btnToggle.contains(e.target)) &&
+                (!btnClear || !btnClear.contains(e.target))
+            ) {
+                if (dropdown.style.display === 'flex') {
+                    cerrarDropdownContribuyentes();
+                }
+            }
+        });
 
         async function onContribuyenteChange(preferredSucursal = '') {
             const codEmpresa = document.getElementById('contribuyente').value;

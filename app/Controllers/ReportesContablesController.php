@@ -3762,4 +3762,358 @@ class ReportesContablesController {
         echo "\xEF\xBB\xBF" . implode("\r\n", $lines) . "\r\n";
         exit;
     }
+
+    // =========================================================================
+    // SALDOS DE FACTURAS CRÉDITO (COSALEGR)
+    // =========================================================================
+    public static function pageSaldosFacturasCredito(): void {
+        if (!self::requireAuth(false)) return;
+        $codEmpresa = TenantContext::empresa();
+        $ejercicio  = EjercicioService::getEjercicio();
+        $empData    = self::fetchEmpresaInfo($codEmpresa, $ejercicio);
+        $rango      = EjercicioService::getRango($codEmpresa, $ejercicio);
+        $def        = EjercicioService::defaultMes($rango);
+
+        self::renderFormPage('saldos_facturas_credito', [
+            'nomForma'      => 'COSALEGR',
+            'tituloForma'   => 'Saldos de Facturas Crédito (Egresos)',
+            'empresa'       => $empData,
+            'defFechaDesde' => $def[0],
+            'defFechaHasta' => $def[1],
+            'ejerInicio'    => $rango[0],
+            'ejerFinal'     => $rango[1],
+            'ejercicio'     => $ejercicio,
+        ]);
+    }
+
+    public static function apiSaldosFacturasCreditoData(): void {
+        if (!self::requireAuth()) return;
+        $idProp  = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+
+        $fechaDesde      = trim((string)($_GET['fechaDesde'] ?? $_GET['desde'] ?? ''));
+        $fechaHasta      = trim((string)($_GET['fechaHasta'] ?? $_GET['hasta'] ?? ''));
+        $ejercicio       = trim((string)($_GET['ejercicio'] ?? $_GET['anio'] ?? ''));
+        $rucProveedor    = trim((string)($_GET['rucProveedor'] ?? $_GET['ruc'] ?? ''));
+        $codProveedor    = trim((string)($_GET['codProveedor'] ?? ''));
+        $filtroBusqueda  = trim((string)($_GET['search'] ?? $_GET['q'] ?? ''));
+        $estadoSaldo     = strtoupper(trim((string)($_GET['estadoSaldo'] ?? $_GET['estado'] ?? 'TODOS')));
+        $incluirAnuladas = !empty($_GET['incluirAnuladas']) && $_GET['incluirAnuladas'] !== 'false' && $_GET['incluirAnuladas'] !== '0';
+
+        try {
+            // 1. Obtener todas las facturas a crédito de egresos
+            $sqlEgr = "SELECT e.id_egreso,
+                              e.cod_empresa,
+                              COALESCE(e.tip_doc, 'FAC') AS tip_doc,
+                              COALESCE(e.nro_timbrado, '') AS nro_timbrado,
+                              COALESCE(e.nro_factura, '') AS nro_factura,
+                              COALESCE(e.serie, '') AS serie,
+                              DATE_FORMAT(e.fec_egreso, '%Y-%m-%d') AS fec_egreso,
+                              DATE_FORMAT(e.fec_egreso, '%d/%m/%Y') AS fec_egreso_fmt,
+                              COALESCE(e.ruc_proveedor, '') AS ruc_proveedor,
+                              COALESCE(e.nom_proveedor, '') AS nom_proveedor,
+                              COALESCE(e.cod_proveedor, '') AS cod_proveedor,
+                              COALESCE(e.condicion, 'CREDITO') AS condicion,
+                              COALESCE(e.cod_moneda, '1') AS cod_moneda,
+                              COALESCE(e.tasa_cambio, 1) AS tasa_cambio,
+                              COALESCE(e.grav10, 0) AS grav10,
+                              COALESCE(e.iva10, 0) AS iva10,
+                              COALESCE(e.grav5, 0) AS grav5,
+                              COALESCE(e.iva5, 0) AS iva5,
+                              COALESCE(e.exentas, 0) AS exentas,
+                              COALESCE(e.tot_iva, 0) AS tot_iva,
+                              COALESCE(e.valor_total, 0) AS valor_total,
+                              COALESCE(e.anulada, 'N') AS anulada,
+                              COALESCE(e.observacion, '') AS observacion
+                       FROM co_egresos e
+                       WHERE e.id_propietario = ?
+                         AND e.cod_empresa = ?
+                         AND (UPPER(TRIM(e.condicion)) IN ('CRE', 'CREDITO', 'CRÉDITO') OR UPPER(e.condicion) LIKE 'CRE%')
+                         AND COALESCE(e.estado, 'A') <> 'I'
+                         AND COALESCE(e.inutilizado, 'N') <> 'S' ";
+            $paramsEgr = [$idProp, $empresa];
+
+            if (!$incluirAnuladas) {
+                $sqlEgr .= "AND COALESCE(e.anulada, 'N') <> 'S' ";
+            }
+
+            if ($fechaDesde !== '' && $fechaHasta !== '') {
+                $sqlEgr .= "AND DATE(e.fec_egreso) >= ? AND DATE(e.fec_egreso) <= ? ";
+                $paramsEgr[] = $fechaDesde;
+                $paramsEgr[] = $fechaHasta;
+            } elseif ($fechaDesde !== '') {
+                $sqlEgr .= "AND DATE(e.fec_egreso) >= ? ";
+                $paramsEgr[] = $fechaDesde;
+            } elseif ($fechaHasta !== '') {
+                $sqlEgr .= "AND DATE(e.fec_egreso) <= ? ";
+                $paramsEgr[] = $fechaHasta;
+            } elseif ($ejercicio !== '' && strcasecmp($ejercicio, 'TODOS') !== 0) {
+                $sqlEgr .= "AND YEAR(e.fec_egreso) = ? ";
+                $paramsEgr[] = (int)$ejercicio;
+            }
+
+            if ($rucProveedor !== '') {
+                $cleanRuc = str_replace(['-', ' '], '', $rucProveedor);
+                $sqlEgr .= "AND (UPPER(TRIM(e.ruc_proveedor)) = UPPER(?) OR UPPER(REPLACE(e.ruc_proveedor, '-', '')) = UPPER(?)) ";
+                $paramsEgr[] = $rucProveedor;
+                $paramsEgr[] = $cleanRuc;
+            } elseif ($codProveedor !== '') {
+                $sqlEgr .= "AND TRIM(e.cod_proveedor) = ? ";
+                $paramsEgr[] = $codProveedor;
+            }
+
+            $sqlEgr .= "ORDER BY e.fec_egreso ASC, e.id_egreso ASC";
+            $facturas = Database::queryForListUpper($sqlEgr, $paramsEgr);
+
+            // 2. Obtener todos los detalles de recibos de pago activos para la empresa
+            $sqlPagos = "SELECT d.id_detalle,
+                                d.id_recibo_pago,
+                                d.id_egreso,
+                                d.tip_comprobante,
+                                COALESCE(d.nro_timbrado, '') AS nro_timbrado,
+                                COALESCE(d.nro_factura, '') AS nro_factura,
+                                COALESCE(d.serie, '') AS serie_factura,
+                                DATE_FORMAT(d.fec_egreso, '%Y-%m-%d') AS fec_egreso,
+                                COALESCE(d.valor_total, 0) AS valor_total,
+                                COALESCE(d.saldo, 0) AS saldo_det,
+                                COALESCE(d.importe, 0) AS importe,
+                                COALESCE(p.nro_recibo, '') AS nro_recibo,
+                                COALESCE(p.serie, '') AS serie_recibo,
+                                DATE_FORMAT(p.fec_recibo, '%Y-%m-%d') AS fec_recibo,
+                                DATE_FORMAT(p.fec_recibo, '%d/%m/%Y') AS fec_recibo_fmt,
+                                COALESCE(p.ruc_proveedor, '') AS ruc_proveedor,
+                                COALESCE(p.nom_proveedor, '') AS nom_proveedor,
+                                COALESCE(p.cod_proveedor, '') AS cod_proveedor,
+                                COALESCE(p.anulada, 'N') AS recibo_anulado
+                         FROM co_recibos_pago_det d
+                         JOIN co_recibos_pago p
+                           ON p.id_propietario = d.id_propietario AND p.id_recibo_pago = d.id_recibo_pago
+                         WHERE d.id_propietario = ?
+                           AND d.cod_empresa = ?
+                           AND COALESCE(p.anulada, 'N') <> 'S'
+                           AND COALESCE(p.estado, 'A') <> 'I'
+                           AND COALESCE(d.estado, 'A') <> 'I'
+                         ORDER BY p.fec_recibo ASC, d.id_detalle ASC";
+            $pagosRows = Database::queryForListUpper($sqlPagos, [$idProp, $empresa]);
+
+            $pagosPorId = [];
+            $pagosPorDocRuc = [];
+            $pagosPorDocSolo = [];
+
+            foreach ($pagosRows as $p) {
+                $idEgr     = (int)($p['ID_EGRESO'] ?? 0);
+                $docRaw    = strtoupper(trim(str_replace(['-', ' '], '', (string)($p['NRO_FACTURA'] ?? ''))));
+                $rucProv   = strtoupper(trim(str_replace(['-', ' '], '', (string)($p['RUC_PROVEEDOR'] ?? ''))));
+                $imp       = (float)($p['IMPORTE'] ?? 0);
+
+                $itemPago = [
+                    'idRecibo'       => (int)($p['ID_RECIBO_PAGO'] ?? 0),
+                    'nroRecibo'      => (string)($p['NRO_RECIBO'] ?? ''),
+                    'serieRecibo'    => (string)($p['SERIE_RECIBO'] ?? ''),
+                    'fecRecibo'      => (string)($p['FEC_RECIBO'] ?? ''),
+                    'fecReciboFmt'   => (string)($p['FEC_RECIBO_FMT'] ?? ''),
+                    'importe'        => $imp,
+                    'rucProveedor'   => (string)($p['RUC_PROVEEDOR'] ?? ''),
+                    'nomProveedor'   => (string)($p['NOM_PROVEEDOR'] ?? ''),
+                ];
+
+                if ($idEgr > 0) {
+                    $pagosPorId[$idEgr][] = $itemPago;
+                }
+                if ($docRaw !== '') {
+                    if ($rucProv !== '') {
+                        $pagosPorDocRuc[$docRaw . '|' . $rucProv][] = $itemPago;
+                    }
+                    $pagosPorDocSolo[$docRaw][] = $itemPago;
+                }
+            }
+
+            // 3. Cruzar cada factura crédito con sus recibos de pago
+            $items = [];
+            $kpiTotalCredito = 0.0;
+            $kpiTotalPagado  = 0.0;
+            $kpiTotalSaldo   = 0.0;
+            $cantPendientes  = 0;
+            $cantParciales   = 0;
+            $cantCanceladas  = 0;
+
+            $proveedoresMap = [];
+
+            foreach ($facturas as $f) {
+                $idEgr     = (int)($f['ID_EGRESO'] ?? 0);
+                $docClean  = strtoupper(trim(str_replace(['-', ' '], '', (string)($f['NRO_FACTURA'] ?? ''))));
+                $rucClean  = strtoupper(trim(str_replace(['-', ' '], '', (string)($f['RUC_PROVEEDOR'] ?? ''))));
+                $vTotal    = (float)($f['VALOR_TOTAL'] ?? 0);
+                if ($vTotal <= 0) {
+                    $vTotal = (float)($f['GRAV10'] ?? 0) + (float)($f['GRAV5'] ?? 0) + (float)($f['EXENTAS'] ?? 0);
+                }
+
+                // Obtener recibos asociados
+                $recibosAsoc = [];
+                if ($idEgr > 0 && !empty($pagosPorId[$idEgr])) {
+                    $recibosAsoc = $pagosPorId[$idEgr];
+                } elseif ($docClean !== '' && $rucClean !== '' && !empty($pagosPorDocRuc[$docClean . '|' . $rucClean])) {
+                    $recibosAsoc = $pagosPorDocRuc[$docClean . '|' . $rucClean];
+                } elseif ($docClean !== '' && !empty($pagosPorDocSolo[$docClean])) {
+                    $recibosAsoc = $pagosPorDocSolo[$docClean];
+                }
+
+                $totalPagado = 0.0;
+                $recibosDetalles = [];
+                $vistosRecibos = [];
+
+                foreach ($recibosAsoc as $r) {
+                    $rKey = ($r['idRecibo'] ?: 0) . '_' . ($r['nroRecibo'] ?: '') . '_' . ($r['importe'] ?: 0);
+                    if (isset($vistosRecibos[$rKey])) continue;
+                    $vistosRecibos[$rKey] = true;
+
+                    $totalPagado += (float)$r['importe'];
+                    $recibosDetalles[] = [
+                        'idRecibo'     => $r['idRecibo'],
+                        'nroRecibo'    => $r['nroRecibo'],
+                        'serieRecibo'  => $r['serieRecibo'],
+                        'fecRecibo'    => $r['fecRecibo'],
+                        'fecReciboFmt' => $r['fecReciboFmt'],
+                        'importe'      => $r['importe'],
+                    ];
+                }
+
+                $anulada = ($f['ANULADA'] ?? 'N') === 'S';
+                $saldo = $anulada ? 0.0 : max(0.0, $vTotal - $totalPagado);
+
+                // Estado de saldo
+                if ($anulada) {
+                    $estadoCod = 'ANULADA';
+                    $estadoLabel = 'ANULADA';
+                    $badgeClass = 'badge-anulada';
+                } elseif ($saldo <= 0.009) {
+                    $estadoCod = 'CANCELADO';
+                    $estadoLabel = 'PAGADO';
+                    $badgeClass = 'badge-pagado';
+                    $cantCanceladas++;
+                } elseif ($totalPagado > 0.009) {
+                    $estadoCod = 'PARCIAL';
+                    $estadoLabel = 'PAGO PARCIAL';
+                    $badgeClass = 'badge-parcial';
+                    $cantParciales++;
+                } else {
+                    $estadoCod = 'PENDIENTE';
+                    $estadoLabel = 'PENDIENTE';
+                    $badgeClass = 'badge-pendiente';
+                    $cantPendientes++;
+                }
+
+                // Filtrar por estadoSaldo si no es 'TODOS'
+                if ($estadoSaldo === 'PENDIENTES' && $estadoCod !== 'PENDIENTE' && $estadoCod !== 'PARCIAL') {
+                    continue;
+                }
+                if ($estadoSaldo === 'CANCELADOS' && $estadoCod !== 'CANCELADO') {
+                    continue;
+                }
+                if ($estadoSaldo === 'PARCIALES' && $estadoCod !== 'PARCIAL') {
+                    continue;
+                }
+
+                // Filtro de texto libre si fue proporcionado
+                if ($filtroBusqueda !== '') {
+                    $q = strtoupper($filtroBusqueda);
+                    $hayMatch = str_contains(strtoupper((string)($f['NRO_FACTURA'] ?? '')), $q) ||
+                                str_contains(strtoupper((string)($f['RUC_PROVEEDOR'] ?? '')), $q) ||
+                                str_contains(strtoupper((string)($f['NOM_PROVEEDOR'] ?? '')), $q) ||
+                                str_contains(strtoupper((string)($f['NRO_TIMBRADO'] ?? '')), $q);
+                    if (!$hayMatch) {
+                        foreach ($recibosDetalles as $rd) {
+                            if (str_contains(strtoupper((string)$rd['nroRecibo']), $q)) {
+                                $hayMatch = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!$hayMatch) continue;
+                }
+
+                $kpiTotalCredito += $vTotal;
+                $kpiTotalPagado  += $totalPagado;
+                $kpiTotalSaldo   += $saldo;
+
+                // Agrupador por proveedor
+                $pKey = $rucClean ?: ($f['NOM_PROVEEDOR'] ?? 'SIN_PROVEEDOR');
+                if (!isset($proveedoresMap[$pKey])) {
+                    $proveedoresMap[$pKey] = [
+                        'ruc'           => (string)($f['RUC_PROVEEDOR'] ?? ''),
+                        'nombre'        => (string)($f['NOM_PROVEEDOR'] ?? ''),
+                        'codProveedor'  => (string)($f['COD_PROVEEDOR'] ?? ''),
+                        'cantFacturas'  => 0,
+                        'totalCredito'  => 0.0,
+                        'totalPagado'   => 0.0,
+                        'saldo'         => 0.0,
+                    ];
+                }
+                $proveedoresMap[$pKey]['cantFacturas']++;
+                $proveedoresMap[$pKey]['totalCredito'] += $vTotal;
+                $proveedoresMap[$pKey]['totalPagado']  += $totalPagado;
+                $proveedoresMap[$pKey]['saldo']        += $saldo;
+
+                $items[] = [
+                    'idEgreso'        => $idEgr,
+                    'tipDoc'          => (string)($f['TIP_DOC'] ?? 'FAC'),
+                    'nroTimbrado'     => (string)($f['NRO_TIMBRADO'] ?? ''),
+                    'nroFactura'      => (string)($f['NRO_FACTURA'] ?? ''),
+                    'serie'           => (string)($f['SERIE'] ?? ''),
+                    'fecEgreso'       => (string)($f['FEC_EGRESO'] ?? ''),
+                    'fecEgresoFmt'    => (string)($f['FEC_EGRESO_FMT'] ?? ''),
+                    'rucProveedor'    => (string)($f['RUC_PROVEEDOR'] ?? ''),
+                    'nomProveedor'    => (string)($f['NOM_PROVEEDOR'] ?? ''),
+                    'codProveedor'    => (string)($f['COD_PROVEEDOR'] ?? ''),
+                    'condicion'       => (string)($f['CONDICION'] ?? 'CREDITO'),
+                    'codMoneda'       => (string)($f['COD_MONEDA'] ?? '1'),
+                    'tasaCambio'      => (float)($f['TASA_CAMBIO'] ?? 1),
+                    'grav10'          => (float)($f['GRAV10'] ?? 0),
+                    'iva10'           => (float)($f['IVA10'] ?? 0),
+                    'grav5'           => (float)($f['GRAV5'] ?? 0),
+                    'iva5'            => (float)($f['IVA5'] ?? 0),
+                    'exentas'         => (float)($f['EXENTAS'] ?? 0),
+                    'totIva'          => (float)($f['TOT_IVA'] ?? 0),
+                    'valorTotal'      => $vTotal,
+                    'totalPagado'     => $totalPagado,
+                    'saldo'           => $saldo,
+                    'porcentajePago'  => $vTotal > 0 ? min(100, round(($totalPagado / $vTotal) * 100, 1)) : 100,
+                    'estadoCod'       => $estadoCod,
+                    'estadoLabel'     => $estadoLabel,
+                    'badgeClass'      => $badgeClass,
+                    'anulada'         => $anulada ? 'S' : 'N',
+                    'recibos'         => $recibosDetalles,
+                    'cantRecibos'     => count($recibosDetalles),
+                ];
+            }
+
+            // Ordenar proveedores por mayor saldo pendiente
+            $resumenProveedores = array_values($proveedoresMap);
+            usort($resumenProveedores, function($a, $b) {
+                return $b['saldo'] <=> $a['saldo'];
+            });
+
+            View::json([
+                'status' => 'success',
+                'data'   => [
+                    'facturas'            => $items,
+                    'resumenProveedores'  => $resumenProveedores,
+                    'kpis' => [
+                        'totalCredito'   => $kpiTotalCredito,
+                        'totalPagado'    => $kpiTotalPagado,
+                        'totalSaldo'     => $kpiTotalSaldo,
+                        'cantTotal'      => count($items),
+                        'cantPendientes' => $cantPendientes,
+                        'cantParciales'  => $cantParciales,
+                        'cantCanceladas' => $cantCanceladas,
+                    ]
+                ]
+            ]);
+        } catch (\Throwable $e) {
+            View::json([
+                'status'  => 'error',
+                'message' => 'Error al calcular saldos de facturas a crédito: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

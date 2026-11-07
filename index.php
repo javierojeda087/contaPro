@@ -198,6 +198,10 @@ if (($uri === '/api/superadmin/plan/save' || $uri === '/api/superadmin/planes/sa
     View::json(SuperAdminController::savePlan());
     exit;
 }
+if ($uri === '/api/superadmin/consultar-ruc' || $uri === '/api/superadmin/verificar-ruc') {
+    SuperAdminController::consultarRuc();
+    exit;
+}
 if (($uri === '/api/superadmin/propietario/save' || $uri === '/api/superadmin/propietarios/save') && $method === 'POST') {
     View::json(SuperAdminController::savePropietario());
     exit;
@@ -405,6 +409,11 @@ if (preg_match('#^/app/([^/]+)$#', $uri, $m)) {
         'FORMULARIO-515'        => [ReportesContablesController::class, 'pageFormulario515'],
         'FORMULARIO_515'        => [ReportesContablesController::class, 'pageFormulario515'],
         'FORM515'               => [ReportesContablesController::class, 'pageFormulario515'],
+        'COSALEGR'              => [ReportesContablesController::class, 'pageSaldosFacturasCredito'],
+        'SALDOS-EGRESOS'        => [ReportesContablesController::class, 'pageSaldosFacturasCredito'],
+        'SALDOS_EGRESOS'        => [ReportesContablesController::class, 'pageSaldosFacturasCredito'],
+        'SALDOS-FACTURAS-CREDITO' => [ReportesContablesController::class, 'pageSaldosFacturasCredito'],
+        'SALDOS_FACTURAS_CREDITO' => [ReportesContablesController::class, 'pageSaldosFacturasCredito'],
     ];
 
     if (isset($formaMap[$upper])) {
@@ -664,6 +673,8 @@ $exactApiRoutes = [
     '/api/ingresos/save'                           => [MovimientosContablesController::class, 'apiIngresosSave'],
     '/api/ingresos/delete'                         => [MovimientosContablesController::class, 'apiIngresosDelete'],
     '/api/ingresos/anular'                         => [MovimientosContablesController::class, 'apiIngresosAnular'],
+    '/api/ingresos/validar-importacion'            => [MovimientosContablesController::class, 'apiIngresosValidarImportacion'],
+    '/api/ingresos/importar-lote'                  => [MovimientosContablesController::class, 'apiIngresosImportarLote'],
     '/api/recibos-cobro/list'                      => [MovimientosContablesController::class, 'apiRecibosCobroList'],
     '/api/recibos_cobro/list'                      => [MovimientosContablesController::class, 'apiRecibosCobroList'],
     '/api/recibos-cobro/save'                      => [MovimientosContablesController::class, 'apiRecibosCobroSave'],
@@ -721,6 +732,9 @@ $exactApiRoutes = [
     '/api/formulario-515/obtener'                  => [ReportesContablesController::class, 'apiFormulario515Obtener'],
     '/api/formulario-515/calcular'                 => [ReportesContablesController::class, 'apiFormulario515Calcular'],
     '/api/formulario-515/guardar'                  => [ReportesContablesController::class, 'apiFormulario515Guardar'],
+    '/api/reportes/saldos-facturas-credito'        => [ReportesContablesController::class, 'apiSaldosFacturasCreditoData'],
+    '/api/reportes/saldos-egresos'                 => [ReportesContablesController::class, 'apiSaldosFacturasCreditoData'],
+    '/api/saldos-facturas-credito/data'            => [ReportesContablesController::class, 'apiSaldosFacturasCreditoData'],
 ];
 
 if (isset($exactApiRoutes[$uri])) {

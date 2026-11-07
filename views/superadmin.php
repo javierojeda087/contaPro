@@ -813,7 +813,7 @@
 
     <!-- MODAL PROPIETARIO -->
     <div class="modal fade" id="modalPropietario" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 1040px; width: 95%;">
             <div class="modal-content" style="border-radius: 18px; border: 1px solid #cbd5e1; overflow: hidden;">
                 <div class="modal-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 18px 24px;">
                     <div class="d-flex align-items-center gap-2">
@@ -830,13 +830,21 @@
                 <div class="modal-body" style="padding: 22px 24px;">
                     <input type="hidden" id="propId">
                     <div class="row g-3">
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold small">RUC / CI (Consulta BD / DNIT)</label>
+                            <div class="input-group">
+                                <input type="text" id="propRuc" class="form-control fw-bold" placeholder="8000000-1 o sin DV" autocomplete="off"
+                                       onkeydown="if(event.key==='Enter'){event.preventDefault(); consultarRucPropietario(true);}"
+                                       onblur="consultarRucPropietario(false)">
+                                <button type="button" id="btnConsultarRucProp" class="btn btn-outline-success fw-bold d-inline-flex align-items-center gap-1" onclick="consultarRucPropietario(true)" title="Consultar RUC en BD y DNIT" style="border-radius: 0 8px 8px 0;">
+                                    <i class="ph ph-magnifying-glass"></i> Consultar
+                                </button>
+                            </div>
+                            <div id="propRucEstado" style="display:none; margin-top:6px; font-size:.78rem; font-weight:600; padding:6px 10px; border-radius:6px;"></div>
+                        </div>
                         <div class="col-md-7">
                             <label class="form-label fw-bold small">Nombre del Propietario / Estudio Contable *</label>
                             <input type="text" id="propNombre" class="form-control text-uppercase fw-bold" oninput="this.value = this.value.toUpperCase()" placeholder="EJ: ESTUDIO CONTABLE PEREZ">
-                        </div>
-                        <div class="col-md-5">
-                            <label class="form-label fw-bold small">RUC / CI</label>
-                            <input type="text" id="propRuc" class="form-control fw-bold" placeholder="8000000-1">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold small">Correo Electrónico (Recuperación de Clave) *</label>
@@ -1498,6 +1506,87 @@
             }
         }
 
+        let ultimoRucPropVerificado = '';
+
+        function setPropRucEstado(tipo, html) {
+            const el = document.getElementById('propRucEstado');
+            if (!el) return;
+            if (!tipo) { el.style.display = 'none'; el.innerHTML = ''; return; }
+            const c = {
+                ok:   ['#f0fdf4', '#15803d', '#86efac'],
+                info: ['#eff6ff', '#1d4ed8', '#bfdbfe'],
+                warn: ['#fffbeb', '#b45309', '#fde68a'],
+                err:  ['#fef2f2', '#b91c1c', '#fecaca'],
+                load: ['#f8fafc', '#475569', '#cbd5e1']
+            }[tipo] || ['#f8fafc', '#475569', '#cbd5e1'];
+            el.style.cssText = `display:block; margin-top:6px; font-size:.78rem; font-weight:600; padding:6px 10px; border-radius:6px; background:${c[0]}; color:${c[1]}; border:1px solid ${c[2]};`;
+            el.innerHTML = html;
+        }
+
+        async function consultarRucPropietario(forzar = false) {
+            const input = document.getElementById('propRuc');
+            if (!input) return;
+            const ruc = input.value.trim();
+            if (!ruc) { setPropRucEstado(null); return; }
+            if (!forzar && ruc === ultimoRucPropVerificado) return;
+            ultimoRucPropVerificado = ruc;
+
+            const btn = document.getElementById('btnConsultarRucProp');
+            if (btn) btn.innerHTML = '<i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite;"></i> Buscando...';
+            setPropRucEstado('load', '<i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite;"></i> Verificando RUC en base de datos y DNIT...');
+
+            const propId = document.getElementById('propId')?.value || '';
+            try {
+                const res = await fetch(`/api/superadmin/consultar-ruc?ruc=${encodeURIComponent(ruc)}&idPropietario=${encodeURIComponent(propId)}`);
+                const d = await res.json();
+
+                const setIfEmpty = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (el && val && (!el.value || el.value.trim() === '')) {
+                        el.value = val;
+                    }
+                };
+
+                switch (d.status) {
+                    case 'PROPIETARIO_EXISTE':
+                        setPropRucEstado('warn', `<i class="ph ph-warning-circle"></i> Este RUC ya está registrado para el Propietario <b>#${d.idPropietario} - ${escHtml(d.nombre)}</b>.`);
+                        if (!document.getElementById('propNombre').value) {
+                            document.getElementById('propNombre').value = (d.nombre || '').toUpperCase();
+                        }
+                        setIfEmpty('propEmail', d.email);
+                        setIfEmpty('propTelefono', d.telefono);
+                        break;
+
+                    case 'PERSONA_EXISTE':
+                        document.getElementById('propRuc').value = d.ruc || ruc;
+                        document.getElementById('propNombre').value = (d.nombre || '').toUpperCase();
+                        setIfEmpty('propTelefono', d.telefono);
+                        setPropRucEstado('ok', `<i class="ph ph-user-check"></i> Persona encontrada en la base de datos (Cód. ${d.codPersona}). Se completó el nombre.`);
+                        break;
+
+                    case 'DNIT':
+                        document.getElementById('propRuc').value = d.ruc || ruc;
+                        document.getElementById('propNombre').value = (d.nombre || '').toUpperCase();
+                        const estadoTxt = d.estado ? ` · Estado: <b>${escHtml(d.estado)}</b>` : '';
+                        setPropRucEstado(d.estado && d.estado !== 'ACTIVO' ? 'warn' : 'info',
+                            `<i class="ph ph-globe"></i> Datos oficiales obtenidos de la DNIT (turuc.com.py)${estadoTxt}. Se creará también como Persona.`);
+                        break;
+
+                    case 'INVALIDO':
+                        setPropRucEstado('err', `<i class="ph ph-x-circle"></i> RUC o CI inválido. Ingrese un número válido.`);
+                        break;
+
+                    default:
+                        setPropRucEstado('warn', `<i class="ph ph-info"></i> RUC no encontrado en la DNIT ni en la base de datos. Complete los datos manualmente.`);
+                }
+            } catch (err) {
+                console.error(err);
+                setPropRucEstado('err', 'Error de conexión al consultar el RUC.');
+            } finally {
+                if (btn) btn.innerHTML = '<i class="ph ph-magnifying-glass"></i> Consultar';
+            }
+        }
+
         function abrirModalPropietario() {
             document.getElementById('propId').value = '';
             document.getElementById('propNombre').value = '';
@@ -1515,7 +1604,10 @@
             document.getElementById('propEstado').value = 'A';
             document.getElementById('propAdminUser').value = '';
             document.getElementById('propAdminClave').value = '';
+            setPropRucEstado(null);
+            ultimoRucPropVerificado = '';
             modalPropObj.show();
+            setTimeout(() => document.getElementById('propRuc').focus(), 80);
         }
 
         function editarPropietario(id) {
@@ -1537,6 +1629,8 @@
             document.getElementById('propEstado').value = pr.estado || 'A';
             document.getElementById('propAdminUser').value = pr.primer_usuario || '';
             document.getElementById('propAdminClave').value = '';
+            setPropRucEstado(null);
+            ultimoRucPropVerificado = pr.ruc || '';
             modalPropObj.show();
         }
 

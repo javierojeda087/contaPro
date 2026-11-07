@@ -1926,6 +1926,301 @@ class MovimientosContablesController {
         }
     }
 
+    public static function apiIngresosValidarImportacion(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+
+        try {
+            // 1. Obtener comprobantes existentes de esta empresa para detectar duplicados y mostrar cuál es
+            $ingresosRows = Database::queryForList(
+                "SELECT id_ingreso, TRIM(COALESCE(cdc, '')) AS cdc,
+                        UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) AS tip_doc,
+                        TRIM(COALESCE(nro_timbrado, '')) AS nro_timbrado,
+                        REPLACE(TRIM(COALESCE(nro_factura, '')), '-', '') AS fac_clean,
+                        TRIM(COALESCE(nro_factura, '')) AS nro_factura,
+                        DATE_FORMAT(fec_ingreso, '%d/%m/%Y') AS fec_ingreso_fmt,
+                        TRIM(COALESCE(nom_cliente, '')) AS nom_cliente,
+                        TRIM(COALESCE(ruc_cliente, '')) AS ruc_cliente,
+                        COALESCE(valor_total, 0) AS valor_total,
+                        UPPER(TRIM(SUBSTRING_INDEX(REPLACE(COALESCE(ruc_cliente, ''), ' ', ''), '-', 1))) AS ruc_base
+                 FROM co_ingresos
+                 WHERE id_propietario = ? AND cod_empresa = ?",
+                [$idProp, $empresa]
+            );
+
+            $existingCdcs = [];
+            $existingKeys = [];
+            foreach ($ingresosRows as $ir) {
+                $info = [
+                    'idIngreso'   => (int)$ir['id_ingreso'],
+                    'nroFactura'  => (string)$ir['nro_factura'],
+                    'nroTimbrado' => (string)$ir['nro_timbrado'],
+                    'fecIngreso'  => (string)($ir['fec_ingreso_fmt'] ?? ''),
+                    'nomCliente'  => (string)$ir['nom_cliente'],
+                    'rucCliente'  => (string)$ir['ruc_cliente'],
+                    'valorTotal'  => (float)$ir['valor_total'],
+                ];
+                $c = preg_replace('/\D/', '', (string)$ir['cdc']);
+                if (strlen($c) === 44) {
+                    $existingCdcs[$c] = $info;
+                }
+                $facClean = (string)$ir['fac_clean'];
+                $timb = (string)$ir['nro_timbrado'];
+                $rucB = ltrim((string)$ir['ruc_base'], '0');
+                if ($facClean !== '' && $timb !== '') {
+                    $key1 = $timb . '|' . $facClean . '|' . $rucB;
+                    $existingKeys[$key1] = $info;
+                    $key2 = $timb . '|' . $facClean;
+                    if (!isset($existingKeys[$key2])) {
+                        $existingKeys[$key2] = $info;
+                    }
+                }
+            }
+
+            // 2. Obtener clientes existentes
+            $cliRows = Database::queryForList(
+                "SELECT cod_cliente, nombre, ruc
+                 FROM co_clientes
+                 WHERE id_propietario = ? AND cod_empresa = ?",
+                [$idProp, $empresa]
+            );
+            $clientesMap = [];
+            foreach ($cliRows as $cr) {
+                $rawR = trim((string)($cr['ruc'] ?? ''));
+                if ($rawR === '') continue;
+                $baseR = ltrim(strtoupper(trim(explode('-', $rawR)[0])), '0');
+                if ($baseR !== '') {
+                    $clientesMap[$baseR] = [
+                        'codCliente' => (string)$cr['cod_cliente'],
+                        'nombre'     => (string)$cr['nombre'],
+                        'ruc'        => $rawR,
+                    ];
+                }
+            }
+
+            View::json([
+                'status'       => 'success',
+                'existingCdcs' => $existingCdcs,
+                'existingKeys' => $existingKeys,
+                'clientesMap'  => $clientesMap,
+            ]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al validar datos de importación de ingresos: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiIngresosImportarLote(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+        $usuario = TenantContext::usuario();
+        $payload = self::getInput();
+        $items = is_array($payload['items'] ?? null) ? $payload['items'] : [];
+
+        if (empty($items)) {
+            View::json(['status' => 'error', 'message' => 'No hay comprobantes válidos para importar.']);
+            return;
+        }
+
+        try {
+            @set_time_limit(180);
+
+            // Mapa de clientes actuales
+            $cliRows = Database::queryForList(
+                "SELECT cod_cliente, cod_persona, nombre, ruc
+                 FROM co_clientes
+                 WHERE id_propietario = ? AND cod_empresa = ?",
+                [$idProp, $empresa]
+            );
+            $cliCache = [];
+            foreach ($cliRows as $cr) {
+                $rawR = trim((string)($cr['ruc'] ?? ''));
+                if ($rawR === '') continue;
+                $baseR = ltrim(preg_replace('/\D/', '', explode('-', $rawR)[0]), '0');
+                if ($baseR !== '') {
+                    $cliCache[$baseR] = [
+                        'codCliente' => (string)$cr['cod_cliente'],
+                        'nombre'     => (string)$cr['nombre'],
+                        'ruc'        => $rawR,
+                    ];
+                }
+            }
+
+            // Mapa de comprobantes existentes en BD
+            $ingresosRows = Database::queryForList(
+                "SELECT id_ingreso, TRIM(COALESCE(cdc, '')) AS cdc,
+                        TRIM(COALESCE(nro_timbrado, '')) AS nro_timbrado,
+                        REPLACE(TRIM(COALESCE(nro_factura, '')), '-', '') AS fac_clean,
+                        SUBSTRING_INDEX(REPLACE(COALESCE(ruc_cliente, ''), ' ', ''), '-', 1) AS ruc_base
+                 FROM co_ingresos
+                 WHERE id_propietario = ? AND cod_empresa = ?",
+                [$idProp, $empresa]
+            );
+            $existingCdcs = [];
+            $existingKeys = [];
+            foreach ($ingresosRows as $ir) {
+                $c = preg_replace('/\D/', '', (string)$ir['cdc']);
+                if (strlen($c) === 44) {
+                    $existingCdcs[$c] = true;
+                }
+                $facClean = (string)$ir['fac_clean'];
+                $timb = (string)$ir['nro_timbrado'];
+                $rucB = ltrim(preg_replace('/\D/', '', (string)$ir['ruc_base']), '0');
+                if ($facClean !== '' && $timb !== '') {
+                    $existingKeys[$timb . '|' . $facClean . '|' . $rucB] = true;
+                    $existingKeys[$timb . '|' . $facClean] = true;
+                }
+            }
+
+            $clientesCreados = 0;
+            $insertados = 0;
+            $duplicadosOmitidos = 0;
+            $minFecha = null;
+            $maxFecha = null;
+
+            $maxId = (int)Database::queryForValue("SELECT COALESCE(MAX(id_ingreso), 0) FROM co_ingresos");
+
+            foreach ($items as $item) {
+                $cdc = preg_replace('/\D/', '', (string)($item['cdc'] ?? ''));
+                $tipDoc = self::resolveTipoDocCode((string)($item['tipDoc'] ?? 'FAC'));
+                $rawReg = (string)($item['regimen'] ?? $item['codRegimen'] ?? '1');
+                $codRegimen = self::resolveRegimenId($rawReg, $idProp);
+                $regimen = (string)$codRegimen;
+                $rawTipIng = (string)($item['tipIngreso'] ?? $item['codTipoIngreso'] ?? '1');
+                $tipIngreso = self::resolveTipoIngresoId($rawTipIng, $idProp);
+                $codTipoIngreso = (int)$tipIngreso;
+                $fecIngreso = self::parseSqlDate((string)($item['fecIngreso'] ?? ''));
+                $esElectr = (strlen($cdc) === 44) || stripos((string)($item['tipTimb'] ?? ''), 'electr') !== false || stripos((string)($item['origen'] ?? ''), 'electr') !== false;
+                $tipTimb = $esElectr ? 'Electrónico' : 'Pre-impreso';
+                $nroTimbrado = preg_replace('/\D/', '', (string)($item['nroTimbrado'] ?? ''));
+                $defVenc = $esElectr ? '2100-12-31' : (($fecIngreso ? substr($fecIngreso, 0, 4) : date('Y')) . '-12-31');
+                $vencTimbrado = self::parseSqlDate((string)($item['vencTimbrado'] ?? '')) ?: $defVenc;
+                if (!$esElectr && $vencTimbrado === '2100-12-31') {
+                    $vencTimbrado = $defVenc;
+                }
+                $nroFactura = self::formatNroFactura((string)($item['nroFactura'] ?? ''), $tipDoc);
+                $rawRuc = trim((string)($item['rucCliente'] ?? ''));
+                $nomCliente = mb_strtoupper(trim((string)($item['nomCliente'] ?? '')), 'UTF-8');
+                $tipoDocCliente = strtoupper(trim((string)($item['tipoDocCliente'] ?? 'RUC'))) ?: 'RUC';
+
+                if ($nroFactura === '' || $nroTimbrado === '' || !$fecIngreso || $rawRuc === '' || $nomCliente === '') {
+                    continue;
+                }
+
+                $rucConDv = self::normalizarRucConDv($rawRuc, $cdc);
+                $rucBase = ltrim(preg_replace('/\D/', '', explode('-', $rucConDv)[0]), '0');
+                $facClean = str_replace('-', '', $nroFactura);
+                $dupKey1 = $nroTimbrado . '|' . $facClean . '|' . $rucBase;
+                $dupKey2 = $nroTimbrado . '|' . $facClean;
+
+                if (($cdc !== '' && isset($existingCdcs[$cdc])) || isset($existingKeys[$dupKey1]) || isset($existingKeys[$dupKey2])) {
+                    $duplicadosOmitidos++;
+                    continue;
+                }
+
+                // Verificar o crear cliente automáticamente si aún no existe
+                if ($rucBase !== '' && isset($cliCache[$rucBase])) {
+                    $codCliente = $cliCache[$rucBase]['codCliente'];
+                    $rucFinal   = $cliCache[$rucBase]['ruc'] ?: $rucConDv;
+                    if (!str_contains($rucFinal, '-')) {
+                        $rucFinal = $rucConDv;
+                    }
+                } else {
+                    $codPersona = \App\Services\PersonaService::syncPersonaData(null, $nomCliente, $rucConDv, $tipoDocCliente);
+                    $nextCliId  = (int)Database::queryForValue(
+                        "SELECT COALESCE(MAX(CAST(cod_cliente AS UNSIGNED)), 0) + 1
+                         FROM co_clientes
+                         WHERE id_propietario = ? AND CAST(cod_cliente AS UNSIGNED) < 3000",
+                        [$idProp]
+                    );
+                    $codCliente = (string)max(1, $nextCliId);
+                    try {
+                        Database::update(
+                            "INSERT INTO co_clientes (id_propietario, cod_cliente, cod_empresa, cod_persona, nombre, ruc, tipo_documento, estado, usuario_reg, fec_reg)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, 'A', ?, NOW())",
+                            [$idProp, $codCliente, $empresa, $codPersona, $nomCliente, $rucConDv, $tipoDocCliente, $usuario]
+                        );
+                    } catch (\Throwable $eCli) {
+                        try {
+                            Database::update(
+                                "INSERT INTO co_clientes (id_propietario, cod_cliente, cod_empresa, cod_persona, nombre, ruc, estado, usuario_reg, fec_reg)
+                                 VALUES (?, ?, ?, ?, ?, ?, 'A', ?, NOW())",
+                                [$idProp, $codCliente, $empresa, $codPersona, $nomCliente, $rucConDv, $usuario]
+                            );
+                        } catch (\Throwable $e2) {}
+                    }
+                    $rucFinal = $rucConDv;
+                    if ($rucBase !== '') {
+                        $cliCache[$rucBase] = [
+                            'codCliente' => $codCliente,
+                            'nombre'     => $nomCliente,
+                            'ruc'        => $rucFinal,
+                        ];
+                    }
+                    $clientesCreados++;
+                }
+
+                // Condición: CONTADO -> CON, CRÉDITO -> CRE
+                $rawCond = strtoupper(trim((string)($item['condicion'] ?? 'CON')));
+                $condicion = (str_starts_with($rawCond, 'CR') || str_contains($rawCond, 'CRED') || str_contains($rawCond, 'CRÉD') || $rawCond === 'CRE') ? 'CRE' : 'CON';
+
+                // Moneda: 1 = Guaraníes (Gs), 2 = Dólares (USD)
+                $rawMon = strtoupper(trim((string)($item['codMoneda'] ?? '1')));
+                $codMoneda = ($rawMon === '2' || $rawMon === 'SI' || str_contains($rawMon, 'USD') || str_contains($rawMon, 'DOLAR')) ? '2' : '1';
+                $tasaCambio = (float)($item['tasaCambio'] ?? 1);
+
+                $grav10 = round((float)($item['grav10'] ?? 0));
+                $iva10  = round((float)($item['iva10'] ?? round($grav10 / 11)));
+                $grav5  = round((float)($item['grav5'] ?? 0));
+                $iva5   = round((float)($item['iva5'] ?? round($grav5 / 21)));
+                $exentas = round((float)($item['exentas'] ?? 0));
+                $totIva = $iva10 + $iva5;
+                $valorBruto = $grav10 + $grav5 + $exentas;
+                $valorTotal = round((float)($item['valorTotal'] ?? $valorBruto));
+
+                $maxId++;
+                Database::update(
+                    "INSERT INTO co_ingresos (
+                        id_propietario, id_ingreso, cod_empresa, cdc, tip_doc, cod_regimen, regimen,
+                        anulada, inutilizado, nro_timbrado, venc_timbrado, nro_factura, serie, fec_ingreso,
+                        condicion, cod_cliente, nom_cliente, ruc_cliente, cod_tipo_ingreso, tip_ingreso,
+                        form_145, cod_moneda, tasa_cambio, grav10, iva10, grav5, iva5, exentas, tot_iva,
+                        valor_bruto, no_gravado, redondeo, valor_total, observacion, estado, usuario_reg
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, 'N', 'N', ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, 'Original', ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, '', 'A', ?)",
+                    [
+                        $idProp, $maxId, $empresa, $cdc ?: null, $tipDoc, $codRegimen, $regimen,
+                        $nroTimbrado, $vencTimbrado, $nroFactura, $fecIngreso,
+                        $condicion, $codCliente, $nomCliente, $rucFinal, $codTipoIngreso, $tipIngreso,
+                        $codMoneda, $tasaCambio, $grav10, $iva10, $grav5, $iva5, $exentas, $totIva,
+                        $valorBruto, $valorTotal, $usuario
+                    ]
+                );
+
+                if ($cdc !== '') $existingCdcs[$cdc] = true;
+                $existingKeys[$dupKey1] = true;
+                $existingKeys[$dupKey2] = true;
+                $insertados++;
+
+                if ($minFecha === null || $fecIngreso < $minFecha) $minFecha = $fecIngreso;
+                if ($maxFecha === null || $fecIngreso > $maxFecha) $maxFecha = $fecIngreso;
+            }
+
+            View::json([
+                'status'             => 'success',
+                'insertados'         => $insertados,
+                'clientesCreados'    => $clientesCreados,
+                'duplicadosOmitidos' => $duplicadosOmitidos,
+                'minFecha'           => $minFecha,
+                'maxFecha'           => $maxFecha,
+                'message'            => "Se importaron {$insertados} comprobante(s) de ingreso exitosamente"
+                                      . ($clientesCreados > 0 ? " y se crearon {$clientesCreados} nuevo(s) cliente(s)." : "."),
+            ]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al importar lote de ingresos: ' . $e->getMessage()]);
+        }
+    }
+
     // =========================================================================
     // API ASIENTOS CONTABLES (/api/asientos/*)
     // =========================================================================

@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 30;
+    private const SCHEMA_VERSION = 31;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -1071,6 +1071,65 @@ class DatabaseMigrator {
                  WHERE x.`id_propietario` = g.id_prop
                    AND UPPER(TRIM(x.`cod_grupo`)) = g.cod_grp
                    AND UPPER(TRIM(x.`nom_forma`)) = 'CORECIBOPAGO'
+             )",
+            true
+        );
+
+        // 20. Formulario y Reporte COSALEGR: Saldos de Facturas Crédito (Egresos)
+        Database::execute(
+            "INSERT INTO `formas` (`id_propietario`, `cod_modulo`, `nom_forma`, `titulo`, `descripcion`, `esta`, `mostrar_en_menu`, `cod_modulo_menu`, `tipo`, `orden_en_menu`)
+             SELECT DISTINCT p.id_prop, 'CO', 'COSALEGR', 'Saldos Facturas Crédito', 'INFORME DE SALDOS DE FACTURAS A CREDITO DE PROVEEDORES Y RECIBOS DE PAGO', 'A', 'S', 'CO', 'R', 10
+             FROM (
+                 SELECT `id_propietario` AS id_prop FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop FROM `formas`
+                 UNION
+                 SELECT 1 AS id_prop
+             ) p
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM `formas` f
+                 WHERE f.`id_propietario` = p.id_prop AND UPPER(TRIM(f.`nom_forma`)) = 'COSALEGR'
+             )",
+            true
+        );
+
+        Database::execute(
+            "INSERT INTO `accesos_grupos` (
+                 `id_propietario`, `cod_grupo`, `cod_modulo`, `nom_forma`,
+                 `puede_insertar`, `puede_borrar`, `puede_actualizar`, `puede_consultar`,
+                 `item_menu`, `mostrar_en_menu`
+             )
+             SELECT DISTINCT g.id_prop, g.cod_grp, 'CO', 'COSALEGR', 'S', 'S', 'S', 'S', 'Saldos Facturas Crédito', 'S'
+             FROM (
+                 SELECT `id_propietario` AS id_prop, UPPER(TRIM(`cod_grupo`)) AS cod_grp
+                 FROM `usuarios`
+                 WHERE TRIM(COALESCE(`cod_grupo`, '')) <> ''
+                 UNION
+                 SELECT `id_propietario` AS id_prop, UPPER(TRIM(`cod_grupo`)) AS cod_grp
+                 FROM `grupos_usuarios`
+                 WHERE TRIM(COALESCE(`cod_grupo`, '')) <> ''
+                 UNION
+                 SELECT `id_propietario` AS id_prop, 'CONADM' AS cod_grp FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop, 'CONTA' AS cod_grp FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop, 'CONTAM' AS cod_grp FROM `propietarios`
+                 UNION
+                 SELECT `id_propietario` AS id_prop, 'CONTAP' AS cod_grp FROM `propietarios`
+                 UNION
+                 SELECT 1 AS id_prop, 'CONADM' AS cod_grp
+                 UNION
+                 SELECT 1 AS id_prop, 'CONTA' AS cod_grp
+                 UNION
+                 SELECT 1 AS id_prop, 'CONTAM' AS cod_grp
+                 UNION
+                 SELECT 1 AS id_prop, 'CONTAP' AS cod_grp
+             ) g
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM `accesos_grupos` x
+                 WHERE x.`id_propietario` = g.id_prop
+                   AND UPPER(TRIM(x.`cod_grupo`)) = g.cod_grp
+                   AND UPPER(TRIM(x.`nom_forma`)) = 'COSALEGR'
              )",
             true
         );
