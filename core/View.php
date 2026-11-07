@@ -126,7 +126,7 @@ class View {
 
         // Reemplazar /*[[${var}]]*/ defaultVal en bloques JS
         $html = preg_replace_callback(
-            '/\/\*\\[\\[\\$\\{([^}]+)\\}\\]\\]\*\/\s*(null|\'\'|"[^"]*"|\'[^\']*\'|[0-9]+)?/m',
+            '/\/\*\\[\\[\\$\\{([^}]+)\\}\\]\\]\*\/\s*([^;\r\n]+)?/m',
             function ($m) use ($model) {
                 $val = self::evalExpr(trim($m[1]), $model);
                 return json_encode($val, JSON_UNESCAPED_UNICODE);
@@ -529,6 +529,27 @@ HTML;
         }
         if (str_starts_with($expr, '#strings.substring(currentDate')) {
             return substr((string)($model['currentDate'] ?? date('Y-m-d')), 0, 4);
+        }
+        if (str_contains($expr, '#dates')) {
+            return date('d/m/Y H:i');
+        }
+        if (str_contains($expr, '.')) {
+            $parts = explode('.', $expr);
+            $cur = $model;
+            $found = true;
+            foreach ($parts as $p) {
+                if (is_array($cur) && array_key_exists($p, $cur)) {
+                    $cur = $cur[$p];
+                } elseif (is_object($cur) && isset($cur->{$p})) {
+                    $cur = $cur->{$p};
+                } else {
+                    $found = false;
+                    break;
+                }
+            }
+            if ($found) {
+                return $cur;
+            }
         }
         return $model[$expr] ?? '';
     }

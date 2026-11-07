@@ -58,6 +58,8 @@
                     </div>
 
                     <form id="filterForm" onsubmit="event.preventDefault(); cargarDatosSaldos();" style="display: flex; flex-wrap: wrap; gap: 0.85rem; align-items: flex-end;">
+                        <input type="hidden" id="hdnEjercicioActual" th:value="${ejercicio}">
+                        <input type="hidden" id="hdnEmpresaDesc" th:value="${empresa.descripcion}">
                         <div style="flex: 1 1 150px; max-width: 180px;">
                             <label style="display: block; font-size: 0.74rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Fecha Desde</label>
                             <input type="date" id="fechaDesde" th:value="${defFechaDesde}" class="form-control" style="height: 40px; border-radius: 8px; font-weight: 700; font-size: 0.84rem;">
@@ -165,7 +167,7 @@
                     <div style="text-align: right;">
                         <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0f172a;">INFORME DE SALDOS DE FACTURAS CRÉDITO</h3>
                         <div style="font-size: 0.8rem; color: #64748b; font-weight: 600;" id="printPeriodoTexto">Periodo: -</div>
-                        <div style="font-size: 0.75rem; color: #94a3b8;">Impreso el <span th:text="${#dates.format(#dates.createNow(), 'dd/MM/yyyy HH:mm')}"></span></div>
+                        <div style="font-size: 0.75rem; color: #94a3b8;">Impreso el <span id="spanFechaImpresion" th:text="${#dates.format(#dates.createNow(), 'dd/MM/yyyy HH:mm')}"></span></div>
                     </div>
                 </div>
             </div>
@@ -342,6 +344,10 @@
         let vistaActual = 'facturas';
 
         document.addEventListener('DOMContentLoaded', () => {
+            const sp = document.getElementById('spanFechaImpresion');
+            if (sp && !sp.textContent.trim()) {
+                sp.textContent = new Date().toLocaleDateString('es-PY') + ' ' + new Date().toLocaleTimeString('es-PY', {hour:'2-digit',minute:'2-digit'});
+            }
             cargarDatosSaldos();
         });
 
@@ -374,7 +380,7 @@
             document.querySelectorAll('.qf-btn').forEach(b => b.classList.remove('active'));
             event.target.classList.add('active');
 
-            const anioActual = /*[[${ejercicio}]]*/ new Date().getFullYear();
+            const anioActual = parseInt(document.getElementById('hdnEjercicioActual')?.value || '') || new Date().getFullYear();
             const fDesde = document.getElementById('fechaDesde');
             const fHasta = document.getElementById('fechaHasta');
             const hoy = new Date();
@@ -726,7 +732,7 @@
             const wsProv = XLSX.utils.aoa_to_sheet(dataProv);
             XLSX.utils.book_append_sheet(wb, wsProv, 'Resumen por Proveedor');
 
-            const empresaNom = /*[[${empresa.descripcion}]]*/ 'EMPRESA';
+            const empresaNom = document.getElementById('hdnEmpresaDesc')?.value || 'EMPRESA';
             const fDesde = document.getElementById('fechaDesde').value || 'INICIO';
             const fHasta = document.getElementById('fechaHasta').value || 'FIN';
             const fileName = `Saldos_Facturas_Credito_${fDesde}_${fHasta}.xlsx`;
