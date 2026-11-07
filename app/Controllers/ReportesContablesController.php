@@ -3823,18 +3823,16 @@ class ReportesContablesController {
                               COALESCE(e.exentas, 0) AS exentas,
                               COALESCE(e.tot_iva, 0) AS tot_iva,
                               COALESCE(e.valor_total, 0) AS valor_total,
-                              COALESCE(e.anulada, 'N') AS anulada,
+                              CASE WHEN UPPER(COALESCE(e.estado, 'A')) = 'I' THEN 'S' ELSE 'N' END AS anulada,
                               COALESCE(e.observacion, '') AS observacion
                        FROM co_egresos e
                        WHERE e.id_propietario = ?
                          AND e.cod_empresa = ?
-                         AND (UPPER(TRIM(e.condicion)) IN ('CRE', 'CREDITO', 'CRÉDITO') OR UPPER(e.condicion) LIKE 'CRE%')
-                         AND COALESCE(e.estado, 'A') <> 'I'
-                         AND COALESCE(e.inutilizado, 'N') <> 'S' ";
+                         AND (UPPER(TRIM(e.condicion)) IN ('CRE', 'CREDITO', 'CRÉDITO') OR UPPER(e.condicion) LIKE 'CRE%') ";
             $paramsEgr = [$idProp, $empresa];
 
             if (!$incluirAnuladas) {
-                $sqlEgr .= "AND COALESCE(e.anulada, 'N') <> 'S' ";
+                $sqlEgr .= "AND COALESCE(e.estado, 'A') <> 'I' ";
             }
 
             if ($fechaDesde !== '' && $fechaHasta !== '') {
