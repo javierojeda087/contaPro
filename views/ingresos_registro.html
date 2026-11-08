@@ -3008,7 +3008,7 @@
 
         function normalizarRucConDvJS(rawRuc, cdc) {
             let r = String(rawRuc || '').trim().toUpperCase();
-            if (!r) return '';
+            if (!r || r === 'X' || r === 'SIN RUC') return r === 'SIN RUC' ? 'X' : r;
             if (r.includes('-')) {
                 const parts = r.split('-');
                 const b = parts[0].replace(/\D/g, '');
@@ -3052,10 +3052,66 @@
                 impTipIng.value = mainTipIng.value || '1';
             }
 
+            // Poblar selector de timbrado por defecto para ventas
+            const selTimb = document.getElementById('importDefTimbrado');
+            if (selTimb) {
+                selTimb.innerHTML = '';
+                if (Array.isArray(listTimbradosCache) && listTimbradosCache.length > 0) {
+                    listTimbradosCache.forEach(t => {
+                        const nro = t.NRO_TIMBRADO || t.nro_timbrado || '';
+                        const est = String(t.COD_ESTABLECIMIENTO || t.cod_establecimiento || '001').padStart(3, '0');
+                        const pto = String(t.COD_PUNTO_EXPEDICION || t.cod_punto_expedicion || '001').padStart(3, '0');
+                        const doc = t.TIP_DOC || t.tip_doc || 'FAC';
+                        const opt = document.createElement('option');
+                        opt.value = nro;
+                        opt.text = `${nro} (${est}-${pto}) [${doc}]`;
+                        selTimb.appendChild(opt);
+                    });
+                } else {
+                    const opt = document.createElement('option');
+                    opt.value = '';
+                    opt.text = '-- Sin timbrados registrados --';
+                    selTimb.appendChild(opt);
+                }
+            }
+
             await refrescarCacheValidacionImport();
 
             const overlay = document.getElementById('importarExcelModalOverlay');
             if (overlay) overlay.style.display = 'flex';
+        }
+
+        function aplicarTimbradoDefectoAVacios() {
+            const defTimb = (document.getElementById('importDefTimbrado')?.value || '').trim();
+            if (!defTimb) {
+                Swal.fire('Atención', 'No hay ningún timbrado seleccionado en el selector superior.', 'warning');
+                return;
+            }
+            let aplicados = 0;
+            const itemTimb = Array.isArray(listTimbradosCache) ? listTimbradosCache.find(x => (x.NRO_TIMBRADO || x.nro_timbrado) == defTimb) : null;
+            const defVenc = itemTimb ? (itemTimb.FEC_VENCIMIENTO || itemTimb.fec_vencimiento || '') : '';
+
+            importPreviewList.forEach(r => {
+                const cleanT = String(r.nroTimbrado || '').replace(/\D/g, '');
+                if (!cleanT || cleanT.length < 7) {
+                    r.nroTimbrado = defTimb;
+                    if (defVenc && (!r.vencTimbrado || r.vencTimbrado === '2100-12-31')) {
+                        r.vencTimbrado = defVenc;
+                    }
+                    aplicados++;
+                }
+            });
+
+            revalidarTodasLasFilasImportacion();
+            renderTablaImportPreview();
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: `Se asignó el timbrado ${defTimb} a ${aplicados} comprobante(s).`,
+                showConfirmButton: false,
+                timer: 2000
+            });
         }
 
         function cerrarModalImportarExcel() {
@@ -3145,6 +3201,9 @@
 
             const rawDefTipIng = document.getElementById('importDefTipIngreso')?.value || '1';
             const defTipIng = !isNaN(parseFloat(rawDefTipIng)) ? String(parseInt(rawDefTipIng, 10)) : '1';
+            const defTimbrado = (document.getElementById('importDefTimbrado')?.value || '').trim() || (Array.isArray(listTimbradosCache) && listTimbradosCache[0] ? (listTimbradosCache[0].NRO_TIMBRADO || listTimbradosCache[0].nro_timbrado) : '');
+            const itemDefTimb = Array.isArray(listTimbradosCache) ? listTimbradosCache.find(x => (x.NRO_TIMBRADO || x.nro_timbrado) == defTimbrado) : null;
+            const defVencTimb = itemDefTimb ? (itemDefTimb.FEC_VENCIMIENTO || itemDefTimb.fec_vencimiento || '') : '';
 
             // Detección dinámica de índices de columnas según encabezados
             let cIdxRucCli = 2;
@@ -3175,26 +3234,51 @@
                 if (headerText.includes('INFORMANTE') || headerText.includes('INFORMADO') || headerText.includes('TIMBRADO') || headerText.includes('COMPROBANTE')) {
                     startIdx = 1;
                     firstRow.forEach((colName, cIdx) => {
-                        if ((colName.includes('INFORMADO') && colName.includes('RUC')) || colName.includes('IDENTIFICACION DEL INFORMADO') || colName.includes('IDENTIFICACIÓN DEL INFORMADO')) cIdxRucCli = cIdx;
-                        else if (colName.includes('TIPO DE IDENTIFICACIÓN') || colName.includes('TIPO DE IDENTIFICACION')) cIdxTipoDocCli = cIdx;
-                        else if (colName.includes('INFORMADO') && (colName.includes('RAZON') || colName.includes('RAZÓN') || colName.includes('NOMBRE'))) cIdxNomCli = cIdx;
-                        else if (colName.includes('TIPO DE COMPROBANTE')) cIdxTipDoc = cIdx;
-                        else if (colName.includes('FECHA DE EMISION') || colName.includes('FECHA DE EMISIÓN')) cIdxFecha = cIdx;
-                        else if (colName.includes('CONDICION DE LA OPERACION') || colName.includes('CONDICIÓN DE LA OPERACIÓN') || colName.includes('CONDICION') || colName.includes('CONDICIÓN')) cIdxCond = cIdx;
-                        else if (colName.includes('MONEDA EXTRANJERA')) cIdxMonExt = cIdx;
-                        else if (colName.includes('TIMBRADO DEL COMPROBANTE') || (colName.includes('TIMBRADO') && !colName.includes('ASOCIADO'))) cIdxTimbrado = cIdx;
-                        else if (colName.includes('NUMERO DE COMPROBANTE') && !colName.includes('ASOCIADO')) cIdxNroFactura = cIdx;
-                        else if (colName === 'CDC') cIdxCdc = cIdx;
-                        else if (colName.includes('GRAVADO 10')) cIdxGrav10 = cIdx;
-                        else if (colName.includes('IVA 10')) cIdxIva10 = cIdx;
-                        else if (colName.includes('GRAVADO 5')) cIdxGrav5 = cIdx;
-                        else if (colName.includes('IVA 5')) cIdxIva5 = cIdx;
-                        else if (colName.includes('NO GRAVADO') || colName.includes('EXENTO')) cIdxExentas = cIdx;
-                        else if (colName.includes('TOTAL COMPROBANTE')) cIdxTotal = cIdx;
-                        else if (colName.includes('IMPUTA IVA')) cIdxImpIva = cIdx;
-                        else if (colName.includes('IMPUTA IRP')) cIdxImpIrp = cIdx;
-                        else if (colName.includes('IMPUTA IRE') || colName.includes('IRE')) cIdxImpIre = cIdx;
-                        else if (colName.includes('ORIGEN')) cIdxOrigen = cIdx;
+                        const u = colName.trim().toUpperCase();
+                        if (u.includes('TIPO DE IDENTIFICACIÓN') || u.includes('TIPO DE IDENTIFICACION') || u.includes('TIPO IDENTIFICACIÓN') || u.includes('TIPO IDENTIFICACION') || u.includes('TIPO IDENT') || u.includes('TIPO DOC')) {
+                            cIdxTipoDocCli = cIdx;
+                        } else if (
+                            (u.includes('NUMERO DE IDENTIFICACION') || u.includes('NÚMERO DE IDENTIFICACIÓN') || u.includes('NRO DE IDENTIFICACION') || u.includes('NRO DE IDENTIFICACIÓN') || u.includes('IDENTIFICACION DEL INFORMADO') || u.includes('IDENTIFICACIÓN DEL INFORMADO')) ||
+                            (u.includes('INFORMADO') && (u.includes('RUC') || u.includes('CEDULA') || u.includes('CÉDULA') || u.includes('IDENTIFICACION') || u.includes('IDENTIFICACIÓN')))
+                        ) {
+                            cIdxRucCli = cIdx;
+                        } else if ((u.includes('INFORMADO') || u.includes('CLIENTE') || u.includes('COMPRADOR')) && (u.includes('RAZON') || u.includes('RAZÓN') || u.includes('NOMBRE'))) {
+                            cIdxNomCli = cIdx;
+                        } else if (u.includes('TIPO DE COMPROBANTE')) {
+                            cIdxTipDoc = cIdx;
+                        } else if (u.includes('FECHA DE EMISION') || u.includes('FECHA DE EMISIÓN')) {
+                            cIdxFecha = cIdx;
+                        } else if (u.includes('CONDICION DE LA OPERACION') || u.includes('CONDICIÓN DE LA OPERACIÓN') || u.includes('CONDICION') || u.includes('CONDICIÓN')) {
+                            cIdxCond = cIdx;
+                        } else if (u.includes('MONEDA EXTRANJERA')) {
+                            cIdxMonExt = cIdx;
+                        } else if (u.includes('TIMBRADO DEL COMPROBANTE') || (u.includes('TIMBRADO') && !u.includes('ASOCIADO'))) {
+                            cIdxTimbrado = cIdx;
+                        } else if (u.includes('NUMERO DE COMPROBANTE') && !u.includes('ASOCIADO')) {
+                            cIdxNroFactura = cIdx;
+                        } else if (u === 'CDC') {
+                            cIdxCdc = cIdx;
+                        } else if (u.includes('GRAVADO 10')) {
+                            cIdxGrav10 = cIdx;
+                        } else if (u.includes('IVA 10')) {
+                            cIdxIva10 = cIdx;
+                        } else if (u.includes('GRAVADO 5')) {
+                            cIdxGrav5 = cIdx;
+                        } else if (u.includes('IVA 5')) {
+                            cIdxIva5 = cIdx;
+                        } else if (u.includes('NO GRAVADO') || u.includes('EXENTO')) {
+                            cIdxExentas = cIdx;
+                        } else if (u.includes('TOTAL COMPROBANTE')) {
+                            cIdxTotal = cIdx;
+                        } else if (u.includes('IMPUTA IVA')) {
+                            cIdxImpIva = cIdx;
+                        } else if (u.includes('IMPUTA IRP')) {
+                            cIdxImpIrp = cIdx;
+                        } else if (u.includes('IMPUTA IRE') || u.includes('IRE')) {
+                            cIdxImpIre = cIdx;
+                        } else if (u.includes('ORIGEN')) {
+                            cIdxOrigen = cIdx;
+                        }
                     });
                 }
             }
@@ -3202,11 +3286,22 @@
             for (let rIdx = startIdx; rIdx < rowsFmt.length; rIdx++) {
                 const cols = rowsFmt[rIdx];
                 const rawCols = (rowsRaw && rowsRaw[rIdx]) ? rowsRaw[rIdx] : cols;
-                if (!cols || cols.length < 8) continue;
+                if (!cols || cols.length < 4) continue;
 
-                const colRucCli = String(cols[cIdxRucCli] ?? '').trim();
-                const colNomCli = String(cols[cIdxNomCli] ?? '').trim();
-                const colTipoDocCli = String(cols[cIdxTipoDocCli] ?? 'RUC').trim();
+                let colRucCli = String(cols[cIdxRucCli] ?? '').trim();
+                let colNomCli = String(cols[cIdxNomCli] ?? '').trim();
+                let colTipoDocCli = String(cols[cIdxTipoDocCli] ?? 'RUC').trim();
+
+                // Auto-corrección si la columna detectada como RUC contiene el texto del tipo de documento
+                const uRucVal = colRucCli.toUpperCase();
+                if (uRucVal === 'RUC' || uRucVal.includes('CEDULA') || uRucVal.includes('CÉDULA') || uRucVal === 'CI' || uRucVal.includes('PASAPORTE') || uRucVal.includes('IDENTIFIC')) {
+                    colTipoDocCli = colRucCli;
+                    colRucCli = String(cols[cIdxRucCli + 1] ?? '').trim();
+                    if (cIdxNomCli <= cIdxRucCli + 1) {
+                        colNomCli = String(cols[cIdxRucCli + 2] ?? '').trim();
+                    }
+                }
+
                 const colTipDoc = String(cols[cIdxTipDoc] ?? 'FACTURA').trim();
                 const colFecha = String(cols[cIdxFecha] ?? '').trim();
                 const colTimbrado = String(cols[cIdxTimbrado] ?? '').trim();
@@ -3214,10 +3309,10 @@
 
                 // Ignorar filas de encabezados o vacías
                 if (
-                    colRucCli.toUpperCase().includes('RUC') ||
+                    (colRucCli.toUpperCase().includes('RUC') && colRucCli.length > 5) ||
                     colFecha.toUpperCase().includes('FECHA') ||
                     colTimbrado.toUpperCase().includes('TIMBRADO') ||
-                    (!colRucCli && !colFactura)
+                    (!colRucCli && !colFactura && !colNomCli)
                 ) {
                     continue;
                 }
@@ -3252,10 +3347,43 @@
                 const condRaw = String(cols[cIdxCond] ?? 'CONTADO').trim().toUpperCase();
                 const condicion = (condRaw.startsWith('CR') || condRaw.includes('CRED') || condRaw.includes('CRÉD')) ? 'CRE' : 'CON';
 
-                const nroTimbrado = colTimbrado.replace(/\D/g, '').slice(0, 8);
+                let nroTimbrado = colTimbrado.replace(/\D/g, '').slice(0, 8);
+                if ((!nroTimbrado || nroTimbrado.length < 7) && defTimbrado) {
+                    nroTimbrado = String(defTimbrado).replace(/\D/g, '').slice(0, 8);
+                }
+
                 const nroFactura = formatNroFactura(colFactura, tipDoc);
-                const rucCliente = normalizarRucConDvJS(colRucCli, rawCdc);
-                const nomCliente = colNomCli.toUpperCase();
+
+                // Detección de Cliente X / Sin Nombre y Documento CI
+                const uRucClean = colRucCli.toUpperCase();
+                const uNomClean = colNomCli.toUpperCase();
+                const esClienteX = (uRucClean === 'X' || uRucClean === 'SIN RUC' || uRucClean === '' || uNomClean === 'SIN NOMBRE' || uNomClean === 'CLIENTE X' || uNomClean === 'X');
+
+                let rucCliente = '';
+                let nomCliente = '';
+                let tipoDocCliente = 'RUC';
+                let esCiAviso = false;
+
+                if (esClienteX) {
+                    rucCliente = 'X';
+                    nomCliente = (colNomCli && uNomClean !== 'X') ? colNomCli.toUpperCase() : 'SIN NOMBRE';
+                    tipoDocCliente = 'CI';
+                } else {
+                    nomCliente = colNomCli.toUpperCase();
+                    const uTipo = colTipoDocCli.toUpperCase();
+                    const esCedulaDecl = uTipo.includes('CEDULA') || uTipo.includes('CÉDULA') || uTipo === 'CI';
+                    const digitsOnly = colRucCli.replace(/\D/g, '');
+
+                    // Si se indicó como cédula o no tiene guión y es puramente numérico (ej: 4730176)
+                    if (esCedulaDecl || (!colRucCli.includes('-') && /^\d+$/.test(colRucCli))) {
+                        tipoDocCliente = 'CI';
+                        rucCliente = digitsOnly || colRucCli;
+                        esCiAviso = true;
+                    } else {
+                        tipoDocCliente = 'RUC';
+                        rucCliente = normalizarRucConDvJS(colRucCli, rawCdc);
+                    }
+                }
 
                 const monExtRaw = String(cols[cIdxMonExt] ?? '').trim().toUpperCase();
                 const codMoneda = (monExtRaw === 'SI' || monExtRaw === '2' || monExtRaw.includes('USD') || monExtRaw.includes('DOLAR')) ? '2' : '1';
@@ -3282,18 +3410,21 @@
                 else if (impIva && !impIrp) regimen = '3';
 
                 const anioVencDef = fecIngreso && fecIngreso.length >= 4 ? fecIngreso.substring(0, 4) : String(new Date().getFullYear());
+                const vencTimbrado = esElectronico ? '2100-12-31' : (defVencTimb || `${anioVencDef}-12-31`);
 
                 importPreviewList.push({
                     cdc: esElectronico ? rawCdc : '',
                     tipDoc: tipDoc,
                     tipTimb: esElectronico ? 'Electrónico' : 'Pre-impreso',
-                    vencTimbrado: esElectronico ? '2100-12-31' : `${anioVencDef}-12-31`,
+                    vencTimbrado: vencTimbrado,
                     nroTimbrado: nroTimbrado,
                     nroFactura: (nroFactura && nroFactura !== '-') ? nroFactura : colFactura,
                     fecIngreso: fecIngreso,
                     rucCliente: rucCliente,
                     nomCliente: nomCliente,
-                    tipoDocCliente: colTipoDocCli || 'RUC',
+                    tipoDocCliente: tipoDocCliente,
+                    esClienteX: esClienteX,
+                    esCiAviso: esCiAviso,
                     condicion: condicion,
                     regimen: regimen,
                     codRegimen: parseInt(regimen, 10) || 1,
@@ -3368,10 +3499,19 @@
                 const timbClean = String(row.nroTimbrado || '').replace(/\D/g, '');
                 const facFmt = formatNroFactura(row.nroFactura, row.tipDoc);
                 const facClean = (facFmt && facFmt !== '-') ? facFmt.replace(/-/g, '') : String(row.nroFactura || '').replace(/[-\s]/g, '');
-                const rucBase = String(row.rucCliente || '').split('-')[0].replace(/\D/g, '').replace(/^0+/, '');
+                const rucUpper = String(row.rucCliente || '').trim().toUpperCase();
+                const rucBase = rucUpper === 'X' ? 'X' : rucUpper.split('-')[0].replace(/\D/g, '').replace(/^0+/, '');
 
                 // Verificar cliente en cache local / BD
-                if (rucBase && importValidationCache.clientesMap && importValidationCache.clientesMap[rucBase]) {
+                if (row.esClienteX || rucUpper === 'X') {
+                    if (importValidationCache.clientesMap && (importValidationCache.clientesMap['X'] || importValidationCache.clientesMap['CLIENTE X'])) {
+                        row.clienteExiste = true;
+                        row.codCliente = (importValidationCache.clientesMap['X'] || importValidationCache.clientesMap['CLIENTE X']).codCliente;
+                    } else {
+                        row.clienteExiste = false;
+                        row.codCliente = '';
+                    }
+                } else if (rucBase && importValidationCache.clientesMap && importValidationCache.clientesMap[rucBase]) {
                     row.clienteExiste = true;
                     row.codCliente = importValidationCache.clientesMap[rucBase].codCliente;
                 } else {
@@ -3426,11 +3566,17 @@
                 } else if (row.vencTimbrado && row.fecIngreso > row.vencTimbrado) {
                     row.errores.push('Fecha > Venc. Timbrado');
                 }
-                if (!rucBase || rucBase.length < 3) {
-                    row.errores.push('RUC obligatorio');
-                }
-                if (!String(row.nomCliente || '').trim()) {
-                    row.errores.push('Razón Social obligatoria');
+                if (row.esClienteX || rucUpper === 'X') {
+                    // Cliente X / Sin Nombre es válido sin requerir RUC ni Razón Social
+                    row.rucCliente = 'X';
+                    if (!row.nomCliente) row.nomCliente = 'SIN NOMBRE';
+                } else {
+                    if (!rucBase || rucBase.length < 3) {
+                        row.errores.push('RUC o CI obligatorio');
+                    }
+                    if (!String(row.nomCliente || '').trim()) {
+                        row.errores.push('Razón Social obligatoria');
+                    }
                 }
                 if ((parseFloat(row.valorTotal) || 0) <= 0) {
                     row.errores.push('Total debe ser > 0');
@@ -3461,9 +3607,16 @@
                 return `<span style="background: #ef4444; color: white; font-weight: 800; font-size: 0.7rem; padding: 4px 8px; border-radius: 6px; display: inline-block;" title="${row.errores.join(' | ')}"><i class="ph ph-warning-circle"></i> ${row.errores[0]}</span>`;
             }
             const tipoTag = (String(row.cdc || '').replace(/\D/g, '').length === 44) ? 'Electr.' : 'Manual/Virtual';
+            let docBadge = '';
+            if (row.esClienteX || row.rucCliente === 'X') {
+                docBadge = ` <span style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-weight: 800; font-size: 0.66rem; padding: 1px 5px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px;" title="Cliente sin RUC (Registrado como Cliente X / Sin Nombre)"><i class="ph ph-user"></i> Cliente X</span>`;
+            } else if (row.tipoDocCliente === 'CI' || row.esCiAviso) {
+                docBadge = ` <span style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-weight: 800; font-size: 0.66rem; padding: 1px 5px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px;" title="Documento registrado como Cédula de Identidad (CI)"><i class="ph ph-identification-card"></i> Doc: CI</span>`;
+            }
+
             const cliTag = row.clienteExiste
-                ? `<div style="font-size: 0.68rem; color: #15803d; font-weight: 700; margin-top: 2px;">${tipoTag} · Cli. #${row.codCliente} OK</div>`
-                : `<div style="font-size: 0.68rem; color: #0284c7; font-weight: 700; margin-top: 2px;">${tipoTag} · + Crear Cliente</div>`;
+                ? `<div style="font-size: 0.68rem; color: #15803d; font-weight: 700; margin-top: 2px;">${tipoTag} · Cli. #${row.codCliente} OK${docBadge}</div>`
+                : `<div style="font-size: 0.68rem; color: #0284c7; font-weight: 700; margin-top: 2px;">${tipoTag} · + Crear Cliente${docBadge}</div>`;
             return `<span style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-weight: 800; font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;"><i class="ph ph-check-circle"></i> VÁLIDO</span>${cliTag}`;
         }
 
@@ -3663,9 +3816,30 @@
             } else if (field === 'nroFactura') {
                 row.nroFactura = formatNroFactura(val, row.tipDoc);
             } else if (field === 'rucCliente') {
-                row.rucCliente = normalizarRucConDvJS(val, row.cdc);
+                const uVal = String(val || '').trim().toUpperCase();
+                if (uVal === 'X' || uVal === 'SIN RUC' || uVal === '') {
+                    row.rucCliente = 'X';
+                    row.esClienteX = true;
+                    row.tipoDocCliente = 'CI';
+                    if (!row.nomCliente) row.nomCliente = 'SIN NOMBRE';
+                } else if (!uVal.includes('-') && /^\d+$/.test(uVal)) {
+                    row.rucCliente = uVal;
+                    row.esClienteX = false;
+                    row.tipoDocCliente = 'CI';
+                    row.esCiAviso = true;
+                } else {
+                    row.rucCliente = normalizarRucConDvJS(val, row.cdc);
+                    row.esClienteX = false;
+                    row.tipoDocCliente = 'RUC';
+                    row.esCiAviso = false;
+                }
             } else if (field === 'nomCliente') {
                 row.nomCliente = String(val || '').trim().toUpperCase();
+                if (row.nomCliente === 'SIN NOMBRE' || row.nomCliente === 'CLIENTE X') {
+                    row.esClienteX = true;
+                    if (!row.rucCliente || row.rucCliente === '') row.rucCliente = 'X';
+                    row.tipoDocCliente = 'CI';
+                }
             } else {
                 row[field] = val;
             }
@@ -3811,6 +3985,7 @@
                 if (!r.clienteExiste) {
                     const b = String(r.rucCliente || '').split('-')[0].replace(/\D/g, '');
                     if (b) nuevosClientes.add(b);
+                    else if (r.esClienteX || r.rucCliente === 'X') nuevosClientes.add('X');
                 }
             });
 
@@ -3940,6 +4115,17 @@
                             <option value="3">ALQUILER DE INMUEBLES / EQUIPOS</option>
                             <option value="4">OTROS INGRESOS OPERATIVOS</option>
                         </select>
+                    </div>
+
+                    <!-- Timbrado por defecto para el lote de ventas -->
+                    <div style="display: flex; align-items: center; gap: 6px; background: white; padding: 0 10px; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.8rem;">
+                        <span style="font-weight: 700; color: #64748b;"><i class="ph ph-receipt" style="color: #16a34a;"></i> Timbrado:</span>
+                        <select id="importDefTimbrado" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px 6px; font-weight: 700; color: #0f172a; font-size: 0.78rem; max-width: 200px; height: 28px;">
+                            <option value="">-- Sin timbrados --</option>
+                        </select>
+                        <button type="button" class="btn" onclick="aplicarTimbradoDefectoAVacios()" title="Asignar este timbrado a los comprobantes con timbrado vacío o inválido" style="background: #f0fdf4; border: 1px solid #86efac; font-weight: 800; font-size: 0.75rem; color: #15803d; height: 26px; padding: 0 8px; border-radius: 5px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
+                            <i class="ph ph-check" style="font-weight: bold;"></i> Asignar a Vacíos
+                        </button>
                     </div>
                 </div>
 

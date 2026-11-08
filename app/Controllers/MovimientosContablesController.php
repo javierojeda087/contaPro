@@ -1148,7 +1148,7 @@ class MovimientosContablesController {
 
     private static function normalizarRucConDv(string $rawRuc, string $cdc = ''): string {
         $r = strtoupper(trim($rawRuc));
-        if ($r === '') return '';
+        if ($r === '' || $r === 'X' || $r === 'SIN RUC') return $r === 'SIN RUC' ? 'X' : $r;
         if (str_contains($r, '-')) {
             $parts = explode('-', $r, 2);
             $base = preg_replace('/\D/', '', $parts[0]);
@@ -1990,6 +1990,15 @@ class MovimientosContablesController {
             foreach ($cliRows as $cr) {
                 $rawR = trim((string)($cr['ruc'] ?? ''));
                 if ($rawR === '') continue;
+                $upperR = strtoupper($rawR);
+                if ($upperR === 'X') {
+                    $clientesMap['X'] = [
+                        'codCliente' => (string)$cr['cod_cliente'],
+                        'nombre'     => (string)$cr['nombre'],
+                        'ruc'        => 'X',
+                    ];
+                    continue;
+                }
                 $baseR = ltrim(strtoupper(trim(explode('-', $rawR)[0])), '0');
                 if ($baseR !== '') {
                     $clientesMap[$baseR] = [
@@ -2038,6 +2047,15 @@ class MovimientosContablesController {
             foreach ($cliRows as $cr) {
                 $rawR = trim((string)($cr['ruc'] ?? ''));
                 if ($rawR === '') continue;
+                $upperR = strtoupper($rawR);
+                if ($upperR === 'X') {
+                    $cliCache['X'] = [
+                        'codCliente' => (string)$cr['cod_cliente'],
+                        'nombre'     => (string)$cr['nombre'],
+                        'ruc'        => 'X',
+                    ];
+                    continue;
+                }
                 $baseR = ltrim(preg_replace('/\D/', '', explode('-', $rawR)[0]), '0');
                 if ($baseR !== '') {
                     $cliCache[$baseR] = [
@@ -2101,16 +2119,40 @@ class MovimientosContablesController {
                     $vencTimbrado = $defVenc;
                 }
                 $nroFactura = self::formatNroFactura((string)($item['nroFactura'] ?? ''), $tipDoc);
-                $rawRuc = trim((string)($item['rucCliente'] ?? ''));
+                $rawRuc = strtoupper(trim((string)($item['rucCliente'] ?? '')));
                 $nomCliente = mb_strtoupper(trim((string)($item['nomCliente'] ?? '')), 'UTF-8');
                 $tipoDocCliente = strtoupper(trim((string)($item['tipoDocCliente'] ?? 'RUC'))) ?: 'RUC';
 
-                if ($nroFactura === '' || $nroTimbrado === '' || !$fecIngreso || $rawRuc === '' || $nomCliente === '') {
+                // Detectar si es Cliente X / Sin Nombre
+                $isClienteX = ($rawRuc === 'X' || $rawRuc === 'SIN RUC' || $rawRuc === '' || $nomCliente === 'SIN NOMBRE' || $nomCliente === 'CLIENTE X' || $nomCliente === 'X');
+                if ($isClienteX) {
+                    $rawRuc = 'X';
+                    $nomCliente = ($nomCliente !== '' && $nomCliente !== 'X') ? $nomCliente : 'SIN NOMBRE';
+                    $tipoDocCliente = 'CI';
+                }
+
+                // Detectar si es CI (sin guión y puramente numérico, o declarado como CI / CEDULA)
+                $isCi = ($tipoDocCliente === 'CI' || $tipoDocCliente === 'CEDULA' || (!str_contains($rawRuc, '-') && preg_match('/^\d+$/', $rawRuc)));
+                if ($isCi && !$isClienteX) {
+                    $tipoDocCliente = 'CI';
+                }
+
+                if ($nroFactura === '' || $nroTimbrado === '' || !$fecIngreso || ($rawRuc === '' && !$isClienteX) || ($nomCliente === '' && !$isClienteX)) {
                     continue;
                 }
 
-                $rucConDv = self::normalizarRucConDv($rawRuc, $cdc);
-                $rucBase = ltrim(preg_replace('/\D/', '', explode('-', $rucConDv)[0]), '0');
+                $rucConDv = $isClienteX ? 'X' : self::normalizarRucConDv($rawRuc, $cdc);
+                if ($isClienteX) {
+                    $rucFinal = 'X';
+                    $rucBase = 'X';
+                } elseif ($isCi && !str_contains($rawRuc, '-')) {
+                    $rucFinal = $rawRuc;
+                    $rucBase = ltrim(preg_replace('/\D/', '', $rawRuc), '0');
+                } else {
+                    $rucFinal = $rucConDv;
+                    $rucBase = ltrim(preg_replace('/\D/', '', explode('-', $rucConDv)[0]), '0');
+                }
+
                 $facClean = str_replace('-', '', $nroFactura);
                 $dupKey1 = $nroTimbrado . '|' . $facClean . '|' . $rucBase;
                 $dupKey2 = $nroTimbrado . '|' . $facClean;
@@ -2123,12 +2165,9 @@ class MovimientosContablesController {
                 // Verificar o crear cliente automáticamente si aún no existe
                 if ($rucBase !== '' && isset($cliCache[$rucBase])) {
                     $codCliente = $cliCache[$rucBase]['codCliente'];
-                    $rucFinal   = $cliCache[$rucBase]['ruc'] ?: $rucConDv;
-                    if (!str_contains($rucFinal, '-')) {
-                        $rucFinal = $rucConDv;
-                    }
+                    $rucFinal   = $cliCache[$rucBase]['ruc'] ?: $rucFinal;
                 } else {
-                    $codPersona = \App\Services\PersonaService::syncPersonaData(null, $nomCliente, $rucConDv, $tipoDocCliente);
+                    $codPersona = \App\Services\PersonaService::syncPersonaData(null, $nomCliente, $rucFinal, $tipoDocCliente);
                     $nextCliId  = (int)Database::queryForValue(
                         "SELECT COALESCE(MAX(CAST(cod_cliente AS UNSIGNED)), 0) + 1
                          FROM co_clientes
@@ -2140,18 +2179,17 @@ class MovimientosContablesController {
                         Database::update(
                             "INSERT INTO co_clientes (id_propietario, cod_cliente, cod_empresa, cod_persona, nombre, ruc, tipo_documento, estado, usuario_reg, fec_reg)
                              VALUES (?, ?, ?, ?, ?, ?, ?, 'A', ?, NOW())",
-                            [$idProp, $codCliente, $empresa, $codPersona, $nomCliente, $rucConDv, $tipoDocCliente, $usuario]
+                            [$idProp, $codCliente, $empresa, $codPersona, $nomCliente, $rucFinal, $tipoDocCliente, $usuario]
                         );
                     } catch (\Throwable $eCli) {
                         try {
                             Database::update(
                                 "INSERT INTO co_clientes (id_propietario, cod_cliente, cod_empresa, cod_persona, nombre, ruc, estado, usuario_reg, fec_reg)
                                  VALUES (?, ?, ?, ?, ?, ?, 'A', ?, NOW())",
-                                [$idProp, $codCliente, $empresa, $codPersona, $nomCliente, $rucConDv, $usuario]
+                                [$idProp, $codCliente, $empresa, $codPersona, $nomCliente, $rucFinal, $usuario]
                             );
                         } catch (\Throwable $e2) {}
                     }
-                    $rucFinal = $rucConDv;
                     if ($rucBase !== '') {
                         $cliCache[$rucBase] = [
                             'codCliente' => $codCliente,
