@@ -1510,6 +1510,7 @@ class ReportesContablesController {
             '3' => ['codigo' => '3', 'nombre' => 'IVA',        'cantidad' => 0, 'grav10' => 0.0, 'iva10' => 0.0, 'grav5' => 0.0, 'iva5' => 0.0, 'exentas' => 0.0, 'total' => 0.0],
             '2' => ['codigo' => '2', 'nombre' => 'IRP (Solo)', 'cantidad' => 0, 'grav10' => 0.0, 'iva10' => 0.0, 'grav5' => 0.0, 'iva5' => 0.0, 'exentas' => 0.0, 'total' => 0.0],
             '4' => ['codigo' => '4', 'nombre' => 'G. CAPITAL', 'cantidad' => 0, 'grav10' => 0.0, 'iva10' => 0.0, 'grav5' => 0.0, 'iva5' => 0.0, 'exentas' => 0.0, 'total' => 0.0],
+            '5' => ['codigo' => '5', 'nombre' => 'IVA e IRE',  'cantidad' => 0, 'grav10' => 0.0, 'iva10' => 0.0, 'grav5' => 0.0, 'iva5' => 0.0, 'exentas' => 0.0, 'total' => 0.0],
         ];
         $proveedoresResumen = [];
 
@@ -1533,7 +1534,7 @@ class ReportesContablesController {
                 $cantCompContado++;
             }
 
-            // Determinar régimen (1 = IRP & IVA, 2 = IRP, 3 = IVA, 4 = G. CAPITAL)
+            // Determinar régimen (1 = IRP & IVA, 2 = IRP, 3 = IVA, 4 = G. CAPITAL, 5 = IVA e IRE)
             $rawReg  = strtoupper(trim((string)($rc['regimen'] ?? $rc['cod_regimen'] ?? '1')));
             $codReg  = (int)($rc['cod_regimen'] ?? 1);
             if ($rawReg === '2' || $rawReg === 'IRP' || $codReg === 2) {
@@ -1542,6 +1543,8 @@ class ReportesContablesController {
                 $regKey = '3';
             } elseif ($rawReg === '4' || str_contains($rawReg, 'CAPITAL') || $codReg === 4) {
                 $regKey = '4';
+            } elseif ($rawReg === '5' || str_contains($rawReg, 'IRE') || $codReg === 5) {
+                $regKey = '5';
             } else {
                 $regKey = '1';
             }
@@ -1553,8 +1556,8 @@ class ReportesContablesController {
             }
             $esGastoPersonal = ($clasG === '3' || $clasG === '4' || stripos($clasG, 'PERSONAL') !== false || stripos($clasG, 'FAMILIAR') !== false);
 
-            // Imputa IVA si el régimen es 1 (IRP & IVA) o 3 (IVA) y no es gasto personal
-            $imputaIva = ($regKey === '1' || $regKey === '3') && !$esGastoPersonal;
+            // Imputa IVA si el régimen es 1 (IRP & IVA), 3 (IVA) o 5 (IVA e IRE) y no es gasto personal
+            $imputaIva = ($regKey === '1' || $regKey === '3' || $regKey === '5') && !$esGastoPersonal;
 
             $g10Raw = (float)$rc['grav10'];
             $i10Raw = (float)$rc['iva10'];
@@ -3164,8 +3167,8 @@ class ReportesContablesController {
 
             $rawReg = strtoupper(trim((string)($ri['regimen'] ?? $ri['cod_regimen'] ?? '1')));
             $codReg = (int)($ri['cod_regimen'] ?? 1);
-            // Excluir ingresos que sean exclusivamente IVA (3) o Ganancias de Capital (4 - Form. 516)
-            if ($rawReg === '3' || $rawReg === 'IVA' || $codReg === 3 || $rawReg === '4' || str_contains($rawReg, 'CAPITAL') || $codReg === 4) {
+            // Excluir ingresos que sean exclusivamente IVA (3), IVA e IRE (5) o Ganancias de Capital (4 - Form. 516)
+            if ($rawReg === '3' || $rawReg === 'IVA' || $codReg === 3 || $rawReg === '4' || str_contains($rawReg, 'CAPITAL') || $codReg === 4 || $rawReg === '5' || str_contains($rawReg, 'IRE') || $codReg === 5) {
                 continue;
             }
             $cantIngresos++;
@@ -3283,8 +3286,8 @@ class ReportesContablesController {
 
             $rawRegE = strtoupper(trim((string)($re['regimen'] ?? $re['cod_regimen'] ?? '1')));
             $codRegE = (int)($re['cod_regimen'] ?? 1);
-            // Excluir comprobantes que sean exclusivamente IVA (3) o Ganancias de Capital (4)
-            if ($rawRegE === '3' || $rawRegE === 'IVA' || $codRegE === 3 || $rawRegE === '4' || str_contains($rawRegE, 'CAPITAL') || $codRegE === 4) {
+            // Excluir comprobantes que sean exclusivamente IVA (3), IVA e IRE (5) o Ganancias de Capital (4)
+            if ($rawRegE === '3' || $rawRegE === 'IVA' || $codRegE === 3 || $rawRegE === '4' || str_contains($rawRegE, 'CAPITAL') || $codRegE === 4 || $rawRegE === '5' || str_contains($rawRegE, 'IRE') || $codRegE === 5) {
                 continue;
             }
             $cantEgresos++;

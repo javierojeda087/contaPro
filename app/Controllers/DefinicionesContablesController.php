@@ -1568,6 +1568,28 @@ class DefinicionesContablesController {
                 [$idProp]
             );
         }
+        $cntIre = (int)Database::queryForValue(
+            "SELECT COUNT(*) FROM co_regimen WHERE id_propietario = ? AND (UPPER(TRIM(descripcion)) = 'IVA E IRE' OR UPPER(TRIM(descripcion)) = 'IVA & IRE')",
+            [$idProp]
+        );
+        if ($cntIre === 0) {
+            $cod5Ocupado = (int)Database::queryForValue(
+                "SELECT COUNT(*) FROM co_regimen WHERE id_propietario = ? AND CAST(cod_regimen AS UNSIGNED) = 5",
+                [$idProp]
+            );
+            $targetCod = 5;
+            if ($cod5Ocupado > 0) {
+                $targetCod = (int)Database::queryForValue(
+                    "SELECT COALESCE(MAX(CAST(cod_regimen AS UNSIGNED)), 0) + 1 FROM co_regimen WHERE id_propietario = ?",
+                    [$idProp]
+                );
+            }
+            Database::update(
+                "INSERT INTO co_regimen (id_propietario, cod_regimen, descripcion, imputa_iva, imputa_irp, imputa_ire, estado, usuario_reg, fec_reg)
+                 VALUES (?, ?, 'IVA e IRE', 'S', 'N', 'S', 'A', 'SYSTEM', NOW())",
+                [$idProp, $targetCod]
+            );
+        }
         $rows = Database::queryForListUpper(
             "SELECT CAST(cod_regimen AS UNSIGNED) AS cod_regimen, descripcion, imputa_iva, imputa_irp, imputa_ire, estado,
                     DATE_FORMAT(fec_reg, '%Y-%m-%d %H:%i') AS fec_reg

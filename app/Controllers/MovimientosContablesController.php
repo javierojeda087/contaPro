@@ -516,6 +516,7 @@ class MovimientosContablesController {
         $v = trim($val);
         if (is_numeric($v)) return (int)round((float)$v);
         $up = strtoupper($v);
+        if (str_contains($up, 'IRE')) return 5;
         if (str_contains($up, 'IRP') && str_contains($up, 'IVA')) return 1;
         if (str_contains($up, 'IRP')) return 2;
         if (str_contains($up, 'IVA')) return 3;

@@ -808,8 +808,9 @@
                 raw = String(itemOrVal ?? '1').trim();
             }
             const num = normalizarCodEntero(raw);
-            if (num === '1' || num === '2' || num === '3' || num === '4') return num;
+            if (num === '1' || num === '2' || num === '3' || num === '4' || num === '5') return num;
             const up = raw.toUpperCase();
+            if (up.includes('IRE')) return '5';
             if (up.includes('IRP') && up.includes('IVA')) return '1';
             if (up.includes('IRP')) return '2';
             if (up.includes('IVA')) return '3';
@@ -1292,7 +1293,8 @@
                 '1': { label: 'IRP & IVA', color: '#2563eb', cant: 0, total: 0 },
                 '3': { label: 'IVA',       color: '#7c3aed', cant: 0, total: 0 },
                 '2': { label: 'IRP',       color: '#16a34a', cant: 0, total: 0 },
-                '4': { label: 'G. CAPITAL',color: '#d97706', cant: 0, total: 0 }
+                '4': { label: 'G. CAPITAL',color: '#d97706', cant: 0, total: 0 },
+                '5': { label: 'IVA e IRE', color: '#059669', cant: 0, total: 0 }
             };
             const porCliente = {};
 
@@ -3163,6 +3165,7 @@
             let cIdxTotal = 19;
             let cIdxImpIva = 20;
             let cIdxImpIrp = 22;
+            let cIdxImpIre = -1;
             let cIdxOrigen = 27;
 
             let startIdx = 0;
@@ -3190,6 +3193,7 @@
                         else if (colName.includes('TOTAL COMPROBANTE')) cIdxTotal = cIdx;
                         else if (colName.includes('IMPUTA IVA')) cIdxImpIva = cIdx;
                         else if (colName.includes('IMPUTA IRP')) cIdxImpIrp = cIdx;
+                        else if (colName.includes('IMPUTA IRE') || colName.includes('IRE')) cIdxImpIre = cIdx;
                         else if (colName.includes('ORIGEN')) cIdxOrigen = cIdx;
                     });
                 }
@@ -3267,11 +3271,13 @@
                 const iva5 = iva5Planilla > 0 ? iva5Planilla : Math.round(grav5 / 21);
                 const valorTotal = (grav10 + grav5 + exentas) > 0 ? (grav10 + grav5 + exentas) : totalPlanilla;
 
-                // Régimen: Imputa IVA (col 20) e Imputa IRP (col 22)
+                // Régimen: Imputa IVA (col 20) e Imputa IRP (col 22) / Imputa IRE
                 const impIva = String(cols[cIdxImpIva] ?? 'SI').trim().toUpperCase() === 'SI';
                 const impIrp = String(cols[cIdxImpIrp] ?? 'SI').trim().toUpperCase() === 'SI';
+                const impIre = cIdxImpIre >= 0 ? (String(cols[cIdxImpIre] ?? 'NO').trim().toUpperCase() === 'SI') : false;
                 let regimen = '1';
-                if (impIva && impIrp) regimen = '1';
+                if (impIva && impIre) regimen = '5';
+                else if (impIva && impIrp) regimen = '1';
                 else if (!impIva && impIrp) regimen = '2';
                 else if (impIva && !impIrp) regimen = '3';
 
@@ -3592,6 +3598,7 @@
                                 <option value="2" ${String(row.regimen) === '2' ? 'selected' : ''}>2 - IRP</option>
                                 <option value="3" ${String(row.regimen) === '3' ? 'selected' : ''}>3 - IVA</option>
                                 <option value="4" ${String(row.regimen) === '4' ? 'selected' : ''}>4 - G. CAPITAL</option>
+                                <option value="5" ${String(row.regimen) === '5' ? 'selected' : ''}>5 - IVA e IRE</option>
                             </select>
                         </td>
                         <td style="padding: 5px;">

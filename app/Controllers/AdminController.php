@@ -339,6 +339,44 @@ class AdminController {
                     );
                 }
 
+                // Asegurar regímenes contables y especialmente 'IVA e IRE' para este propietario
+                $cntReg = (int)Database::queryForValue(
+                    "SELECT COUNT(*) FROM co_regimen WHERE id_propietario = ?",
+                    [$idProp]
+                );
+                if ($cntReg === 0 && $idProp !== 1) {
+                    Database::update(
+                        "INSERT INTO co_regimen (id_propietario, cod_regimen, descripcion, imputa_iva, imputa_irp, imputa_ire, estado, usuario_reg, fec_reg)
+                         SELECT ?, cod_regimen, descripcion, imputa_iva, imputa_irp, imputa_ire, estado, 'SYSTEM', NOW()
+                         FROM co_regimen
+                         WHERE id_propietario = 1",
+                        [$idProp]
+                    );
+                }
+
+                $cntIre = (int)Database::queryForValue(
+                    "SELECT COUNT(*) FROM co_regimen WHERE id_propietario = ? AND (UPPER(TRIM(descripcion)) = 'IVA E IRE' OR UPPER(TRIM(descripcion)) = 'IVA & IRE')",
+                    [$idProp]
+                );
+                if ($cntIre === 0) {
+                    $cod5Ocupado = (int)Database::queryForValue(
+                        "SELECT COUNT(*) FROM co_regimen WHERE id_propietario = ? AND CAST(cod_regimen AS UNSIGNED) = 5",
+                        [$idProp]
+                    );
+                    $targetCod = 5;
+                    if ($cod5Ocupado > 0) {
+                        $targetCod = (int)Database::queryForValue(
+                            "SELECT COALESCE(MAX(CAST(cod_regimen AS UNSIGNED)), 0) + 1 FROM co_regimen WHERE id_propietario = ?",
+                            [$idProp]
+                        );
+                    }
+                    Database::update(
+                        "INSERT INTO co_regimen (id_propietario, cod_regimen, descripcion, imputa_iva, imputa_irp, imputa_ire, estado, usuario_reg, fec_reg)
+                         VALUES (?, ?, 'IVA e IRE', 'S', 'N', 'S', 'A', 'SYSTEM', NOW())",
+                        [$idProp, $targetCod]
+                    );
+                }
+
                 // Activar en sesión si el propietario no tenía empresa activa
                 if (TenantContext::empresa() === '' || TenantContext::empresa() === '0') {
                     $_SESSION['empresa']    = $codEmpresa;

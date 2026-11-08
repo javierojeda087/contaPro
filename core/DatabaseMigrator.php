@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 31;
+    private const SCHEMA_VERSION = 32;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -1133,6 +1133,60 @@ class DatabaseMigrator {
              )",
             true
         );
+
+        // Asegurar que el régimen 'IVA e IRE' (código 5) exista para todos los propietarios existentes y plantilla base
+        try {
+            $allProps = Database::queryForList("
+                SELECT DISTINCT id_prop FROM (
+                    SELECT `id_propietario` AS id_prop FROM `propietarios`
+                    UNION
+                    SELECT `id_propietario` AS id_prop FROM `co_regimen`
+                    UNION
+                    SELECT `id_propietario` AS id_prop FROM `empresas`
+                    UNION
+                    SELECT 1 AS id_prop
+                ) t WHERE id_prop IS NOT NULL AND id_prop > 0
+            ");
+            foreach ($allProps as $p) {
+                $pId = (int)$p['id_prop'];
+                // Si el propietario no tiene ningún régimen, clonar catálogo base desde 1 si 1 ya tiene datos
+                $cntReg = (int)Database::queryForValue("SELECT COUNT(*) FROM `co_regimen` WHERE `id_propietario` = ?", [$pId]);
+                if ($cntReg === 0 && $pId !== 1) {
+                    Database::execute("
+                        INSERT INTO `co_regimen` (`id_propietario`, `cod_regimen`, `descripcion`, `imputa_iva`, `imputa_irp`, `imputa_ire`, `estado`, `usuario_reg`, `fec_reg`)
+                        SELECT {$pId}, `cod_regimen`, `descripcion`, `imputa_iva`, `imputa_irp`, `imputa_ire`, `estado`, 'SYSTEM', NOW()
+                        FROM `co_regimen` WHERE `id_propietario` = 1
+                    ", true);
+                }
+
+                $exists = (int)Database::queryForValue(
+                    "SELECT COUNT(*) FROM `co_regimen` WHERE `id_propietario` = ? AND (UPPER(TRIM(`descripcion`)) = 'IVA E IRE' OR UPPER(TRIM(`descripcion`)) = 'IVA & IRE')",
+                    [$pId]
+                );
+                if ($exists === 0) {
+                    // Verificar si código 5 está ocupado por otra descripción
+                    $cod5Ocupado = (int)Database::queryForValue(
+                        "SELECT COUNT(*) FROM `co_regimen` WHERE `id_propietario` = ? AND CAST(`cod_regimen` AS UNSIGNED) = 5",
+                        [$pId]
+                    );
+                    $targetCod = 5;
+                    if ($cod5Ocupado > 0) {
+                        $targetCod = (int)Database::queryForValue(
+                            "SELECT COALESCE(MAX(CAST(`cod_regimen` AS UNSIGNED)), 0) + 1 FROM `co_regimen` WHERE `id_propietario` = ?",
+                            [$pId]
+                        );
+                    }
+                    Database::update(
+                        "INSERT INTO `co_regimen` (`id_propietario`, `cod_regimen`, `descripcion`, `imputa_iva`, `imputa_irp`, `imputa_ire`, `estado`, `usuario_reg`, `fec_reg`)
+                         VALUES (?, ?, 'IVA e IRE', 'S', 'N', 'S', 'A', 'SYSTEM', NOW())",
+                        [$pId, $targetCod]
+                    );
+                    $applied[] = "co_regimen.iva_e_ire.prop_{$pId}";
+                }
+            }
+        } catch (\Throwable $e) {
+            // No interrumpir si la tabla aún se está inicializando
+        }
 
         return $applied;
     }

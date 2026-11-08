@@ -432,6 +432,31 @@ class TenantContext {
                     [$newPropId, $nextCod]
                 );
             }
+
+            // Asegurar régimen 'IVA e IRE'
+            $cntIre = (int)Database::queryForValue(
+                "SELECT COUNT(*) FROM `co_regimen`
+                 WHERE `id_propietario` = ? AND (UPPER(TRIM(`descripcion`)) = 'IVA E IRE' OR UPPER(TRIM(`descripcion`)) = 'IVA & IRE')",
+                [$newPropId]
+            );
+            if ($cntIre === 0) {
+                $cod5Ocupado = (int)Database::queryForValue(
+                    "SELECT COUNT(*) FROM `co_regimen` WHERE `id_propietario` = ? AND CAST(`cod_regimen` AS UNSIGNED) = 5",
+                    [$newPropId]
+                );
+                $targetCod = 5;
+                if ($cod5Ocupado > 0) {
+                    $targetCod = (int)Database::queryForValue(
+                        "SELECT COALESCE(MAX(CAST(`cod_regimen` AS UNSIGNED)), 0) + 1 FROM `co_regimen` WHERE `id_propietario` = ?",
+                        [$newPropId]
+                    );
+                }
+                Database::update(
+                    "INSERT INTO `co_regimen` (`id_propietario`, `cod_regimen`, `descripcion`, `imputa_iva`, `imputa_irp`, `imputa_ire`, `estado`, `usuario_reg`, `fec_reg`)
+                     VALUES (?, ?, 'IVA e IRE', 'S', 'N', 'S', 'A', 'SYSTEM', NOW())",
+                    [$newPropId, $targetCod]
+                );
+            }
         } catch (\Throwable $ignored) {}
     }
 }

@@ -578,7 +578,7 @@ CREATE TABLE `co_regimen` (
 
 LOCK TABLES `co_regimen` WRITE;
 /*!40000 ALTER TABLE `co_regimen` DISABLE KEYS */;
-INSERT INTO `co_regimen` VALUES (1,1.00,'IRP & IVA','S','S','N','A','SYSTEM','2026-10-12 22:33:20'),(1,2.00,'IRP','N','S','N','A','SYSTEM','2026-10-12 22:33:20'),(1,3.00,'IVA','S','N','N','A','SYSTEM','2026-10-12 22:33:20'),(1,4.00,'G. CAPITAL','N','S','N','A','SYSTEM','2026-10-12 22:33:20');
+INSERT INTO `co_regimen` VALUES (1,1.00,'IRP & IVA','S','S','N','A','SYSTEM','2026-10-12 22:33:20'),(1,2.00,'IRP','N','S','N','A','SYSTEM','2026-10-12 22:33:20'),(1,3.00,'IVA','S','N','N','A','SYSTEM','2026-10-12 22:33:20'),(1,4.00,'G. CAPITAL','N','S','N','A','SYSTEM','2026-10-12 22:33:20'),(1,5.00,'IVA e IRE','S','N','S','A','SYSTEM','2026-10-12 22:33:20');
 /*!40000 ALTER TABLE `co_regimen` ENABLE KEYS */;
 UNLOCK TABLES;
 
