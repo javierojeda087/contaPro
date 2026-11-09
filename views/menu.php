@@ -8,11 +8,11 @@
     <main class="main-content">
         <?= \Core\View::renderNavbarFragment('Inicio', $planSummary ?? null, $esSuperAdmin ?? false) ?>
 
-        <div class="content-area" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100vh - 80px); padding: 2rem; box-sizing: border-box;">
+        <div class="content-area" style="display: flex; flex-direction: column; align-items: center; justify-content: space-between; min-height: calc(100vh - 80px); padding: 1.5rem 1.5rem 0.5rem 1.5rem; box-sizing: border-box;">
 
             <?= !empty($planSummary) ? \Core\View::renderSubscriptionAlertBanner($planSummary) : '' ?>
 
-            <div style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(16px); border-radius: 20px; border: 1px solid rgba(203, 213, 225, 0.8); padding: 2.25rem 2.5rem; max-width: 740px; width: 100%; box-shadow: 0 20px 40px -15px rgba(22, 101, 52, 0.12); margin-top: auto; margin-bottom: 2rem;">
+            <div style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(16px); border-radius: 20px; border: 1px solid rgba(203, 213, 225, 0.8); padding: 2.25rem 2.5rem; max-width: 740px; width: 100%; box-shadow: 0 20px 40px -15px rgba(22, 101, 52, 0.12); margin: auto 0 1rem 0;">
                 <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 1.25rem;">
                     <div style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1px solid #86efac; display: flex; align-items: center; justify-content: center; color: #15803d; font-size: 1.6rem; flex-shrink: 0;">
                         <i class="ph ph-buildings"></i>
@@ -76,15 +76,15 @@
                 </div>
             </div>
 
-            <div style="margin-top: auto; margin-bottom: 1.5rem; text-align: center;">
-                <a href="https://www.josystem.click/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; display: inline-flex; align-items: center; background: #0b1325; border: 1.5px solid rgba(0, 153, 255, 0.45); padding: 0.65rem 1.6rem; border-radius: 9999px; gap: 0.75rem; font-size: 0.95rem; color: #ffffff; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);">
-                    <span style="color: #f1f5f9; font-weight: 600;">Desarrollado por</span>
-                    <div style="display: flex; align-items: center; gap: 0.55rem;">
-                        <div style="background: #0099ff; color: white; padding: 0.22rem 0.6rem; border-radius: 8px; font-weight: 800; font-family: monospace; font-size: 0.9rem; box-shadow: 0 0 16px rgba(0, 153, 255, 0.8);">&lt;/&gt;</div>
-                        <span style="color: #0099ff; font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em;">JO System</span>
+            <div style="margin-top: auto; margin-bottom: 0.25rem; text-align: center;">
+                <a href="https://www.josystem.click/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; display: inline-flex; align-items: center; background: #0b1325; border: 1px solid rgba(0, 153, 255, 0.35); padding: 0.28rem 0.85rem; border-radius: 9999px; gap: 0.45rem; font-size: 0.74rem; color: #ffffff; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25); backdrop-filter: blur(8px); transition: all 0.2s ease; cursor: pointer;">
+                    <span style="color: #cbd5e1; font-weight: 500;">Desarrollado por</span>
+                    <div style="display: flex; align-items: center; gap: 0.35rem;">
+                        <div style="background: #0099ff; color: white; padding: 0.12rem 0.38rem; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-family: monospace; font-size: 0.68rem; box-shadow: 0 0 10px rgba(0, 153, 255, 0.6);">&lt;/&gt;</div>
+                        <span style="color: #0099ff; font-weight: 800; font-size: 0.82rem; letter-spacing: -0.01em;">JO System</span>
                     </div>
-                    <div style="width: 1.5px; height: 20px; background: #475569; margin: 0 0.2rem;"></div>
-                    <span style="color: #0099ff; font-weight: 800; letter-spacing: 0.06em; font-size: 0.82rem;">SOFTWARE</span>
+                    <div style="width: 1px; height: 13px; background: #475569; margin: 0 0.15rem;"></div>
+                    <span style="color: #0099ff; font-weight: 800; letter-spacing: 0.05em; font-size: 0.68rem;">SOFTWARE</span>
                 </a>
             </div>
         </div>
