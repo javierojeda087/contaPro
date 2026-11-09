@@ -3836,6 +3836,8 @@
             const bAnul = document.getElementById('badgeImportAnulados');
             const bConf = document.getElementById('badgeImportConflictos');
             const btnRojos = document.getElementById('btnEliminarTodosRojos');
+            const btnLimpiar = document.getElementById('btnLimpiarTodoImport');
+            const btnLimpiarFooter = document.getElementById('btnLimpiarTodoImportFooter');
 
             if (bTotal) {
                 bTotal.innerText = `Todos: ${total}`;
@@ -3854,6 +3856,8 @@
                 bConf.style.boxShadow = importFiltroEstado === 'ROJOS' ? '0 0 0 2px #dc2626' : 'none';
             }
             if (btnRojos) btnRojos.style.display = enRojo > 0 ? 'inline-flex' : 'none';
+            if (btnLimpiar) btnLimpiar.style.display = total > 0 ? 'inline-flex' : 'none';
+            if (btnLimpiarFooter) btnLimpiarFooter.style.display = total > 0 ? 'inline-flex' : 'none';
 
             const elG10 = document.getElementById('lblImpTotG10');
             const elI10 = document.getElementById('lblImpTotI10');
@@ -3875,8 +3879,10 @@
             if (!importPreviewList || importPreviewList.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="19" style="text-align: center; padding: 60px 20px; color: #64748b; font-weight: 600;">
-                            No hay comprobantes cargados en la vista previa.
+                        <td colspan="19" style="text-align: center; padding: 65px 20px; color: #64748b;">
+                            <i class="ph ph-file-xls" style="font-size: 3rem; color: #16a34a; display: block; margin-bottom: 10px;"></i>
+                            <div style="font-size: 1rem; font-weight: 700; color: #334155;">Seleccione un archivo Excel (.xlsx, .xls, .csv) o use "Pegar Planilla"</div>
+                            <div style="font-size: 0.85rem; margin-top: 4px;">Se cargarán automáticamente los comprobantes <b>ELECTRÓNICOS y MANUALES / VIRTUALES</b> en esta grilla para su validación, edición y confirmación.</div>
                         </td>
                     </tr>`;
                 actualizarContadoresImportacion();
@@ -4085,6 +4091,60 @@
                 showConfirmButton: false,
                 timer: 2000
             });
+        }
+
+        function limpiarTodoImportacion(pedirConfirmacion = true) {
+            if (!importPreviewList || importPreviewList.length === 0) {
+                resetearControlesImportacion();
+                renderTablaImportPreview();
+                return;
+            }
+
+            const cant = importPreviewList.length;
+            const ejecutarLimpieza = () => {
+                importPreviewList = [];
+                importFiltroEstado = 'TODOS';
+                resetearControlesImportacion();
+                renderTablaImportPreview();
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'info',
+                    title: `Se limpiaron ${cant} comprobante(s) de la vista previa.`,
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+            };
+
+            if (pedirConfirmacion) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: '¿Limpiar toda la vista previa?',
+                    html: `Se removerán los <b>${cant}</b> comprobante(s) cargados en la grilla.<br><br>Podrá volver a seleccionar otro archivo o pegar una nueva planilla.`,
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: '<i class="ph ph-trash"></i> Sí, limpiar todo',
+                    cancelButtonText: 'Cancelar'
+                }).then(result => {
+                    if (result && result.isConfirmed) {
+                        ejecutarLimpieza();
+                    }
+                });
+            } else {
+                ejecutarLimpieza();
+            }
+        }
+
+        function resetearControlesImportacion() {
+            const input = document.getElementById('excelFileInput');
+            if (input) input.value = '';
+            const lbl = document.getElementById('lblArchivoImportNombre');
+            if (lbl) lbl.innerText = 'Ningún archivo seleccionado';
+            const txt = document.getElementById('txtPegarPlanilla');
+            if (txt) txt.value = '';
+            const zona = document.getElementById('zonaPegarPlanilla');
+            if (zona) zona.style.display = 'none';
         }
 
         async function procesarArchivoExcelSeleccionado(input) {
@@ -4344,6 +4404,9 @@
                     <button type="button" id="btnEliminarTodosRojos" onclick="eliminarFilasRojasImportacion()" style="display: none; background: #dc2626; color: #ffffff; border: 1.5px solid #b91c1c; font-weight: 800; font-size: 0.78rem; height: 34px; padding: 0 12px; border-radius: 8px; align-items: center; gap: 5px; cursor: pointer; box-shadow: 0 2px 6px rgba(220,38,38,0.28);">
                         <i class="ph ph-trash"></i> Eliminar Todos en Rojo
                     </button>
+                    <button type="button" id="btnLimpiarTodoImport" onclick="limpiarTodoImportacion()" title="Vaciar y limpiar toda la vista previa" style="display: none; background: #ffffff; color: #dc2626; border: 1.5px solid #fca5a5; font-weight: 800; font-size: 0.78rem; height: 34px; padding: 0 12px; border-radius: 8px; align-items: center; gap: 5px; cursor: pointer;">
+                        <i class="ph ph-trash-simple" style="font-size: 0.95rem;"></i> Limpiar Todo
+                    </button>
                 </div>
             </div>
 
@@ -4407,6 +4470,9 @@
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 10px;">
+                    <button type="button" id="btnLimpiarTodoImportFooter" class="btn" onclick="limpiarTodoImportacion()" title="Vaciar y limpiar toda la planilla cargada" style="display: none; background: #fff5f5; border: 1.5px solid #fca5a5; font-weight: 700; font-size: 0.88rem; color: #dc2626; height: 40px; padding: 0 16px; border-radius: 8px; align-items: center; gap: 6px; cursor: pointer;">
+                        <i class="ph ph-trash-simple" style="font-size: 1.05rem;"></i> Limpiar Todo
+                    </button>
                     <button type="button" class="btn" onclick="cerrarModalImportarExcel()" style="background: white; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 0.88rem; color: #475569; height: 40px; padding: 0 18px; border-radius: 8px;">
                         Cancelar
                     </button>
