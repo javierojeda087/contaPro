@@ -3483,7 +3483,6 @@
                 const condRaw = String(cols[cIdxCond] ?? 'CONTADO').trim().toUpperCase();
                 const condicion = (condRaw.startsWith('CR') || condRaw.includes('CRED') || condRaw.includes('CRÉD')) ? 'CRE' : 'CON';
 
-                let colTimbrado = String(cols[cIdxTimbrado] ?? '').trim();
                 let nroTimbrado = colTimbrado.replace(/\D/g, '').slice(0, 8);
 
                 // Si no se encontró en cIdxTimbrado o no tiene 7-8 dígitos, buscar en las demás celdas de la fila
