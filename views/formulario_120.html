@@ -13,12 +13,17 @@
         <div class="content-area" style="padding: 18px;">
 
             <!-- Top Action Bar -->
-            <div style="max-width: 1140px; margin: 0 auto 14px auto; background: white; border-radius: 10px; padding: 12px 18px; border: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+            <div style="max-width: 1140px; margin: 0 auto 14px auto; background: #ffffff; border-radius: 10px; padding: 10px 16px; border: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
                 
-                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <label style="font-weight: 800; font-size: 0.84rem; color: #334155;">PERIODO FISCAL:</label>
-                        <select id="selMes" class="form-control" onchange="cargarFormulario()" style="width: 145px; font-weight: 700; height: 36px; border-radius: 7px; border: 1.5px solid #cbd5e1;">
+                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <!-- Control Grupo: Periodo Fiscal -->
+                    <div style="display: inline-flex; align-items: center; gap: 8px; background: #f8fafc; padding: 4px 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <span style="display: inline-flex; align-items: center; gap: 5px; font-weight: 800; font-size: 0.8rem; color: #1e293b; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap;">
+                            <i class="ph ph-calendar-blank" style="font-size: 1.15rem; color: #0284c7;"></i>
+                            PERIODO FISCAL:
+                        </span>
+                        <select id="selMes" class="form-select form-select-sm" onchange="cargarFormulario()" 
+                                style="width: 160px; font-weight: 700; font-size: 0.84rem; height: 38px; line-height: 1.4; padding: 5px 28px 5px 10px; border-radius: 7px; border: 1.5px solid #cbd5e1; background-color: #ffffff; color: #0f172a; cursor: pointer; box-shadow: none;">
                             <option value="1" th:selected="${defMes == 1}">ENERO (01)</option>
                             <option value="2" th:selected="${defMes == 2}">FEBRERO (02)</option>
                             <option value="3" th:selected="${defMes == 3}">MARZO (03)</option>
@@ -32,10 +37,13 @@
                             <option value="11" th:selected="${defMes == 11}">NOVIEMBRE (11)</option>
                             <option value="12" th:selected="${defMes == 12}">DICIEMBRE (12)</option>
                         </select>
-                        <select id="selAnio" class="form-control" onchange="cargarFormulario()" style="width: 96px; font-weight: 700; height: 36px; border-radius: 7px; border: 1.5px solid #cbd5e1;">
+                        <select id="selAnio" class="form-select form-select-sm" onchange="cargarFormulario()" 
+                                style="width: 100px; font-weight: 700; font-size: 0.84rem; height: 38px; line-height: 1.4; padding: 5px 26px 5px 10px; border-radius: 7px; border: 1.5px solid #cbd5e1; background-color: #ffffff; color: #0f172a; cursor: pointer; box-shadow: none;">
+                            <option value="2027" th:selected="${defAnio == 2027}">2027</option>
                             <option value="2026" th:selected="${defAnio == 2026}">2026</option>
                             <option value="2025" th:selected="${defAnio == 2025}">2025</option>
                             <option value="2024" th:selected="${defAnio == 2024}">2024</option>
+                            <option value="2023" th:selected="${defAnio == 2023}">2023</option>
                         </select>
                     </div>
 
@@ -44,25 +52,25 @@
                 </div>
 
                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                    <span id="badgeEstadoOrigenForm" style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-size: 0.73rem; font-weight: 800; padding: 5px 10px; border-radius: 6px;">Calculado desde Libros IVA</span>
+                    <span id="badgeEstadoOrigenForm" style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-size: 0.74rem; font-weight: 800; height: 38px; padding: 0 12px; border-radius: 7px; display: inline-flex; align-items: center; white-space: nowrap;">Calculado desde Libros IVA</span>
 
                     <button type="button" class="btn" onclick="recalcularLibros()" 
-                            style="background: #e0f2fe; color: #0369a1; border: 1.5px solid #7dd3fc; padding: 7px 13px; border-radius: 7px; font-weight: 800; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 5px; cursor: pointer;">
+                            style="background: #e0f2fe; color: #0369a1; border: 1.5px solid #7dd3fc; height: 38px; padding: 0 13px; border-radius: 7px; font-weight: 800; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap;">
                         <i class="ph ph-arrows-clockwise" style="font-size: 1.05rem;"></i> Recalcular Libros
                     </button>
 
                     <button type="button" class="btn" onclick="guardarFormulario()" 
-                            style="background: #16a34a; color: white; border: none; padding: 7px 14px; border-radius: 7px; font-weight: 800; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; box-shadow: 0 2px 4px rgba(22,163,74,0.28);">
+                            style="background: #16a34a; color: white; border: none; height: 38px; padding: 0 15px; border-radius: 7px; font-weight: 800; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(22,163,74,0.28); white-space: nowrap;">
                         <i class="ph ph-floppy-disk" style="font-size: 1.05rem;"></i> Guardar DDJJ
                     </button>
 
                     <button type="button" class="btn" onclick="exportarXlsFormulario120()" 
-                            style="background: #0891b2; color: white; border: none; padding: 7px 14px; border-radius: 7px; font-weight: 800; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 5px; cursor: pointer;">
+                            style="background: #0891b2; color: white; border: none; height: 38px; padding: 0 14px; border-radius: 7px; font-weight: 800; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap;">
                         <i class="ph ph-file-csv" style="font-size: 1.05rem;"></i> Exportar XLS
                     </button>
 
                     <button type="button" class="btn" onclick="imprimirFormulario()" 
-                            style="background: #0284c7; color: white; border: none; padding: 7px 14px; border-radius: 7px; font-weight: 800; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 5px; cursor: pointer;">
+                            style="background: #0284c7; color: white; border: none; height: 38px; padding: 0 14px; border-radius: 7px; font-weight: 800; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap;">
                         <i class="ph ph-printer" style="font-size: 1.05rem;"></i> Imprimir Form 120 V4
                     </button>
                 </div>
@@ -935,7 +943,21 @@
 
         function seleccionarPeriodoChip(mes, anio) {
             document.getElementById('selMes').value = mes;
-            document.getElementById('selAnio').value = anio;
+            const selAnio = document.getElementById('selAnio');
+            let found = false;
+            for (let i = 0; i < selAnio.options.length; i++) {
+                if (parseInt(selAnio.options[i].value, 10) === parseInt(anio, 10)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                const opt = document.createElement('option');
+                opt.value = anio;
+                opt.text = anio;
+                selAnio.appendChild(opt);
+            }
+            selAnio.value = anio;
             cargarFormulario();
         }
 
@@ -969,18 +991,24 @@
                 bar.innerHTML = '';
                 return;
             }
-            let html = '<span style="font-size: 0.74rem; font-weight: 700; color: #64748b;">Con datos:</span>';
+            let html = '<span style="font-size: 0.76rem; font-weight: 700; color: #64748b; margin: 0 2px; white-space: nowrap;">Con datos:</span>';
             periodos.forEach(p => {
                 const m = parseInt(p.mes, 10);
                 const a = parseInt(p.anio, 10);
                 const totComp = parseInt(p.cant_egresos || 0, 10) + parseInt(p.cant_ingresos || 0, 10);
                 const active = (m === curMes && a === curAnio);
-                const bg = active ? '#15803d' : '#f1f5f9';
+                const bg = active ? '#15803d' : '#f8fafc';
                 const col = active ? '#ffffff' : '#334155';
-                const bdr = active ? '#15803d' : '#cbd5e1';
+                const bdr = active ? '#166534' : '#cbd5e1';
+                const shadow = active ? 'box-shadow: 0 2px 4px rgba(21,128,61,0.25);' : 'box-shadow: 0 1px 2px rgba(0,0,0,0.03);';
+                const iconCol = active ? '#ffffff' : '#15803d';
 
-                html += `<button type="button" onclick="seleccionarPeriodoChip(${m}, ${a})" style="background: ${bg}; color: ${col}; border: 1px solid ${bdr}; border-radius: 6px; padding: 3px 9px; font-size: 0.74rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-                    <i class="ph ph-calendar-check"></i> ${NOMBRES_MESES[m] || m}/${a} <span>(${totComp})</span>
+                html += `<button type="button" onclick="seleccionarPeriodoChip(${m}, ${a})" 
+                    title="Cargar periodo ${NOMBRES_MESES[m] || m}/${a} (${totComp} comprobantes)"
+                    style="background: ${bg}; color: ${col}; border: 1.5px solid ${bdr}; border-radius: 7px; padding: 0 11px; height: 38px; font-size: 0.78rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.15s ease; ${shadow} white-space: nowrap;">
+                    <i class="ph ph-calendar-check" style="font-size: 1rem; color: ${iconCol};"></i>
+                    <span>${NOMBRES_MESES[m] || m}/${a}</span>
+                    <span style="opacity: ${active ? '0.9' : '0.75'}; font-size: 0.74rem;">(${totComp})</span>
                 </button>`;
             });
             bar.innerHTML = html;

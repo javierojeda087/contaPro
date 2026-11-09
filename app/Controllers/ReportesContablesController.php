@@ -471,10 +471,13 @@ class ReportesContablesController {
                     </tr>
                 </thead>
                 <tbody>
-                <?php foreach ($records as $r): ?>
-                    <tr>
+                <?php foreach ($records as $r): 
+                    $isAnul = !empty($r['anulada']);
+                    $rowStyle = $isAnul ? 'background-color: #fee2e2; color: #dc2626; text-decoration: line-through;' : '';
+                ?>
+                    <tr style="<?= $rowStyle ?>">
                         <td class="txt"><?= htmlspecialchars((string)($r['diaMes'] ?? '')) ?></td>
-                        <td class="txt"><?= htmlspecialchars((string)($r['documento'] ?? '')) ?></td>
+                        <td class="txt"><?= htmlspecialchars((string)($r['documento'] ?? '')) . ($isAnul ? ' (ANULADO)' : '') ?></td>
                         <td class="txt"><?= htmlspecialchars((string)($r['timbrado'] ?? '')) ?></td>
                         <td class="txt"><?= htmlspecialchars((string)($r['razonSocial'] ?? '')) ?></td>
                         <td class="txt"><?= htmlspecialchars((string)($r['rucNum'] ?? '')) ?></td>
@@ -489,6 +492,18 @@ class ReportesContablesController {
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
+                <?php $t = $data['totales'] ?? []; ?>
+                <tfoot>
+                    <tr style="background-color: #f1f5f9; font-weight: bold;">
+                        <th colspan="7" style="text-align: right; padding: 6px;">TOTAL GENERAL (Comprobantes Activos):</th>
+                        <td class="num" style="font-weight: bold;"><?= (int)round((float)($t['grav10'] ?? 0)) ?></td>
+                        <td class="num" style="font-weight: bold;"><?= (int)round((float)($t['grav5'] ?? 0)) ?></td>
+                        <td class="num" style="font-weight: bold;"><?= (int)round((float)($t['iva10'] ?? 0)) ?></td>
+                        <td class="num" style="font-weight: bold;"><?= (int)round((float)($t['iva5'] ?? 0)) ?></td>
+                        <td class="num" style="font-weight: bold;"><?= (int)round((float)($t['exentas'] ?? 0)) ?></td>
+                        <td class="num" style="font-weight: bold; background-color: #dcfce7; color: #15803d;"><?= (int)round((float)($t['total'] ?? 0)) ?></td>
+                    </tr>
+                </tfoot>
             </table>
         </body>
         </html>

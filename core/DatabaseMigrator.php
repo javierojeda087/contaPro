@@ -269,6 +269,8 @@ class DatabaseMigrator {
         }
 
         $extraColsIngresos = [
+            'anulada'         => "VARCHAR(1) DEFAULT 'N'",
+            'inutilizado'     => "VARCHAR(1) DEFAULT 'N'",
             'cta_debito'      => 'VARCHAR(40) DEFAULT NULL',
             'cta_grav10'      => 'VARCHAR(40) DEFAULT NULL',
             'cta_iva10'       => 'VARCHAR(40) DEFAULT NULL',

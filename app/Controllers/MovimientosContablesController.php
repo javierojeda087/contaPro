@@ -537,6 +537,7 @@ class MovimientosContablesController {
         $mes        = trim((string)($_GET['mes'] ?? ''));
         $fechaDesde = self::parseSqlDate((string)($_GET['fechaDesde'] ?? $_GET['desde'] ?? ''));
         $fechaHasta = self::parseSqlDate((string)($_GET['fechaHasta'] ?? $_GET['hasta'] ?? ''));
+        $filtroAnul = trim((string)($_GET['anulada'] ?? $_GET['estado'] ?? ''));
 
         try {
             $sql = "SELECT id_egreso, cdc, tip_doc, tip_timb, tip_egreso, clasificacion_gasto,
@@ -1579,6 +1580,7 @@ class MovimientosContablesController {
         $mes        = trim((string)($_GET['mes'] ?? ''));
         $fechaDesde = self::parseSqlDate((string)($_GET['fechaDesde'] ?? $_GET['desde'] ?? ''));
         $fechaHasta = self::parseSqlDate((string)($_GET['fechaHasta'] ?? $_GET['hasta'] ?? ''));
+        $filtroAnul = trim((string)($_GET['anulada'] ?? $_GET['estado'] ?? ''));
 
         try {
             $sql = "SELECT id_ingreso, cdc, tip_doc,
@@ -1618,6 +1620,11 @@ class MovimientosContablesController {
                     $sql .= "AND MONTH(fec_ingreso) = ? ";
                     $params[] = (int)$mes;
                 }
+            }
+            if (strcasecmp($filtroAnul, 'S') === 0 || strcasecmp($filtroAnul, 'ANULADOS') === 0 || strcasecmp($filtroAnul, 'ANULADA') === 0) {
+                $sql .= "AND (COALESCE(anulada, 'N') = 'S' OR UPPER(COALESCE(sifen_estado, '')) = 'CANCELADO') ";
+            } elseif (strcasecmp($filtroAnul, 'N') === 0 || strcasecmp($filtroAnul, 'ACTIVOS') === 0) {
+                $sql .= "AND COALESCE(anulada, 'N') <> 'S' AND UPPER(COALESCE(sifen_estado, '')) <> 'CANCELADO' ";
             }
             $sql .= "ORDER BY fec_ingreso DESC, id_ingreso DESC";
 
@@ -1944,6 +1951,7 @@ class MovimientosContablesController {
                         TRIM(COALESCE(nom_cliente, '')) AS nom_cliente,
                         TRIM(COALESCE(ruc_cliente, '')) AS ruc_cliente,
                         COALESCE(valor_total, 0) AS valor_total,
+                        COALESCE(anulada, 'N') AS anulada,
                         UPPER(TRIM(SUBSTRING_INDEX(REPLACE(COALESCE(ruc_cliente, ''), ' ', ''), '-', 1))) AS ruc_base
                  FROM co_ingresos
                  WHERE id_propietario = ? AND cod_empresa = ?",
@@ -1961,6 +1969,7 @@ class MovimientosContablesController {
                     'nomCliente'  => (string)$ir['nom_cliente'],
                     'rucCliente'  => (string)$ir['ruc_cliente'],
                     'valorTotal'  => (float)$ir['valor_total'],
+                    'anulada'     => (string)($ir['anulada'] ?? 'N'),
                 ];
                 $c = preg_replace('/\D/', '', (string)$ir['cdc']);
                 if (strlen($c) === 44) {
@@ -2094,6 +2103,7 @@ class MovimientosContablesController {
 
             $clientesCreados = 0;
             $insertados = 0;
+            $anuladosInsertados = 0;
             $duplicadosOmitidos = 0;
             $minFecha = null;
             $maxFecha = null;
@@ -2123,11 +2133,22 @@ class MovimientosContablesController {
                 $nomCliente = mb_strtoupper(trim((string)($item['nomCliente'] ?? '')), 'UTF-8');
                 $tipoDocCliente = strtoupper(trim((string)($item['tipoDocCliente'] ?? 'RUC'))) ?: 'RUC';
 
+                // Detectar si el comprobante viene marcado como Anulado desde la planilla o grilla
+                $rawAnulada = strtoupper(trim((string)($item['anulada'] ?? 'N')));
+                $esAnulada = ($rawAnulada === 'S' || $rawAnulada === 'SI' || $rawAnulada === '1' || ($item['anulada'] ?? false) === true);
+                $anulada = $esAnulada ? 'S' : 'N';
+
+                // Si está anulado, asegurar que no falle por falta de RUC o Nombre
+                if ($esAnulada) {
+                    if ($rawRuc === '') $rawRuc = 'X';
+                    if ($nomCliente === '') $nomCliente = 'ANULADO';
+                }
+
                 // Detectar si es Cliente X / Sin Nombre
-                $isClienteX = ($rawRuc === 'X' || $rawRuc === 'SIN RUC' || $rawRuc === '' || $nomCliente === 'SIN NOMBRE' || $nomCliente === 'CLIENTE X' || $nomCliente === 'X');
+                $isClienteX = ($rawRuc === 'X' || $rawRuc === 'SIN RUC' || $rawRuc === '' || $nomCliente === 'SIN NOMBRE' || $nomCliente === 'CLIENTE X' || $nomCliente === 'X' || $nomCliente === 'ANULADO');
                 if ($isClienteX) {
                     $rawRuc = 'X';
-                    $nomCliente = ($nomCliente !== '' && $nomCliente !== 'X') ? $nomCliente : 'SIN NOMBRE';
+                    $nomCliente = ($nomCliente !== '' && $nomCliente !== 'X') ? $nomCliente : ($esAnulada ? 'ANULADO' : 'SIN NOMBRE');
                     $tipoDocCliente = 'CI';
                 }
 
@@ -2226,9 +2247,10 @@ class MovimientosContablesController {
                         condicion, cod_cliente, nom_cliente, ruc_cliente, cod_tipo_ingreso, tip_ingreso,
                         form_145, cod_moneda, tasa_cambio, grav10, iva10, grav5, iva5, exentas, tot_iva,
                         valor_bruto, no_gravado, redondeo, valor_total, observacion, estado, usuario_reg
-                     ) VALUES (?, ?, ?, ?, ?, ?, ?, 'N', 'N', ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, 'Original', ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, '', 'A', ?)",
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'N', ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, 'Original', ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, '', 'A', ?)",
                     [
                         $idProp, $maxId, $empresa, $cdc ?: null, $tipDoc, $codRegimen, $regimen,
+                        $anulada,
                         $nroTimbrado, $vencTimbrado, $nroFactura, $fecIngreso,
                         $condicion, $codCliente, $nomCliente, $rucFinal, $codTipoIngreso, $tipIngreso,
                         $codMoneda, $tasaCambio, $grav10, $iva10, $grav5, $iva5, $exentas, $totIva,
@@ -2240,6 +2262,7 @@ class MovimientosContablesController {
                 $existingKeys[$dupKey1] = true;
                 $existingKeys[$dupKey2] = true;
                 $insertados++;
+                if ($esAnulada) $anuladosInsertados++;
 
                 if ($minFecha === null || $fecIngreso < $minFecha) $minFecha = $fecIngreso;
                 if ($maxFecha === null || $fecIngreso > $maxFecha) $maxFecha = $fecIngreso;
@@ -2248,11 +2271,13 @@ class MovimientosContablesController {
             View::json([
                 'status'             => 'success',
                 'insertados'         => $insertados,
+                'anulados'           => $anuladosInsertados,
                 'clientesCreados'    => $clientesCreados,
                 'duplicadosOmitidos' => $duplicadosOmitidos,
                 'minFecha'           => $minFecha,
                 'maxFecha'           => $maxFecha,
                 'message'            => "Se importaron {$insertados} comprobante(s) de ingreso exitosamente"
+                                      . ($anuladosInsertados > 0 ? " ({$anuladosInsertados} anulados guardados correctamente)" : "")
                                       . ($clientesCreados > 0 ? " y se crearon {$clientesCreados} nuevo(s) cliente(s)." : "."),
             ]);
         } catch (\Throwable $e) {
@@ -2788,6 +2813,7 @@ class MovimientosContablesController {
         $mes        = trim((string)($_GET['mes'] ?? ''));
         $fechaDesde = self::parseSqlDate((string)($_GET['fechaDesde'] ?? $_GET['desde'] ?? ''));
         $fechaHasta = self::parseSqlDate((string)($_GET['fechaHasta'] ?? $_GET['hasta'] ?? ''));
+        $filtroAnul = trim((string)($_GET['anulada'] ?? $_GET['estado'] ?? ''));
 
         try {
             $sql = "SELECT c.id_recibo,
@@ -3453,6 +3479,7 @@ class MovimientosContablesController {
         $mes        = trim((string)($_GET['mes'] ?? ''));
         $fechaDesde = self::parseSqlDate((string)($_GET['fechaDesde'] ?? $_GET['desde'] ?? ''));
         $fechaHasta = self::parseSqlDate((string)($_GET['fechaHasta'] ?? $_GET['hasta'] ?? ''));
+        $filtroAnul = trim((string)($_GET['anulada'] ?? $_GET['estado'] ?? ''));
 
         try {
             $sql = "SELECT p.id_recibo_pago,
@@ -4011,6 +4038,7 @@ class MovimientosContablesController {
         $mes        = trim((string)($_GET['mes'] ?? ''));
         $fechaDesde = self::parseSqlDate((string)($_GET['fechaDesde'] ?? $_GET['desde'] ?? ''));
         $fechaHasta = self::parseSqlDate((string)($_GET['fechaHasta'] ?? $_GET['hasta'] ?? ''));
+        $filtroAnul = trim((string)($_GET['anulada'] ?? $_GET['estado'] ?? ''));
 
         try {
             $sql = "SELECT r.id_retencion,
