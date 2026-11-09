@@ -141,7 +141,7 @@ $acum = [
             background-color: #ffffff;
         }
         .lc-table tbody tr.lc-data-row:nth-child(even) {
-            background-color: #f6eae8;
+            background-color: #f1f5f9;
         }
         .lc-table tbody tr.lc-data-row td {
             padding: 2px 4px;

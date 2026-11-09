@@ -916,6 +916,44 @@ class DefinicionesContablesController {
         }
     }
 
+    public static function apiPlanCuentasCargarEstandar(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $sqlFile = dirname(__DIR__, 2) . '/database/plan_cuentas_recomendado.sql';
+
+        if (!file_exists($sqlFile)) {
+            View::json(['status' => 'error', 'message' => 'Archivo de plan de cuentas no encontrado en el servidor.']);
+            return;
+        }
+
+        try {
+            $sqlContent = file_get_contents($sqlFile);
+            if ($idProp !== 1) {
+                $sqlContent = preg_replace('/\(1, /', "({$idProp}, ", $sqlContent);
+            }
+
+            $pdo = Database::getConnection();
+            $pdo->beginTransaction();
+            $pdo->exec($sqlContent);
+            $pdo->commit();
+
+            $total = (int)Database::queryForValue(
+                "SELECT COUNT(*) FROM co_plan_cuentas WHERE id_propietario = ?",
+                [$idProp]
+            );
+
+            View::json([
+                'status'  => 'success',
+                'message' => "Estructura contable recomendada cargada con éxito ({$total} cuentas disponibles)."
+            ]);
+        } catch (\Throwable $e) {
+            if (isset($pdo) && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            View::json(['status' => 'error', 'message' => 'Error al cargar el plan de cuentas: ' . $e->getMessage()]);
+        }
+    }
+
     // =========================================================================
     // API CLASIFICACIÓN DE GASTO (/api/clasificacion_gasto/*)
     // =========================================================================

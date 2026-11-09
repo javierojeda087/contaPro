@@ -34,6 +34,13 @@
                             onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
                         <i class="ph ph-trash" style="font-size: 1rem; color: #dc2626;"></i> Eliminar
                     </button>
+
+                    <button type="button" class="btn" onclick="cargarPlanRecomendado()" 
+                            title="Inicializa o actualiza el catálogo con el Plan de Cuentas estándar profesional"
+                            style="background: #0284c7; color: #ffffff; border: 1px solid #0284c7; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                            onmouseover="this.style.background='#0369a1'" onmouseout="this.style.background='#0284c7'">
+                        <i class="ph ph-sparkle" style="font-size: 1rem; color: #ffffff;"></i> Cargar Plan Recomendado
+                    </button>
                 </div>
 
                 <!-- Search box (BUSCAR) -->
@@ -389,6 +396,35 @@
             .catch(err => {
                 console.error('Error eliminando cuenta:', err);
                 alert('Ocurrió un error al intentar eliminar.');
+            });
+        }
+
+        function cargarPlanRecomendado() {
+            if (!confirm('¿Desea cargar/actualizar la estructura del Plan de Cuentas Estándar Recomendado?\n\nSe incorporarán las cuentas contables de 5 niveles para Activo, Pasivo, Patrimonio Neto, Ingresos y Egresos según normas contables.')) {
+                return;
+            }
+
+            const btn = event?.currentTarget;
+            if (btn) btn.disabled = true;
+
+            fetch('/api/plan-cuentas/cargar-estandar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (btn) btn.disabled = false;
+                if (res.status === 'success') {
+                    alert(res.message || 'Plan de cuentas cargado correctamente.');
+                    loadAccounts();
+                } else {
+                    alert('Error: ' + (res.message || 'No se pudo cargar el plan.'));
+                }
+            })
+            .catch(err => {
+                if (btn) btn.disabled = false;
+                console.error('Error cargando plan estándar:', err);
+                alert('Ocurrió un error al comunicarse con el servidor.');
             });
         }
     </script>

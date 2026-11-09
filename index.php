@@ -606,6 +606,8 @@ $exactApiRoutes = [
     '/api/plan-cuentas/delete'                     => [DefinicionesContablesController::class, 'apiPlanCuentasEliminar'],
     '/api/plan-cuentas/eliminar'                   => [DefinicionesContablesController::class, 'apiPlanCuentasEliminar'],
     '/api/plan_cuentas/eliminar'                   => [DefinicionesContablesController::class, 'apiPlanCuentasEliminar'],
+    '/api/plan-cuentas/cargar-estandar'            => [DefinicionesContablesController::class, 'apiPlanCuentasCargarEstandar'],
+    '/api/plan_cuentas/cargar-estandar'            => [DefinicionesContablesController::class, 'apiPlanCuentasCargarEstandar'],
 
     // Clasificación de Gastos
     '/api/clasificacion-gasto/list'                => [DefinicionesContablesController::class, 'apiClasificacionGastoList'],
