@@ -495,13 +495,14 @@ DROP TABLE IF EXISTS `co_plan_cuentas`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `co_plan_cuentas` (
   `id_propietario` int NOT NULL DEFAULT '1',
-  `cod_cuenta` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `cod_cuenta` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
   `descripcion` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `tipo_cuenta` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `nivel` int DEFAULT NULL,
   `cod_padre` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `asentable` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `estado` varchar(1) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  UNIQUE KEY `idx_prop_cod_cuenta` (`id_propietario`, `cod_cuenta`),
   KEY `idx_co_plan_cuentas_prop` (`id_propietario`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;

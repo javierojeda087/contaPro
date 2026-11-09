@@ -809,8 +809,46 @@ class DefinicionesContablesController {
     // =========================================================================
     // API PLAN DE CUENTAS (/api/plan-cuentas/*)
     // =========================================================================
+
+    /**
+     * Asegura que co_plan_cuentas no tenga duplicados y cuente con clave única por propietario y código.
+     */
+    private static function asegurarEstructuraPlanCuentas(): void {
+        try {
+            $pdo = Database::getConnection();
+
+            // 1. Detectar y eliminar duplicados si existen
+            $dups = (int)Database::queryForValue(
+                "SELECT COUNT(*) - COUNT(DISTINCT id_propietario, cod_cuenta) FROM co_plan_cuentas"
+            );
+
+            if ($dups > 0) {
+                $pdo->exec("CREATE TEMPORARY TABLE `tmp_clean_plan` AS 
+                            SELECT DISTINCT id_propietario, cod_cuenta, descripcion, tipo_cuenta, nivel, cod_padre, asentable, estado 
+                            FROM co_plan_cuentas");
+                $pdo->exec("DELETE FROM co_plan_cuentas");
+                $pdo->exec("INSERT INTO co_plan_cuentas (id_propietario, cod_cuenta, descripcion, tipo_cuenta, nivel, cod_padre, asentable, estado)
+                            SELECT id_propietario, cod_cuenta, descripcion, tipo_cuenta, nivel, cod_padre, asentable, estado 
+                            FROM `tmp_clean_plan`");
+                $pdo->exec("DROP TEMPORARY TABLE IF EXISTS `tmp_clean_plan`");
+            }
+
+            // 2. Verificar y agregar índice único idx_prop_cod_cuenta si no existe
+            $indices = Database::queryForList(
+                "SHOW INDEX FROM co_plan_cuentas WHERE Key_name = 'idx_prop_cod_cuenta'"
+            );
+            if (empty($indices)) {
+                $pdo->exec("ALTER TABLE `co_plan_cuentas` MODIFY `cod_cuenta` varchar(30) NOT NULL");
+                $pdo->exec("ALTER TABLE `co_plan_cuentas` ADD UNIQUE KEY `idx_prop_cod_cuenta` (`id_propietario`, `cod_cuenta`)");
+            }
+        } catch (\Throwable $e) {
+            error_log("ContaPro: asegurarEstructuraPlanCuentas: " . $e->getMessage());
+        }
+    }
+
     public static function apiPlanCuentasList(): void {
         if (!self::requireAuth()) return;
+        self::asegurarEstructuraPlanCuentas();
         $idProp = TenantContext::idPropietario();
         $search = trim((string)($_GET['search'] ?? ''));
 
@@ -820,12 +858,13 @@ class DefinicionesContablesController {
             Database::update(
                 "INSERT INTO co_plan_cuentas (id_propietario, cod_cuenta, descripcion, tipo_cuenta, nivel, cod_padre, asentable, estado)
                  SELECT ?, cod_cuenta, descripcion, tipo_cuenta, nivel, cod_padre, asentable, estado
-                 FROM co_plan_cuentas WHERE id_propietario = 1",
+                 FROM co_plan_cuentas WHERE id_propietario = 1
+                 ON DUPLICATE KEY UPDATE descripcion = VALUES(descripcion)",
                 [$idProp]
             );
         }
 
-        $sql = "SELECT cod_cuenta, descripcion, tipo_cuenta, nivel, cod_padre,
+        $sql = "SELECT DISTINCT cod_cuenta, descripcion, tipo_cuenta, nivel, cod_padre,
                        COALESCE(asentable, 'S') AS asentable, COALESCE(estado, 'A') AS estado
                 FROM co_plan_cuentas
                 WHERE id_propietario = ? ";
@@ -841,6 +880,7 @@ class DefinicionesContablesController {
 
     public static function apiPlanCuentasGuardar(): void {
         if (!self::requireAuth()) return;
+        self::asegurarEstructuraPlanCuentas();
         $idProp = TenantContext::idPropietario();
         $payload = self::getInput();
 
@@ -848,18 +888,30 @@ class DefinicionesContablesController {
         $descripcion = strtoupper(trim((string)($payload['descripcion'] ?? '')));
         $tipoCuenta  = strtoupper(trim((string)($payload['tipoCuenta'] ?? 'IMPUTABLE'))) ?: 'IMPUTABLE';
         $estado      = strtoupper(trim((string)($payload['estado'] ?? 'A'))) ?: 'A';
+        $isEditMode  = filter_var($payload['isEditMode'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         if ($codCuenta === '') {
             View::json(['status' => 'error', 'message' => 'El código de cuenta es obligatorio (Ej: 01.01.01.05).']);
             return;
         }
-        if ($descripcion === '') {
-            View::json(['status' => 'error', 'message' => 'La descripción de la cuenta es obligatoria.']);
+
+        // Validación 1: Formato numérico estructurado con puntos
+        if (!preg_match('/^[0-9]+(\.[0-9]+)*$/', $codCuenta)) {
+            View::json([
+                'status' => 'error',
+                'message' => 'Formato de código inválido. Debe contener sólo números separados por puntos (Ej: 01.01.01.01).'
+            ]);
             return;
         }
 
-        $partes = explode('.', $codCuenta);
-        $nivel = count($partes);
+        // Validación 2: Longitud mínima de descripción
+        if (mb_strlen($descripcion) < 3) {
+            View::json(['status' => 'error', 'message' => 'La descripción debe tener al menos 3 caracteres.']);
+            return;
+        }
+
+        $partes   = explode('.', $codCuenta);
+        $nivel    = count($partes);
         $codPadre = $nivel > 1 ? implode('.', array_slice($partes, 0, $nivel - 1)) : null;
         $asentable = $tipoCuenta === 'MAYORIZADOR' ? 'N' : 'S';
 
@@ -868,6 +920,56 @@ class DefinicionesContablesController {
                 "SELECT COUNT(*) FROM co_plan_cuentas WHERE id_propietario = ? AND cod_cuenta = ?",
                 [$idProp, $codCuenta]
             );
+
+            // Validación 3: Evitar duplicados al crear una cuenta nueva
+            if (!$isEditMode && $exists > 0) {
+                View::json([
+                    'status' => 'error',
+                    'message' => "El código de cuenta {$codCuenta} ya existe. No se permiten cuentas duplicadas."
+                ]);
+                return;
+            }
+
+            // Validación 4: Verificar existencia de la cuenta padre en niveles superiores
+            if ($nivel > 1 && $codPadre !== null) {
+                $padreRows = Database::queryForList(
+                    "SELECT cod_cuenta, tipo_cuenta FROM co_plan_cuentas WHERE id_propietario = ? AND cod_cuenta = ? LIMIT 1",
+                    [$idProp, $codPadre]
+                );
+                if (empty($padreRows)) {
+                    View::json([
+                        'status' => 'error',
+                        'message' => "La cuenta padre superior '{$codPadre}' no existe. Debe crear primero la cuenta padre."
+                    ]);
+                    return;
+                }
+
+                // Validación 5: La cuenta padre no puede ser IMPUTABLE
+                $tipoPadre = strtoupper($padreRows[0]['tipo_cuenta'] ?? '');
+                if ($tipoPadre === 'IMPUTABLE') {
+                    View::json([
+                        'status' => 'error',
+                        'message' => "La cuenta padre '{$codPadre}' es de tipo IMPUTABLE (asentable). Para tener subcuentas debe ser MAYORIZADOR."
+                    ]);
+                    return;
+                }
+            }
+
+            // Validación 6: Si una cuenta existente se pasa a IMPUTABLE pero tiene subcuentas hijas
+            if ($tipoCuenta === 'IMPUTABLE' && $exists > 0) {
+                $hijas = (int)Database::queryForValue(
+                    "SELECT COUNT(*) FROM co_plan_cuentas WHERE id_propietario = ? AND cod_padre = ?",
+                    [$idProp, $codCuenta]
+                );
+                if ($hijas > 0) {
+                    View::json([
+                        'status' => 'error',
+                        'message' => "No puede cambiar la cuenta {$codCuenta} a IMPUTABLE porque posee {$hijas} subcuenta(s) dependiente(s)."
+                    ]);
+                    return;
+                }
+            }
+
             if ($exists > 0) {
                 Database::update(
                     "UPDATE co_plan_cuentas SET descripcion = ?, tipo_cuenta = ?, nivel = ?, cod_padre = ?, asentable = ?, estado = ?
@@ -918,6 +1020,7 @@ class DefinicionesContablesController {
 
     public static function apiPlanCuentasCargarEstandar(): void {
         if (!self::requireAuth()) return;
+        self::asegurarEstructuraPlanCuentas();
         $idProp = TenantContext::idPropietario();
         $sqlFile = dirname(__DIR__, 2) . '/database/plan_cuentas_recomendado.sql';
 

@@ -189,7 +189,17 @@
             fetch('/api/plan-cuentas/list')
                 .then(res => res.json())
                 .then(data => {
-                    allAccounts = data || [];
+                    const raw = Array.isArray(data) ? data : [];
+                    // Deduplicación defensiva en memoria por COD_CUENTA
+                    const seen = new Set();
+                    allAccounts = [];
+                    raw.forEach(acc => {
+                        const code = (acc.COD_CUENTA || '').trim();
+                        if (code && !seen.has(code)) {
+                            seen.add(code);
+                            allAccounts.push(acc);
+                        }
+                    });
                     applyFilter();
                 })
                 .catch(err => {
@@ -341,11 +351,36 @@
         function savePlanCuenta(e) {
             e.preventDefault();
 
+            const isEditMode = document.getElementById('isEditMode').value === "true";
+            const codCuenta = document.getElementById('codCuenta').value.trim();
+            const descripcion = document.getElementById('descripcion').value.trim();
+            const tipoCuenta = document.getElementById('tipoCuenta').value;
+            const estado = document.getElementById('estado').value;
+
+            // Validación básica en frontend
+            if (!codCuenta) {
+                alert("El código de cuenta es obligatorio.");
+                return;
+            }
+            if (!/^[0-9]+(\.[0-9]+)*$/.test(codCuenta)) {
+                alert("El código de cuenta sólo debe contener números separados por punto (Ej: 01.01.01.01).");
+                return;
+            }
+            if (!descripcion || descripcion.length < 3) {
+                alert("La descripción debe tener al menos 3 caracteres.");
+                return;
+            }
+            if (!isEditMode && allAccounts.some(a => (a.COD_CUENTA || '').trim() === codCuenta)) {
+                alert(`El código ${codCuenta} ya existe en el plan de cuentas. Utilice otro código.`);
+                return;
+            }
+
             const payload = {
-                codCuenta: document.getElementById('codCuenta').value.trim(),
-                descripcion: document.getElementById('descripcion').value.trim(),
-                tipoCuenta: document.getElementById('tipoCuenta').value,
-                estado: document.getElementById('estado').value
+                codCuenta,
+                descripcion,
+                tipoCuenta,
+                estado,
+                isEditMode
             };
 
             fetch('/api/plan-cuentas/guardar', {
