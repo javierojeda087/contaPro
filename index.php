@@ -281,9 +281,9 @@ if ($uri === '/app/recibos-cobro/print' || $uri === '/recibos_cobro/print' || $u
 }
 
 // ============================================================================
-// RUTAS DE VISTAS /app/{forma}
+// RUTAS DE VISTAS /app/{forma} O /{forma}
 // ============================================================================
-if (preg_match('#^/app/([^/]+)$#', $uri, $m)) {
+if (preg_match('#^/(?:app/)?([^/]+)$#', $uri, $m)) {
     $slug = $m[1];
     $upper = strtoupper($slug);
 

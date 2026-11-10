@@ -413,6 +413,14 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('fechaAsiento').value = today;
 
+            // Leer parámetro search de la URL si viene de otra pantalla
+            const urlParams = new URLSearchParams(window.location.search);
+            const searchParam = urlParams.get('search');
+            if (searchParam) {
+                const s = document.getElementById('searchInput');
+                if (s) s.value = searchParam;
+            }
+
             initFiltrosRapidos();
             loadSucursales();
             loadCatalogoCuentas();

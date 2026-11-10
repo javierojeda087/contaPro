@@ -202,22 +202,20 @@ class MovimientosContablesController {
 
     public static function pageFiltroAsientos(): void {
         self::asegurarColumnaAsiento();
-        $ej = TenantContext::ejercicio();
-        $anioEj = (int)preg_replace('/\D/', '', (string)$ej);
-        if ($anioEj < 1990 || $anioEj > 2100) {
-            $anioEj = (int)date('Y');
-        }
-        $mesActual = (int)date('n');
-        $defFechaDesde = sprintf('%04d-%02d-01', $anioEj, $mesActual);
-        $defFechaHasta = date('Y-m-t', strtotime($defFechaDesde));
+        $codEmpresa = TenantContext::empresa();
+        $ejercicio  = EjercicioService::getEjercicio();
+        $rango      = EjercicioService::getRango($codEmpresa, $ejercicio);
+        $def        = EjercicioService::defaultMes($rango);
 
         self::renderFormPage('filtro_asientos', [
             'nomForma'      => 'COASFILT',
             'tituloForma'   => 'Filtro de Asientos Contables',
-            'defFechaDesde' => $defFechaDesde,
-            'defFechaHasta' => $defFechaHasta,
-            'currentYear'   => $anioEj,
-            'currentMonth'  => $mesActual,
+            'ejercicio'     => $ejercicio,
+            'currentYear'   => (int)$ejercicio,
+            'defFechaDesde' => $def[0],
+            'defFechaHasta' => $def[1],
+            'ejerInicio'    => $rango[0],
+            'ejerFinal'     => $rango[1],
         ]);
     }
 
@@ -2470,26 +2468,57 @@ class MovimientosContablesController {
         $idProp = TenantContext::idPropietario();
         $codEmpresa = TenantContext::empresa();
         $num = (int)$numAsiento;
+        $ejercicio = isset($_GET['ejercicio']) && (int)$_GET['ejercicio'] > 0
+            ? (int)$_GET['ejercicio']
+            : (int)TenantContext::ejercicio();
 
         try {
+            $params = [$idProp, $codEmpresa, $num];
+            $sqlEjer = "";
+            if ($ejercicio > 0) {
+                $sqlEjer = " AND ejercicio = ?";
+                $params[] = $ejercicio;
+            }
             $cabList = Database::queryForListUpper(
                 "SELECT cod_empresa, num_asiento, DATE_FORMAT(fec_asiento, '%Y-%m-%d') AS fec_asiento,
                         ejercicio, cod_sucursal, origen_comprobante, id_comprobante, concepto,
                         total_debe, total_haber, estado, usuario_reg
                  FROM co_asientos_cab
-                 WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ? LIMIT 1",
-                [$idProp, $codEmpresa, $num]
+                 WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ? {$sqlEjer}
+                 ORDER BY ejercicio DESC LIMIT 1",
+                $params
             );
+            if (empty($cabList) && $ejercicio > 0) {
+                // Reintentar sin restricción de ejercicio por si el comprobante pertenecía a otro año
+                $cabList = Database::queryForListUpper(
+                    "SELECT cod_empresa, num_asiento, DATE_FORMAT(fec_asiento, '%Y-%m-%d') AS fec_asiento,
+                            ejercicio, cod_sucursal, origen_comprobante, id_comprobante, concepto,
+                            total_debe, total_haber, estado, usuario_reg
+                     FROM co_asientos_cab
+                     WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ?
+                     ORDER BY ejercicio DESC LIMIT 1",
+                    [$idProp, $codEmpresa, $num]
+                );
+            }
             if (empty($cabList)) {
                 View::json(['status' => 'error', 'message' => 'No se encontró el asiento especificado.']);
                 return;
             }
+
+            $ejerEncontrado = (int)($cabList[0]['EJERCICIO'] ?? $cabList[0]['ejercicio'] ?? 0);
+            $detParams = [$idProp, $codEmpresa, $num];
+            $sqlDetEjer = "";
+            if ($ejerEncontrado > 0) {
+                $sqlDetEjer = " AND ejercicio = ?";
+                $detParams[] = $ejerEncontrado;
+            }
+
             $detalles = Database::queryForListUpper(
                 "SELECT secuencia, cod_cuenta, nom_cuenta, descripcion, debe, haber
                  FROM co_asientos_det
-                 WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ?
+                 WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ? {$sqlDetEjer}
                  ORDER BY secuencia ASC",
-                [$idProp, $codEmpresa, $num]
+                $detParams
             );
             View::json([
                 'status'   => 'success',
@@ -2876,15 +2905,15 @@ class MovimientosContablesController {
             // Egresos (Compras)
             $whereEg = "id_propietario = ? AND cod_empresa = ? AND COALESCE(estado, 'A') = 'A' ";
             $paramsEg = [$idProp, $empresa];
-            if ($fechaDesde !== null) {
-                $whereEg .= "AND DATE(fec_egreso) >= ? ";
-                $paramsEg[] = $fechaDesde;
+            if ($fechaDesde !== null && $fechaDesde !== '') {
+                $whereEg .= "AND fec_egreso >= ? ";
+                $paramsEg[] = $fechaDesde . ' 00:00:00';
             }
-            if ($fechaHasta !== null) {
-                $whereEg .= "AND DATE(fec_egreso) <= ? ";
-                $paramsEg[] = $fechaHasta;
+            if ($fechaHasta !== null && $fechaHasta !== '') {
+                $whereEg .= "AND fec_egreso <= ? ";
+                $paramsEg[] = $fechaHasta . ' 23:59:59';
             }
-            if ($fechaDesde === null && $fechaHasta === null) {
+            if (($fechaDesde === null || $fechaDesde === '') && ($fechaHasta === null || $fechaHasta === '')) {
                 if ($anio !== '' && strcasecmp($anio, 'TODOS') !== 0) {
                     $whereEg .= "AND YEAR(fec_egreso) = ? ";
                     $paramsEg[] = (int)$anio;
@@ -2907,18 +2936,18 @@ class MovimientosContablesController {
             // Ingresos (Ventas y Liquidaciones de Salario opcionales)
             $whereIn = "id_propietario = ? AND cod_empresa = ? AND COALESCE(anulada, 'N') <> 'S' AND COALESCE(inutilizado, 'N') <> 'S' AND COALESCE(estado, 'A') = 'A' ";
             if (!$incluirLiq) {
-                $whereIn .= "AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) <> 'LIQ' AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT LIKE '%LIQUIDAC%' ";
+                $whereIn .= "AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT IN ('LIQ', 'LIQ.') AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT LIKE '%LIQ%' ";
             }
             $paramsIn = [$idProp, $empresa];
-            if ($fechaDesde !== null) {
-                $whereIn .= "AND DATE(fec_ingreso) >= ? ";
-                $paramsIn[] = $fechaDesde;
+            if ($fechaDesde !== null && $fechaDesde !== '') {
+                $whereIn .= "AND fec_ingreso >= ? ";
+                $paramsIn[] = $fechaDesde . ' 00:00:00';
             }
-            if ($fechaHasta !== null) {
-                $whereIn .= "AND DATE(fec_ingreso) <= ? ";
-                $paramsIn[] = $fechaHasta;
+            if ($fechaHasta !== null && $fechaHasta !== '') {
+                $whereIn .= "AND fec_ingreso <= ? ";
+                $paramsIn[] = $fechaHasta . ' 23:59:59';
             }
-            if ($fechaDesde === null && $fechaHasta === null) {
+            if (($fechaDesde === null || $fechaDesde === '') && ($fechaHasta === null || $fechaHasta === '')) {
                 if ($anio !== '' && strcasecmp($anio, 'TODOS') !== 0) {
                     $whereIn .= "AND YEAR(fec_ingreso) = ? ";
                     $paramsIn[] = (int)$anio;
@@ -2979,15 +3008,15 @@ class MovimientosContablesController {
             if ($tipo === 'TODOS' || $tipo === 'EGRESOS') {
                 $whereEg = "id_propietario = ? AND cod_empresa = ? AND COALESCE(estado, 'A') = 'A' AND (asiento IS NULL OR asiento = 0) ";
                 $paramsEg = [$idProp, $empresa];
-                if ($fechaDesde !== null) {
-                    $whereEg .= "AND DATE(fec_egreso) >= ? ";
-                    $paramsEg[] = $fechaDesde;
+                if ($fechaDesde !== null && $fechaDesde !== '') {
+                    $whereEg .= "AND fec_egreso >= ? ";
+                    $paramsEg[] = $fechaDesde . ' 00:00:00';
                 }
-                if ($fechaHasta !== null) {
-                    $whereEg .= "AND DATE(fec_egreso) <= ? ";
-                    $paramsEg[] = $fechaHasta;
+                if ($fechaHasta !== null && $fechaHasta !== '') {
+                    $whereEg .= "AND fec_egreso <= ? ";
+                    $paramsEg[] = $fechaHasta . ' 23:59:59';
                 }
-                if ($fechaDesde === null && $fechaHasta === null) {
+                if (($fechaDesde === null || $fechaDesde === '') && ($fechaHasta === null || $fechaHasta === '')) {
                     if ($anio !== '' && strcasecmp($anio, 'TODOS') !== 0) {
                         $whereEg .= "AND YEAR(fec_egreso) = ? ";
                         $paramsEg[] = (int)$anio;
@@ -3022,18 +3051,18 @@ class MovimientosContablesController {
             if ($tipo === 'TODOS' || $tipo === 'INGRESOS') {
                 $whereIn = "id_propietario = ? AND cod_empresa = ? AND COALESCE(anulada, 'N') <> 'S' AND COALESCE(inutilizado, 'N') <> 'S' AND COALESCE(estado, 'A') = 'A' AND (asiento IS NULL OR asiento = 0) ";
                 if (!$incluirLiq) {
-                    $whereIn .= "AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) <> 'LIQ' AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT LIKE '%LIQUIDAC%' ";
+                    $whereIn .= "AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT IN ('LIQ', 'LIQ.') AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT LIKE '%LIQ%' ";
                 }
                 $paramsIn = [$idProp, $empresa];
-                if ($fechaDesde !== null) {
-                    $whereIn .= "AND DATE(fec_ingreso) >= ? ";
-                    $paramsIn[] = $fechaDesde;
+                if ($fechaDesde !== null && $fechaDesde !== '') {
+                    $whereIn .= "AND fec_ingreso >= ? ";
+                    $paramsIn[] = $fechaDesde . ' 00:00:00';
                 }
-                if ($fechaHasta !== null) {
-                    $whereIn .= "AND DATE(fec_ingreso) <= ? ";
-                    $paramsIn[] = $fechaHasta;
+                if ($fechaHasta !== null && $fechaHasta !== '') {
+                    $whereIn .= "AND fec_ingreso <= ? ";
+                    $paramsIn[] = $fechaHasta . ' 23:59:59';
                 }
-                if ($fechaDesde === null && $fechaHasta === null) {
+                if (($fechaDesde === null || $fechaDesde === '') && ($fechaHasta === null || $fechaHasta === '')) {
                     if ($anio !== '' && strcasecmp($anio, 'TODOS') !== 0) {
                         $whereIn .= "AND YEAR(fec_ingreso) = ? ";
                         $paramsIn[] = (int)$anio;
@@ -3108,15 +3137,15 @@ class MovimientosContablesController {
                     $whereEg .= "AND id_egreso IN ($inPlaceholders) ";
                     $paramsEg = array_merge($paramsEg, $cleanIds);
                 } else {
-                    if ($fechaDesde !== null) {
-                        $whereEg .= "AND DATE(fec_egreso) >= ? ";
-                        $paramsEg[] = $fechaDesde;
+                    if ($fechaDesde !== null && $fechaDesde !== '') {
+                        $whereEg .= "AND fec_egreso >= ? ";
+                        $paramsEg[] = $fechaDesde . ' 00:00:00';
                     }
-                    if ($fechaHasta !== null) {
-                        $whereEg .= "AND DATE(fec_egreso) <= ? ";
-                        $paramsEg[] = $fechaHasta;
+                    if ($fechaHasta !== null && $fechaHasta !== '') {
+                        $whereEg .= "AND fec_egreso <= ? ";
+                        $paramsEg[] = $fechaHasta . ' 23:59:59';
                     }
-                    if ($fechaDesde === null && $fechaHasta === null) {
+                    if (($fechaDesde === null || $fechaDesde === '') && ($fechaHasta === null || $fechaHasta === '')) {
                         if ($anio !== '' && strcasecmp($anio, 'TODOS') !== 0) {
                             $whereEg .= "AND YEAR(fec_egreso) = ? ";
                             $paramsEg[] = (int)$anio;
@@ -3149,17 +3178,17 @@ class MovimientosContablesController {
                     $paramsIn = array_merge($paramsIn, $cleanIds);
                 } else {
                     if (!$incluirLiq) {
-                        $whereIn .= "AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) <> 'LIQ' AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT LIKE '%LIQUIDAC%' ";
+                        $whereIn .= "AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT IN ('LIQ', 'LIQ.') AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT LIKE '%LIQ%' ";
                     }
-                    if ($fechaDesde !== null) {
-                        $whereIn .= "AND DATE(fec_ingreso) >= ? ";
-                        $paramsIn[] = $fechaDesde;
+                    if ($fechaDesde !== null && $fechaDesde !== '') {
+                        $whereIn .= "AND fec_ingreso >= ? ";
+                        $paramsIn[] = $fechaDesde . ' 00:00:00';
                     }
-                    if ($fechaHasta !== null) {
-                        $whereIn .= "AND DATE(fec_ingreso) <= ? ";
-                        $paramsIn[] = $fechaHasta;
+                    if ($fechaHasta !== null && $fechaHasta !== '') {
+                        $whereIn .= "AND fec_ingreso <= ? ";
+                        $paramsIn[] = $fechaHasta . ' 23:59:59';
                     }
-                    if ($fechaDesde === null && $fechaHasta === null) {
+                    if (($fechaDesde === null || $fechaDesde === '') && ($fechaHasta === null || $fechaHasta === '')) {
                         if ($anio !== '' && strcasecmp($anio, 'TODOS') !== 0) {
                             $whereIn .= "AND YEAR(fec_ingreso) = ? ";
                             $paramsIn[] = (int)$anio;
