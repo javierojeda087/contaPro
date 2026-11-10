@@ -376,6 +376,9 @@ if (preg_match('#^/app/([^/]+)$#', $uri, $m)) {
         'COASIEN2'              => [MovimientosContablesController::class, 'pageAsientos'],
         'ASIENTOS'              => [MovimientosContablesController::class, 'pageAsientos'],
         'ASIENTOS-CONTABLES'    => [MovimientosContablesController::class, 'pageAsientos'],
+        'COASFILT'              => [MovimientosContablesController::class, 'pageFiltroAsientos'],
+        'FILTRO-ASIENTOS'       => [MovimientosContablesController::class, 'pageFiltroAsientos'],
+        'FILTRO_ASIENTOS'       => [MovimientosContablesController::class, 'pageFiltroAsientos'],
 
         // Reportes Contables (CO)
         'COLIBCOM'              => [ReportesContablesController::class, 'pageLibroCompras'],
@@ -717,6 +720,9 @@ $exactApiRoutes = [
     '/api/asientos/sucursales'                     => [MovimientosContablesController::class, 'apiAsientosSucursales'],
     '/api/asientos/guardar'                        => [MovimientosContablesController::class, 'apiAsientosGuardar'],
     '/api/asientos/anular'                         => [MovimientosContablesController::class, 'apiAsientosAnular'],
+    '/api/asientos/pendientes-resumen'             => [MovimientosContablesController::class, 'apiAsientosPendientesResumen'],
+    '/api/asientos/pendientes-detalle'             => [MovimientosContablesController::class, 'apiAsientosPendientesDetalle'],
+    '/api/asientos/generar-pendientes'             => [MovimientosContablesController::class, 'apiAsientosGenerarPendientes'],
 
     // Reportes Contables: Libro Compras, Libro Ventas, Libro Diario, Libro Mayor, Marangatu, Formulario 120
     '/api/reportes/libro-compras'                  => [ReportesContablesController::class, 'apiLibroComprasData'],

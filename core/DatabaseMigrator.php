@@ -8,7 +8,7 @@ namespace Core;
  */
 class DatabaseMigrator {
 
-    private const SCHEMA_VERSION = 32;
+    private const SCHEMA_VERSION = 33;
 
     public static function runIfNeeded(): void {
         if (($_SESSION['_migrator_version'] ?? 0) === self::SCHEMA_VERSION) {
@@ -1188,6 +1188,22 @@ class DatabaseMigrator {
             }
         } catch (\Throwable $e) {
             // No interrumpir si la tabla aún se está inicializando
+        }
+
+        // Asegurar columna 'asiento' (identificador del asiento contable generado) en co_egresos y co_ingresos
+        try {
+            if (!self::columnExists('co_egresos', 'asiento')) {
+                Database::execute("ALTER TABLE `co_egresos` ADD COLUMN `asiento` bigint DEFAULT NULL", true);
+                Database::execute("ALTER TABLE `co_egresos` ADD KEY `idx_co_egresos_asiento` (`id_propietario`, `cod_empresa`, `asiento`)", true);
+                $applied[] = "co_egresos.asiento";
+            }
+            if (!self::columnExists('co_ingresos', 'asiento')) {
+                Database::execute("ALTER TABLE `co_ingresos` ADD COLUMN `asiento` bigint DEFAULT NULL", true);
+                Database::execute("ALTER TABLE `co_ingresos` ADD KEY `idx_co_ingresos_asiento` (`id_propietario`, `cod_empresa`, `asiento`)", true);
+                $applied[] = "co_ingresos.asiento";
+            }
+        } catch (\Throwable $e) {
+            // Ignorar si ya existe
         }
 
         return $applied;

@@ -221,6 +221,9 @@
                                 <th onclick="ordenarTabla('nroFactura')" style="padding: 14px 16px; cursor: pointer; user-select: none;">
                                     Factura <span class="sort-icon" id="sort_nroFactura" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
                                 </th>
+                                <th onclick="ordenarTabla('asiento')" style="padding: 14px 16px; text-align: center; cursor: pointer; user-select: none;">
+                                    Asiento <span class="sort-icon" id="sort_asiento" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                </th>
                                 <th onclick="ordenarTabla('nroTimbrado')" style="padding: 14px 16px; cursor: pointer; user-select: none;">
                                     Timbrado <span class="sort-icon" id="sort_nroTimbrado" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
                                 </th>
@@ -261,7 +264,7 @@
                         </thead>
                         <tbody id="tablaEgresosBody">
                             <tr>
-                                <td colspan="13" class="text-center py-5 text-muted">
+                                <td colspan="14" class="text-center py-5 text-muted">
                                     <i class="ph ph-spinner-gap" style="font-size: 2rem; animation: spin 1s linear infinite;" display="block"></i>
                                     <div class="mt-2" style="font-size: 0.95rem; font-weight: 600;">Cargando egresos registrados...</div>
                                 </td>
@@ -269,7 +272,7 @@
                         </tbody>
                         <tfoot id="tablaEgresosFoot" style="background: #f1f5f9; border-top: 2px solid #cbd5e1; font-weight: 800; color: #0f172a; position: sticky; bottom: 0; z-index: 5;">
                             <tr>
-                                <td colspan="9" style="padding: 12px 16px; text-align: right; font-size: 0.85rem; color: #334155; text-transform: uppercase; letter-spacing: 0.3px;">
+                                <td colspan="10" style="padding: 12px 16px; text-align: right; font-size: 0.85rem; color: #334155; text-transform: uppercase; letter-spacing: 0.3px;">
                                     Totales de Comprobantes Listados (<span id="footCantComprobantes" style="color: #16a34a;">0</span>):
                                 </td>
                                 <td class="text-end" style="padding: 12px 16px; font-family: monospace; font-size: 0.92rem; color: #475569;" id="footTotalExenta">0</td>
@@ -1931,8 +1934,14 @@
                 const formattedIva10 = valIva10.toLocaleString('es-PY');
                 const formattedTotal = valTot.toLocaleString('es-PY');
 
+                const asNum = item.ASIENTO || item.asiento;
+                const asBadge = asNum
+                    ? `<a href="/asientos?search=${asNum}" target="_blank" title="Ver Asiento Contable #${asNum}" style="text-decoration: none;"><span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-weight: 800; font-size: 0.82rem; font-family: monospace; padding: 4px 8px; border-radius: 6px;">#${asNum}</span></a>`
+                    : `<span class="badge" style="background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; font-size: 0.72rem; padding: 4px 6px; border-radius: 6px;">Pendiente</span>`;
+
                 tr.innerHTML = `
                     <td style="padding: 13px 16px; font-weight: 700; color: #15803d; font-size: 0.92rem;">${nroFac}</td>
+                    <td class="text-center" style="padding: 13px 16px;">${asBadge}</td>
                     <td style="padding: 13px 16px; color: #334155; font-size: 0.88rem;">${nroTimb}</td>
                     <td style="padding: 13px 16px; color: #475569; font-size: 0.88rem;">${tipDocStr}</td>
                     <td class="text-center" style="padding: 13px 16px; color: #334155; font-size: 0.88rem;">${fecStr}</td>

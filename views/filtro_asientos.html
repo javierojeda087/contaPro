@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sistema - Filtro de Asientos Contables (COASFILT)')}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Filtro de Asientos Contables</title>
+</head>
+<body style="background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    
+    <!-- Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="main-content">
+        <div th:replace="~{fragments/layout :: navbar('Filtro de Asientos Contables')}"></div>
+
+        <div class="content-area" style="padding: 22px; max-width: 1400px; margin: 0 auto;">
+
+            <!-- Header & Title -->
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <div>
+                    <h3 style="font-weight: 800; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 10px; font-size: 1.5rem;">
+                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; background: #e0f2fe; color: #0284c7;">
+                            <i class="ph ph-lightning" style="font-size: 1.4rem;"></i>
+                        </span>
+                        Filtro de Asientos Contables
+                    </h3>
+                    <p style="color: #64748b; font-size: 0.88rem; margin: 4px 0 0 48px;">
+                        Control de comprobantes pendientes y generación automática correlativa por ejercicio contable
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="/asientos" class="btn btn-outline-secondary btn-sm" style="font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px;">
+                        <i class="ph ph-notebook" style="font-size: 1.1rem;"></i> Libro Diario / Asientos
+                    </a>
+                    <a href="/libro-diario" class="btn btn-outline-secondary btn-sm" style="font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px;">
+                        <i class="ph ph-file-text" style="font-size: 1.1rem;"></i> Reporte Diario
+                    </a>
+                </div>
+            </div>
+
+            <!-- Card Filtros por Fecha -->
+            <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px 22px; margin-bottom: 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3 col-sm-6">
+                        <label for="fechaDesde" style="font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; display: block;">
+                            <i class="ph ph-calendar"></i> Fecha Desde:
+                        </label>
+                        <input type="date" id="fechaDesde" class="form-control form-control-sm" style="font-weight: 600; border-radius: 6px;" th:value="${defFechaDesde}">
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label for="fechaHasta" style="font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; display: block;">
+                            <i class="ph ph-calendar"></i> Fecha Hasta:
+                        </label>
+                        <input type="date" id="fechaHasta" class="form-control form-control-sm" style="font-weight: 600; border-radius: 6px;" th:value="${defFechaHasta}">
+                    </div>
+                    <div class="col-md-4 col-sm-12 d-flex gap-1 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setPeriodo('mesActual')" style="font-size: 0.8rem; font-weight: 600; border-radius: 6px;">Este Mes</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setPeriodo('mesAnterior')" style="font-size: 0.8rem; font-weight: 600; border-radius: 6px;">Mes Ant.</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setPeriodo('anioActual')" style="font-size: 0.8rem; font-weight: 600; border-radius: 6px;">Año Actual</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setPeriodo('hoy')" style="font-size: 0.8rem; font-weight: 600; border-radius: 6px;">Hoy</button>
+                    </div>
+                    <div class="col-md-2 col-sm-12 text-end">
+                        <button type="button" class="btn btn-primary btn-sm w-100" onclick="consultarTodo()" style="font-weight: 700; border-radius: 6px; padding: 7px 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                            <i class="ph ph-magnifying-glass"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumen de Comprobantes Pendientes (Egresos e Ingresos) -->
+            <div class="row g-4 mb-4">
+                
+                <!-- Tarjeta Egresos -->
+                <div class="col-lg-6 col-md-12">
+                    <div style="background: #ffffff; border: 1px solid #fed7aa; border-radius: 12px; padding: 22px; box-shadow: 0 4px 6px -1px rgba(249, 115, 22, 0.05); position: relative; overflow: hidden;">
+                        <div style="position: absolute; right: -15px; top: -15px; width: 100px; height: 100px; background: #fff7ed; border-radius: 50%; z-index: 1;"></div>
+                        
+                        <div style="position: relative; z-index: 2;">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; background: #ffedd5; color: #c2410c;">
+                                        <i class="ph ph-receipt" style="font-size: 1.3rem;"></i>
+                                    </span>
+                                    <div>
+                                        <h5 style="margin: 0; font-weight: 800; color: #9a3412; font-size: 1.1rem;">Comprobantes de Egreso (Compras)</h5>
+                                        <span style="font-size: 0.78rem; color: #ea580c; font-weight: 600;">Facturas y Gastos de Proveedores</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex align-items-baseline justify-content-between my-3 p-3" style="background: #fff7ed; border-radius: 10px; border: 1px dashed #fdba74;">
+                                <div>
+                                    <div style="font-size: 0.8rem; font-weight: 700; color: #9a3412; text-transform: uppercase; letter-spacing: 0.5px;">Asientos Pendientes</div>
+                                    <div style="font-size: 2.2rem; font-weight: 800; color: #c2410c; line-height: 1.1;" id="lblEgresosPendientes">--</div>
+                                    <div style="font-size: 0.82rem; color: #7c2d12; font-weight: 600; margin-top: 4px;" id="lblEgresosMonto">Monto: Gs. 0</div>
+                                </div>
+                                <div class="text-end">
+                                    <div style="font-size: 0.8rem; color: #9a3412; font-weight: 600;">Contabilizados: <strong id="lblEgresosContabilizados" style="color: #15803d;">0</strong></div>
+                                    <div style="font-size: 0.8rem; color: #9a3412; font-weight: 600;">Total Período: <strong id="lblEgresosTotal">0</strong></div>
+                                </div>
+                            </div>
+
+                            <button type="button" id="btnGenerarEgresos" class="btn w-100" onclick="generarAsientosEgresos()"
+                                    style="background: #ea580c; color: #ffffff; font-weight: 700; padding: 10px 18px; border-radius: 8px; border: none; font-size: 0.95rem; display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 4px rgba(234, 88, 12, 0.25);"
+                                    onmouseover="this.style.background='#c2410c'" onmouseout="this.style.background='#ea580c'">
+                                <i class="ph ph-lightning" style="font-size: 1.2rem;"></i> Generar Asientos Egresos
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tarjeta Ingresos -->
+                <div class="col-lg-6 col-md-12">
+                    <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 12px; padding: 22px; box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.05); position: relative; overflow: hidden;">
+                        <div style="position: absolute; right: -15px; top: -15px; width: 100px; height: 100px; background: #f0fdf4; border-radius: 50%; z-index: 1;"></div>
+                        
+                        <div style="position: relative; z-index: 2;">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; background: #dcfce7; color: #15803d;">
+                                        <i class="ph ph-hand-coins" style="font-size: 1.3rem;"></i>
+                                    </span>
+                                    <div>
+                                        <h5 style="margin: 0; font-weight: 800; color: #166534; font-size: 1.1rem;">Comprobantes de Ingreso (Ventas)</h5>
+                                        <span style="font-size: 0.78rem; color: #16a34a; font-weight: 600;">Facturas y Ventas a Clientes</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex align-items-baseline justify-content-between my-3 p-3" style="background: #f0fdf4; border-radius: 10px; border: 1px dashed #86efac;">
+                                <div>
+                                    <div style="font-size: 0.8rem; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 0.5px;">Asientos Pendientes</div>
+                                    <div style="font-size: 2.2rem; font-weight: 800; color: #15803d; line-height: 1.1;" id="lblIngresosPendientes">--</div>
+                                    <div style="font-size: 0.82rem; color: #14532d; font-weight: 600; margin-top: 4px;" id="lblIngresosMonto">Monto: Gs. 0</div>
+                                </div>
+                                <div class="text-end">
+                                    <div style="font-size: 0.8rem; color: #166534; font-weight: 600;">Contabilizados: <strong id="lblIngresosContabilizados" style="color: #15803d;">0</strong></div>
+                                    <div style="font-size: 0.8rem; color: #166534; font-weight: 600;">Total Período: <strong id="lblIngresosTotal">0</strong></div>
+                                </div>
+                            </div>
+
+                            <button type="button" id="btnGenerarIngresos" class="btn w-100" onclick="generarAsientosIngresos()"
+                                    style="background: #16a34a; color: #ffffff; font-weight: 700; padding: 10px 18px; border-radius: 8px; border: none; font-size: 0.95rem; display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 4px rgba(22, 163, 74, 0.25);"
+                                    onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
+                                <i class="ph ph-lightning" style="font-size: 1.2rem;"></i> Generar Asientos Ingresos
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Global Action: Generar Todos -->
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 p-3" style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px;">
+                <div class="d-flex align-items-center gap-2">
+                    <span style="font-size: 0.9rem; font-weight: 700; color: #334155;">
+                        <i class="ph ph-check-square"></i> Acciones Masivas:
+                    </span>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="btnGenerarSeleccionados" onclick="generarSeleccionados()" disabled style="font-weight: 700; border-radius: 6px;">
+                        <i class="ph ph-lightning"></i> Generar Seleccionados (<span id="cantSeleccionados">0</span>)
+                    </button>
+                </div>
+                <div>
+                    <button type="button" id="btnGenerarTodos" class="btn btn-primary btn-sm" onclick="generarTodosLosAsientos()"
+                            style="font-weight: 800; padding: 7px 18px; border-radius: 6px; display: inline-flex; align-items: center; gap: 8px; background: #0284c7; border: none;">
+                        <i class="ph ph-rocket-launch" style="font-size: 1.1rem;"></i> Generar Todos los Asientos Pendientes
+                    </button>
+                </div>
+            </div>
+
+            <!-- Detalle de Comprobantes Pendientes (Tabla con Pestañas) -->
+            <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                
+                <!-- Pestañas y Buscador -->
+                <div style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <ul class="nav nav-pills" id="pills-tab" role="tablist" style="gap: 6px;">
+                        <li class="nav-item">
+                            <button class="nav-link active py-1 px-3" onclick="cambiarFiltroTipo('TODOS')" id="tabTodos" style="font-size: 0.85rem; font-weight: 700; border-radius: 6px;">
+                                Todos los Pendientes (<span id="badgeTabTodos">0</span>)
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link py-1 px-3" onclick="cambiarFiltroTipo('EGRESOS')" id="tabEgresos" style="font-size: 0.85rem; font-weight: 700; border-radius: 6px; color: #ea580c;">
+                                Egresos / Compras (<span id="badgeTabEgresos">0</span>)
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link py-1 px-3" onclick="cambiarFiltroTipo('INGRESOS')" id="tabIngresos" style="font-size: 0.85rem; font-weight: 700; border-radius: 6px; color: #16a34a;">
+                                Ingresos / Ventas (<span id="badgeTabIngresos">0</span>)
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div style="position: relative; width: 280px;">
+                        <input type="text" id="filtroTexto" class="form-control form-control-sm" placeholder="Buscar por Factura, RUC o Nombre..." 
+                               oninput="filtrarTabla()"
+                               style="border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem; padding-left: 30px;">
+                        <i class="ph ph-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                    </div>
+                </div>
+
+                <!-- Tabla -->
+                <div style="overflow-x: auto; min-height: 380px;">
+                    <table class="table table-hover align-middle m-0" style="font-size: 0.88rem;">
+                        <thead style="background: #f1f5f9; color: #334155; font-weight: 800; font-size: 0.82rem; border-bottom: 2px solid #cbd5e1;">
+                            <tr>
+                                <th style="width: 40px; text-align: center; padding: 12px 10px;">
+                                    <input type="checkbox" id="checkTodos" onchange="toggleSelectAll(this)" style="cursor: pointer;">
+                                </th>
+                                <th style="padding: 12px 14px;">Tipo</th>
+                                <th style="padding: 12px 14px; text-align: center;">Fecha</th>
+                                <th style="padding: 12px 14px;">Factura / Comprobante</th>
+                                <th style="padding: 12px 14px;">Timbrado</th>
+                                <th style="padding: 12px 14px;">RUC</th>
+                                <th style="padding: 12px 14px;">Razón Social</th>
+                                <th style="padding: 12px 14px; text-align: center;">C.V.</th>
+                                <th style="padding: 12px 14px; text-align: right;">Total (Gs.)</th>
+                                <th style="padding: 12px 14px; text-align: center;">Asiento</th>
+                                <th style="padding: 12px 14px; text-align: center;">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaPendientesBody">
+                            <tr>
+                                <td colspan="11" class="text-center py-5 text-muted">
+                                    <i class="ph ph-spinner-gap" style="font-size: 2rem; animation: spin 1s linear infinite; display: inline-block;"></i>
+                                    <div class="mt-2" style="font-weight: 600;">Cargando comprobantes pendientes...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- SweetAlert2 & Phosphor Icons -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .nav-pills .nav-link.active {
+            background-color: #0284c7 !important;
+            color: #ffffff !important;
+        }
+        .fila-seleccionada {
+            background-color: #e0f2fe !important;
+        }
+    </style>
+
+    <script>
+        let pendientesList = [];
+        let filtroTipoActual = 'TODOS';
+        let idsSeleccionados = new Set();
+
+        document.addEventListener('DOMContentLoaded', function() {
+            consultarTodo();
+        });
+
+        function setPeriodo(tipo) {
+            const hoy = new Date();
+            const y = hoy.getFullYear();
+            const m = hoy.getMonth(); // 0-indexed
+
+            let dDesde, dHasta;
+
+            if (tipo === 'mesActual') {
+                dDesde = new Date(y, m, 1);
+                dHasta = new Date(y, m + 1, 0);
+            } else if (tipo === 'mesAnterior') {
+                dDesde = new Date(y, m - 1, 1);
+                dHasta = new Date(y, m, 0);
+            } else if (tipo === 'anioActual') {
+                dDesde = new Date(y, 0, 1);
+                dHasta = new Date(y, 11, 31);
+            } else if (tipo === 'hoy') {
+                dDesde = hoy;
+                dHasta = hoy;
+            }
+
+            const formatYMD = d => {
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+
+            document.getElementById('fechaDesde').value = formatYMD(dDesde);
+            document.getElementById('fechaHasta').value = formatYMD(dHasta);
+            consultarTodo();
+        }
+
+        function consultarTodo() {
+            idsSeleccionados.clear();
+            actualizarBotonSeleccionados();
+            cargarResumen();
+            cargarDetalle();
+        }
+
+        function cargarResumen() {
+            const fDesde = document.getElementById('fechaDesde').value;
+            const fHasta = document.getElementById('fechaHasta').value;
+
+            document.getElementById('lblEgresosPendientes').innerText = '...';
+            document.getElementById('lblIngresosPendientes').innerText = '...';
+
+            fetch(`/api/asientos/pendientes-resumen?fechaDesde=${encodeURIComponent(fDesde)}&fechaHasta=${encodeURIComponent(fHasta)}`)
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status !== 'success') return;
+
+                    const eg = res.egresos || { pendientes: 0, total: 0, contabilizados: 0, montoPendiente: 0 };
+                    const ing = res.ingresos || { pendientes: 0, total: 0, contabilizados: 0, montoPendiente: 0 };
+
+                    // Egresos
+                    document.getElementById('lblEgresosPendientes').innerText = eg.pendientes.toLocaleString('es-PY');
+                    document.getElementById('lblEgresosMonto').innerText = 'Monto: Gs. ' + Math.round(eg.montoPendiente).toLocaleString('es-PY');
+                    document.getElementById('lblEgresosContabilizados').innerText = eg.contabilizados.toLocaleString('es-PY');
+                    document.getElementById('lblEgresosTotal').innerText = eg.total.toLocaleString('es-PY');
+
+                    // Ingresos
+                    document.getElementById('lblIngresosPendientes').innerText = ing.pendientes.toLocaleString('es-PY');
+                    document.getElementById('lblIngresosMonto').innerText = 'Monto: Gs. ' + Math.round(ing.montoPendiente).toLocaleString('es-PY');
+                    document.getElementById('lblIngresosContabilizados').innerText = ing.contabilizados.toLocaleString('es-PY');
+                    document.getElementById('lblIngresosTotal').innerText = ing.total.toLocaleString('es-PY');
+
+                    // Deshabilitar botones si no hay pendientes
+                    document.getElementById('btnGenerarEgresos').disabled = (eg.pendientes === 0);
+                    document.getElementById('btnGenerarIngresos').disabled = (ing.pendientes === 0);
+                    document.getElementById('btnGenerarTodos').disabled = (eg.pendientes === 0 && ing.pendientes === 0);
+                })
+                .catch(err => {
+                    console.error("Error al cargar resumen:", err);
+                    document.getElementById('lblEgresosPendientes').innerText = '0';
+                    document.getElementById('lblIngresosPendientes').innerText = '0';
+                });
+        }
+
+        function cargarDetalle() {
+            const fDesde = document.getElementById('fechaDesde').value;
+            const fHasta = document.getElementById('fechaHasta').value;
+
+            const tbody = document.getElementById('tablaPendientesBody');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="11" class="text-center py-5 text-muted">
+                        <i class="ph ph-spinner-gap" style="font-size: 2rem; animation: spin 1s linear infinite; display: inline-block;"></i>
+                        <div class="mt-2" style="font-weight: 600;">Cargando comprobantes pendientes...</div>
+                    </td>
+                </tr>
+            `;
+
+            fetch(`/api/asientos/pendientes-detalle?tipo=TODOS&fechaDesde=${encodeURIComponent(fDesde)}&fechaHasta=${encodeURIComponent(fHasta)}`)
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status !== 'success') {
+                        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-4 text-danger">${res.message || 'Error al cargar'}</td></tr>`;
+                        return;
+                    }
+
+                    pendientesList = res.data || [];
+                    actualizarBadgesTabs();
+                    renderTabla();
+                })
+                .catch(err => {
+                    console.error("Error al cargar detalle:", err);
+                    tbody.innerHTML = `<tr><td colspan="11" class="text-center py-4 text-danger">Error de conexión al cargar datos</td></tr>`;
+                });
+        }
+
+        function actualizarBadgesTabs() {
+            const cantTotal = pendientesList.length;
+            const cantEg = pendientesList.filter(x => x.tipo === 'EGRESOS').length;
+            const cantIn = pendientesList.filter(x => x.tipo === 'INGRESOS').length;
+
+            document.getElementById('badgeTabTodos').innerText = cantTotal;
+            document.getElementById('badgeTabEgresos').innerText = cantEg;
+            document.getElementById('badgeTabIngresos').innerText = cantIn;
+        }
+
+        function cambiarFiltroTipo(tipo) {
+            filtroTipoActual = tipo;
+
+            document.querySelectorAll('#pills-tab .nav-link').forEach(btn => btn.classList.remove('active'));
+            if (tipo === 'TODOS') document.getElementById('tabTodos').classList.add('active');
+            if (tipo === 'EGRESOS') document.getElementById('tabEgresos').classList.add('active');
+            if (tipo === 'INGRESOS') document.getElementById('tabIngresos').classList.add('active');
+
+            renderTabla();
+        }
+
+        function filtrarTabla() {
+            renderTabla();
+        }
+
+        function renderTabla() {
+            const tbody = document.getElementById('tablaPendientesBody');
+            const busq = document.getElementById('filtroTexto').value.trim().toUpperCase();
+
+            let filtrados = pendientesList.filter(item => {
+                if (filtroTipoActual !== 'TODOS' && item.tipo !== filtroTipoActual) {
+                    return false;
+                }
+                if (busq !== '') {
+                    const strFac = String(item.nro_factura || '').toUpperCase();
+                    const strRuc = String(item.ruc || '').toUpperCase();
+                    const strRaz = String(item.razon_social || '').toUpperCase();
+                    const strTimb = String(item.nro_timbrado || '').toUpperCase();
+                    if (!strFac.includes(busq) && !strRuc.includes(busq) && !strRaz.includes(busq) && !strTimb.includes(busq)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            if (filtrados.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="11" class="text-center py-5 text-muted">
+                            <i class="ph ph-check-circle" style="font-size: 2.2rem; color: #16a34a; display: block;"></i>
+                            <div class="mt-2" style="font-weight: 700; font-size: 0.95rem; color: #166534;">¡Excelente! No hay comprobantes pendientes en este rango</div>
+                            <div style="font-size: 0.8rem; color: #64748b;">Todos los comprobantes seleccionados ya cuentan con su asiento contable generado</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = '';
+            filtrados.forEach(item => {
+                const tr = document.createElement('tr');
+                const rowKey = `${item.tipo}_${item.id}`;
+                const isChecked = idsSeleccionados.has(rowKey);
+                if (isChecked) tr.classList.add('fila-seleccionada');
+
+                const tipoBadge = item.tipo === 'EGRESOS'
+                    ? '<span class="badge" style="background:#ffedd5; color:#c2410c; border:1px solid #fed7aa; font-weight:700;">Egreso</span>'
+                    : '<span class="badge" style="background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; font-weight:700;">Ingreso</span>';
+
+                const totalGs = Math.round(parseFloat(item.valor_total || 0)).toLocaleString('es-PY');
+
+                tr.innerHTML = `
+                    <td style="text-align: center; padding: 12px 10px;">
+                        <input type="checkbox" value="${rowKey}" onchange="toggleSelectRow('${rowKey}', this)" ${isChecked ? 'checked' : ''} style="cursor: pointer;">
+                    </td>
+                    <td style="padding: 12px 14px;">${tipoBadge}</td>
+                    <td style="padding: 12px 14px; text-align: center; color: #475569; font-weight: 600;">${item.fecha_fmt || item.fecha}</td>
+                    <td style="padding: 12px 14px; font-weight: 800; color: #0f172a;">${item.nro_factura || '-'}</td>
+                    <td style="padding: 12px 14px; color: #64748b;">${item.nro_timbrado || '-'}</td>
+                    <td style="padding: 12px 14px; font-weight: 700; color: #334155;">${item.ruc || '-'}</td>
+                    <td style="padding: 12px 14px; font-weight: 600; color: #1e293b;">${item.razon_social || '-'}</td>
+                    <td style="padding: 12px 14px; text-align: center; font-weight: 700; color: #0284c7;">${item.condicion || 'CON'}</td>
+                    <td style="padding: 12px 14px; text-align: right; font-weight: 800; color: #0f172a; font-family: monospace;">${totalGs}</td>
+                    <td style="padding: 12px 14px; text-align: center;">
+                        <span class="badge" style="background:#f1f5f9; color:#94a3b8; border:1px solid #cbd5e1; font-size:0.75rem;">Pendiente</span>
+                    </td>
+                    <td style="padding: 12px 14px; text-align: center;">
+                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" onclick="generarIndividual('${item.tipo}', ${item.id})" title="Generar asiento ahora" style="font-weight: 700; font-size: 0.8rem; border-radius: 5px;">
+                            <i class="ph ph-lightning"></i> Generar
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function toggleSelectAll(masterCb) {
+            const checkboxes = document.querySelectorAll('#tablaPendientesBody input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = masterCb.checked;
+                if (masterCb.checked) {
+                    idsSeleccionados.add(cb.value);
+                } else {
+                    idsSeleccionados.delete(cb.value);
+                }
+            });
+            actualizarBotonSeleccionados();
+            renderTabla();
+        }
+
+        function toggleSelectRow(key, cb) {
+            if (cb.checked) {
+                idsSeleccionados.add(key);
+            } else {
+                idsSeleccionados.delete(key);
+            }
+            actualizarBotonSeleccionados();
+            const tr = cb.closest('tr');
+            if (tr) {
+                if (cb.checked) tr.classList.add('fila-seleccionada');
+                else tr.classList.remove('fila-seleccionada');
+            }
+        }
+
+        function actualizarBotonSeleccionados() {
+            const count = idsSeleccionados.size;
+            document.getElementById('cantSeleccionados').innerText = count;
+            document.getElementById('btnGenerarSeleccionados').disabled = (count === 0);
+        }
+
+        function generarAsientosEgresos() {
+            confirmarYGenerar('EGRESOS', 'Comprobantes de Egreso (Compras)');
+        }
+
+        function generarAsientosIngresos() {
+            confirmarYGenerar('INGRESOS', 'Comprobantes de Ingreso (Ventas)');
+        }
+
+        function generarTodosLosAsientos() {
+            confirmarYGenerar('TODOS', 'Todos los Comprobantes Pendientes (Egresos + Ingresos)');
+        }
+
+        function generarIndividual(tipo, id) {
+            Swal.fire({
+                title: '¿Generar Asiento Contable?',
+                text: `Se creará el asiento contable único para el ${tipo === 'EGRESOS' ? 'Egreso' : 'Ingreso'} #${id}.`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#0284c7',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Sí, generar asiento',
+                cancelButtonText: 'Cancelar'
+            }).then(result => {
+                if (result.isConfirmed) {
+                    ejecutarGeneracion({ tipo: tipo, ids: [id] });
+                }
+            });
+        }
+
+        function generarSeleccionados() {
+            if (idsSeleccionados.size === 0) return;
+
+            // Separar IDs por tipo
+            const egresosIds = [];
+            const ingresosIds = [];
+
+            idsSeleccionados.forEach(key => {
+                const parts = key.split('_');
+                if (parts[0] === 'EGRESOS') egresosIds.push(parseInt(parts[1]));
+                if (parts[0] === 'INGRESOS') ingresosIds.push(parseInt(parts[1]));
+            });
+
+            Swal.fire({
+                title: '¿Generar Asientos Seleccionados?',
+                text: `Se generarán asientos contables para ${idsSeleccionados.size} comprobante(s) marcado(s).`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#0284c7',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Sí, generar asientos',
+                cancelButtonText: 'Cancelar'
+            }).then(result => {
+                if (result.isConfirmed) {
+                    if (egresosIds.length > 0 && ingresosIds.length === 0) {
+                        ejecutarGeneracion({ tipo: 'EGRESOS', ids: egresosIds });
+                    } else if (ingresosIds.length > 0 && egresosIds.length === 0) {
+                        ejecutarGeneracion({ tipo: 'INGRESOS', ids: ingresosIds });
+                    } else {
+                        // Ambos: primero uno, luego otro
+                        Swal.fire({
+                            title: 'Generando Asientos...',
+                            text: 'Procesando comprobantes seleccionados',
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading()
+                        });
+                        fetch('/api/asientos/generar-pendientes', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ tipo: 'EGRESOS', ids: egresosIds })
+                        })
+                        .then(r => r.json())
+                        .then(() => {
+                            return fetch('/api/asientos/generar-pendientes', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ tipo: 'INGRESOS', ids: ingresosIds })
+                            });
+                        })
+                        .then(r => r.json())
+                        .then(() => {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Asientos Generados con Éxito!',
+                                text: `Se contabilizaron ${idsSeleccionados.size} comprobantes correctamente.`,
+                                confirmButtonColor: '#0284c7'
+                            });
+                            consultarTodo();
+                        })
+                        .catch(err => {
+                            Swal.fire('Error', 'No se pudieron generar los asientos: ' + err.message, 'error');
+                        });
+                    }
+                }
+            });
+        }
+
+        function confirmarYGenerar(tipo, titulo) {
+            const fDesde = document.getElementById('fechaDesde').value;
+            const fHasta = document.getElementById('fechaHasta').value;
+
+            Swal.fire({
+                title: `¿Generar Asientos de ${tipo}?`,
+                html: `Se procesarán los comprobantes pendientes de <b>${titulo}</b> entre el <b>${fDesde}</b> y el <b>${fHasta}</b>.<br><br>Cada uno recibirá un número correlativo único para el ejercicio contable correspondiente.`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#0284c7',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: '<i class="ph ph-lightning"></i> Sí, generar asientos',
+                cancelButtonText: 'Cancelar'
+            }).then(result => {
+                if (result.isConfirmed) {
+                    ejecutarGeneracion({ tipo: tipo, fechaDesde: fDesde, fechaHasta: fHasta });
+                }
+            });
+        }
+
+        function ejecutarGeneracion(payload) {
+            Swal.fire({
+                title: 'Generando Asientos Contables...',
+                html: 'Creando asientos correlativos en Libro Diario y asignando números...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            fetch('/api/asientos/generar-pendientes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.status !== 'success') {
+                    Swal.fire('Atención', res.message || 'Error al generar asientos', 'warning');
+                    return;
+                }
+
+                let extraInfo = '';
+                if (res.rangoAsientos) {
+                    extraInfo = `<br><span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 mt-2" style="font-size: 0.95rem; font-weight: 800;">Asientos: ${res.rangoAsientos}</span>`;
+                }
+
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Operación Exitosa!',
+                    html: `${res.message}${extraInfo}`,
+                    confirmButtonColor: '#0284c7',
+                    confirmButtonText: 'Aceptar'
+                });
+
+                consultarTodo();
+            })
+            .catch(err => {
+                console.error("Error:", err);
+                Swal.fire('Error', 'Ocurrió un error inesperado al procesar la solicitud: ' + err.message, 'error');
+            });
+        }
+    </script>
+</body>
+</html>

@@ -163,6 +163,33 @@ class MenuService {
         );
         Database::execute(
             "INSERT INTO formas (id_propietario, cod_modulo, nom_forma, titulo, descripcion, esta, mostrar_en_menu, cod_modulo_menu, tipo, orden_en_menu)
+             SELECT $pIdInt, 'CO', 'COASFILT', 'Filtro de Asientos', 'FILTRO Y GENERACION DE ASIENTOS CONTABLES PENDIENTES', 'A', 'S', 'CO', 'M', 2
+             FROM DUAL
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM formas WHERE id_propietario = $pIdInt AND UPPER(TRIM(nom_forma)) = 'COASFILT'
+             )",
+            true
+        );
+        Database::execute(
+            "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
+             SELECT $pIdInt, 'CONADM', 'CO', 'COASFILT', 'S', 'S', 'S', 'S', 'Filtro de Asientos', 'S'
+             FROM DUAL
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM accesos_grupos WHERE id_propietario = $pIdInt AND UPPER(TRIM(cod_grupo)) = 'CONADM' AND UPPER(TRIM(nom_forma)) = 'COASFILT'
+             )",
+            true
+        );
+        Database::execute(
+            "INSERT INTO accesos_grupos (id_propietario, cod_grupo, cod_modulo, nom_forma, puede_insertar, puede_borrar, puede_actualizar, puede_consultar, item_menu, mostrar_en_menu)
+             SELECT $pIdInt, 'CONTA', 'CO', 'COASFILT', 'S', 'S', 'S', 'S', 'Filtro de Asientos', 'S'
+             FROM DUAL
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM accesos_grupos WHERE id_propietario = $pIdInt AND UPPER(TRIM(cod_grupo)) = 'CONTA' AND UPPER(TRIM(nom_forma)) = 'COASFILT'
+             )",
+            true
+        );
+        Database::execute(
+            "INSERT INTO formas (id_propietario, cod_modulo, nom_forma, titulo, descripcion, esta, mostrar_en_menu, cod_modulo_menu, tipo, orden_en_menu)
              SELECT $pIdInt, 'CO', 'COSALEGR', 'Saldos Facturas Crédito', 'INFORME DE SALDOS DE FACTURAS A CREDITO DE PROVEEDORES Y RECIBOS DE PAGO', 'A', 'S', 'CO', 'R', 10
              FROM DUAL
              WHERE NOT EXISTS (
