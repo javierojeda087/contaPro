@@ -2505,20 +2505,12 @@ class MovimientosContablesController {
                 return;
             }
 
-            $ejerEncontrado = (int)($cabList[0]['EJERCICIO'] ?? $cabList[0]['ejercicio'] ?? 0);
-            $detParams = [$idProp, $codEmpresa, $num];
-            $sqlDetEjer = "";
-            if ($ejerEncontrado > 0) {
-                $sqlDetEjer = " AND ejercicio = ?";
-                $detParams[] = $ejerEncontrado;
-            }
-
             $detalles = Database::queryForListUpper(
                 "SELECT secuencia, cod_cuenta, nom_cuenta, descripcion, debe, haber
                  FROM co_asientos_det
-                 WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ? {$sqlDetEjer}
+                 WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ?
                  ORDER BY secuencia ASC",
-                $detParams
+                [$idProp, $codEmpresa, $num]
             );
             View::json([
                 'status'   => 'success',

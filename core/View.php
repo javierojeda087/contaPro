@@ -126,7 +126,7 @@ class View {
 
         // Reemplazar /*[[${var}]]*/ defaultVal en bloques JS
         $html = preg_replace_callback(
-            '/\/\*\\[\\[\\$\\{([^}]+)\\}\\]\\]\*\/\s*([^;\r\n]+)?/m',
+            '/\/\*\\[\\[\\$\\{([^}]+)\\}\\]\\]\*\/\s*([^,;)\r\n]+)?/m',
             function ($m) use ($model) {
                 $val = self::evalExpr(trim($m[1]), $model);
                 return json_encode($val, JSON_UNESCAPED_UNICODE);

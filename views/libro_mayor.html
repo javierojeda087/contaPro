@@ -318,8 +318,20 @@
 
     <script th:src="@{/js/filtros-rapidos.js}"></script>
     <script th:inline="javascript">
+        const EJER_INI = /*[[${ejerInicio}]]*/ '';
+        const EJER_FIN = /*[[${ejerFinal}]]*/ '';
+        const EJERCICIO = /*[[${ejercicio}]]*/ '';
+
         document.addEventListener('DOMContentLoaded', function() {
-            FiltrosRapidos.init({ container: 'qfBar', ini: /*[[${ejerInicio}]]*/ '', fin: /*[[${ejerFinal}]]*/ '', ejercicio: /*[[${ejercicio}]]*/ '', onApply: () => cargarLibroMayor() });
+            if (typeof FiltrosRapidos !== 'undefined' && FiltrosRapidos.init) {
+                FiltrosRapidos.init({
+                    container: 'qfBar',
+                    ini: EJER_INI,
+                    fin: EJER_FIN,
+                    ejercicio: EJERCICIO,
+                    onApply: () => cargarLibroMayor()
+                });
+            }
             loadSucursales();
             cargarLibroMayor();
         });
