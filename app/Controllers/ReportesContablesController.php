@@ -386,8 +386,9 @@ class ReportesContablesController {
         $codCliente      = trim((string)($_GET['codCliente'] ?? ''));
         $condicion       = trim((string)($_GET['condicion'] ?? ''));
         $incluirAnulados = isset($_GET['incluirAnulados']) && ($_GET['incluirAnulados'] === 'true' || $_GET['incluirAnulados'] === '1');
+        $incluirLiq      = !empty($_GET['incluirLiq']) && in_array(strtolower((string)$_GET['incluirLiq']), ['1', 'true', 's', 'on', 'yes'], true);
 
-        $res = self::procesarReporteLibroVentas($codEmpresa, $ejercicio, $fechaDesde, $fechaHasta, $codCliente, $condicion, $incluirAnulados);
+        $res = self::procesarReporteLibroVentas($codEmpresa, $ejercicio, $fechaDesde, $fechaHasta, $codCliente, $condicion, $incluirAnulados, $incluirLiq);
         $res['fechaDesde'] = $fechaDesde;
         $res['fechaHasta'] = $fechaHasta;
         View::json($res);
@@ -403,8 +404,9 @@ class ReportesContablesController {
         $codCliente      = trim((string)($_GET['codCliente'] ?? ''));
         $condicion       = trim((string)($_GET['condicion'] ?? ''));
         $incluirAnulados = isset($_GET['incluirAnulados']) && ($_GET['incluirAnulados'] === 'true' || $_GET['incluirAnulados'] === '1');
+        $incluirLiq      = !empty($_GET['incluirLiq']) && in_array(strtolower((string)$_GET['incluirLiq']), ['1', 'true', 's', 'on', 'yes'], true);
 
-        $data = self::procesarReporteLibroVentas($codEmpresa, $ejercicio, $fechaDesde, $fechaHasta, $codCliente, $condicion, $incluirAnulados);
+        $data = self::procesarReporteLibroVentas($codEmpresa, $ejercicio, $fechaDesde, $fechaHasta, $codCliente, $condicion, $incluirAnulados, $incluirLiq);
 
         View::render('libro_ventas_print', [
             'records'       => $data['records'],
@@ -427,8 +429,9 @@ class ReportesContablesController {
         $codCliente      = trim((string)($_GET['codCliente'] ?? ''));
         $condicion       = trim((string)($_GET['condicion'] ?? ''));
         $incluirAnulados = isset($_GET['incluirAnulados']) && ($_GET['incluirAnulados'] === 'true' || $_GET['incluirAnulados'] === '1');
+        $incluirLiq      = !empty($_GET['incluirLiq']) && in_array(strtolower((string)$_GET['incluirLiq']), ['1', 'true', 's', 'on', 'yes'], true);
 
-        $data    = self::procesarReporteLibroVentas($codEmpresa, $ejercicio, $fechaDesde, $fechaHasta, $codCliente, $condicion, $incluirAnulados);
+        $data    = self::procesarReporteLibroVentas($codEmpresa, $ejercicio, $fechaDesde, $fechaHasta, $codCliente, $condicion, $incluirAnulados, $incluirLiq);
         $records = $data['records'] ?? [];
 
         while (ob_get_level() > 0) {
@@ -514,7 +517,7 @@ class ReportesContablesController {
 
     private static function procesarReporteLibroVentas(
         string $codEmpresa, string $ejercicio, string $fechaDesde, string $fechaHasta,
-        string $codCliente, string $condicion, bool $incluirAnulados
+        string $codCliente, string $condicion, bool $incluirAnulados, bool $incluirLiq = false
     ): array {
         $idProp = TenantContext::idPropietario();
         $empresaInfo = self::fetchEmpresaInfo($codEmpresa, $ejercicio);
@@ -524,10 +527,13 @@ class ReportesContablesController {
                        condicion, cod_cliente, nom_cliente, ruc_cliente,
                        grav10, iva10, grav5, iva5, exentas, tot_iva, valor_total
                 FROM co_ingresos
-                WHERE id_propietario = ? AND cod_empresa = ?
-                  AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) <> 'LIQ'
-                  AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT LIKE '%LIQUIDAC%' ";
+                WHERE id_propietario = ? AND cod_empresa = ? ";
         $params = [$idProp, $codEmpresa];
+
+        if (!$incluirLiq) {
+            $sql .= "AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) <> 'LIQ'
+                     AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT LIKE '%LIQUIDAC%' ";
+        }
 
         if ($fechaDesde !== '') {
             $sql .= "AND fec_ingreso >= ? ";
@@ -956,13 +962,15 @@ class ReportesContablesController {
 
         // En un <form method="GET">, los checkboxes desmarcados no se envían en la URL.
         // Si viene el formulario (fechaInicial/fechaFinal o cualquier opción), evaluar cada checkbox como false cuando no esté presente.
-        $hasFormParams = isset($_GET['fechaInicial']) || isset($_GET['fechaFinal']) || isset($_GET['ventas']) || isset($_GET['compras']) || isset($_GET['incluirExentas']);
+        $hasFormParams = isset($_GET['fechaInicial']) || isset($_GET['fechaFinal']) || isset($_GET['ventas']) || isset($_GET['compras']) || isset($_GET['incluirExentas']) || isset($_GET['incluirLiq']);
         if ($hasFormParams) {
             $ventas         = isset($_GET['ventas']) && $_GET['ventas'] !== 'false' && $_GET['ventas'] !== '0';
+            $incluirLiq     = isset($_GET['incluirLiq']) && in_array(strtolower((string)$_GET['incluirLiq']), ['1', 'true', 's', 'on', 'yes'], true);
             $compras        = isset($_GET['compras']) && $_GET['compras'] !== 'false' && $_GET['compras'] !== '0';
             $incluirExentas = !isset($_GET['incluirExentas']) ? false : ($_GET['incluirExentas'] !== 'false' && $_GET['incluirExentas'] !== '0');
         } else {
             $ventas         = true;
+            $incluirLiq     = false;
             $compras        = true;
             $incluirExentas = true;
         }
@@ -977,40 +985,68 @@ class ReportesContablesController {
         if ($ventas) {
             $sqlV = "SELECT COALESCE(ruc_cliente, '5567097') AS ruc,
                             COALESCE(nom_cliente, 'CLIENTE OCASIONAL') AS nombre,
-                            COALESCE(nro_timbrado, '12345671') AS timbrado,
+                            COALESCE(nro_timbrado, '') AS timbrado,
                             COALESCE(nro_factura, '001-001-0000001') AS factura,
                             DATE_FORMAT(fec_ingreso, '%d/%m/%Y') AS fecha_str,
                             COALESCE(grav10, 0) AS grav10,
                             COALESCE(grav5, 0) AS grav5,
                             COALESCE(exentas, 0) AS exenta,
                             COALESCE(valor_total, 0) AS total,
+                            COALESCE(tip_doc, 'FAC') AS tip_doc,
                             CASE WHEN UPPER(condicion) LIKE '%CRED%' OR UPPER(TRIM(condicion)) = 'CRE' THEN '2' ELSE '1' END AS condicion
                      FROM co_ingresos
                      WHERE id_propietario = ? AND cod_empresa = ?
                        AND fec_ingreso >= ? AND fec_ingreso <= ?
                        AND COALESCE(anulada, 'N') <> 'S'
                        AND COALESCE(inutilizado, 'N') <> 'S'
-                       AND COALESCE(estado, 'A') <> 'I'
-                       AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) <> 'LIQ'
-                       AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT LIKE '%LIQUIDAC%' ";
+                       AND COALESCE(estado, 'A') <> 'I' ";
+
+            if (!$incluirLiq) {
+                $sqlV .= "AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) <> 'LIQ'
+                          AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT LIKE '%LIQUIDAC%' ";
+            }
+
             if (!$incluirExentas) {
-                $sqlV .= "AND (COALESCE(grav10, 0) > 0 OR COALESCE(grav5, 0) > 0) ";
+                if ($incluirLiq) {
+                    $sqlV .= "AND ((COALESCE(grav10, 0) > 0 OR COALESCE(grav5, 0) > 0) OR UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) = 'LIQ') ";
+                } else {
+                    $sqlV .= "AND (COALESCE(grav10, 0) > 0 OR COALESCE(grav5, 0) > 0) ";
+                }
             }
             $sqlV .= "ORDER BY fec_ingreso ASC, id_ingreso ASC";
 
             $rowsV = Database::queryForList($sqlV, [$idProp, $codEmpresa, $fechaInicial, $fechaFinal]);
             foreach ($rowsV as $r) {
-                $rucNum = preg_replace('/[^0-9]/', '', explode('-', (string)$r['ruc'])[0]) ?: '5567097';
+                $tipDocRaw = strtoupper(trim((string)($r['tip_doc'] ?? 'FAC')));
+                $isLiq = ($tipDocRaw === 'LIQ' || str_contains($tipDocRaw, 'LIQUIDAC'));
+
+                // Código RG90 comprobante: 109 = Factura, 208 = Liquidación de Salario
+                $codTipoComp = $isLiq ? '208' : '109';
+
+                $rucRawVal = trim((string)($r['ruc'] ?? ''));
+                $isCi = (!str_contains($rucRawVal, '-') && preg_match('/^\d+$/', $rucRawVal));
+                $tipoIdent = $isCi ? '12' : '11';
+                $rucNum = preg_replace('/[^0-9]/', '', explode('-', $rucRawVal)[0]) ?: '5567097';
+
+                $timbrado = trim((string)($r['timbrado'] ?? ''));
+                if ($timbrado === '' || $timbrado === '-') {
+                    $timbrado = $isLiq ? '0' : '12345671';
+                }
+
+                $nroFactura = trim(preg_replace('/\s+SIFEN$/i', '', (string)$r['factura']));
+
                 $lineas[] = sprintf(
-                    "1\t11\t%s\t%s\t109\t%s\t%s\t%s\t%d\t%d\t%d\t%d\t%s\tN\tS\tN\tN",
+                    "1\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\t%s\tN\tS\tN\tN",
+                    $tipoIdent,
                     $rucNum,
                     (string)$r['nombre'],
+                    $codTipoComp,
                     (string)$r['fecha_str'],
-                    (string)$r['timbrado'],
-                    (string)$r['factura'],
+                    $timbrado,
+                    $nroFactura,
                     (int)round((float)$r['grav10']),
                     (int)round((float)$r['grav5']),
-                    $incluirExentas ? (int)round((float)$r['exenta']) : 0,
+                    ($incluirExentas || $isLiq) ? (int)round((float)$r['exenta']) : 0,
                     (int)round((float)$r['total']),
                     (string)$r['condicion']
                 );
@@ -1082,6 +1118,108 @@ class ReportesContablesController {
         header('Content-Disposition: attachment; filename="' . $txtFileName . '"');
         echo $content;
         exit;
+    }
+
+    public static function apiMarangatuResumen(): void {
+        if (!self::requireAuth()) return;
+        $idProp       = TenantContext::idPropietario();
+        $codEmpresa   = TenantContext::empresa();
+        $fechaInicial = trim((string)($_GET['fechaInicial'] ?? '')) ?: date('Y-m-01');
+        $fechaFinal   = trim((string)($_GET['fechaFinal'] ?? '')) ?: date('Y-m-d');
+        $incluirLiq   = !empty($_GET['incluirLiq']) && in_array(strtolower((string)$_GET['incluirLiq']), ['1', 'true', 's', 'on', 'yes'], true);
+
+        // 1. Comprobantes de Ingresos (Facturas y Liquidaciones)
+        $sqlV = "SELECT id_ingreso,
+                        COALESCE(ruc_cliente, '') AS ruc,
+                        COALESCE(nom_cliente, '') AS nombre,
+                        COALESCE(nro_timbrado, '') AS timbrado,
+                        COALESCE(nro_factura, '') AS factura,
+                        DATE_FORMAT(fec_ingreso, '%d/%m/%Y') AS fecha_str,
+                        DATE_FORMAT(fec_ingreso, '%Y-%m-%d') AS fecha_iso,
+                        COALESCE(grav10, 0) AS grav10,
+                        COALESCE(grav5, 0) AS grav5,
+                        COALESCE(iva10, 0) AS iva10,
+                        COALESCE(iva5, 0) AS iva5,
+                        COALESCE(exentas, 0) AS exenta,
+                        COALESCE(valor_total, 0) AS total,
+                        COALESCE(tip_doc, 'FAC') AS tip_doc,
+                        COALESCE(condicion, 'CON') AS condicion
+                 FROM co_ingresos
+                 WHERE id_propietario = ? AND cod_empresa = ?
+                   AND fec_ingreso >= ? AND fec_ingreso <= ?
+                   AND COALESCE(anulada, 'N') <> 'S'
+                   AND COALESCE(inutilizado, 'N') <> 'S'
+                   AND COALESCE(estado, 'A') <> 'I'
+                 ORDER BY fec_ingreso ASC, id_ingreso ASC";
+        $allIngresos = Database::queryForList($sqlV, [$idProp, $codEmpresa, $fechaInicial, $fechaFinal]);
+
+        $facturasVentas = [];
+        $liquidaciones  = [];
+
+        $totFacVentas = 0.0;
+        $totLiq       = 0.0;
+
+        foreach ($allIngresos as $ing) {
+            $tDoc = strtoupper(trim((string)($ing['tip_doc'] ?? 'FAC')));
+            $isLiq = ($tDoc === 'LIQ' || str_contains($tDoc, 'LIQUIDAC'));
+
+            if ($isLiq) {
+                $liquidaciones[] = $ing;
+                $totLiq += (float)($ing['total'] ?? 0);
+            } else {
+                $facturasVentas[] = $ing;
+                $totFacVentas += (float)($ing['total'] ?? 0);
+            }
+        }
+
+        // 2. Compras / Egresos
+        $sqlC = "SELECT id_egreso,
+                        COALESCE(ruc_proveedor, '') AS ruc,
+                        COALESCE(nom_proveedor, '') AS nombre,
+                        COALESCE(nro_timbrado, '') AS timbrado,
+                        COALESCE(nro_factura, '') AS factura,
+                        DATE_FORMAT(fec_egreso, '%d/%m/%Y') AS fecha_str,
+                        DATE_FORMAT(fec_egreso, '%Y-%m-%d') AS fecha_iso,
+                        COALESCE(grav10, 0) AS grav10,
+                        COALESCE(grav5, 0) AS grav5,
+                        COALESCE(iva10, 0) AS iva10,
+                        COALESCE(iva5, 0) AS iva5,
+                        COALESCE(exentas, 0) AS exenta,
+                        COALESCE(valor_total, 0) AS total,
+                        COALESCE(tip_doc, 'FAC') AS tip_doc,
+                        COALESCE(condicion, 'CON') AS condicion
+                 FROM co_egresos
+                 WHERE id_propietario = ? AND cod_empresa = ?
+                   AND fec_egreso >= ? AND fec_egreso <= ?
+                   AND COALESCE(estado, 'A') <> 'I'
+                 ORDER BY fec_egreso ASC, id_egreso ASC";
+        $compras = Database::queryForList($sqlC, [$idProp, $codEmpresa, $fechaInicial, $fechaFinal]);
+
+        $totCompras = 0.0;
+        foreach ($compras as $c) {
+            $totCompras += (float)($c['total'] ?? 0);
+        }
+
+        View::json([
+            'status'         => 'success',
+            'facturasVentas' => [
+                'count' => count($facturasVentas),
+                'total' => $totFacVentas,
+                'items' => $facturasVentas,
+            ],
+            'liquidaciones'  => [
+                'count' => count($liquidaciones),
+                'total' => $totLiq,
+                'items' => $liquidaciones,
+            ],
+            'compras'        => [
+                'count' => count($compras),
+                'total' => $totCompras,
+                'items' => $compras,
+            ],
+            'incluirLiq'     => $incluirLiq,
+            'totalRegistros' => count($facturasVentas) + ($incluirLiq ? count($liquidaciones) : 0) + count($compras),
+        ]);
     }
 
     // =========================================================================

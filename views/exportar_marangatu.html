@@ -38,6 +38,7 @@
                 <!-- Cuerpo del Formulario -->
                 <form id="marangatuForm" method="GET" action="/api/marangatu/exportar-zip">
                     <input type="hidden" name="ventas" value="false">
+                    <input type="hidden" name="incluirLiq" value="false">
                     <input type="hidden" name="otrosIngresos" value="false">
                     <input type="hidden" name="recibosCobro" value="false">
                     <input type="hidden" name="compras" value="false">
@@ -64,17 +65,20 @@
                         <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;">
                             <div style="flex: 1 1 200px; max-width: 260px;">
                                 <label for="fechaInicial" style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Fecha Inicial</label>
-                                <input type="date" id="fechaInicial" name="fechaInicial" th:value="${firstDayOfMonth}" th:min="${ejerInicio}" th:max="${ejerFinal}" class="form-control" style="height: 42px; border-radius: 8px; font-weight: 600;">
+                                <input type="date" id="fechaInicial" name="fechaInicial" th:value="${firstDayOfMonth}" th:min="${ejerInicio}" th:max="${ejerFinal}" class="form-control" style="height: 42px; border-radius: 8px; font-weight: 600;" onchange="actualizarResumen()">
                             </div>
 
                             <div style="flex: 1 1 200px; max-width: 260px;">
                                 <label for="fechaFinal" style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Fecha Final</label>
-                                <input type="date" id="fechaFinal" name="fechaFinal" th:value="${currentDate}" th:min="${ejerInicio}" th:max="${ejerFinal}" class="form-control" style="height: 42px; border-radius: 8px; font-weight: 600;">
+                                <input type="date" id="fechaFinal" name="fechaFinal" th:value="${currentDate}" th:min="${ejerInicio}" th:max="${ejerFinal}" class="form-control" style="height: 42px; border-radius: 8px; font-weight: 600;" onchange="actualizarResumen()">
                             </div>
 
-                            <div>
+                            <div style="display: flex; gap: 8px;">
                                 <button type="submit" style="height: 42px; padding: 0 1.4rem; background: #16a34a; color: #ffffff; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; box-shadow: 0 2px 6px rgba(22,163,74,0.25); transition: all 0.2s;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
                                     <i class="ph ph-file-zip" style="font-size: 1.15rem;"></i> Exportar Archivo (.ZIP)
+                                </button>
+                                <button type="button" onclick="actualizarResumen()" style="height: 42px; padding: 0 1rem; background: #0f172a; color: #ffffff; border: none; border-radius: 8px; font-weight: 700; font-size: 0.88rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
+                                    <i class="ph ph-arrows-clockwise" style="font-size: 1rem;"></i> Verificar
                                 </button>
                             </div>
                         </div>
@@ -92,8 +96,13 @@
 
                             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                                 <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: #1e293b;">
-                                    <input type="checkbox" id="chkVentas" name="ventas" value="true" checked style="width: 18px; height: 18px; accent-color: #16a34a; cursor: pointer;">
-                                    Ventas (Comprobantes de Ingresos)
+                                    <input type="checkbox" id="chkVentas" name="ventas" value="true" checked onchange="actualizarResumen()" style="width: 18px; height: 18px; accent-color: #16a34a; cursor: pointer;">
+                                    Ventas (Comprobantes / Facturas de Ingresos)
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: #1e293b;">
+                                    <input type="checkbox" id="chkIncluirLiq" name="incluirLiq" value="true" onchange="actualizarResumen()" style="width: 18px; height: 18px; accent-color: #0284c7; cursor: pointer;">
+                                    <span>Incluir Liquidación de Salario (LIQ)</span>
+                                    <span class="badge" style="background: #e0f2fe; color: #0284c7; font-size: 0.72rem; font-weight: 800; border: 1px solid #bae6fd; padding: 2px 6px; border-radius: 4px;">Código 208 RG 90</span>
                                 </label>
                                 <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: #1e293b;">
                                     <input type="checkbox" id="chkOtrosIngresos" name="otrosIngresos" value="true" checked style="width: 18px; height: 18px; accent-color: #16a34a; cursor: pointer;">
@@ -115,7 +124,7 @@
 
                             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                                 <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: #1e293b;">
-                                    <input type="checkbox" id="chkCompras" name="compras" value="true" checked style="width: 18px; height: 18px; accent-color: #0284c7; cursor: pointer;">
+                                    <input type="checkbox" id="chkCompras" name="compras" value="true" checked onchange="actualizarResumen()" style="width: 18px; height: 18px; accent-color: #0284c7; cursor: pointer;">
                                     Compras (Comprobantes de Egresos)
                                 </label>
                                 <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: #1e293b;">
@@ -138,17 +147,103 @@
 
                             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                                 <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: #1e293b;">
-                                    <input type="checkbox" id="chkIncluirExentas" name="incluirExentas" value="true" checked style="width: 18px; height: 18px; accent-color: #16a34a; cursor: pointer;">
+                                    <input type="checkbox" id="chkIncluirExentas" name="incluirExentas" value="true" checked onchange="actualizarResumen()" style="width: 18px; height: 18px; accent-color: #16a34a; cursor: pointer;">
                                     Incluir Documentos con Exentas
                                 </label>
                                 <p style="margin: 4px 0 0 0; font-size: 0.78rem; color: #64748b;">
-                                    El archivo generado cumple con la estructura de columnas tabuladas exigida por la RG 90/2021 para su importación directa en el sistema Marangatu.
+                                    El archivo generado cumple con la estructura de columnas tabuladas exigida por la RG 90/2021 para su importación directa en el sistema Marangatu (Código 109 para Facturas y Código 208 para Liquidación de Salario).
                                 </p>
                             </div>
                         </div>
 
                     </div>
                 </form>
+
+                <!-- Verificación de Comprobantes a Exportar (Resumen y Detalle) -->
+                <div style="padding: 1.5rem; background: #ffffff; border-top: 1px solid #e2e8f0;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
+                        <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                            <i class="ph ph-check-circle" style="color: #16a34a; font-size: 1.2rem;"></i>
+                            Verificación de Comprobantes RG 90 en el Período Seleccionado
+                        </h4>
+                        <span id="txtRangoActual" style="font-size: 0.8rem; font-weight: 700; color: #64748b;"></span>
+                    </div>
+
+                    <!-- Tarjetas de Conteo y Verificación -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+                        <!-- Ventas (FAC) -->
+                        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.75rem; font-weight: 800; color: #166534; text-transform: uppercase;">Facturas de Venta (FAC)</span>
+                                <span class="badge" style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-weight: 800; font-size: 0.7rem;">Cód. 109</span>
+                            </div>
+                            <div id="statFacVentasCant" style="font-size: 1.6rem; font-weight: 800; color: #15803d; margin: 4px 0;">--</div>
+                            <div id="statFacVentasTot" style="font-size: 0.82rem; font-weight: 700; color: #166534;">Gs. 0</div>
+                            <div style="font-size: 0.72rem; color: #15803d; margin-top: 4px; font-weight: 600;">Llevadas al archivo RG 90</div>
+                        </div>
+
+                        <!-- Liquidaciones (LIQ) -->
+                        <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 10px; padding: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.75rem; font-weight: 800; color: #075985; text-transform: uppercase;">Liquidación Salario (LIQ)</span>
+                                <span class="badge" style="background: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; font-weight: 800; font-size: 0.7rem;">Cód. 208</span>
+                            </div>
+                            <div id="statLiqCant" style="font-size: 1.6rem; font-weight: 800; color: #0284c7; margin: 4px 0;">--</div>
+                            <div id="statLiqTot" style="font-size: 0.82rem; font-weight: 700; color: #0369a1;">Gs. 0</div>
+                            <div id="statLiqEstado" style="font-size: 0.72rem; margin-top: 4px; font-weight: 700;">--</div>
+                        </div>
+
+                        <!-- Compras (Egresos) -->
+                        <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px; padding: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.75rem; font-weight: 800; color: #9a3412; text-transform: uppercase;">Compras (Egresos)</span>
+                                <span class="badge" style="background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; font-weight: 800; font-size: 0.7rem;">Cód. 109</span>
+                            </div>
+                            <div id="statComprasCant" style="font-size: 1.6rem; font-weight: 800; color: #c2410c; margin: 4px 0;">--</div>
+                            <div id="statComprasTot" style="font-size: 0.82rem; font-weight: 700; color: #9a3412;">Gs. 0</div>
+                            <div style="font-size: 0.72rem; color: #c2410c; margin-top: 4px; font-weight: 600;">Llevadas al archivo RG 90</div>
+                        </div>
+
+                        <!-- Total General RG 90 -->
+                        <div style="background: #0f172a; color: white; border-radius: 10px; padding: 1rem;">
+                            <span style="font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Total Registros RG 90</span>
+                            <div id="statTotalRegistros" style="font-size: 1.6rem; font-weight: 800; color: #ffffff; margin: 4px 0;">--</div>
+                            <div style="font-size: 0.75rem; color: #38bdf8; font-weight: 700;">Listos para exportar a .ZIP</div>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Previsualización de Comprobantes -->
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+                        <div style="padding: 10px 14px; background: #f1f5f9; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.82rem; font-weight: 800; color: #334155;">Detalle de Comprobantes de Ventas / Ingresos</span>
+                            <span id="badgeCantComprobantes" class="badge bg-secondary" style="font-size: 0.75rem;">0 registros</span>
+                        </div>
+                        <div style="overflow-x: auto; max-height: 320px;">
+                            <table class="table table-sm table-hover m-0" style="font-size: 0.82rem;">
+                                <thead style="position: sticky; top: 0; background: #ffffff; z-index: 1;">
+                                    <tr style="color: #475569; font-weight: 700; border-bottom: 2px solid #cbd5e1;">
+                                        <th style="padding: 8px 10px;">Tipo</th>
+                                        <th style="padding: 8px 10px;">Cód. RG90</th>
+                                        <th style="padding: 8px 10px; text-align: center;">Fecha</th>
+                                        <th style="padding: 8px 10px;">N° Comprobante</th>
+                                        <th style="padding: 8px 10px;">Timbrado</th>
+                                        <th style="padding: 8px 10px;">RUC</th>
+                                        <th style="padding: 8px 10px;">Cliente</th>
+                                        <th style="padding: 8px 10px; text-align: center;">Cond.</th>
+                                        <th style="padding: 8px 10px; text-align: right;">Grav. 10%</th>
+                                        <th style="padding: 8px 10px; text-align: right;">Exentas</th>
+                                        <th style="padding: 8px 10px; text-align: right;">Total Gs.</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaPreviewBody">
+                                    <tr>
+                                        <td colspan="11" class="text-center py-4 text-muted">Cargando comprobantes...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
 
             </div>
 
@@ -183,6 +278,112 @@
             document.getElementById('fechaFinal').value = clampEjer(d2);
             document.querySelectorAll('.qf-btn').forEach(b => b.classList.remove('active'));
             if (activeBtn) activeBtn.classList.add('active');
+            actualizarResumen();
+        }
+
+        function actualizarResumen() {
+            const fIni = document.getElementById('fechaInicial').value;
+            const fFin = document.getElementById('fechaFinal').value;
+            const incLiq = document.getElementById('chkIncluirLiq')?.checked ? '1' : '0';
+            const incExentas = document.getElementById('chkIncluirExentas')?.checked ? '1' : '0';
+
+            const txtRango = document.getElementById('txtRangoActual');
+            if (txtRango) {
+                txtRango.innerText = `Período: ${fIni} al ${fFin}`;
+            }
+
+            const tbody = document.getElementById('tablaPreviewBody');
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="11" class="text-center py-3 text-muted"><i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite; display: inline-block;"></i> Consultando comprobantes...</td></tr>`;
+            }
+
+            fetch(`/api/marangatu/resumen?fechaInicial=${encodeURIComponent(fIni)}&fechaFinal=${encodeURIComponent(fFin)}&incluirLiq=${incLiq}&incluirExentas=${incExentas}`)
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status !== 'success') return;
+
+                    const fac = res.facturasVentas || { count: 0, total: 0, items: [] };
+                    const liq = res.liquidaciones || { count: 0, total: 0, items: [] };
+                    const com = res.compras || { count: 0, total: 0, items: [] };
+
+                    // 1. Facturas de Venta
+                    document.getElementById('statFacVentasCant').innerText = fac.count.toLocaleString('es-PY');
+                    document.getElementById('statFacVentasTot').innerText = 'Gs. ' + Math.round(fac.total).toLocaleString('es-PY');
+
+                    // 2. Liquidaciones de Salario
+                    document.getElementById('statLiqCant').innerText = liq.count.toLocaleString('es-PY');
+                    document.getElementById('statLiqTot').innerText = 'Gs. ' + Math.round(liq.total).toLocaleString('es-PY');
+
+                    const liqEstado = document.getElementById('statLiqEstado');
+                    if (liqEstado) {
+                        if (document.getElementById('chkIncluirLiq').checked) {
+                            liqEstado.innerHTML = '<span class="text-success"><i class="ph ph-check-bold"></i> Incluido en exportación (.ZIP)</span>';
+                        } else {
+                            liqEstado.innerHTML = '<span class="text-muted"><i class="ph ph-x-bold"></i> No incluido (marque la casilla)</span>';
+                        }
+                    }
+
+                    // 3. Compras
+                    document.getElementById('statComprasCant').innerText = com.count.toLocaleString('es-PY');
+                    document.getElementById('statComprasTot').innerText = 'Gs. ' + Math.round(com.total).toLocaleString('es-PY');
+
+                    // 4. Total a Exportar
+                    const totExp = (document.getElementById('chkVentas').checked ? fac.count : 0)
+                                 + (document.getElementById('chkIncluirLiq').checked ? liq.count : 0)
+                                 + (document.getElementById('chkCompras').checked ? com.count : 0);
+                    document.getElementById('statTotalRegistros').innerText = totExp.toLocaleString('es-PY');
+
+                    // 5. Tabla Preview
+                    if (!tbody) return;
+                    let lista = [];
+                    if (document.getElementById('chkVentas').checked) {
+                        lista = lista.concat(fac.items.map(x => ({ ...x, esLiq: false })));
+                    }
+                    if (document.getElementById('chkIncluirLiq').checked) {
+                        lista = lista.concat(liq.items.map(x => ({ ...x, esLiq: true })));
+                    }
+
+                    const badgeCant = document.getElementById('badgeCantComprobantes');
+                    if (badgeCant) {
+                        badgeCant.innerText = `${lista.length} comprobante(s) de ventas/ingresos`;
+                    }
+
+                    if (lista.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-4 text-muted"><i class="ph ph-info" style="font-size: 1.5rem; display: block; margin-bottom: 4px;"></i> No se encontraron comprobantes de ventas para este período</td></tr>`;
+                        return;
+                    }
+
+                    tbody.innerHTML = '';
+                    lista.forEach(it => {
+                        const tr = document.createElement('tr');
+                        const isLiq = it.esLiq;
+                        const tipBadge = isLiq
+                            ? '<span class="badge" style="background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd; font-weight:700;">LIQ</span>'
+                            : '<span class="badge" style="background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; font-weight:700;">FAC</span>';
+                        const codRg90 = isLiq ? '208 (Liq. Salario)' : '109 (Factura)';
+
+                        tr.innerHTML = `
+                            <td style="padding: 8px 10px;">${tipBadge}</td>
+                            <td style="padding: 8px 10px; font-weight: 700; color: #475569;">${codRg90}</td>
+                            <td style="padding: 8px 10px; text-align: center; color: #475569;">${it.fecha_str || it.fecha_iso}</td>
+                            <td style="padding: 8px 10px; font-weight: 800; color: #0f172a;">${it.factura || '-'}</td>
+                            <td style="padding: 8px 10px; color: #64748b;">${it.timbrado || '-'}</td>
+                            <td style="padding: 8px 10px; font-weight: 700; color: #334155;">${it.ruc || '-'}</td>
+                            <td style="padding: 8px 10px; color: #1e293b;">${it.nombre || '-'}</td>
+                            <td style="padding: 8px 10px; text-align: center; font-weight: 700; color: #0284c7;">${it.condicion || 'CON'}</td>
+                            <td style="padding: 8px 10px; text-align: right; font-family: monospace;">${Math.round(parseFloat(it.grav10 || 0)).toLocaleString('es-PY')}</td>
+                            <td style="padding: 8px 10px; text-align: right; font-family: monospace;">${Math.round(parseFloat(it.exenta || 0)).toLocaleString('es-PY')}</td>
+                            <td style="padding: 8px 10px; text-align: right; font-weight: 800; color: #0f172a; font-family: monospace;">${Math.round(parseFloat(it.total || 0)).toLocaleString('es-PY')}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                })
+                .catch(err => {
+                    console.error("Error al consultar resumen RG 90:", err);
+                    if (tbody) {
+                        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-3 text-danger">Error al cargar verificación</td></tr>`;
+                    }
+                });
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -227,6 +428,8 @@
                     }
                 });
             });
+
+            actualizarResumen();
         });
     </script>
 </body>

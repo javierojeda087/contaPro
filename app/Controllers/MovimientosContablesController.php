@@ -2712,6 +2712,7 @@ class MovimientosContablesController {
         $fechaHasta = self::parseSqlDate((string)($_GET['fechaHasta'] ?? $_GET['hasta'] ?? ''));
         $anio       = trim((string)($_GET['anio'] ?? ''));
         $mes        = trim((string)($_GET['mes'] ?? ''));
+        $incluirLiq = !empty($_GET['incluirLiq']) && in_array(strtolower((string)$_GET['incluirLiq']), ['1', 'true', 's', 'on', 'yes'], true);
 
         try {
             // Egresos (Compras)
@@ -2745,8 +2746,11 @@ class MovimientosContablesController {
                 $paramsEg
             ) ?: ['total' => 0, 'contabilizados' => 0, 'pendientes' => 0, 'monto_pendiente' => 0];
 
-            // Ingresos (Ventas)
+            // Ingresos (Ventas y Liquidaciones de Salario opcionales)
             $whereIn = "id_propietario = ? AND cod_empresa = ? AND COALESCE(anulada, 'N') <> 'S' AND COALESCE(inutilizado, 'N') <> 'S' AND COALESCE(estado, 'A') = 'A' ";
+            if (!$incluirLiq) {
+                $whereIn .= "AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) <> 'LIQ' AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT LIKE '%LIQUIDAC%' ";
+            }
             $paramsIn = [$idProp, $empresa];
             if ($fechaDesde !== null) {
                 $whereIn .= "AND DATE(fec_ingreso) >= ? ";
@@ -2778,6 +2782,7 @@ class MovimientosContablesController {
 
             View::json([
                 'status'   => 'success',
+                'incluirLiq' => $incluirLiq,
                 'egresos'  => [
                     'total'          => (int)($rowEg['total'] ?? 0),
                     'contabilizados' => (int)($rowEg['contabilizados'] ?? 0),
@@ -2808,6 +2813,7 @@ class MovimientosContablesController {
         $fechaHasta = self::parseSqlDate((string)($_GET['fechaHasta'] ?? $_GET['hasta'] ?? ''));
         $anio       = trim((string)($_GET['anio'] ?? ''));
         $mes        = trim((string)($_GET['mes'] ?? ''));
+        $incluirLiq = !empty($_GET['incluirLiq']) && in_array(strtolower((string)$_GET['incluirLiq']), ['1', 'true', 's', 'on', 'yes'], true);
 
         $items = [];
 
@@ -2857,6 +2863,9 @@ class MovimientosContablesController {
 
             if ($tipo === 'TODOS' || $tipo === 'INGRESOS') {
                 $whereIn = "id_propietario = ? AND cod_empresa = ? AND COALESCE(anulada, 'N') <> 'S' AND COALESCE(inutilizado, 'N') <> 'S' AND COALESCE(estado, 'A') = 'A' AND (asiento IS NULL OR asiento = 0) ";
+                if (!$incluirLiq) {
+                    $whereIn .= "AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) <> 'LIQ' AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT LIKE '%LIQUIDAC%' ";
+                }
                 $paramsIn = [$idProp, $empresa];
                 if ($fechaDesde !== null) {
                     $whereIn .= "AND DATE(fec_ingreso) >= ? ";
@@ -2892,16 +2901,18 @@ class MovimientosContablesController {
                     $paramsIn
                 );
                 foreach ($rowsIn as $r) {
-                    $r['tipo_lbl'] = 'Ingreso / Venta';
-                    $r['tipo_badge'] = 'success';
+                    $isLiq = self::isLiquidacionSalario($r['tip_doc']);
+                    $r['tipo_lbl'] = $isLiq ? 'Liquidación Salario (LIQ)' : 'Factura de Venta';
+                    $r['tipo_badge'] = $isLiq ? 'info' : 'success';
                     $items[] = $r;
                 }
             }
 
             View::json([
-                'status' => 'success',
-                'data'   => $items,
-                'count'  => count($items),
+                'status'     => 'success',
+                'incluirLiq' => $incluirLiq,
+                'data'       => $items,
+                'count'      => count($items),
             ]);
         } catch (\Throwable $e) {
             View::json(['status' => 'error', 'message' => 'Error al obtener detalle de comprobantes pendientes: ' . $e->getMessage()]);
@@ -2922,6 +2933,7 @@ class MovimientosContablesController {
         $fechaHasta = self::parseSqlDate((string)($payload['fechaHasta'] ?? $payload['hasta'] ?? ''));
         $anio       = trim((string)($payload['anio'] ?? ''));
         $mes        = trim((string)($payload['mes'] ?? ''));
+        $incluirLiq = !empty($payload['incluirLiq']) && in_array(strtolower((string)$payload['incluirLiq']), ['1', 'true', 's', 'on', 'yes'], true);
         $ids        = $payload['ids'] ?? null;
 
         $generadosEg = 0;
@@ -2978,6 +2990,9 @@ class MovimientosContablesController {
                     $whereIn .= "AND id_ingreso IN ($inPlaceholders) ";
                     $paramsIn = array_merge($paramsIn, $cleanIds);
                 } else {
+                    if (!$incluirLiq) {
+                        $whereIn .= "AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) <> 'LIQ' AND UPPER(TRIM(COALESCE(tip_doc, 'FAC'))) NOT LIKE '%LIQUIDAC%' ";
+                    }
                     if ($fechaDesde !== null) {
                         $whereIn .= "AND DATE(fec_ingreso) >= ? ";
                         $paramsIn[] = $fechaDesde;
@@ -3105,6 +3120,8 @@ class MovimientosContablesController {
             return null;
         }
 
+        $tipDoc = strtoupper(trim((string)($row['tip_doc'] ?? 'FAC')));
+        $esLiq = self::isLiquidacionSalario($tipDoc);
         $nroFactura = trim((string)($row['nro_factura'] ?? '')) ?: ('#' . $idIngreso);
         $nomCliente = trim((string)($row['nom_cliente'] ?? 'CLIENTES VARIOS'));
         $fecIngreso = $row['fec_ingreso'];
@@ -3116,9 +3133,13 @@ class MovimientosContablesController {
         $exentas = (float)($row['exentas'] ?? 0);
         $valorTotal = (float)($row['valor_total'] ?? 0);
 
+        if ($esLiq && $exentas <= 0 && $valorTotal > 0) {
+            $exentas = $valorTotal;
+        }
+
         return self::registrarAsientoContableIngreso(
             $idProp, $idIngreso, $empresa, $usuario, $fecIngreso, $nroFactura, $nomCliente,
-            $condicion, $grav10, $iva10, $grav5, $iva5, $exentas, $valorTotal
+            $condicion, $grav10, $iva10, $grav5, $iva5, $exentas, $valorTotal, [], [], $tipDoc
         );
     }
 
@@ -3126,7 +3147,7 @@ class MovimientosContablesController {
         int $idProp, int $idIngreso, string $empresa, string $usuario,
         ?string $fecIngreso, string $nroFactura, string $nomCliente,
         string $condicion, float $grav10, float $iva10, float $grav5, float $iva5, float $exentas, float $valorTotal,
-        array $debeList = [], array $haberList = []
+        array $debeList = [], array $haberList = [], ?string $tipDoc = null
     ): ?int {
         try {
             self::asegurarColumnaAsiento();
@@ -3160,39 +3181,47 @@ class MovimientosContablesController {
             $totalHaber = 0.0;
             $detRows    = [];
             $secuencia  = 1;
-            $descBase   = "Factura N° {$nroFactura} - {$nomCliente}";
+            
+            $esLiq = self::isLiquidacionSalario($tipDoc);
+            $descBase = $esLiq
+                ? "Liquidación de Salario N° {$nroFactura} - {$nomCliente}"
+                : "Factura N° {$nroFactura} - {$nomCliente}";
 
             if (empty($debeList) && empty($haberList)) {
                 $esCredito = (strtoupper(substr(trim($condicion), 0, 3)) === 'CRE');
                 $ctaDebe = $esCredito ? '01.01.02.01.01 - CLIENTES LOCALES' : '01.01.01.02.01 - CAJA GUARANÍES';
                 $debeList[] = ['cuenta' => $ctaDebe, 'debe' => $valorTotal];
 
-                $neto10 = round($grav10 - $iva10, 2);
-                if ($neto10 > 0) {
-                    $haberList[] = ['cuenta' => '04.01.01.01.01 - VENTAS DE MERCADERÍAS GRAVADAS POR EL IVA AL 10%', 'haber' => $neto10];
-                }
-                if ($iva10 > 0) {
-                    $haberList[] = ['cuenta' => '02.01.03.01.01 - IVA DÉBITO FISCAL 10%', 'haber' => $iva10];
-                }
-                $neto5 = round($grav5 - $iva5, 2);
-                if ($neto5 > 0) {
-                    $haberList[] = ['cuenta' => '04.01.01.02.01 - VENTAS DE MERCADERÍAS GRAVADAS POR EL IVA AL 5%', 'haber' => $neto5];
-                }
-                if ($iva5 > 0) {
-                    $haberList[] = ['cuenta' => '02.01.03.01.02 - IVA DÉBITO FISCAL 5%', 'haber' => $iva5];
-                }
-                if ($exentas > 0) {
-                    $haberList[] = ['cuenta' => '04.01.01.03.01 - VENTAS EXENTAS DEL IVA', 'haber' => $exentas];
-                }
+                if ($esLiq) {
+                    $haberList[] = ['cuenta' => '04.01.01.03.01 - VENTAS Y SERVICIOS EXENTOS', 'haber' => $valorTotal];
+                } else {
+                    $neto10 = round($grav10 - $iva10, 2);
+                    if ($neto10 > 0) {
+                        $haberList[] = ['cuenta' => '04.01.01.01.01 - VENTAS DE MERCADERÍAS 10%', 'haber' => $neto10];
+                    }
+                    if ($iva10 > 0) {
+                        $haberList[] = ['cuenta' => '02.01.03.01.01 - IVA DÉBITO FISCAL 10%', 'haber' => $iva10];
+                    }
+                    $neto5 = round($grav5 - $iva5, 2);
+                    if ($neto5 > 0) {
+                        $haberList[] = ['cuenta' => '04.01.01.02.01 - VENTAS GRAVADAS AL 5%', 'haber' => $neto5];
+                    }
+                    if ($iva5 > 0) {
+                        $haberList[] = ['cuenta' => '02.01.03.01.02 - IVA DÉBITO FISCAL 5%', 'haber' => $iva5];
+                    }
+                    if ($exentas > 0) {
+                        $haberList[] = ['cuenta' => '04.01.01.03.01 - VENTAS Y SERVICIOS EXENTOS', 'haber' => $exentas];
+                    }
 
-                if (empty($haberList) && $valorTotal > 0) {
-                    $haberList[] = ['cuenta' => '04.01.01.01.01 - VENTAS DE MERCADERÍAS GRAVADAS POR EL IVA AL 10%', 'haber' => $valorTotal];
-                }
+                    if (empty($haberList) && $valorTotal > 0) {
+                        $haberList[] = ['cuenta' => '04.01.01.01.01 - VENTAS DE MERCADERÍAS 10%', 'haber' => $valorTotal];
+                    }
 
-                $sumHaber = array_sum(array_column($haberList, 'haber'));
-                $diff = round($valorTotal - $sumHaber, 2);
-                if ($diff != 0 && !empty($haberList)) {
-                    $haberList[0]['haber'] = round($haberList[0]['haber'] + $diff, 2);
+                    $sumHaber = array_sum(array_column($haberList, 'haber'));
+                    $diff = round($valorTotal - $sumHaber, 2);
+                    if ($diff != 0 && !empty($haberList)) {
+                        $haberList[0]['haber'] = round($haberList[0]['haber'] + $diff, 2);
+                    }
                 }
             }
 

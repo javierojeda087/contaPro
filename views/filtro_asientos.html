@@ -53,16 +53,24 @@
                         </label>
                         <input type="date" id="fechaHasta" class="form-control form-control-sm" style="font-weight: 600; border-radius: 6px;" th:value="${defFechaHasta}">
                     </div>
-                    <div class="col-md-4 col-sm-12 d-flex gap-1 flex-wrap">
+                    <div class="col-md-3 col-sm-6 d-flex align-items-center" style="height: 58px;">
+                        <div class="form-check form-switch m-0 d-flex align-items-center gap-2">
+                            <input class="form-check-input" type="checkbox" id="chkIncluirLiq" onchange="consultarTodo()" style="cursor: pointer; width: 2.3em; height: 1.25em;">
+                            <label class="form-check-label fw-bold" for="chkIncluirLiq" style="font-size: 0.84rem; color: #334155; cursor: pointer;">
+                                Incluir Liquidación Salario (LIQ)
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 text-end">
+                        <button type="button" class="btn btn-primary btn-sm w-100" onclick="consultarTodo()" style="font-weight: 700; border-radius: 6px; padding: 7px 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                            <i class="ph ph-magnifying-glass"></i> Actualizar
+                        </button>
+                    </div>
+                    <div class="col-12 d-flex gap-1 flex-wrap pt-1">
                         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setPeriodo('mesActual')" style="font-size: 0.8rem; font-weight: 600; border-radius: 6px;">Este Mes</button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setPeriodo('mesAnterior')" style="font-size: 0.8rem; font-weight: 600; border-radius: 6px;">Mes Ant.</button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setPeriodo('anioActual')" style="font-size: 0.8rem; font-weight: 600; border-radius: 6px;">Año Actual</button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setPeriodo('hoy')" style="font-size: 0.8rem; font-weight: 600; border-radius: 6px;">Hoy</button>
-                    </div>
-                    <div class="col-md-2 col-sm-12 text-end">
-                        <button type="button" class="btn btn-primary btn-sm w-100" onclick="consultarTodo()" style="font-weight: 700; border-radius: 6px; padding: 7px 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-                            <i class="ph ph-magnifying-glass"></i> Actualizar
-                        </button>
                     </div>
                 </div>
             </div>
@@ -302,11 +310,12 @@
         function cargarResumen() {
             const fDesde = document.getElementById('fechaDesde').value;
             const fHasta = document.getElementById('fechaHasta').value;
+            const incLiq = document.getElementById('chkIncluirLiq')?.checked ? '1' : '0';
 
             document.getElementById('lblEgresosPendientes').innerText = '...';
             document.getElementById('lblIngresosPendientes').innerText = '...';
 
-            fetch(`/api/asientos/pendientes-resumen?fechaDesde=${encodeURIComponent(fDesde)}&fechaHasta=${encodeURIComponent(fHasta)}`)
+            fetch(`/api/asientos/pendientes-resumen?fechaDesde=${encodeURIComponent(fDesde)}&fechaHasta=${encodeURIComponent(fHasta)}&incluirLiq=${incLiq}`)
                 .then(r => r.json())
                 .then(res => {
                     if (res.status !== 'success') return;
@@ -341,6 +350,7 @@
         function cargarDetalle() {
             const fDesde = document.getElementById('fechaDesde').value;
             const fHasta = document.getElementById('fechaHasta').value;
+            const incLiq = document.getElementById('chkIncluirLiq')?.checked ? '1' : '0';
 
             const tbody = document.getElementById('tablaPendientesBody');
             tbody.innerHTML = `
@@ -352,7 +362,7 @@
                 </tr>
             `;
 
-            fetch(`/api/asientos/pendientes-detalle?tipo=TODOS&fechaDesde=${encodeURIComponent(fDesde)}&fechaHasta=${encodeURIComponent(fHasta)}`)
+            fetch(`/api/asientos/pendientes-detalle?tipo=TODOS&fechaDesde=${encodeURIComponent(fDesde)}&fechaHasta=${encodeURIComponent(fHasta)}&incluirLiq=${incLiq}`)
                 .then(r => r.json())
                 .then(res => {
                     if (res.status !== 'success') {
@@ -611,7 +621,8 @@
                 cancelButtonText: 'Cancelar'
             }).then(result => {
                 if (result.isConfirmed) {
-                    ejecutarGeneracion({ tipo: tipo, fechaDesde: fDesde, fechaHasta: fHasta });
+                    const incLiq = document.getElementById('chkIncluirLiq')?.checked ? 1 : 0;
+                    ejecutarGeneracion({ tipo: tipo, fechaDesde: fDesde, fechaHasta: fHasta, incluirLiq: incLiq });
                 }
             });
         }
