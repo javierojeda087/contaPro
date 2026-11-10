@@ -265,22 +265,22 @@ class DirectoriosContablesController {
             }
             if (empty($contado)) {
                 $contado = [
-                    'CTA_IVA10'         => '01.01.03.05.03.01 - IVA CRÉDITO 10%',
-                    'CTA_IVA5'          => '01.01.03.05.03.02 - IVA CRÉDITO 05%',
-                    'CTA_GRAV10'        => '01.01.04.01.01 - MERCADERÍAS GRAVADAS POR EL IVA AL 10%',
-                    'CTA_GRAV5'         => '01.01.04.01.02 - MERCADERÍAS GRAVADAS POR EL IVA AL 5%',
-                    'CTA_EXENTAS'       => '01.01.04.01.03 - MERCADERÍAS EXENTAS DEL IVA',
-                    'CTA_CONTRAPARTIDA' => '01.01.01.02.01 - CAJA GUARANÍES',
+                    'CTA_IVA10'         => '01.01.03.01.01 - IVA CRÉDITO FISCAL 10%',
+                    'CTA_IVA5'          => '01.01.03.01.02 - IVA CRÉDITO FISCAL 5%',
+                    'CTA_GRAV10'        => '01.01.04.01.01 - MERCADERÍAS PARA LA VENTA',
+                    'CTA_GRAV5'         => '01.01.04.01.01 - MERCADERÍAS PARA LA VENTA',
+                    'CTA_EXENTAS'       => '01.01.04.01.01 - MERCADERÍAS PARA LA VENTA',
+                    'CTA_CONTRAPARTIDA' => '01.01.01.02.01 - CAJA CENTRAL GUARANÍES',
                 ];
             }
             if (empty($credito)) {
                 $credito = [
-                    'CTA_IVA10'         => '01.01.03.05.03.01 - IVA CRÉDITO 10%',
-                    'CTA_IVA5'          => '01.01.03.05.03.02 - IVA CRÉDITO 05%',
-                    'CTA_GRAV10'        => '01.01.04.01.01 - MERCADERÍAS GRAVADAS POR EL IVA AL 10%',
-                    'CTA_GRAV5'         => '01.01.04.01.02 - MERCADERÍAS GRAVADAS POR EL IVA AL 5%',
-                    'CTA_EXENTAS'       => '01.01.04.01.03 - MERCADERÍAS EXENTAS DEL IVA',
-                    'CTA_CONTRAPARTIDA' => '02.01.01.01 - PROVEEDORES LOCALES [ CORTO PLAZO ]',
+                    'CTA_IVA10'         => '01.01.03.01.01 - IVA CRÉDITO FISCAL 10%',
+                    'CTA_IVA5'          => '01.01.03.01.02 - IVA CRÉDITO FISCAL 5%',
+                    'CTA_GRAV10'        => '01.01.04.01.01 - MERCADERÍAS PARA LA VENTA',
+                    'CTA_GRAV5'         => '01.01.04.01.01 - MERCADERÍAS PARA LA VENTA',
+                    'CTA_EXENTAS'       => '01.01.04.01.01 - MERCADERÍAS PARA LA VENTA',
+                    'CTA_CONTRAPARTIDA' => '02.01.01.01.01 - PROVEEDORES LOCALES VARIOS',
                 ];
             }
             View::json(['status' => 'success', 'contado' => $contado, 'credito' => $credito]);
@@ -331,12 +331,12 @@ class DirectoriosContablesController {
                      VALUES (?, ?, 'CONTADO', ?, ?, ?, ?, ?, ?)",
                     [
                         $idProp, $codPersona,
-                        $contado['ctaIva10']   ?? '01.01.03.05.03.01 - IVA CRÉDITO 10%',
-                        $contado['ctaIva5']    ?? '01.01.03.05.03.02 - IVA CRÉDITO 05%',
-                        $contado['ctaGrav10']  ?? '01.01.04.01.01 - MERCADERÍAS GRAVADAS POR EL IVA AL 10%',
-                        $contado['ctaGrav5']   ?? '01.01.04.01.02 - MERCADERÍAS GRAVADAS POR EL IVA AL 5%',
-                        $contado['ctaExentas'] ?? '01.01.04.01.03 - MERCADERÍAS EXENTAS DEL IVA',
-                        $contado['ctaContra']  ?? '01.01.01.02.01 - CAJA GUARANÍES',
+                        $contado['ctaIva10']   ?? '01.01.03.01.01 - IVA CRÉDITO FISCAL 10%',
+                        $contado['ctaIva5']    ?? '01.01.03.01.02 - IVA CRÉDITO FISCAL 5%',
+                        $contado['ctaGrav10']  ?? '01.01.04.01.01 - MERCADERÍAS PARA LA VENTA',
+                        $contado['ctaGrav5']   ?? '01.01.04.01.01 - MERCADERÍAS PARA LA VENTA',
+                        $contado['ctaExentas'] ?? '01.01.04.01.01 - MERCADERÍAS PARA LA VENTA',
+                        $contado['ctaContra']  ?? '01.01.01.02.01 - CAJA CENTRAL GUARANÍES',
                     ]
                 );
             }
@@ -352,12 +352,12 @@ class DirectoriosContablesController {
                      VALUES (?, ?, 'CREDITO', ?, ?, ?, ?, ?, ?)",
                     [
                         $idProp, $codPersona,
-                        $credito['ctaIva10']   ?? '01.01.03.05.03.01 - IVA CRÉDITO 10%',
-                        $credito['ctaIva5']    ?? '01.01.03.05.03.02 - IVA CRÉDITO 05%',
-                        $credito['ctaGrav10']  ?? '01.01.04.01.01 - MERCADERÍAS GRAVADAS POR EL IVA AL 10%',
-                        $credito['ctaGrav5']   ?? '01.01.04.01.02 - MERCADERÍAS GRAVADAS POR EL IVA AL 5%',
-                        $credito['ctaExentas'] ?? '01.01.04.01.03 - MERCADERÍAS EXENTAS DEL IVA',
-                        $credito['ctaContra']  ?? '02.01.01.01 - PROVEEDORES LOCALES [ CORTO PLAZO ]',
+                        $credito['ctaIva10']   ?? '01.01.03.01.01 - IVA CRÉDITO FISCAL 10%',
+                        $credito['ctaIva5']    ?? '01.01.03.01.02 - IVA CRÉDITO FISCAL 5%',
+                        $credito['ctaGrav10']  ?? '01.01.04.01.01 - MERCADERÍAS PARA LA VENTA',
+                        $credito['ctaGrav5']   ?? '01.01.04.01.01 - MERCADERÍAS PARA LA VENTA',
+                        $credito['ctaExentas'] ?? '01.01.04.01.01 - MERCADERÍAS PARA LA VENTA',
+                        $credito['ctaContra']  ?? '02.01.01.01.01 - PROVEEDORES LOCALES VARIOS',
                     ]
                 );
             }

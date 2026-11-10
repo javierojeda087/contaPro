@@ -2406,20 +2406,20 @@
             const isContado = (condicion === 'CON' || condicion.toLowerCase().includes('contado'));
 
             const defaultContado = {
-                CTA_IVA10: '01.01.03.05.03.01 - IVA CRÉDITO 10%',
-                CTA_IVA5: '01.01.03.05.03.02 - IVA CRÉDITO 05%',
-                CTA_GRAV10: '01.01.04.01.01 - MERCADERÍAS GRAVADAS POR EL IVA AL 10%',
-                CTA_GRAV5: '01.01.04.01.02 - MERCADERÍAS GRAVADAS POR EL IVA AL 5%',
-                CTA_EXENTAS: '01.01.04.01.03 - MERCADERÍAS EXENTAS DEL IVA',
-                CTA_CONTRAPARTIDA: '01.01.01.02.01 - CAJA GUARANÍES'
+                CTA_IVA10: '01.01.03.01.01 - IVA CRÉDITO FISCAL 10%',
+                CTA_IVA5: '01.01.03.01.02 - IVA CRÉDITO FISCAL 5%',
+                CTA_GRAV10: '01.01.04.01.01 - MERCADERÍAS PARA LA VENTA',
+                CTA_GRAV5: '01.01.04.01.01 - MERCADERÍAS PARA LA VENTA',
+                CTA_EXENTAS: '01.01.04.01.01 - MERCADERÍAS PARA LA VENTA',
+                CTA_CONTRAPARTIDA: '01.01.01.02.01 - CAJA CENTRAL GUARANÍES'
             };
             const defaultCredito = {
-                CTA_IVA10: '01.01.03.05.03.01 - IVA CRÉDITO 10%',
-                CTA_IVA5: '01.01.03.05.03.02 - IVA CRÉDITO 05%',
-                CTA_GRAV10: '01.01.04.01.01 - MERCADERÍAS GRAVADAS POR EL IVA AL 10%',
-                CTA_GRAV5: '01.01.04.01.02 - MERCADERÍAS GRAVADAS POR EL IVA AL 5%',
-                CTA_EXENTAS: '01.01.04.01.03 - MERCADERÍAS EXENTAS DEL IVA',
-                CTA_CONTRAPARTIDA: '02.01.01.01 - PROVEEDORES LOCALES [ CORTO PLAZO ]'
+                CTA_IVA10: '01.01.03.01.01 - IVA CRÉDITO FISCAL 10%',
+                CTA_IVA5: '01.01.03.01.02 - IVA CRÉDITO FISCAL 5%',
+                CTA_GRAV10: '01.01.04.01.01 - MERCADERÍAS PARA LA VENTA',
+                CTA_GRAV5: '01.01.04.01.01 - MERCADERÍAS PARA LA VENTA',
+                CTA_EXENTAS: '01.01.04.01.01 - MERCADERÍAS PARA LA VENTA',
+                CTA_CONTRAPARTIDA: '02.01.01.01.01 - PROVEEDORES LOCALES VARIOS'
             };
 
             let cfg = isContado ? defaultContado : defaultCredito;
