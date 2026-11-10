@@ -12,19 +12,8 @@
 
         <div class="content-area" style="padding: 20px;">
 
-            <!-- Header Sub-Bar / Status Info -->
-            <div style="background: #1e293b; color: #f8fafc; padding: 8px 16px; border-radius: 8px 8px 0 0; font-size: 0.85rem; font-weight: 500; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0284c7;">
-                <div>
-                    <i class="ph ph-notebook" style="color: #38bdf8; margin-right: 6px;"></i>
-                    <strong>Asientos Contables</strong> | <span style="color: #94a3b8;">Empresa:</span> <span id="lblEmpresaInfo">1 - CONTRIBUYENTE DEMOSTRATIVO</span> | <span style="color: #94a3b8;">Configuración:</span> IRE-GENERAL / CENTRAL / <span th:text="${currentYear}">2026</span>
-                </div>
-                <div>
-                    <span class="badge bg-primary" style="font-size: 0.75rem; font-weight: 600;">Libro Diario V1.0</span>
-                </div>
-            </div>
-
-            <!-- Toolbar (Matching Exact User Screenshot 1) -->
-            <div style="background: #ffffff; padding: 12px 16px; border: 1px solid #cbd5e1; border-top: none; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <!-- Toolbar (Estilo moderno unificado) -->
+            <div style="background: #ffffff; padding: 14px 18px; border: 1px solid #cbd5e1; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
                 
                 <!-- Action Buttons: Nuevo, Modificar, Eliminar, Imprimir, Importar -->
                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
@@ -88,7 +77,7 @@
             </div>
 
             <!-- Asientos Main Table Container -->
-            <div style="background: white; border: 1px solid #cbd5e1; border-top: none; border-radius: 0 0 8px 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); overflow: hidden;">
+            <div style="background: white; border: 1px solid #cbd5e1; border-top: none; border-radius: 0 0 10px 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); overflow: hidden;">
                 <div style="max-height: calc(100vh - 270px); overflow-y: auto;">
                     <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
                         <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 10; border-bottom: 2px solid #cbd5e1; color: #334155;">

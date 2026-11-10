@@ -214,8 +214,8 @@
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td id="lblRazonSocial">CONTRIBUYENTE DEMOSTRATIVO</td>
-                                        <td id="lblRuc" style="text-align: center;">5555-7</td>
+                                        <td id="lblRazonSocial" th:text="${(session.empresaDesc != null and session.empresaDesc != '') ? session.empresaDesc : 'EMPRESA'}">EMPRESA</td>
+                                        <td id="lblRuc" style="text-align: center;">---</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -369,9 +369,9 @@
             if (data.fechaDesde) document.getElementById('fechaDesde').value = data.fechaDesde;
             if (data.fechaHasta) document.getElementById('fechaHasta').value = data.fechaHasta;
             const emp = data.empresaInfo || {};
-            document.getElementById('lblRazonSocial').textContent = emp.razonSocial || 'CONTRIBUYENTE DEMOSTRATIVO';
-            document.getElementById('lblRuc').textContent = emp.ruc || '5555-7';
-            document.getElementById('lblActividad').textContent = emp.actividad || 'IRE-GENERAL/IRACIS';
+            document.getElementById('lblRazonSocial').textContent = emp.razonSocial || emp.descripcion || '';
+            document.getElementById('lblRuc').textContent = emp.ruc || emp.rucEmpresa || '';
+            document.getElementById('lblActividad').textContent = emp.actividad || 'IRE-GENERAL';
             document.getElementById('lblDesde').textContent = emp.fechaDesdeStr || '';
             document.getElementById('lblHasta').textContent = emp.fechaHastaStr || '';
             document.getElementById('lblRepLegal').textContent = emp.repLegalNombre || '';

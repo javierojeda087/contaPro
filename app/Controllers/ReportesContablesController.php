@@ -50,11 +50,12 @@ class ReportesContablesController {
 
     private static function fetchEmpresaInfo(string $codEmpresa, string $ejercicio): array {
         $idProp = TenantContext::idPropietario();
+        $nomEmp = TenantContext::nomEmpresa() ?: 'EMPRESA';
         $result = [
-            'codEmpresa'  => $codEmpresa,
-            'descripcion' => 'CONTRIBUYENTE DEMOSTRATIVO',
-            'rucEmpresa'  => '5555-7',
-            'actividad'   => 'IRE-GENERAL/IRACIS',
+            'codEmpresa'  => $codEmpresa ?: TenantContext::empresa(),
+            'descripcion' => $nomEmp,
+            'rucEmpresa'  => '',
+            'actividad'   => 'IRE-GENERAL',
         ];
         try {
             $row = Database::queryForMap(
@@ -64,10 +65,10 @@ class ReportesContablesController {
             );
             if ($row) {
                 $result['codEmpresa']  = (string)($row['cod_empresa'] ?? $codEmpresa);
-                $result['descripcion'] = (string)($row['descripcion'] ?? 'CONTRIBUYENTE DEMOSTRATIVO');
+                $result['descripcion'] = (string)($row['descripcion'] ?? $nomEmp);
                 $result['rucEmpresa']  = (string)($row['ruc_empresa'] ?? '');
                 $act = trim((string)($row['actividad'] ?? ''));
-                $result['actividad']   = $act !== '' ? $act : 'IRE-GENERAL/IRACIS';
+                $result['actividad']   = $act !== '' ? $act : 'IRE-GENERAL';
             }
         } catch (\Throwable $ignored) {}
 
@@ -936,8 +937,8 @@ class ReportesContablesController {
         self::renderFormPage('exportar_marangatu', [
             'nomForma'        => 'COMARANG',
             'tituloForma'     => 'Exportar a Marangatu (RG 90/2021)',
-            'empresaRuc'      => (string)($emp['ruc_empresa'] ?? '5555-7'),
-            'empresaNombre'   => (string)($emp['descripcion'] ?? 'CONTRIBUYENTE DEMOSTRATIVO'),
+            'empresaRuc'      => (string)($emp['ruc_empresa'] ?? ''),
+            'empresaNombre'   => (string)($emp['descripcion'] ?? (TenantContext::nomEmpresa() ?: 'EMPRESA')),
             'firstDayOfMonth' => $def[0],
             'currentDate'     => $def[1],
             'ejerInicio'      => $rango[0],
@@ -1088,14 +1089,15 @@ class ReportesContablesController {
     // =========================================================================
     private static function fetchForm120EmpresaInfo(string $codEmpresa): array {
         $idProp = TenantContext::idPropietario();
+        $nomEmp = TenantContext::nomEmpresa() ?: 'EMPRESA';
         $emp = [
             'cod_empresa'      => $codEmpresa,
-            'razon_social'     => 'CONTRIBUYENTE DEMOSTRATIVO',
-            'primer_apellido'  => 'CONTRIBUYENTE DEMOSTRATIVO',
+            'razon_social'     => $nomEmp,
+            'primer_apellido'  => $nomEmp,
             'segundo_apellido' => '',
             'nombres'          => '',
-            'rucNum'           => '5555',
-            'rucDv'            => '7',
+            'rucNum'           => '',
+            'rucDv'            => '',
         ];
         try {
             $row = Database::queryForMap(
@@ -1105,7 +1107,7 @@ class ReportesContablesController {
             );
             if ($row) {
                 $emp['cod_empresa']  = (string)($row['cod_empresa'] ?? $codEmpresa);
-                $rs = trim((string)($row['razon_social'] ?? 'CONTRIBUYENTE DEMOSTRATIVO'));
+                $rs = trim((string)($row['razon_social'] ?? $nomEmp));
                 $emp['razon_social'] = $rs;
                 $rucRaw = trim((string)($row['ruc'] ?? ''));
                 if (str_contains($rucRaw, '-')) {
