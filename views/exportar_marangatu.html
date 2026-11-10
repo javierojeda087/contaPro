@@ -297,8 +297,16 @@
                 tbody.innerHTML = `<tr><td colspan="11" class="text-center py-3 text-muted"><i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite; display: inline-block;"></i> Consultando comprobantes...</td></tr>`;
             }
 
-            fetch(`/api/marangatu/resumen?fechaInicial=${encodeURIComponent(fIni)}&fechaFinal=${encodeURIComponent(fFin)}&incluirLiq=${incLiq}&incluirExentas=${incExentas}`)
-                .then(r => r.json())
+            const apiPrefix = (window.location.pathname.match(/^(\/~[^\/]+)/) || [''])[0];
+            const url = `${apiPrefix}/api/marangatu/resumen?fechaInicial=${encodeURIComponent(fIni)}&fechaFinal=${encodeURIComponent(fFin)}&incluirLiq=${incLiq}&incluirExentas=${incExentas}`;
+
+            fetch(url)
+                .then(r => {
+                    if (r.status === 404) {
+                        throw new Error("Ruta no encontrada (404). Por favor ejecuta 'git pull' en el servidor para actualizar index.php y los controladores.");
+                    }
+                    return r.json();
+                })
                 .then(res => {
                     if (res.status !== 'success') return;
 
@@ -379,9 +387,13 @@
                     });
                 })
                 .catch(err => {
-                    console.error("Error al consultar resumen RG 90:", err);
+                    console.warn("Verificación RG 90:", err.message);
                     if (tbody) {
-                        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-3 text-danger">Error al cargar verificación</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-3" style="color: #64748b; font-size: 0.8rem;">
+                            <i class="ph ph-info" style="font-size: 1.1rem; color: #0284c7; vertical-align: middle;"></i>
+                            ${err.message || 'Verificación no disponible temporalmente'}.
+                            <div class="mt-1" style="color: #15803d; font-weight: 600;">El botón "Exportar Archivo (.ZIP)" genera el archivo reglamentario directamente con los filtros seleccionados.</div>
+                        </td></tr>`;
                     }
                 });
         }
