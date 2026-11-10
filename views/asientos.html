@@ -4,6 +4,14 @@
 </head>
 <body style="background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
     
+    <style>
+        .qf-btn { background: #fff; border: 1px solid #cbd5e1; color: #334155; font-size: 0.76rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; cursor: pointer; transition: all .15s; }
+        .qf-btn:hover:not(:disabled) { border-color: #0284c7; color: #0284c7; background: #f0f9ff; }
+        .qf-btn.active { background: #0284c7; border-color: #0284c7; color: #fff; }
+        .qf-btn:disabled { opacity: .4; cursor: not-allowed; }
+        .table-row-selected { background-color: #e0f2fe !important; }
+    </style>
+
     <!-- Sidebar -->
     <div th:replace="~{fragments/layout :: sidebar}"></div>
 
@@ -12,97 +20,213 @@
 
         <div class="content-area" style="padding: 20px;">
 
-            <!-- Toolbar (Estilo moderno unificado) -->
-            <div style="background: #ffffff; padding: 14px 18px; border: 1px solid #cbd5e1; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <!-- Header & Title -->
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <div>
+                    <h3 style="font-weight: 800; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 10px; font-size: 1.45rem;">
+                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; background: #e0f2fe; color: #0284c7;">
+                            <i class="ph ph-receipt" style="font-size: 1.35rem;"></i>
+                        </span>
+                        Registro de Asientos Contables
+                    </h3>
+                    <p style="color: #64748b; font-size: 0.85rem; margin: 3px 0 0 48px;">
+                        Libro Diario general, gestión de partidas dobles y control de asientos por ejercicio
+                    </p>
+                </div>
+            </div>
+
+            <!-- Toolbar Superior de Acciones -->
+            <div style="background: #ffffff; padding: 12px 18px; border: 1px solid #cbd5e1; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); margin-bottom: 14px;">
                 
-                <!-- Action Buttons: Nuevo, Modificar, Eliminar, Imprimir, Importar -->
+                <!-- Action Buttons: Nuevo, Modificar, Anular, Eliminar, Imprimir, Filtro Asientos -->
                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                     <button type="button" class="btn" onclick="openCreateModal()" 
-                            style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                            style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 0.84rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
                             onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
-                        <i class="ph ph-plus-circle" style="font-size: 1.1rem; color: #0284c7;"></i> Nuevo
+                        <i class="ph ph-plus-circle" style="font-size: 1.15rem; color: #0284c7;"></i> Nuevo
                     </button>
 
                     <button type="button" class="btn" onclick="openEditModal()" 
-                            style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                            style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 0.84rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
                             onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
-                        <i class="ph ph-pencil-simple" style="font-size: 1.1rem; color: #d97706;"></i> Modificar
+                        <i class="ph ph-pencil-simple" style="font-size: 1.15rem; color: #d97706;"></i> Modificar
                     </button>
 
                     <button type="button" class="btn" onclick="anularSelectedAsiento()" 
-                            style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                            style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 0.84rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
                             onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
-                        <i class="ph ph-trash" style="font-size: 1.1rem; color: #dc2626;"></i> Anular
+                        <i class="ph ph-prohibit" style="font-size: 1.15rem; color: #d97706;"></i> Anular
+                    </button>
+
+                    <button type="button" class="btn" onclick="eliminarAsientoSeleccionado()" 
+                            style="background: #ffffff; color: #dc2626; border: 1px solid #fecaca; padding: 6px 14px; border-radius: 6px; font-size: 0.84rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                            onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='#ffffff'">
+                        <i class="ph ph-trash" style="font-size: 1.15rem; color: #dc2626;"></i> Eliminar Asiento
                     </button>
 
                     <button type="button" class="btn" onclick="imprimirAsientos()" 
-                            style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                            style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 0.84rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
                             onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
-                        <i class="ph ph-printer" style="font-size: 1.1rem; color: #475569;"></i> Imprimir
+                        <i class="ph ph-printer" style="font-size: 1.15rem; color: #475569;"></i> Imprimir
                     </button>
 
                     <a href="/filtro-asientos" class="btn" 
-                       style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                       style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 6px 14px; border-radius: 6px; font-size: 0.84rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
                        onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">
-                        <i class="ph ph-lightning" style="font-size: 1.1rem; color: #2563eb;"></i> Filtro de Asientos
+                        <i class="ph ph-lightning" style="font-size: 1.15rem; color: #2563eb;"></i> Filtro de Asientos
                     </a>
                 </div>
 
-                <!-- Filters & Search (Periodo: Year, Month + Search) -->
-                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; color: #475569;">
-                        <span>Periodo:</span>
-                        <select id="filterYear" class="form-select form-select-sm" onchange="loadAsientosList()" style="width: 85px; font-size: 0.85rem;">
-                            <option th:value="${currentYear}" th:text="${currentYear}">2026</option>
-                            <option th:value="${currentYear - 1}" th:text="${currentYear - 1}">2025</option>
-                        </select>
-                        <select id="filterMonth" class="form-select form-select-sm" onchange="loadAsientosList()" style="width: 70px; font-size: 0.85rem;">
-                            <option value="0">Todos</option>
-                            <option value="1">01</option>
-                            <option value="2">02</option>
-                            <option value="3">03</option>
-                            <option value="4">04</option>
-                            <option value="5">05</option>
-                            <option value="6">06</option>
-                            <option value="7">07</option>
-                            <option value="8">08</option>
-                            <option value="9">09</option>
-                            <option value="10" selected>10</option>
-                            <option value="11">11</option>
-                            <option value="12">12</option>
+                <!-- Botón de Eliminación Masiva de Asientos Filtrados -->
+                <div>
+                    <button type="button" class="btn btn-danger" onclick="eliminarAsientosFiltrados()" 
+                            style="padding: 6px 14px; border-radius: 6px; font-size: 0.84rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(220,38,38,0.25);">
+                        <i class="ph ph-trash-simple" style="font-size: 1.15rem;"></i>
+                        <span>Eliminar Asientos Filtrados</span>
+                        <span id="badgeCantFiltrados" class="badge bg-white text-danger ms-1" style="font-size: 0.8rem; font-weight: 800; padding: 2px 6px; border-radius: 8px;">0</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Card de Filtros Avanzados (Rango de Fechas, Filtros Rápidos, Origen, Sucursal y Búsqueda) -->
+            <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px 20px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                
+                <!-- Periodos Rápidos -->
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 14px;">
+                    <span style="font-size: 0.74rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-right: 4px; display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="ph ph-lightning" style="color: #0284c7; font-size: 1rem;"></i> Rápido · Ejercicio <span th:text="${ejercicio}">2026</span>:
+                    </span>
+                    <button type="button" class="qf-btn" data-qf="hoy">Hoy</button>
+                    <button type="button" class="qf-btn" data-qf="ayer">Ayer</button>
+                    <button type="button" class="qf-btn active" data-qf="mes">Este mes</button>
+                    <button type="button" class="qf-btn" data-qf="mesAnt">Mes anterior</button>
+                    <button type="button" class="qf-btn" data-qf="trim">Trimestre</button>
+                    <button type="button" class="qf-btn" data-qf="anio">Todo el ejercicio</button>
+                    <span style="width: 1px; height: 20px; background: #cbd5e1; margin: 0 4px;"></span>
+                    <span id="qfMeses" style="display: flex; flex-wrap: wrap; gap: 4px;"></span>
+                </div>
+
+                <!-- Form Controls -->
+                <form id="filterForm" onsubmit="event.preventDefault(); loadAsientosList();" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+                    
+                    <div style="flex: 1 1 140px; min-width: 135px;">
+                        <label for="filtroFechaDesde" style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 4px;">
+                            <i class="ph ph-calendar"></i> Fecha Desde
+                        </label>
+                        <input type="date" id="filtroFechaDesde" th:value="${defFechaDesde}" th:min="${ejerInicio}" th:max="${ejerFinal}" class="form-control form-control-sm" style="height: 38px; border-radius: 6px; font-weight: 600;">
+                    </div>
+
+                    <div style="flex: 1 1 140px; min-width: 135px;">
+                        <label for="filtroFechaHasta" style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 4px;">
+                            <i class="ph ph-calendar"></i> Fecha Hasta
+                        </label>
+                        <input type="date" id="filtroFechaHasta" th:value="${defFechaHasta}" th:min="${ejerInicio}" th:max="${ejerFinal}" class="form-control form-control-sm" style="height: 38px; border-radius: 6px; font-weight: 600;">
+                    </div>
+
+                    <div style="flex: 1 1 150px; min-width: 140px;">
+                        <label for="filtroOrigen" style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 4px;">
+                            <i class="ph ph-tag"></i> Tipo / Origen
+                        </label>
+                        <select id="filtroOrigen" class="form-select form-select-sm" style="height: 38px; border-radius: 6px; font-weight: 600;" onchange="loadAsientosList()">
+                            <option value="TODOS">TODOS LOS ORÍGENES</option>
+                            <option value="MANUAL">MANUAL (Asientos Directos)</option>
+                            <option value="COEGRES">COEGRES (Compras / Gastos)</option>
+                            <option value="COINGRES">COINGRES (Ventas / Ingresos)</option>
                         </select>
                     </div>
 
-                    <div style="position: relative; width: 240px;">
-                        <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="BUSCAR" 
-                               oninput="onSearchInput()"
-                               style="border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem; text-transform: uppercase;">
+                    <div style="flex: 1 1 160px; min-width: 150px;">
+                        <label for="filtroSucursal" style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 4px;">
+                            <i class="ph ph-buildings"></i> Sucursal
+                        </label>
+                        <select id="filtroSucursal" class="form-select form-select-sm" style="height: 38px; border-radius: 6px; font-weight: 600;" onchange="loadAsientosList()">
+                            <option value="TODAS">TODAS LAS SUCURSALES</option>
+                        </select>
+                    </div>
+
+                    <div style="flex: 2 1 220px; min-width: 190px;">
+                        <label for="searchInput" style="display: block; font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 4px;">
+                            <i class="ph ph-magnifying-glass"></i> Buscar
+                        </label>
+                        <div style="position: relative;">
+                            <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="N° ASIENTO, COMPROBANTE, CONCEPTO..." oninput="onSearchInput()" style="height: 38px; border-radius: 6px; font-size: 0.85rem; text-transform: uppercase; padding-right: 30px;">
+                            <i class="ph ph-magnifying-glass" style="position: absolute; right: 10px; top: 11px; color: #94a3b8; pointer-events: none;"></i>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 8px;">
+                        <button type="submit" class="btn btn-primary" style="height: 38px; padding: 0 16px; border-radius: 6px; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="ph ph-arrow-clockwise"></i> Filtrar
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- KPI Cards Summary -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 14px;">
+                <div style="background: white; border-radius: 8px; padding: 12px 16px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.03); display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 38px; height: 38px; border-radius: 8px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                        <i class="ph ph-receipt"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Asientos Filtrados</div>
+                        <div id="kpiCantAsientos" style="font-size: 1.25rem; font-weight: 800; color: #0f172a;">0</div>
                     </div>
                 </div>
 
+                <div style="background: white; border-radius: 8px; padding: 12px 16px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.03); display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 38px; height: 38px; border-radius: 8px; background: #f0fdf4; color: #16a34a; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                        <i class="ph ph-trend-up"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Total Debe</div>
+                        <div id="kpiTotalDebe" style="font-size: 1.25rem; font-weight: 800; color: #15803d;">Gs. 0</div>
+                    </div>
+                </div>
+
+                <div style="background: white; border-radius: 8px; padding: 12px 16px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.03); display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 38px; height: 38px; border-radius: 8px; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                        <i class="ph ph-trend-down"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Total Haber</div>
+                        <div id="kpiTotalHaber" style="font-size: 1.25rem; font-weight: 800; color: #b45309;">Gs. 0</div>
+                    </div>
+                </div>
+
+                <div style="background: white; border-radius: 8px; padding: 12px 16px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.03); display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 38px; height: 38px; border-radius: 8px; background: #f8fafc; color: #475569; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                        <i class="ph ph-scales"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Estado Balance</div>
+                        <div id="kpiBalance" style="font-size: 1.15rem; font-weight: 800; color: #16a34a;">CUADRADO</div>
+                    </div>
+                </div>
             </div>
 
             <!-- Asientos Main Table Container -->
-            <div style="background: white; border: 1px solid #cbd5e1; border-top: none; border-radius: 0 0 10px 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); overflow: hidden;">
-                <div style="max-height: calc(100vh - 270px); overflow-y: auto;">
+            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); overflow: hidden;">
+                <div style="max-height: calc(100vh - 360px); overflow-y: auto;">
                     <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
                         <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 10; border-bottom: 2px solid #cbd5e1; color: #334155;">
                             <tr>
-                                <th style="width: 100px; text-align: center;">N° Asiento</th>
-                                <th style="width: 110px;">Fecha</th>
-                                <th style="width: 140px;">Sucursal</th>
-                                <th style="width: 120px;">Tipo / Origen</th>
-                                <th style="width: 140px;">N° Comprobante</th>
+                                <th style="width: 95px; text-align: center;">N° Asiento</th>
+                                <th style="width: 105px;">Fecha</th>
+                                <th style="width: 130px;">Sucursal</th>
+                                <th style="width: 110px;">Tipo / Origen</th>
+                                <th style="width: 130px;">N° Comprobante</th>
                                 <th>Concepto / Glosa General</th>
-                                <th style="width: 140px; text-align: right;">Total Debe</th>
-                                <th style="width: 140px; text-align: right;">Total Haber</th>
-                                <th style="width: 100px; text-align: center;">Estado</th>
+                                <th style="width: 130px; text-align: right;">Total Debe</th>
+                                <th style="width: 130px; text-align: right;">Total Haber</th>
+                                <th style="width: 95px; text-align: center;">Estado</th>
+                                <th style="width: 100px; text-align: center;">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="asientosTbody">
                             <!-- Injected by JavaScript -->
                             <tr>
-                                <td colspan="9" class="text-center py-4 text-muted">
+                                <td colspan="10" class="text-center py-4 text-muted">
                                     <i class="ph ph-spinner spinner" style="font-size: 1.5rem;"></i> Cargando asientos contables...
                                 </td>
                             </tr>
@@ -274,7 +398,11 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <script>
+    <script th:inline="javascript">
+        const EJERCICIO = /*[[${ejercicio}]]*/ '2026';
+        const EJER_INI  = /*[[${ejerInicio}]]*/ '2026-01-01';
+        const EJER_FIN  = /*[[${ejerFinal}]]*/ '2026-12-31';
+
         let asientosData = [];
         let selectedNumAsiento = null;
         let catalogoCuentas = [];
@@ -285,6 +413,7 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('fechaAsiento').value = today;
 
+            initFiltrosRapidos();
             loadSucursales();
             loadCatalogoCuentas();
             loadAsientosList();
@@ -293,30 +422,110 @@
             document.addEventListener('keydown', function(e) {
                 if (e.ctrlKey && e.key.toLowerCase() === 'f') {
                     e.preventDefault();
-                    document.getElementById('searchInput').focus();
+                    const s = document.getElementById('searchInput');
+                    if (s) s.focus();
                 }
             });
         });
+
+        // ---------- Filtros rápidos ----------
+        const pad = n => String(n).padStart(2, '0');
+        const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        const parseIso = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+        const clampIso = s => (s < EJER_INI ? EJER_INI : (s > EJER_FIN ? EJER_FIN : s));
+
+        function hoyEnEjercicio() {
+            const t = iso(new Date());
+            return parseIso(clampIso(t));
+        }
+
+        function aplicarRango(desde, hasta, btn) {
+            document.getElementById('filtroFechaDesde').value = clampIso(iso(desde));
+            document.getElementById('filtroFechaHasta').value = clampIso(iso(hasta));
+            document.querySelectorAll('.qf-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            loadAsientosList();
+        }
+
+        function initFiltrosRapidos() {
+            const y = parseIso(EJER_INI).getFullYear();
+            const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            const cont = document.getElementById('qfMeses');
+            if (cont) {
+                cont.innerHTML = '';
+                meses.forEach((m, i) => {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'qf-btn qf-mes';
+                    b.textContent = m;
+                    const ini = new Date(y, i, 1), fin = new Date(y, i + 1, 0);
+                    if (iso(fin) < EJER_INI || iso(ini) > EJER_FIN) b.disabled = true;
+                    b.onclick = () => aplicarRango(ini, fin, b);
+                    cont.appendChild(b);
+                });
+            }
+
+            document.querySelectorAll('.qf-btn[data-qf]').forEach(b => b.onclick = () => {
+                const ref = hoyEnEjercicio();
+                let d, h;
+                switch (b.dataset.qf) {
+                    case 'hoy':    d = h = ref; break;
+                    case 'ayer':   d = h = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() - 1); break;
+                    case 'mes':    d = new Date(ref.getFullYear(), ref.getMonth(), 1); h = new Date(ref.getFullYear(), ref.getMonth() + 1, 0); break;
+                    case 'mesAnt': d = new Date(ref.getFullYear(), ref.getMonth() - 1, 1); h = new Date(ref.getFullYear(), ref.getMonth(), 0); break;
+                    case 'trim':   { const q = Math.floor(ref.getMonth() / 3) * 3; d = new Date(ref.getFullYear(), q, 1); h = new Date(ref.getFullYear(), q + 3, 0); break; }
+                    case 'anio':   d = parseIso(EJER_INI); h = parseIso(EJER_FIN); break;
+                }
+                aplicarRango(d, h, b);
+            });
+
+            ['filtroFechaDesde', 'filtroFechaHasta'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('change', e => {
+                        if (e.target.value) e.target.value = clampIso(e.target.value);
+                        document.querySelectorAll('.qf-btn').forEach(b => b.classList.remove('active'));
+                    });
+                }
+            });
+        }
 
         function loadSucursales() {
             fetch('/api/asientos/sucursales')
                 .then(r => r.json())
                 .then(list => {
-                    const sel = document.getElementById('codSucursal');
-                    sel.innerHTML = '';
+                    const selModal = document.getElementById('codSucursal');
+                    const selFiltro = document.getElementById('filtroSucursal');
+                    
+                    if (selModal) selModal.innerHTML = '';
+                    if (selFiltro) selFiltro.innerHTML = '<option value="TODAS">TODAS LAS SUCURSALES</option>';
+
                     if (!list || list.length === 0) {
-                        sel.innerHTML = '<option value="1">CASA MATRIZ</option>';
+                        if (selModal) selModal.innerHTML = '<option value="1">CASA MATRIZ</option>';
                         return;
                     }
                     list.forEach(s => {
-                        const opt = document.createElement('option');
-                        opt.value = s.COD_SUCURSAL || s.cod_sucursal;
-                        opt.textContent = (s.DESCRIPCION || s.descripcion || s.COD_SUCURSAL);
-                        sel.appendChild(opt);
+                        const val = s.COD_SUCURSAL || s.cod_sucursal;
+                        const txt = s.DESCRIPCION || s.descripcion || val;
+
+                        if (selModal) {
+                            const opt = document.createElement('option');
+                            opt.value = val;
+                            opt.textContent = txt;
+                            selModal.appendChild(opt);
+                        }
+
+                        if (selFiltro) {
+                            const opt2 = document.createElement('option');
+                            opt2.value = val;
+                            opt2.textContent = txt;
+                            selFiltro.appendChild(opt2);
+                        }
                     });
                 })
                 .catch(() => {
-                    document.getElementById('codSucursal').innerHTML = '<option value="1">CASA MATRIZ</option>';
+                    const selModal = document.getElementById('codSucursal');
+                    if (selModal) selModal.innerHTML = '<option value="1">CASA MATRIZ</option>';
                 });
         }
 
@@ -329,25 +538,77 @@
         }
 
         function loadAsientosList() {
-            const year = document.getElementById('filterYear').value;
-            const month = document.getElementById('filterMonth').value;
-            const search = document.getElementById('searchInput').value;
+            const fechaDesde = document.getElementById('filtroFechaDesde')?.value || '';
+            const fechaHasta = document.getElementById('filtroFechaHasta')?.value || '';
+            const origen     = document.getElementById('filtroOrigen')?.value || 'TODOS';
+            const sucursal   = document.getElementById('filtroSucursal')?.value || 'TODAS';
+            const search     = document.getElementById('searchInput')?.value || '';
 
-            const url = `/api/asientos/list?ejercicio=${year}&mes=${month}&search=${encodeURIComponent(search)}`;
+            const params = new URLSearchParams({
+                fechaDesde: fechaDesde,
+                fechaHasta: fechaHasta,
+                origen: origen,
+                codSucursal: sucursal,
+                search: search,
+                ejercicio: EJERCICIO
+            });
 
-            fetch(url)
+            const tbody = document.getElementById('asientosTbody');
+            tbody.innerHTML = `
+                <tr><td colspan="10" class="text-center py-4 text-muted">
+                    <i class="ph ph-spinner spinner" style="font-size: 1.5rem;"></i> Cargando asientos contables...
+                </td></tr>`;
+
+            fetch(`/api/asientos/list?${params.toString()}`)
                 .then(r => r.json())
                 .then(data => {
-                    asientosData = data || [];
+                    asientosData = Array.isArray(data) ? data : [];
                     renderAsientosTable(asientosData);
+                    actualizarKPIs(asientosData);
                 })
                 .catch(err => {
                     console.error("Error cargando asientos:", err);
-                    document.getElementById('asientosTbody').innerHTML = `
-                        <tr><td colspan="9" class="text-center py-4 text-danger">
+                    tbody.innerHTML = `
+                        <tr><td colspan="10" class="text-center py-4 text-danger">
                             Error al cargar asientos contables.
                         </td></tr>`;
                 });
+        }
+
+        function actualizarKPIs(list) {
+            const cant = list.length;
+            let totDebe = 0;
+            let totHaber = 0;
+
+            list.forEach(item => {
+                totDebe += parseFloat(item.TOTAL_DEBE) || 0;
+                totHaber += parseFloat(item.TOTAL_HABER) || 0;
+            });
+
+            const diff = Math.abs(totDebe - totHaber);
+
+            const badgeCant = document.getElementById('badgeCantFiltrados');
+            if (badgeCant) badgeCant.textContent = formatNumber(cant);
+
+            const kpiCant = document.getElementById('kpiCantAsientos');
+            if (kpiCant) kpiCant.textContent = formatNumber(cant);
+
+            const kpiDebe = document.getElementById('kpiTotalDebe');
+            if (kpiDebe) kpiDebe.textContent = 'Gs. ' + formatNumber(totDebe);
+
+            const kpiHaber = document.getElementById('kpiTotalHaber');
+            if (kpiHaber) kpiHaber.textContent = 'Gs. ' + formatNumber(totHaber);
+
+            const kpiBalance = document.getElementById('kpiBalance');
+            if (kpiBalance) {
+                if (diff < 0.01) {
+                    kpiBalance.textContent = 'CUADRADO ✅';
+                    kpiBalance.style.color = '#16a34a';
+                } else {
+                    kpiBalance.textContent = `DESCUADRE ₲ ${formatNumber(diff)} ⚠️`;
+                    kpiBalance.style.color = '#dc2626';
+                }
+            }
         }
 
         function renderAsientosTable(list) {
@@ -357,8 +618,8 @@
             if (list.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="9" class="text-center py-4 text-muted" style="font-size: 0.9rem;">
-                            No se encontraron registros coincidentes
+                        <td colspan="10" class="text-center py-4 text-muted" style="font-size: 0.9rem;">
+                            No se encontraron registros coincidentes con los filtros seleccionados
                         </td>
                     </tr>`;
                 return;
@@ -371,7 +632,8 @@
                     tr.style.background = '#e0f2fe';
                 }
 
-                tr.onclick = function() {
+                tr.onclick = function(e) {
+                    if (e.target.closest('button')) return;
                     selectedNumAsiento = item.NUM_ASIENTO;
                     document.querySelectorAll('#asientosTbody tr').forEach(r => r.style.background = '');
                     tr.style.background = '#e0f2fe';
@@ -387,24 +649,43 @@
                     '<span class="badge bg-danger" style="font-size: 0.72rem;">ANULADO</span>' : 
                     '<span class="badge bg-success" style="font-size: 0.72rem;">ACTIVO</span>';
 
+                let origenBadge = '<span class="badge bg-secondary" style="font-size: 0.72rem;">MANUAL</span>';
+                if (item.ORIGEN_COMPROBANTE === 'COEGRES' || item.ORIGEN_COMPROBANTE === 'COMPRA' || item.ORIGEN_COMPROBANTE === 'EGRESO') {
+                    origenBadge = '<span class="badge bg-warning text-dark" style="font-size: 0.72rem;">COEGRES</span>';
+                } else if (item.ORIGEN_COMPROBANTE === 'COINGRES' || item.ORIGEN_COMPROBANTE === 'VENTA' || item.ORIGEN_COMPROBANTE === 'INGRESO') {
+                    origenBadge = '<span class="badge bg-info text-dark" style="font-size: 0.72rem;">COINGRES</span>';
+                }
+
                 tr.innerHTML = `
                     <td class="text-center font-bold" style="font-weight: 700; color: #0284c7;">${item.NUM_ASIENTO}</td>
                     <td>${item.FEC_ASIENTO_STR || ''}</td>
                     <td>${item.NOM_SUCURSAL || item.COD_SUCURSAL || 'MATRIZ'}</td>
-                    <td><span class="badge bg-secondary" style="font-size: 0.72rem;">${item.ORIGEN_COMPROBANTE || 'MANUAL'}</span></td>
+                    <td>${origenBadge}</td>
                     <td>${item.ID_COMPROBANTE || '-'}</td>
                     <td style="font-weight: 500;">${item.CONCEPTO || ''}</td>
                     <td class="text-end font-mono" style="font-weight: 600;">${formatNumber(item.TOTAL_DEBE)}</td>
                     <td class="text-end font-mono" style="font-weight: 600;">${formatNumber(item.TOTAL_HABER)}</td>
                     <td class="text-center">${statusBadge}</td>
+                    <td class="text-center" style="white-space: nowrap;">
+                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 me-1" onclick="openEditModalFor(${item.NUM_ASIENTO})" title="Modificar Asiento">
+                            <i class="ph ph-pencil-simple"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="eliminarAsientoIndividual(${item.NUM_ASIENTO})" title="Eliminar Asiento y Liberar Comprobante">
+                            <i class="ph ph-trash"></i>
+                        </button>
+                    </td>
                 `;
 
                 tbody.appendChild(tr);
             });
         }
 
+        let searchTimeout = null;
         function onSearchInput() {
-            loadAsientosList();
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                loadAsientosList();
+            }, 300);
         }
 
         // OPEN CREATION MODAL
@@ -429,6 +710,11 @@
 
             const modal = new bootstrap.Modal(document.getElementById('asientoModal'));
             modal.show();
+        }
+
+        function openEditModalFor(numAsiento) {
+            selectedNumAsiento = numAsiento;
+            openEditModal();
         }
 
         // OPEN EDIT MODAL
@@ -466,7 +752,7 @@
                     const tbody = document.getElementById('detallesTbody');
                     tbody.innerHTML = '';
 
-                    detList.forEach((d, idx) => {
+                    detList.forEach((d) => {
                         agregarLineaDetalle(d.COD_CUENTA, d.NOM_CUENTA, d.DESCRIPCION, d.DEBE, d.HABER);
                     });
 
@@ -520,23 +806,16 @@
         }
 
         function updateRowNumbers() {
-            const rows = document.querySelectorAll('#detallesTbody tr');
-            rows.forEach((r, idx) => {
-                const tdNum = r.querySelector('.row-number');
-                if (tdNum) tdNum.innerText = (idx + 1);
+            document.querySelectorAll('#detallesTbody tr').forEach((tr, idx) => {
+                const cell = tr.querySelector('.row-number');
+                if (cell) cell.innerText = idx + 1;
             });
         }
 
         function eliminarLineaDetalle(btn) {
-            const rows = document.querySelectorAll('#detallesTbody tr');
-            if (rows.length <= 2) {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Límite Mínimo',
-                    text: 'Un asiento contable requiere al menos 2 líneas.',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
+            const tbody = document.getElementById('detallesTbody');
+            if (tbody.children.length <= 2) {
+                Swal.fire('Atención', 'Un asiento contable debe poseer al menos 2 líneas de movimiento.', 'info');
                 return;
             }
             btn.closest('tr').remove();
@@ -546,60 +825,82 @@
 
         function onMontoInput(input, type) {
             const tr = input.closest('tr');
-            if (type === 'debe' && parseFloat(input.value) > 0) {
-                tr.querySelector('.input-haber').value = '';
-            } else if (type === 'haber' && parseFloat(input.value) > 0) {
-                tr.querySelector('.input-debe').value = '';
+            const val = parseFloat(input.value) || 0;
+            if (val > 0) {
+                if (type === 'debe') {
+                    const haberInput = tr.querySelector('.input-haber');
+                    if (haberInput) haberInput.value = '';
+                } else {
+                    const debeInput = tr.querySelector('.input-debe');
+                    if (debeInput) debeInput.value = '';
+                }
             }
             recalcularTotales();
         }
 
-        function onCodCuentaChange(input, rowIdx) {
-            const val = input.value.trim();
+        function onCodCuentaChange(input, rowIndex) {
+            const cod = input.value.trim();
             const tr = input.closest('tr');
             const nomInput = tr.querySelector('.input-nom-cuenta');
 
-            if (!val) {
+            if (!cod) {
                 nomInput.value = '';
                 return;
             }
 
-            const acc = catalogoCuentas.find(c => c.COD_CUENTA === val || c.cod_cuenta === val);
-            if (acc) {
-                nomInput.value = acc.DESCRIPCION || acc.descripcion || '';
+            const match = catalogoCuentas.find(c => c.COD_CUENTA === cod);
+            if (match) {
+                nomInput.value = match.DESCRIPCION || '';
             } else {
-                nomInput.value = 'CUENTA NO ENCONTRADA EN PLAN';
+                fetch(`/api/asientos/buscar-cuentas?q=${encodeURIComponent(cod)}`)
+                    .then(r => r.json())
+                    .then(list => {
+                        if (list && list.length > 0) {
+                            const exact = list.find(x => x.COD_CUENTA === cod) || list[0];
+                            input.value = exact.COD_CUENTA;
+                            nomInput.value = exact.DESCRIPCION;
+                        } else {
+                            nomInput.value = 'CUENTA NO ENCONTRADA';
+                        }
+                    });
             }
         }
 
-        function openCuentaSearchModal(rowIdx) {
-            activeRowIndexForSearch = rowIdx;
+        // CUENTA SEARCH MODAL
+        function openCuentaSearchModal(rowIndex) {
+            activeRowIndexForSearch = rowIndex;
             document.getElementById('cuentaModalSearchInput').value = '';
-            renderCuentasModalList(catalogoCuentas);
-
+            filtrarCuentasModal();
             const modal = new bootstrap.Modal(document.getElementById('cuentaSearchModal'));
             modal.show();
         }
 
-        function renderCuentasModalList(list) {
+        function filtrarCuentasModal() {
+            const q = (document.getElementById('cuentaModalSearchInput').value || '').trim().toLowerCase();
             const tbody = document.getElementById('cuentasModalTbody');
             tbody.innerHTML = '';
 
-            const imputables = list.filter(c => (c.ASENTABLE || c.asentable) !== 'N');
+            const filtered = catalogoCuentas.filter(c => {
+                if (!q) return true;
+                const cod = (c.COD_CUENTA || '').toLowerCase();
+                const nom = (c.DESCRIPCION || '').toLowerCase();
+                return cod.includes(q) || nom.includes(q);
+            }).slice(0, 100);
 
-            imputables.slice(0, 50).forEach(c => {
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">No se encontraron cuentas</td></tr>';
+                return;
+            }
+
+            filtered.forEach(c => {
                 const tr = document.createElement('tr');
-                const cod = c.COD_CUENTA || c.cod_cuenta;
-                const desc = c.DESCRIPCION || c.descripcion;
-                const tipo = c.TIPO_CUENTA || c.tipo_cuenta || 'IMPUTABLE';
-
                 tr.innerHTML = `
-                    <td class="font-mono font-bold" style="color: #0284c7; font-weight: 700;">${cod}</td>
-                    <td>${desc}</td>
-                    <td class="text-center"><span class="badge bg-light text-dark">${tipo}</span></td>
+                    <td class="font-mono font-bold" style="font-weight: 600;">${c.COD_CUENTA}</td>
+                    <td>${c.DESCRIPCION}</td>
+                    <td class="text-center"><span class="badge ${c.TIPO_CUENTA === 'A' ? 'bg-primary' : 'bg-secondary'}" style="font-size: 0.7rem;">${c.TIPO_CUENTA === 'A' ? 'ASENTABLE' : 'RUBRO'}</span></td>
                     <td class="text-center">
-                        <button type="button" class="btn btn-xs btn-primary py-0 px-2" onclick="selectCuentaForActiveRow('${cod}', '${desc.replace(/'/g, "\\'")}')">
-                            <i class="ph ph-check"></i>
+                        <button type="button" class="btn btn-sm btn-primary py-0 px-2" onclick="seleccionarCuentaParaFila('${c.COD_CUENTA}', '${encodeURIComponent(c.DESCRIPCION)}')">
+                            Elegir
                         </button>
                     </td>
                 `;
@@ -607,33 +908,20 @@
             });
         }
 
-        function filtrarCuentasModal() {
-            const q = document.getElementById('cuentaModalSearchInput').value.trim().toUpperCase();
-            if (!q) {
-                renderCuentasModalList(catalogoCuentas);
-                return;
-            }
-            const filtered = catalogoCuentas.filter(c => {
-                const cod = (c.COD_CUENTA || c.cod_cuenta || '').toUpperCase();
-                const desc = (c.DESCRIPCION || c.descripcion || '').toUpperCase();
-                return cod.includes(q) || desc.includes(q);
-            });
-            renderCuentasModalList(filtered);
-        }
-
-        function selectCuentaForActiveRow(cod, desc) {
+        function seleccionarCuentaParaFila(cod, nomEncoded) {
+            const nom = decodeURIComponent(nomEncoded);
             const rows = document.querySelectorAll('#detallesTbody tr');
             if (activeRowIndexForSearch !== null && rows[activeRowIndexForSearch]) {
                 const tr = rows[activeRowIndexForSearch];
                 tr.querySelector('.input-cod-cuenta').value = cod;
-                tr.querySelector('.input-nom-cuenta').value = desc;
+                tr.querySelector('.input-nom-cuenta').value = nom;
             }
-
             const modalEl = document.getElementById('cuentaSearchModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
             if (modal) modal.hide();
         }
 
+        // RECALCULATE TOTALS AND BALANCES
         function recalcularTotales() {
             let totalDebe = 0;
             let totalHaber = 0;
@@ -648,12 +936,12 @@
             document.getElementById('txtTotalDebe').innerText = formatCurrency(totalDebe);
             document.getElementById('txtTotalHaber').innerText = formatCurrency(totalHaber);
 
-            const diff = Math.abs(totalDebe - totalHaber);
+            const diff = Math.round((totalDebe - totalHaber) * 100) / 100;
             const statusRow = document.getElementById('balanceStatusRow');
             const txtDiff = document.getElementById('txtDiferencia');
             const btnGuardar = document.getElementById('btnGuardarAsiento');
 
-            if (diff === 0 && totalDebe > 0) {
+            if (diff === 0 && (totalDebe > 0 || totalHaber > 0)) {
                 statusRow.style.background = '#f0fdf4';
                 txtDiff.style.color = '#16a34a';
                 txtDiff.innerHTML = `₲ 0 (CUADRADO ✅)`;
@@ -765,11 +1053,12 @@
                     Swal.fire('Error', res.message, 'error');
                 }
             })
-            .catch(err => {
+            .catch(() => {
                 Swal.fire('Error', 'Ocurrió un error al comunicarse con el servidor.', 'error');
             });
         }
 
+        // ANULAR ASIENTO SELECCIONADO
         function anularSelectedAsiento() {
             if (!selectedNumAsiento) {
                 Swal.fire({
@@ -805,6 +1094,155 @@
                         } else {
                             Swal.fire('Error', res.message, 'error');
                         }
+                    });
+                }
+            });
+        }
+
+        // ELIMINAR ASIENTO INDIVIDUAL
+        function eliminarAsientoIndividual(numAsiento) {
+            if (!numAsiento) return;
+
+            Swal.fire({
+                title: `¿Eliminar Asiento N° ${numAsiento}?`,
+                html: `
+                    <div style="text-align: left; font-size: 0.9rem; color: #334155;">
+                        <p>Se eliminará el asiento contable <b>N° ${numAsiento}</b> y sus líneas de detalle.</p>
+                        <div class="alert alert-info py-2 px-3 mb-0" style="font-size: 0.85rem; border-radius: 6px;">
+                            <i class="ph ph-info"></i> Si proviene de compras o ventas, el comprobante vinculado volverá a quedar como <b>Pendiente</b> en el <i>Filtro de Asientos</i> para ser generado nuevamente.
+                        </div>
+                    </div>
+                `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: '<i class="ph ph-trash"></i> Sí, Eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Eliminando Asiento...',
+                        text: 'Por favor espere...',
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
+                    });
+
+                    fetch('/api/asientos/eliminar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ numAsiento: numAsiento })
+                    })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.status === 'success') {
+                            Swal.fire('Eliminado', res.message, 'success');
+                            if (selectedNumAsiento === numAsiento) selectedNumAsiento = null;
+                            loadAsientosList();
+                        } else {
+                            Swal.fire('Error', res.message, 'error');
+                        }
+                    })
+                    .catch(() => {
+                        Swal.fire('Error', 'Error al procesar la solicitud.', 'error');
+                    });
+                }
+            });
+        }
+
+        function eliminarAsientoSeleccionado() {
+            if (!selectedNumAsiento) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Selección Requerida',
+                    text: 'Por favor, seleccione un asiento contable de la lista para eliminar.',
+                    confirmButtonColor: '#0284c7'
+                });
+                return;
+            }
+            eliminarAsientoIndividual(selectedNumAsiento);
+        }
+
+        // ELIMINAR ASIENTOS FILTRADOS
+        function eliminarAsientosFiltrados() {
+            if (!asientosData || asientosData.length === 0) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Sin Asientos',
+                    text: 'No hay asientos contables en el listado actual para eliminar con los filtros seleccionados.',
+                    confirmButtonColor: '#0284c7'
+                });
+                return;
+            }
+
+            const cant = asientosData.length;
+            const fechaDesde = document.getElementById('filtroFechaDesde')?.value || '';
+            const fechaHasta = document.getElementById('filtroFechaHasta')?.value || '';
+            const origen     = document.getElementById('filtroOrigen')?.value || 'TODOS';
+            const codSucursal= document.getElementById('filtroSucursal')?.value || 'TODAS';
+            const search     = document.getElementById('searchInput')?.value || '';
+
+            Swal.fire({
+                title: `¿Eliminar ${formatNumber(cant)} asiento(s) filtrados?`,
+                html: `
+                    <div style="text-align: left; font-size: 0.9rem; color: #334155; line-height: 1.5;">
+                        <p>Está a punto de eliminar masivamente <b>${formatNumber(cant)}</b> asientos contables correspondientes a los filtros actuales:</p>
+                        <ul style="margin: 8px 0; padding-left: 20px;">
+                            <li><b>Rango de Fechas:</b> ${fechaDesde} al ${fechaHasta}</li>
+                            <li><b>Origen:</b> ${origen}</li>
+                            <li><b>Sucursal:</b> ${codSucursal}</li>
+                            ${search ? `<li><b>Búsqueda:</b> ${search}</li>` : ''}
+                        </ul>
+                        <div class="alert alert-warning py-2 px-3 mb-0" style="font-size: 0.85rem; border-radius: 6px;">
+                            <i class="ph ph-warning"></i> <b>Liberación de Comprobantes:</b><br>
+                            Los comprobantes de compras y ventas asociados a estos asientos se desvincularán y volverán a quedar en estado <b>Pendiente</b> en el <i>Filtro de Asientos</i> para que puedan volver a ser generados.
+                        </div>
+                    </div>
+                `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: `<i class="ph ph-trash"></i> Sí, Eliminar ${formatNumber(cant)} Asientos`,
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Eliminando asientos...',
+                        text: 'Por favor espere mientras se eliminan los asientos y se liberan los comprobantes vinculados.',
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
+                    });
+
+                    fetch('/api/asientos/eliminar-filtrados', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            fechaDesde: fechaDesde,
+                            fechaHasta: fechaHasta,
+                            origen: origen,
+                            codSucursal: codSucursal,
+                            search: search,
+                            ejercicio: EJERCICIO
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.status === 'success') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Asientos Eliminados',
+                                text: res.message || `Se eliminaron ${res.cantidad} asientos correctamente.`,
+                                confirmButtonColor: '#0284c7'
+                            });
+                            selectedNumAsiento = null;
+                            loadAsientosList();
+                        } else {
+                            Swal.fire('Error', res.message || 'No se pudieron eliminar los asientos.', 'error');
+                        }
+                    })
+                    .catch(() => {
+                        Swal.fire('Error', 'Ocurrió un error al comunicarse con el servidor.', 'error');
                     });
                 }
             });

@@ -181,10 +181,21 @@ class MovimientosContablesController {
     }
 
     public static function pageAsientos(): void {
+        self::asegurarColumnaAsiento();
+        $codEmpresa = TenantContext::empresa();
+        $ejercicio  = EjercicioService::getEjercicio();
+        $rango      = EjercicioService::getRango($codEmpresa, $ejercicio);
+        $def        = EjercicioService::defaultMes($rango);
+
         self::renderFormPage('asientos', [
-            'nomForma'    => 'COASIENT',
-            'tituloForma' => 'Registro de Asientos Contables',
-            'currentYear' => (int)date('Y'),
+            'nomForma'      => 'COASIENT',
+            'tituloForma'   => 'Registro de Asientos Contables',
+            'currentYear'   => (int)$ejercicio,
+            'ejercicio'     => $ejercicio,
+            'defFechaDesde' => $def[0],
+            'defFechaHasta' => $def[1],
+            'ejerInicio'    => $rango[0],
+            'ejerFinal'     => $rango[1],
         ]);
     }
 
@@ -2393,6 +2404,8 @@ class MovimientosContablesController {
 
         $ejercicio   = isset($_GET['ejercicio']) && $_GET['ejercicio'] !== '' ? (int)$_GET['ejercicio'] : null;
         $mes         = isset($_GET['mes']) && $_GET['mes'] !== '' ? (int)$_GET['mes'] : null;
+        $fechaDesde  = trim((string)($_GET['fechaDesde'] ?? ''));
+        $fechaHasta  = trim((string)($_GET['fechaHasta'] ?? ''));
         $codSucursal = trim((string)($_GET['codSucursal'] ?? ''));
         $origen      = trim((string)($_GET['origen'] ?? ''));
         $search      = trim((string)($_GET['search'] ?? ''));
@@ -2411,13 +2424,27 @@ class MovimientosContablesController {
                 WHERE c.id_propietario = ? AND c.cod_empresa = ? ";
         $params = [$idProp, $codEmpresa];
 
-        if ($ejercicio !== null && $ejercicio > 0) {
+        if ($fechaDesde !== '') {
+            $sql .= "AND c.fec_asiento >= ? ";
+            $params[] = $fechaDesde;
+        }
+        if ($fechaHasta !== '') {
+            $sql .= "AND c.fec_asiento <= ? ";
+            $params[] = $fechaHasta;
+        }
+
+        if ($fechaDesde === '' && $fechaHasta === '') {
+            if ($ejercicio !== null && $ejercicio > 0) {
+                $sql .= "AND c.ejercicio = ? ";
+                $params[] = $ejercicio;
+            }
+            if ($mes !== null && $mes >= 1 && $mes <= 12) {
+                $sql .= "AND MONTH(c.fec_asiento) = ? ";
+                $params[] = $mes;
+            }
+        } elseif ($ejercicio !== null && $ejercicio > 0) {
             $sql .= "AND c.ejercicio = ? ";
             $params[] = $ejercicio;
-        }
-        if ($mes !== null && $mes >= 1 && $mes <= 12) {
-            $sql .= "AND MONTH(c.fec_asiento) = ? ";
-            $params[] = $mes;
         }
         if ($codSucursal !== '' && strcasecmp($codSucursal, 'TODAS') !== 0) {
             $sql .= "AND c.cod_sucursal = ? ";
@@ -2695,6 +2722,136 @@ class MovimientosContablesController {
             View::json(['status' => 'success', 'message' => "Asiento Contable N° {$numAsiento} anulado correctamente."]);
         } catch (\Throwable $e) {
             View::json(['status' => 'error', 'message' => 'Error al anular el asiento: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiAsientosEliminar(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $codEmpresa = TenantContext::empresa();
+        $payload = self::getInput();
+
+        $numAsiento = (int)($payload['numAsiento'] ?? 0);
+        if ($numAsiento <= 0) {
+            View::json(['status' => 'error', 'message' => 'Número de asiento no especificado.']);
+            return;
+        }
+
+        try {
+            Database::update(
+                "UPDATE co_egresos SET asiento = NULL WHERE id_propietario = ? AND cod_empresa = ? AND asiento = ?",
+                [$idProp, $codEmpresa, $numAsiento]
+            );
+            Database::update(
+                "UPDATE co_ingresos SET asiento = NULL WHERE id_propietario = ? AND cod_empresa = ? AND asiento = ?",
+                [$idProp, $codEmpresa, $numAsiento]
+            );
+            Database::update(
+                "DELETE FROM co_asientos_det WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ?",
+                [$idProp, $codEmpresa, $numAsiento]
+            );
+            Database::update(
+                "DELETE FROM co_asientos_cab WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ?",
+                [$idProp, $codEmpresa, $numAsiento]
+            );
+            View::json(['status' => 'success', 'message' => "Asiento Contable N° {$numAsiento} eliminado correctamente y su comprobante fue liberado."]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al eliminar el asiento: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function apiAsientosEliminarFiltrados(): void {
+        if (!self::requireAuth()) return;
+        $idProp = TenantContext::idPropietario();
+        $codEmpresa = TenantContext::empresa();
+        $payload = self::getInput();
+
+        $numAsientos = is_array($payload['numAsientos'] ?? null) ? $payload['numAsientos'] : [];
+        $ejercicio   = isset($payload['ejercicio']) && (int)$payload['ejercicio'] > 0 ? (int)$payload['ejercicio'] : null;
+        $fechaDesde  = trim((string)($payload['fechaDesde'] ?? ''));
+        $fechaHasta  = trim((string)($payload['fechaHasta'] ?? ''));
+        $origen      = trim((string)($payload['origen'] ?? ''));
+        $search      = trim((string)($payload['search'] ?? ''));
+        $codSucursal = trim((string)($payload['codSucursal'] ?? ''));
+
+        // Si no se pasaron números explícitos, buscarlos usando los filtros
+        if (empty($numAsientos)) {
+            $sqlFind = "SELECT num_asiento FROM co_asientos_cab WHERE id_propietario = ? AND cod_empresa = ? ";
+            $paramsFind = [$idProp, $codEmpresa];
+            if ($ejercicio !== null) {
+                $sqlFind .= "AND ejercicio = ? ";
+                $paramsFind[] = $ejercicio;
+            }
+            if ($fechaDesde !== '') {
+                $sqlFind .= "AND fec_asiento >= ? ";
+                $paramsFind[] = $fechaDesde;
+            }
+            if ($fechaHasta !== '') {
+                $sqlFind .= "AND fec_asiento <= ? ";
+                $paramsFind[] = $fechaHasta;
+            }
+            if ($origen !== '' && strcasecmp($origen, 'TODOS') !== 0) {
+                $sqlFind .= "AND UPPER(origen_comprobante) = ? ";
+                $paramsFind[] = strtoupper($origen);
+            }
+            if ($codSucursal !== '' && strcasecmp($codSucursal, 'TODAS') !== 0) {
+                $sqlFind .= "AND cod_sucursal = ? ";
+                $paramsFind[] = $codSucursal;
+            }
+            if ($search !== '') {
+                $sqlFind .= "AND (UPPER(concepto) LIKE ? OR UPPER(id_comprobante) LIKE ? OR CAST(num_asiento AS CHAR) LIKE ?) ";
+                $pat = '%' . strtoupper($search) . '%';
+                $paramsFind[] = $pat; $paramsFind[] = $pat; $paramsFind[] = $pat;
+            }
+            $rows = Database::queryForList($sqlFind, $paramsFind);
+            $numAsientos = array_map('intval', array_column($rows, 'num_asiento'));
+        }
+
+        if (empty($numAsientos)) {
+            View::json(['status' => 'error', 'message' => 'No se encontraron asientos contables para eliminar con los filtros seleccionados.']);
+            return;
+        }
+
+        try {
+            $cantTotal = count($numAsientos);
+            $chunks = array_chunk(array_map('intval', $numAsientos), 500);
+
+            foreach ($chunks as $chunk) {
+                $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+                $params = array_merge([$idProp, $codEmpresa], $chunk);
+
+                // 1. Desvincular en co_egresos
+                Database::update(
+                    "UPDATE co_egresos SET asiento = NULL WHERE id_propietario = ? AND cod_empresa = ? AND asiento IN ($placeholders)",
+                    $params
+                );
+
+                // 2. Desvincular en co_ingresos
+                Database::update(
+                    "UPDATE co_ingresos SET asiento = NULL WHERE id_propietario = ? AND cod_empresa = ? AND asiento IN ($placeholders)",
+                    $params
+                );
+
+                // 3. Eliminar líneas de detalle
+                Database::update(
+                    "DELETE FROM co_asientos_det WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento IN ($placeholders)",
+                    $params
+                );
+
+                // 4. Eliminar cabeceras de asientos
+                Database::update(
+                    "DELETE FROM co_asientos_cab WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento IN ($placeholders)",
+                    $params
+                );
+            }
+
+            View::json([
+                'status'   => 'success',
+                'cantidad' => $cantTotal,
+                'message'  => "Se eliminaron {$cantTotal} asiento(s) contable(s) correctamente y se liberaron sus comprobantes vinculados para nueva contabilización.",
+            ]);
+        } catch (\Throwable $e) {
+            View::json(['status' => 'error', 'message' => 'Error al eliminar asientos: ' . $e->getMessage()]);
         }
     }
 
