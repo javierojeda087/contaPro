@@ -6,32 +6,79 @@
     @media print {
         @page {
             size: A4 portrait;
-            margin: 10mm;
+            margin: 8mm;
         }
-        body {
+        *, *::before, *::after {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        html, body {
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            overflow: visible !important;
+            overflow-x: visible !important;
+            overflow-y: visible !important;
+            display: block !important;
+            position: static !important;
             background-color: #ffffff !important;
             font-family: Arial, sans-serif !important;
             color: #000000 !important;
             margin: 0 !important;
             padding: 0 !important;
+            width: 100% !important;
         }
-        .app-sidebar, .top-navbar, .filter-toolbar, .no-print {
+        .app-sidebar, 
+        .sidebar-mobile-backdrop, 
+        .top-navbar, 
+        .page-title-bar, 
+        .filter-toolbar, 
+        .no-print, 
+        .modal, 
+        .modal-backdrop,
+        .btn,
+        button {
             display: none !important;
         }
-        .main-content {
-            margin-left: 0 !important;
+        .main-content, .content-area {
+            display: block !important;
+            position: static !important;
+            width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            overflow: visible !important;
+            overflow-x: visible !important;
+            overflow-y: visible !important;
+            margin: 0 !important;
             padding: 0 !important;
+            flex: none !important;
         }
-        .content-area {
-            padding: 0 !important;
-        }
-        .report-card {
+        .report-canvas, .report-card {
             box-shadow: none !important;
             border: none !important;
             padding: 0 !important;
             margin: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
+            background: transparent !important;
+        }
+        .table-responsive {
+            overflow: visible !important;
+            max-height: none !important;
+            height: auto !important;
+        }
+        .diario-table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            page-break-inside: auto;
+        }
+        .diario-table tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+        .diario-table thead {
+            display: table-header-group;
         }
         .tr-seat-sep td {
             border-bottom: 1px solid #000000 !important;

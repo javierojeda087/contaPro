@@ -789,6 +789,82 @@
                 font-size: 0.92rem !important;
             }
         }
+
+        /* =====================================================================
+           ESTILOS GLOBALES DE IMPRESIÓN (Chrome/Edge/Firefox Print Engine)
+        ===================================================================== */
+        @media print {
+            @page {
+                margin: 8mm;
+            }
+            *, *::before, *::after {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            html, body {
+                height: auto !important;
+                min-height: 0 !important;
+                max-height: none !important;
+                overflow: visible !important;
+                overflow-x: visible !important;
+                overflow-y: visible !important;
+                display: block !important;
+                position: static !important;
+                background: #ffffff !important;
+                color: #000000 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+            }
+            .app-sidebar,
+            .sidebar-mobile-backdrop,
+            .top-navbar,
+            .page-title-bar,
+            .no-print,
+            .filter-card,
+            .filter-toolbar,
+            .btn-action-area,
+            .modal,
+            .modal-backdrop,
+            .swal2-container,
+            button.btn,
+            .btn-close {
+                display: none !important;
+            }
+            .main-content {
+                display: block !important;
+                position: static !important;
+                width: 100% !important;
+                height: auto !important;
+                min-height: 0 !important;
+                max-height: none !important;
+                overflow: visible !important;
+                overflow-x: visible !important;
+                overflow-y: visible !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                flex: none !important;
+            }
+            .content-area {
+                display: block !important;
+                position: static !important;
+                width: 100% !important;
+                height: auto !important;
+                min-height: 0 !important;
+                max-height: none !important;
+                overflow: visible !important;
+                overflow-x: visible !important;
+                overflow-y: visible !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                flex: none !important;
+            }
+            .table-responsive {
+                overflow: visible !important;
+                max-height: none !important;
+                height: auto !important;
+            }
+        }
     </style>
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
