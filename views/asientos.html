@@ -771,10 +771,60 @@
                 });
         }
 
+        // PARSE MONTO Y FORMATO DE MILES
+        function parseMonto(val) {
+            if (val === null || val === undefined) return 0;
+            if (typeof val === 'number') return isNaN(val) ? 0 : Math.round(val);
+            let s = String(val).trim();
+            if (!s) return 0;
+            if (/^-?\d+\.\d{1,2}$/.test(s)) {
+                return Math.round(parseFloat(s) || 0);
+            }
+            let clean = s.replace(/\./g, '').replace(',', '.');
+            return Math.round(parseFloat(clean) || 0);
+        }
+
+        function formatMiles(val) {
+            const n = parseMonto(val);
+            if (n === 0) return '';
+            return n.toLocaleString('es-PY');
+        }
+
+        function formatearInputMiles(input) {
+            const rawVal = input.value || '';
+            const selStart = input.selectionStart || 0;
+            const digitsBeforeCursor = rawVal.slice(0, selStart).replace(/\D/g, '').length;
+            
+            const digits = rawVal.replace(/\D/g, '');
+            if (!digits) {
+                input.value = '';
+                return;
+            }
+            const num = parseInt(digits, 10);
+            if (isNaN(num) || num === 0) {
+                input.value = '';
+                return;
+            }
+            const formatted = num.toLocaleString('es-PY');
+            input.value = formatted;
+
+            let newCursor = 0;
+            let countedDigits = 0;
+            while (newCursor < formatted.length && countedDigits < digitsBeforeCursor) {
+                if (/\d/.test(formatted[newCursor])) {
+                    countedDigits++;
+                }
+                newCursor++;
+            }
+            input.setSelectionRange(newCursor, newCursor);
+        }
+
         // ADD DETAIL ROW
         function agregarLineaDetalle(codCuenta = '', nomCuenta = '', descrip = '', debe = 0, haber = 0) {
             const tbody = document.getElementById('detallesTbody');
             const rowIdx = tbody.children.length;
+            const valDebe = formatMiles(debe);
+            const valHaber = formatMiles(haber);
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -795,12 +845,16 @@
                     <input type="text" class="form-control form-control-sm input-desc-linea" value="${descrip}" placeholder="Glosa de la línea">
                 </td>
                 <td>
-                    <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end input-debe" value="${debe > 0 ? debe : ''}" 
-                           placeholder="0" oninput="onMontoInput(this, 'debe')">
+                    <input type="text" inputmode="numeric" class="form-control form-control-sm text-end input-debe font-mono" value="${valDebe}" 
+                           placeholder="0" oninput="onMontoInput(this, 'debe')" 
+                           onfocus="if(this.value==='0') this.value='';" 
+                           onblur="if(this.value.trim()==='') this.value='';" style="font-weight: 600;">
                 </td>
                 <td>
-                    <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end input-haber" value="${haber > 0 ? haber : ''}" 
-                           placeholder="0" oninput="onMontoInput(this, 'haber')">
+                    <input type="text" inputmode="numeric" class="form-control form-control-sm text-end input-haber font-mono" value="${valHaber}" 
+                           placeholder="0" oninput="onMontoInput(this, 'haber')" 
+                           onfocus="if(this.value==='0') this.value='';" 
+                           onblur="if(this.value.trim()==='') this.value='';" style="font-weight: 600;">
                 </td>
                 <td class="text-center">
                     <button type="button" class="btn btn-sm text-danger p-0 border-0" onclick="eliminarLineaDetalle(this)" title="Eliminar Línea">
@@ -832,8 +886,9 @@
         }
 
         function onMontoInput(input, type) {
+            formatearInputMiles(input);
             const tr = input.closest('tr');
-            const val = parseFloat(input.value) || 0;
+            const val = parseMonto(input.value);
             if (val > 0) {
                 if (type === 'debe') {
                     const haberInput = tr.querySelector('.input-haber');
@@ -935,8 +990,8 @@
             let totalHaber = 0;
 
             document.querySelectorAll('#detallesTbody tr').forEach(tr => {
-                const debeVal = parseFloat(tr.querySelector('.input-debe').value) || 0;
-                const haberVal = parseFloat(tr.querySelector('.input-haber').value) || 0;
+                const debeVal = parseMonto(tr.querySelector('.input-debe').value);
+                const haberVal = parseMonto(tr.querySelector('.input-haber').value);
                 totalDebe += debeVal;
                 totalHaber += haberVal;
             });
@@ -992,8 +1047,8 @@
                 const codCuenta = tr.querySelector('.input-cod-cuenta').value.trim();
                 const nomCuenta = tr.querySelector('.input-nom-cuenta').value.trim();
                 const descLinea = tr.querySelector('.input-desc-linea').value.trim();
-                const debeVal = parseFloat(tr.querySelector('.input-debe').value) || 0;
-                const haberVal = parseFloat(tr.querySelector('.input-haber').value) || 0;
+                const debeVal = parseMonto(tr.querySelector('.input-debe').value);
+                const haberVal = parseMonto(tr.querySelector('.input-haber').value);
 
                 if (!codCuenta) {
                     errorMsg = `La línea #${idx + 1} requiere un código de cuenta contable.`;

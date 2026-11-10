@@ -149,36 +149,56 @@
             <div class="card mb-4 no-print" style="border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                 <div class="card-body" style="padding: 16px;">
                     <div id="qfBar" style="margin-bottom: 12px;"></div>
-                    <form id="filterForm" onsubmit="event.preventDefault(); cargarLibroMayor();" class="row g-3 align-items-end">
-                        <div class="col-md-3">
-                            <label for="fechaDesde" class="form-label font-bold" style="font-size: 0.85rem; font-weight: 600; color: #334155;">
-                                <i class="ph ph-calendar" style="color: #0284c7; margin-right: 4px;"></i> Fecha Desde
+                    <form id="filterForm" onsubmit="event.preventDefault(); cargarLibroMayor();" class="row g-2 align-items-end">
+                        <!-- Cod. Cuenta -->
+                        <div class="col-md-3 col-sm-6">
+                            <label for="filtroCodCuenta" class="form-label mb-1" style="font-size: 0.82rem; font-weight: 700; color: #334155;">
+                                Cod. Cuenta
                             </label>
-                            <input type="date" id="fechaDesde" class="form-control form-control-sm" th:value="${firstDayOfMonth}">
+                            <div class="input-group input-group-sm">
+                                <input type="text" id="filtroCodCuenta" class="form-control form-control-sm font-mono" 
+                                       placeholder="Ej: 01.01.01.01" onchange="onFiltroCodCuentaChange(this.value)" 
+                                       style="font-weight: 700; color: #0f172a; text-transform: uppercase;">
+                                <button class="btn btn-outline-secondary" type="button" onclick="openCuentaSearchModal()" title="Buscar Cuenta en Plan de Cuentas">
+                                    <i class="ph ph-magnifying-glass font-bold"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary" type="button" onclick="limpiarFiltroCuenta()" title="Limpiar Cuenta (Ver Todas)">
+                                    <i class="ph ph-x"></i>
+                                </button>
+                            </div>
                         </div>
 
-                        <div class="col-md-3">
-                            <label for="fechaHasta" class="form-label font-bold" style="font-size: 0.85rem; font-weight: 600; color: #334155;">
-                                <i class="ph ph-calendar" style="color: #0284c7; margin-right: 4px;"></i> Fecha Hasta
+                        <!-- Nombre Cuenta -->
+                        <div class="col-md-3 col-sm-6">
+                            <label for="filtroNomCuenta" class="form-label mb-1" style="font-size: 0.82rem; font-weight: 700; color: #334155;">
+                                Nombre Cuenta
                             </label>
-                            <input type="date" id="fechaHasta" class="form-control form-control-sm" th:value="${currentDate}">
+                            <input type="text" id="filtroNomCuenta" class="form-control form-control-sm bg-light" 
+                                   placeholder="TODAS LAS CUENTAS" readonly style="font-size: 0.82rem; font-weight: 600; color: #475569;">
                         </div>
 
-                        <div class="col-md-3">
-                            <label for="codSucursal" class="form-label font-bold" style="font-size: 0.85rem; font-weight: 600; color: #334155;">
-                                <i class="ph ph-buildings" style="color: #0284c7; margin-right: 4px;"></i> Sucursal
+                        <!-- Fecha Desde -->
+                        <div class="col-md-2 col-sm-4">
+                            <label for="fechaDesde" class="form-label mb-1" style="font-size: 0.82rem; font-weight: 700; color: #334155;">
+                                Fecha desde
                             </label>
-                            <select id="codSucursal" class="form-select form-select-sm">
-                                <option value="TODAS">TODAS</option>
-                                <option value="1" selected>CASA MATRIZ</option>
-                            </select>
+                            <input type="date" id="fechaDesde" class="form-control form-control-sm" th:value="${firstDayOfMonth}" style="font-weight: 600;">
                         </div>
 
-                        <div class="col-md-3 d-flex gap-2">
-                            <button type="submit" class="btn btn-primary btn-sm flex-grow-1" style="font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-                                <i class="ph ph-magnifying-glass" style="font-size: 1rem;"></i> Generar Reporte
+                        <!-- Fecha Hasta -->
+                        <div class="col-md-2 col-sm-4">
+                            <label for="fechaHasta" class="form-label mb-1" style="font-size: 0.82rem; font-weight: 700; color: #334155;">
+                                Fecha Hasta
+                            </label>
+                            <input type="date" id="fechaHasta" class="form-control form-control-sm" th:value="${currentDate}" style="font-weight: 600;">
+                        </div>
+
+                        <!-- Botones de Acción -->
+                        <div class="col-md-2 col-sm-4 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary btn-sm flex-grow-1" style="font-weight: 700; height: 31px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                                <i class="ph ph-magnifying-glass" style="font-size: 0.95rem;"></i> Filtrar
                             </button>
-                            <button type="button" onclick="window.print()" class="btn btn-outline-secondary btn-sm" style="font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                            <button type="button" onclick="window.print()" class="btn btn-outline-secondary btn-sm" style="font-weight: 600; height: 31px; display: inline-flex; align-items: center; gap: 6px;" title="Imprimir Reporte">
                                 <i class="ph ph-printer" style="font-size: 1rem;"></i> Imprimir
                             </button>
                         </div>
@@ -278,14 +298,15 @@
                     </tr>
                 </table>
 
-                <!-- Main Table Header: FECHA | DOCUMENTO | TIPO DOCUMENTO | DETALLE | DEBE | HABER | SALDO -->
+                <!-- Main Table Header: FECHA | N° ASIENTO | DOCUMENTO | TIPO DOCUMENTO | DETALLE | DEBE | HABER | SALDO -->
                 <table class="mayor-table">
                     <thead>
                         <tr>
-                            <th style="text-align: center; width: 10%;">FECHA</th>
+                            <th style="text-align: center; width: 9%;">FECHA</th>
+                            <th style="text-align: center; width: 9%;">N° ASIENTO</th>
                             <th style="text-align: left; width: 14%;">DOCUMENTO</th>
-                            <th style="text-align: left; width: 13%;">TIPO DOCUMENTO</th>
-                            <th style="text-align: left; width: 33%;">DETALLE</th>
+                            <th style="text-align: left; width: 11%;">TIPO DOC.</th>
+                            <th style="text-align: left; width: 27%;">DETALLE</th>
                             <th style="text-align: right; width: 10%;">DEBE</th>
                             <th style="text-align: right; width: 10%;">HABER</th>
                             <th style="text-align: right; width: 10%;">SALDO</th>
@@ -311,6 +332,38 @@
         </div>
     </main>
 
+    <!-- SUB-MODAL BUSCADOR DE CUENTAS DEL PLAN DE CUENTAS -->
+    <div class="modal fade no-print" id="cuentaSearchModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 8px;">
+                <div class="modal-header bg-dark text-white py-2">
+                    <h6 class="modal-title" style="font-weight: 700;">
+                        <i class="ph ph-magnifying-glass"></i> Seleccionar Cuenta Contable para Libro Mayor
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <input type="text" id="cuentaModalSearchInput" class="form-control form-control-sm mb-2" placeholder="Buscar por código o descripción..." oninput="filtrarCuentasModal()">
+                    <div style="max-height: 350px; overflow-y: auto;">
+                        <table class="table table-hover table-sm align-middle mb-0" style="font-size: 0.83rem;">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 160px;">Código</th>
+                                    <th>Descripción</th>
+                                    <th style="width: 110px; text-align: center;">Tipo</th>
+                                    <th style="width: 80px; text-align: center;">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cuentasModalTbody">
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts Section -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -322,6 +375,8 @@
         const EJER_FIN = /*[[${ejerFinal}]]*/ '';
         const EJERCICIO = /*[[${ejercicio}]]*/ '';
 
+        let catalogoCuentas = [];
+
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof FiltrosRapidos !== 'undefined' && FiltrosRapidos.init) {
                 FiltrosRapidos.init({
@@ -332,34 +387,116 @@
                     onApply: () => cargarLibroMayor()
                 });
             }
-            loadSucursales();
+            loadCatalogoCuentas();
             cargarLibroMayor();
         });
 
-        function loadSucursales() {
-            fetch('/api/asientos/sucursales')
+        function loadCatalogoCuentas() {
+            fetch('/api/asientos/buscar-cuentas')
                 .then(r => r.json())
-                .then(list => {
-                    const sel = document.getElementById('codSucursal');
-                    sel.innerHTML = '<option value="TODAS">TODAS</option>';
-                    if (list && list.length > 0) {
-                        list.forEach(s => {
-                            const opt = document.createElement('option');
-                            opt.value = s.COD_SUCURSAL || s.cod_sucursal;
-                            opt.textContent = (s.DESCRIPCION || s.descripcion || s.COD_SUCURSAL);
-                            sel.appendChild(opt);
-                        });
-                    }
+                .then(data => {
+                    catalogoCuentas = data || [];
                 })
                 .catch(() => {});
+        }
+
+        function openCuentaSearchModal() {
+            document.getElementById('cuentaModalSearchInput').value = '';
+            filtrarCuentasModal();
+            const modalEl = document.getElementById('cuentaSearchModal');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+            setTimeout(() => document.getElementById('cuentaModalSearchInput').focus(), 300);
+        }
+
+        function filtrarCuentasModal() {
+            const q = (document.getElementById('cuentaModalSearchInput').value || '').trim().toLowerCase();
+            const tbody = document.getElementById('cuentasModalTbody');
+            tbody.innerHTML = '';
+
+            const filtered = catalogoCuentas.filter(c => {
+                if (!q) return true;
+                const cod = (c.COD_CUENTA || '').toLowerCase();
+                const nom = (c.DESCRIPCION || '').toLowerCase();
+                return cod.includes(q) || nom.includes(q);
+            }).slice(0, 100);
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">No se encontraron cuentas coincidentes</td></tr>';
+                return;
+            }
+
+            filtered.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="font-mono font-bold" style="font-weight: 600;">${c.COD_CUENTA}</td>
+                    <td>${c.DESCRIPCION}</td>
+                    <td class="text-center"><span class="badge ${c.TIPO_CUENTA === 'A' ? 'bg-primary' : 'bg-secondary'}" style="font-size: 0.7rem;">${c.TIPO_CUENTA === 'A' ? 'ASENTABLE' : 'RUBRO'}</span></td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-primary py-0 px-2" onclick="seleccionarCuentaParaFiltro('${c.COD_CUENTA}', '${encodeURIComponent(c.DESCRIPCION)}')">
+                            Elegir
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function seleccionarCuentaParaFiltro(cod, nomEncoded) {
+            const nom = decodeURIComponent(nomEncoded);
+            document.getElementById('filtroCodCuenta').value = cod;
+            document.getElementById('filtroNomCuenta').value = nom;
+            const modalEl = document.getElementById('cuentaSearchModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+            cargarLibroMayor();
+        }
+
+        function limpiarFiltroCuenta() {
+            document.getElementById('filtroCodCuenta').value = '';
+            document.getElementById('filtroNomCuenta').value = '';
+            cargarLibroMayor();
+        }
+
+        function onFiltroCodCuentaChange(cod) {
+            cod = (cod || '').trim();
+            if (!cod) {
+                limpiarFiltroCuenta();
+                return;
+            }
+            const match = catalogoCuentas.find(c => c.COD_CUENTA.toUpperCase() === cod.toUpperCase());
+            if (match) {
+                document.getElementById('filtroCodCuenta').value = match.COD_CUENTA;
+                document.getElementById('filtroNomCuenta').value = match.DESCRIPCION || '';
+                cargarLibroMayor();
+            } else {
+                fetch(`/api/asientos/buscar-cuentas?q=${encodeURIComponent(cod)}`)
+                    .then(r => r.json())
+                    .then(list => {
+                        if (list && list.length > 0) {
+                            const exact = list.find(x => x.COD_CUENTA.toUpperCase() === cod.toUpperCase()) || list[0];
+                            document.getElementById('filtroCodCuenta').value = exact.COD_CUENTA;
+                            document.getElementById('filtroNomCuenta').value = exact.DESCRIPCION;
+                        } else {
+                            document.getElementById('filtroNomCuenta').value = 'CUENTA NO ENCONTRADA';
+                        }
+                        cargarLibroMayor();
+                    })
+                    .catch(() => {
+                        cargarLibroMayor();
+                    });
+            }
         }
 
         function cargarLibroMayor() {
             const desde = document.getElementById('fechaDesde').value;
             const hasta = document.getElementById('fechaHasta').value;
-            const sucursal = document.getElementById('codSucursal').value;
+            const codCuenta = (document.getElementById('filtroCodCuenta')?.value || '').trim();
 
-            const url = `/api/libro-mayor/datos?fechaDesde=${encodeURIComponent(desde)}&fechaHasta=${encodeURIComponent(hasta)}&codSucursal=${encodeURIComponent(sucursal)}`;
+            let url = `/api/libro-mayor/datos?fechaDesde=${encodeURIComponent(desde)}&fechaHasta=${encodeURIComponent(hasta)}`;
+            if (codCuenta) {
+                url += `&codCuenta=${encodeURIComponent(codCuenta)}`;
+            }
 
             fetch(url)
                 .then(r => r.json())
@@ -370,7 +507,7 @@
                     console.error("Error cargando Libro Mayor:", err);
                     document.getElementById('mayorTbody').innerHTML = `
                         <tr>
-                            <td colspan="7" class="text-center py-4 text-danger font-bold">
+                            <td colspan="8" class="text-center py-4 text-danger font-bold">
                                 Error al cargar datos del Libro Mayor.
                             </td>
                         </tr>`;
@@ -398,8 +535,8 @@
             if (cuentas.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="text-center py-4 text-muted" style="font-size: 0.9rem;">
-                            No se encontraron cuentas con movimientos para el periodo seleccionado.
+                        <td colspan="8" class="text-center py-4 text-muted" style="font-size: 0.9rem;">
+                            No se encontraron movimientos para la cuenta o periodo seleccionado.
                         </td>
                     </tr>`;
                 return;
@@ -414,8 +551,8 @@
                 const trAccountHeader = document.createElement('tr');
                 trAccountHeader.className = 'tr-cuenta-header';
                 trAccountHeader.innerHTML = `
-                    <td colspan="5" style="text-align: left;">
-                        CUENTA : ${codCta} - ${nomCta}
+                    <td colspan="6" style="text-align: left;">
+                        CUENTA : <span class="font-mono" style="font-weight: 800; color: #0369a1;">${codCta}</span> - <b>${nomCta}</b>
                     </td>
                     <td colspan="2" style="text-align: right; font-weight: bold;">
                         SALDO ANTERIOR : <span style="font-family: monospace; font-size: 11px;">${formatNumber(saldoAnt)}</span>
@@ -425,29 +562,40 @@
 
                 // Movement Rows
                 const movements = cGroup.movements || [];
-                movements.forEach(mov => {
-                    const trMov = document.createElement('tr');
-                    trMov.className = 'tr-movimiento';
-
-                    const debeVal = Number(mov.debe || 0);
-                    const haberVal = Number(mov.haber || 0);
-                    const saldoVal = Number(mov.saldo || 0);
-
-                    const debeText = (debeVal > 0) ? formatNumber(debeVal) : '';
-                    const haberText = (haberVal > 0) ? formatNumber(haberVal) : '';
-                    const saldoText = formatNumber(saldoVal);
-
-                    trMov.innerHTML = `
-                        <td style="text-align: center;">${mov.fechaStr || ''}</td>
-                        <td style="font-weight: 500;">${mov.documento || ''}</td>
-                        <td>${mov.tipoDocumento || ''}</td>
-                        <td>${mov.detalle || ''}</td>
-                        <td style="text-align: right; font-family: monospace;">${debeText}</td>
-                        <td style="text-align: right; font-family: monospace;">${haberText}</td>
-                        <td style="text-align: right; font-family: monospace; font-weight: 600;">${saldoText}</td>
+                if (movements.length === 0) {
+                    const trSinMov = document.createElement('tr');
+                    trSinMov.innerHTML = `
+                        <td colspan="8" class="text-center py-2 text-muted" style="font-style: italic; font-size: 10px;">
+                            Sin movimientos en el rango de fechas seleccionado
+                        </td>
                     `;
-                    tbody.appendChild(trMov);
-                });
+                    tbody.appendChild(trSinMov);
+                } else {
+                    movements.forEach(mov => {
+                        const trMov = document.createElement('tr');
+                        trMov.className = 'tr-movimiento';
+
+                        const debeVal = Number(mov.debe || 0);
+                        const haberVal = Number(mov.haber || 0);
+                        const saldoVal = Number(mov.saldo || 0);
+
+                        const debeText = (debeVal > 0) ? formatNumber(debeVal) : '';
+                        const haberText = (haberVal > 0) ? formatNumber(haberVal) : '';
+                        const saldoText = formatNumber(saldoVal);
+
+                        trMov.innerHTML = `
+                            <td style="text-align: center;">${mov.fechaStr || ''}</td>
+                            <td style="text-align: center; font-weight: 700; color: #0284c7; font-family: monospace;">${mov.numAsiento || '-'}</td>
+                            <td style="font-weight: 500;">${mov.documento || ''}</td>
+                            <td>${mov.tipoDocumento || ''}</td>
+                            <td>${mov.detalle || ''}</td>
+                            <td style="text-align: right; font-family: monospace;">${debeText}</td>
+                            <td style="text-align: right; font-family: monospace;">${haberText}</td>
+                            <td style="text-align: right; font-family: monospace; font-weight: 600;">${saldoText}</td>
+                        `;
+                        tbody.appendChild(trMov);
+                    });
+                }
 
                 // TOTAL ACUMULADO Row
                 const totalDebe = Number(cGroup.totalDebe || 0);
@@ -457,18 +605,18 @@
                 const trTotal = document.createElement('tr');
                 trTotal.className = 'tr-total-cuenta';
                 trTotal.innerHTML = `
-                    <td colspan="4" style="text-align: left; font-weight: bold; text-transform: uppercase;">
-                        TOTAL ACUMULADO
+                    <td colspan="5" style="text-align: left; font-weight: bold; text-transform: uppercase;">
+                        MOVIMIENTO PERIODO
                     </td>
                     <td style="text-align: right; font-family: monospace; font-weight: bold;">${formatNumber(totalDebe)}</td>
                     <td style="text-align: right; font-family: monospace; font-weight: bold; border-right: 1px solid #000;">${formatNumber(totalHaber)}</td>
-                    <td style="text-align: right; font-family: monospace; font-weight: bold;">${formatNumber(saldoFinal)}</td>
+                    <td style="text-align: right; font-family: monospace; font-weight: 800; background: #e0f2fe; color: #0369a1;">${formatNumber(saldoFinal)}</td>
                 `;
                 tbody.appendChild(trTotal);
 
                 // Spacer Row
                 const trSpacer = document.createElement('tr');
-                trSpacer.innerHTML = `<td colspan="7" style="height: 16px;"></td>`;
+                trSpacer.innerHTML = `<td colspan="8" style="height: 16px;"></td>`;
                 tbody.appendChild(trSpacer);
             });
         }

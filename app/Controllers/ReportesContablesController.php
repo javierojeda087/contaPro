@@ -764,6 +764,7 @@ class ReportesContablesController {
         $rango          = EjercicioService::getRango($codEmpresa, $ejercicio);
         $fechaDesde     = EjercicioService::clamp($_GET['fechaDesde'] ?? null, $rango, true);
         $fechaHasta     = EjercicioService::clamp($_GET['fechaHasta'] ?? null, $rango, false);
+        $codCuenta      = trim((string)($_GET['codCuenta'] ?? ''));
         $codCuentaDesde = trim((string)($_GET['codCuentaDesde'] ?? ''));
         $codCuentaHasta = trim((string)($_GET['codCuentaHasta'] ?? ''));
         $codSucursal    = trim((string)($_GET['codSucursal'] ?? ''));
@@ -798,6 +799,20 @@ class ReportesContablesController {
         if ($codSucursal !== '' && strcasecmp($codSucursal, 'TODAS') !== 0) {
             $sqlPrior .= "AND c.cod_sucursal = ? ";
             $pParams[] = $codSucursal;
+        }
+        if ($codCuenta !== '') {
+            $sqlPrior .= "AND (UPPER(d.cod_cuenta) = ? OR UPPER(d.cod_cuenta) LIKE ?) ";
+            $pParams[] = strtoupper($codCuenta);
+            $pParams[] = strtoupper($codCuenta) . '.%';
+        } else {
+            if ($codCuentaDesde !== '') {
+                $sqlPrior .= "AND UPPER(d.cod_cuenta) >= ? ";
+                $pParams[] = strtoupper($codCuentaDesde);
+            }
+            if ($codCuentaHasta !== '') {
+                $sqlPrior .= "AND UPPER(d.cod_cuenta) <= ? ";
+                $pParams[] = strtoupper($codCuentaHasta);
+            }
         }
         $sqlPrior .= "GROUP BY d.cod_cuenta";
 
@@ -837,13 +852,19 @@ class ReportesContablesController {
             $sqlMov .= "AND c.cod_sucursal = ? ";
             $mParams[] = $codSucursal;
         }
-        if ($codCuentaDesde !== '') {
-            $sqlMov .= "AND UPPER(d.cod_cuenta) >= ? ";
-            $mParams[] = strtoupper($codCuentaDesde);
-        }
-        if ($codCuentaHasta !== '') {
-            $sqlMov .= "AND UPPER(d.cod_cuenta) <= ? ";
-            $mParams[] = strtoupper($codCuentaHasta);
+        if ($codCuenta !== '') {
+            $sqlMov .= "AND (UPPER(d.cod_cuenta) = ? OR UPPER(d.cod_cuenta) LIKE ?) ";
+            $mParams[] = strtoupper($codCuenta);
+            $mParams[] = strtoupper($codCuenta) . '.%';
+        } else {
+            if ($codCuentaDesde !== '') {
+                $sqlMov .= "AND UPPER(d.cod_cuenta) >= ? ";
+                $mParams[] = strtoupper($codCuentaDesde);
+            }
+            if ($codCuentaHasta !== '') {
+                $sqlMov .= "AND UPPER(d.cod_cuenta) <= ? ";
+                $mParams[] = strtoupper($codCuentaHasta);
+            }
         }
         $sqlMov .= "ORDER BY d.cod_cuenta ASC, c.fec_asiento ASC, c.num_asiento ASC, d.secuencia ASC";
 
@@ -851,9 +872,9 @@ class ReportesContablesController {
         $cuentaGroupMap = [];
 
         foreach ($rawMovements as $r) {
-            $codCuenta = trim((string)($r['COD_CUENTA'] ?? ''));
-            if ($codCuenta === '') continue;
-            $key = strtoupper($codCuenta);
+            $codCuentaKey = trim((string)($r['COD_CUENTA'] ?? ''));
+            if ($codCuentaKey === '') continue;
+            $key = strtoupper($codCuentaKey);
 
             if (!isset($cuentaGroupMap[$key])) {
                 $saldoAnt = 0.0;
@@ -866,8 +887,8 @@ class ReportesContablesController {
                     }
                 }
                 $cuentaGroupMap[$key] = [
-                    'codCuenta'     => $codCuenta,
-                    'nomCuenta'     => (string)($r['NOM_CUENTA'] ?? $codCuenta),
+                    'codCuenta'     => $codCuentaKey,
+                    'nomCuenta'     => (string)($r['NOM_CUENTA'] ?? $codCuentaKey),
                     'saldoAnterior' => $saldoAnt,
                     'movements'     => [],
                     'totalDebe'     => 0.0,
@@ -891,6 +912,7 @@ class ReportesContablesController {
 
             $cuentaGroupMap[$key]['movements'][] = [
                 'fechaStr'      => (string)($r['FEC_ASIENTO_STR'] ?? ''),
+                'numAsiento'    => (int)($r['NUM_ASIENTO'] ?? 0),
                 'documento'     => $docNumStr,
                 'tipoDocumento' => $tipoDocStr,
                 'detalle'       => $detDesc,
@@ -899,6 +921,33 @@ class ReportesContablesController {
             ];
             $cuentaGroupMap[$key]['totalDebe']  += $debe;
             $cuentaGroupMap[$key]['totalHaber'] += $haber;
+        }
+
+        if ($codCuenta !== '' && empty($cuentaGroupMap)) {
+            $ctaInfo = Database::queryForListUpper(
+                "SELECT cod_cuenta, descripcion FROM co_plan_cuentas WHERE id_propietario = ? AND UPPER(TRIM(cod_cuenta)) = ? LIMIT 1",
+                [$idProp, strtoupper($codCuenta)]
+            );
+            if (!empty($ctaInfo)) {
+                $cKey = strtoupper($ctaInfo[0]['COD_CUENTA']);
+                $saldoAnt = 0.0;
+                if (isset($priorBalances[$cKey])) {
+                    [$dAnt, $hAnt] = $priorBalances[$cKey];
+                    if (str_starts_with($cKey, '2') || str_starts_with($cKey, '3') || str_starts_with($cKey, '4')) {
+                        $saldoAnt = $hAnt - $dAnt;
+                    } else {
+                        $saldoAnt = $dAnt - $hAnt;
+                    }
+                }
+                $cuentaGroupMap[$cKey] = [
+                    'codCuenta'     => $ctaInfo[0]['COD_CUENTA'],
+                    'nomCuenta'     => (string)($ctaInfo[0]['DESCRIPCION'] ?? $cKey),
+                    'saldoAnterior' => $saldoAnt,
+                    'movements'     => [],
+                    'totalDebe'     => 0.0,
+                    'totalHaber'    => 0.0,
+                ];
+            }
         }
 
         $resultCuentas = [];
@@ -921,6 +970,244 @@ class ReportesContablesController {
             'fechaHasta'          => $fechaHasta,
             'empresaInfo'         => $empresaInfo,
             'cuentas'             => $resultCuentas,
+            'timestampGeneracion' => date('d/m/Y H:i'),
+        ]);
+    }
+
+    // =========================================================================
+    // 4.1. BALANCE ANALÍTICO POR FECHAS / BALANCE GENERAL CONTABLE (CORBALAP)
+    // =========================================================================
+    public static function pageBalanceAnalitico(): void {
+        if (!self::requireAuth(false)) return;
+        $codEmpresa = TenantContext::empresa();
+        $ejercicio  = EjercicioService::getEjercicio();
+        $rango      = EjercicioService::getRango($codEmpresa, $ejercicio);
+        $def        = EjercicioService::defaultMes($rango);
+
+        self::renderFormPage('balance_analitico', [
+            'nomForma'        => 'CORBALAP',
+            'tituloForma'     => 'Balance Analítico por Fechas (CORBALAP)',
+            'firstDayOfMonth' => $def[0],
+            'currentDate'     => $def[1],
+            'ejerInicio'      => $rango[0],
+            'ejerFinal'       => $rango[1],
+            'ejercicio'       => $ejercicio,
+        ]);
+    }
+
+    public static function apiBalanceAnaliticoDatos(): void {
+        if (!self::requireAuth()) return;
+        $idProp         = TenantContext::idPropietario();
+        $codEmpresa     = TenantContext::empresa();
+        $ejercicio      = isset($_GET['ejercicio']) && (int)$_GET['ejercicio'] > 0 ? (int)$_GET['ejercicio'] : EjercicioService::getEjercicio();
+        $rango          = EjercicioService::getRango($codEmpresa, $ejercicio);
+        $fechaDesde     = EjercicioService::clamp($_GET['fechaDesde'] ?? null, $rango, true);
+        $fechaHasta     = EjercicioService::clamp($_GET['fechaHasta'] ?? null, $rango, false);
+        $cierre         = strtoupper(trim((string)($_GET['cierre'] ?? 'N')));
+        $nivelMax       = !empty($_GET['nivelMax']) ? (int)$_GET['nivelMax'] : null;
+        $ctaDesde       = trim((string)($_GET['ctaDesde'] ?? $_GET['codCuentaDesde'] ?? ''));
+        $ctaHasta       = trim((string)($_GET['ctaHasta'] ?? $_GET['codCuentaHasta'] ?? ''));
+        $soloConSaldo   = !isset($_GET['soloConSaldo']) || filter_var($_GET['soloConSaldo'], FILTER_VALIDATE_BOOLEAN);
+
+        $empInfo = self::fetchEmpresaInfo($codEmpresa, $ejercicio);
+        $empresaInfo = [
+            'razonSocial'    => $empInfo['descripcion'],
+            'ruc'            => $empInfo['rucEmpresa'],
+            'actividad'      => $empInfo['actividad'],
+            'repLegalNombre' => $empInfo['repLegal'],
+            'contadorNombre' => $empInfo['nomContador'],
+            'contadorRuc'    => $empInfo['rucContador'],
+            'fechaDesdeStr'  => self::formatDateDmy($fechaDesde),
+            'fechaHastaStr'  => self::formatDateDmy($fechaHasta),
+        ];
+
+        // 1. Obtener movimientos acumulados en el rango de fechas
+        $sqlMov = "SELECT d.cod_cuenta AS COD_CUENTA,
+                          SUM(COALESCE(d.debe, 0)) AS SUM_DEBE,
+                          SUM(COALESCE(d.haber, 0)) AS SUM_HABER
+                   FROM co_asientos_cab c
+                   JOIN co_asientos_det d ON d.id_propietario = c.id_propietario
+                        AND d.cod_empresa = c.cod_empresa
+                        AND d.num_asiento = c.num_asiento
+                   WHERE c.id_propietario = ?
+                     AND c.cod_empresa = ?
+                     AND (c.estado IS NULL OR UPPER(c.estado) <> 'I')
+                     AND c.fec_asiento >= ?
+                     AND c.fec_asiento <= ? ";
+        $params = [$idProp, $codEmpresa, $fechaDesde, $fechaHasta];
+
+        if ($cierre === 'N') {
+            $sqlMov .= "AND (c.origen_comprobante IS NULL OR UPPER(c.origen_comprobante) NOT IN ('CIERRE', 'COCIERRE')) ";
+        } elseif ($cierre === 'S') {
+            $sqlMov .= "AND UPPER(c.origen_comprobante) IN ('CIERRE', 'COCIERRE') ";
+        }
+        $sqlMov .= "GROUP BY d.cod_cuenta";
+
+        $movList = Database::queryForListUpper($sqlMov, $params);
+        $movMap = [];
+        foreach ($movList as $m) {
+            $c = strtoupper(trim((string)($m['COD_CUENTA'] ?? '')));
+            if ($c !== '') {
+                $movMap[$c] = [
+                    'debe'  => (float)($m['SUM_DEBE'] ?? 0),
+                    'haber' => (float)($m['SUM_HABER'] ?? 0),
+                ];
+            }
+        }
+
+        // 2. Obtener plan de cuentas del propietario
+        $planSql = "SELECT cod_cuenta AS COD_CUENTA,
+                           descripcion AS DESCRIPCION,
+                           COALESCE(tipo_cuenta, 'MAYORIZADOR') AS TIPO_CUENTA,
+                           COALESCE(nivel, 1) AS NIVEL,
+                           cod_padre AS COD_PADRE,
+                           COALESCE(asentable, 'N') AS ASENTABLE
+                    FROM co_plan_cuentas
+                    WHERE id_propietario = ?
+                      AND (estado IS NULL OR UPPER(estado) = 'A')
+                    ORDER BY cod_cuenta ASC";
+        $planList = Database::queryForListUpper($planSql, [$idProp]);
+
+        $detalle = [];
+        $resumenMap = [];
+
+        foreach ($planList as $p) {
+            $codCuenta = trim((string)($p['COD_CUENTA'] ?? ''));
+            if ($codCuenta === '') continue;
+            $nomCuenta = trim((string)($p['DESCRIPCION'] ?? $codCuenta));
+            $nivel = (int)($p['NIVEL'] ?? 1);
+            $asentable = strtoupper(trim((string)($p['ASENTABLE'] ?? 'N')));
+            $tipoCuenta = strtoupper(trim((string)($p['TIPO_CUENTA'] ?? '')));
+
+            // Acumular movimientos de esta cuenta y de todas sus subcuentas
+            $totDebe = 0.0;
+            $totHaber = 0.0;
+            $prefixDot = $codCuenta . '.';
+
+            foreach ($movMap as $mCod => $mMov) {
+                if ($mCod === $codCuenta || str_starts_with($mCod, $prefixDot)) {
+                    $totDebe += $mMov['debe'];
+                    $totHaber += $mMov['haber'];
+                }
+            }
+
+            // Determinar grupo por primer dígito significativo (soporta '01', '02' o '1', '2')
+            $cleanCode = ltrim($codCuenta, '0');
+            $firstDigit = substr($cleanCode, 0, 1);
+
+            $saldo = 0.0;
+            $grupo = 'OTRO';
+            switch ($firstDigit) {
+                case '1': // Activo
+                    $saldo = $totDebe - $totHaber;
+                    $grupo = 'ACTIVO';
+                    break;
+                case '2': // Pasivo
+                    $saldo = $totHaber - $totDebe;
+                    $grupo = 'PASIVO';
+                    break;
+                case '3': // Patrimonio Neto
+                    $saldo = $totHaber - $totDebe;
+                    $grupo = 'PATRIMONIO';
+                    break;
+                case '4': // Ingresos
+                    $saldo = $totHaber - $totDebe;
+                    $grupo = 'INGRESOS';
+                    break;
+                case '5': // Egresos / Gastos
+                    $saldo = $totDebe - $totHaber;
+                    $grupo = 'EGRESOS';
+                    break;
+                default:
+                    $saldo = $totDebe - $totHaber;
+                    $grupo = 'ORDEN';
+                    break;
+            }
+
+            // Si es nivel 1, guardar para Resumen de Partidas Demostrativas
+            if ($nivel === 1) {
+                $resumenMap[$codCuenta] = [
+                    'codCuenta' => $codCuenta,
+                    'nomCuenta' => $nomCuenta,
+                    'grupo'     => $grupo,
+                    'debe'      => $totDebe,
+                    'haber'     => $totHaber,
+                    'saldo'     => $saldo,
+                ];
+            }
+
+            // Filtros de nivel y código
+            if ($nivelMax !== null && $nivelMax > 0 && $nivel > $nivelMax) {
+                continue;
+            }
+            if ($ctaDesde !== '' && strtoupper($codCuenta) < strtoupper($ctaDesde)) {
+                continue;
+            }
+            if ($ctaHasta !== '' && strtoupper($codCuenta) > strtoupper($ctaHasta)) {
+                continue;
+            }
+            if ($soloConSaldo && abs($saldo) < 0.009 && abs($totDebe) < 0.009 && abs($totHaber) < 0.009) {
+                continue;
+            }
+
+            $detalle[] = [
+                'codCuenta'   => $codCuenta,
+                'nomCuenta'   => $nomCuenta,
+                'nivel'       => $nivel,
+                'asentable'   => $asentable,
+                'tipoCuenta'  => $tipoCuenta,
+                'grupo'       => $grupo,
+                'debe'        => $totDebe,
+                'haber'       => $totHaber,
+                'saldo'       => $saldo,
+            ];
+        }
+
+        // 3. Totales KPI y verificación de cuadre financiero
+        $totalActivo     = 0.0;
+        $totalPasivo     = 0.0;
+        $totalPatrimonio = 0.0;
+        $totalIngresos   = 0.0;
+        $totalEgresos    = 0.0;
+
+        foreach ($resumenMap as $r) {
+            $g = $r['grupo'];
+            $s = (float)$r['saldo'];
+            if ($g === 'ACTIVO')         $totalActivo += $s;
+            elseif ($g === 'PASIVO')     $totalPasivo += $s;
+            elseif ($g === 'PATRIMONIO') $totalPatrimonio += $s;
+            elseif ($g === 'INGRESOS')   $totalIngresos += $s;
+            elseif ($g === 'EGRESOS')    $totalEgresos += $s;
+        }
+
+        $resultadoEjercicio = $totalIngresos - $totalEgresos;
+        $diferenciaCuadre   = round(abs($totalActivo - ($totalPasivo + $totalPatrimonio + $resultadoEjercicio)), 2);
+        $isCuadrado         = $diferenciaCuadre < 1.0;
+
+        $kpis = [
+            'totalActivo'        => $totalActivo,
+            'totalPasivo'        => $totalPasivo,
+            'totalPatrimonio'    => $totalPatrimonio,
+            'totalPasivoPatrim'  => $totalPasivo + $totalPatrimonio,
+            'totalIngresos'      => $totalIngresos,
+            'totalEgresos'       => $totalEgresos,
+            'resultadoEjercicio' => $resultadoEjercicio,
+            'diferenciaCuadre'   => $diferenciaCuadre,
+            'isCuadrado'         => $isCuadrado,
+        ];
+
+        // 4. Resumen Demostrativo
+        $resumenList = array_values($resumenMap);
+
+        View::json([
+            'status'              => 'success',
+            'fechaDesde'          => $fechaDesde,
+            'fechaHasta'          => $fechaHasta,
+            'ejercicio'           => $ejercicio,
+            'empresaInfo'         => $empresaInfo,
+            'kpis'                => $kpis,
+            'detalle'             => $detalle,
+            'resumen'             => $resumenList,
             'timestampGeneracion' => date('d/m/Y H:i'),
         ]);
     }

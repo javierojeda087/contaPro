@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sistema - Balance Analítico por Fechas (CORBALAP)')}">
+</head>
+<style>
+    /* Estilos Generales y de Impresión */
+    @media print {
+        @page {
+            size: landscape;
+            margin: 8mm;
+        }
+        body {
+            background-color: #ffffff !important;
+            font-family: Arial, sans-serif !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .app-sidebar, .top-navbar, .no-print, .filter-card, .btn-action-area {
+            display: none !important;
+        }
+        .main-content {
+            margin-left: 0 !important;
+            padding: 0 !important;
+        }
+        .content-area {
+            padding: 0 !important;
+        }
+        .card {
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        .table-responsive {
+            overflow: visible !important;
+        }
+        .bal-table th, .bal-table td {
+            padding: 3px 5px !important;
+            font-size: 8.5pt !important;
+        }
+    }
+
+    /* Banner de Cuadre */
+    .bal-cuadre-banner {
+        padding: 0.85rem 1.25rem;
+        border-radius: 10px;
+        margin-bottom: 1.25rem;
+        font-weight: 700;
+        font-size: 0.92rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .bal-cuadre-ok {
+        background: #ecfdf5;
+        color: #065f46;
+        border: 1.5px solid #a7f3d0;
+    }
+    .bal-cuadre-err {
+        background: #fef2f2;
+        color: #991b1b;
+        border: 1.5px solid #fecaca;
+    }
+
+    /* Tarjetas KPI */
+    .bal-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+    }
+    .bal-kpi-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1rem 1.2rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .bal-kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+    }
+    .bal-kpi-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.35rem;
+        flex-shrink: 0;
+    }
+    .bal-kpi-icon.blue   { background: #eff6ff; color: #2563eb; }
+    .bal-kpi-icon.purple { background: #faf5ff; color: #9333ea; }
+    .bal-kpi-icon.green  { background: #ecfdf5; color: #059669; }
+    .bal-kpi-icon.amber  { background: #fffbeb; color: #d97706; }
+    .bal-kpi-icon.red    { background: #fef2f2; color: #dc2626; }
+    .bal-kpi-val {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.2;
+        font-family: monospace;
+    }
+    .bal-kpi-lbl {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #64748b;
+        margin-top: 0.2rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    /* Tabla de Balance */
+    .bal-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.84rem;
+    }
+    .bal-table thead tr {
+        background: #f8fafc;
+        border-bottom: 2px solid #cbd5e1;
+        color: #334155;
+    }
+    .bal-table thead th {
+        padding: 9px 8px;
+        font-weight: 700;
+        font-size: 0.82rem;
+        border-right: 1px solid #f1f5f9;
+        text-transform: uppercase;
+    }
+    .bal-table tbody td {
+        padding: 6px 8px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+    .bal-row-lvl1 {
+        font-weight: 800;
+        background-color: #f1f5f9 !important;
+        color: #0f172a;
+        border-top: 1.5px solid #cbd5e1 !important;
+        border-bottom: 1.5px solid #cbd5e1 !important;
+    }
+    .bal-row-lvl2 {
+        font-weight: 700;
+        background-color: #f8fafc;
+        color: #1e293b;
+    }
+    .bal-row-title {
+        font-weight: 600;
+        color: #334155;
+    }
+    .bal-row-leaf {
+        color: #475569;
+    }
+    .saldo-negativo {
+        color: #dc2626 !important;
+        font-weight: 700;
+    }
+    .saldo-positivo {
+        color: #0f172a;
+        font-weight: 600;
+    }
+
+    /* Resumen Demostrativo Table */
+    .resumen-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+    }
+    .resumen-table th, .resumen-table td {
+        padding: 7px 12px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .resumen-subtotal-row td {
+        font-weight: 800;
+        border-top: 2px solid #0f172a;
+        border-bottom: 2px solid #0f172a;
+        background-color: #f8fafc;
+    }
+</style>
+<body style="background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    
+    <!-- Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="main-content">
+        <div th:replace="~{fragments/layout :: navbar('Balance Analítico por Fechas (CORBALAP)')}"></div>
+
+        <div class="content-area" style="padding: 20px;">
+
+            <!-- Header Title Card (No Print) -->
+            <div class="card mb-3 no-print" style="border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); background: #ffffff;">
+                <div class="card-body" style="padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 44px; height: 44px; border-radius: 10px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                            <i class="ph ph-scales"></i>
+                        </div>
+                        <div>
+                            <h4 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0f172a;">Balance Analítico por Fechas (CORBALAP)</h4>
+                            <p style="margin: 0; font-size: 0.8rem; color: #64748b; font-weight: 500;">
+                                Balance General Contable Oficial · Mayor Analítico Jerárquico y Resumen de Partidas Demostrativas
+                            </p>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" onclick="window.print()" class="btn btn-outline-secondary btn-sm" style="font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="ph ph-printer" style="font-size: 1rem;"></i> Imprimir
+                        </button>
+                        <button type="button" onclick="exportarExcel()" class="btn btn-success btn-sm" style="font-weight: 600; display: inline-flex; align-items: center; gap: 6px; background: #059669; border-color: #059669;">
+                            <i class="ph ph-file-xls" style="font-size: 1rem;"></i> Exportar Excel
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Banner de Cuadre Financiero -->
+            <div id="bannerCuadre" class="bal-cuadre-banner bal-cuadre-ok no-print">
+                <i class="ph ph-check-circle" style="font-size: 1.3rem;"></i>
+                <span id="txtBannerCuadre">Verificando estado de balance...</span>
+            </div>
+
+            <!-- Tarjetas KPI Resumen -->
+            <div class="bal-kpi-grid no-print">
+                <div class="bal-kpi-card">
+                    <div class="bal-kpi-icon blue"><i class="ph ph-bank"></i></div>
+                    <div>
+                        <div class="bal-kpi-val" id="kpiActivo">₲ 0</div>
+                        <div class="bal-kpi-lbl">Total Activo</div>
+                    </div>
+                </div>
+                <div class="bal-kpi-card">
+                    <div class="bal-kpi-icon purple"><i class="ph ph-files"></i></div>
+                    <div>
+                        <div class="bal-kpi-val" id="kpiPasivoPatrim">₲ 0</div>
+                        <div class="bal-kpi-lbl">Pasivo + Patrimonio</div>
+                    </div>
+                </div>
+                <div class="bal-kpi-card">
+                    <div class="bal-kpi-icon green"><i class="ph ph-trend-up"></i></div>
+                    <div>
+                        <div class="bal-kpi-val" id="kpiIngresos">₲ 0</div>
+                        <div class="bal-kpi-lbl">Total Ingresos</div>
+                    </div>
+                </div>
+                <div class="bal-kpi-card">
+                    <div class="bal-kpi-icon amber"><i class="ph ph-trend-down"></i></div>
+                    <div>
+                        <div class="bal-kpi-val" id="kpiEgresos">₲ 0</div>
+                        <div class="bal-kpi-lbl">Total Egresos</div>
+                    </div>
+                </div>
+                <div class="bal-kpi-card">
+                    <div class="bal-kpi-icon green" id="iconResultado"><i class="ph ph-scales"></i></div>
+                    <div>
+                        <div class="bal-kpi-val" id="kpiResultado">₲ 0</div>
+                        <div class="bal-kpi-lbl">Resultado del Ejercicio</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card de Filtros de Búsqueda (No Print) -->
+            <div class="card mb-4 no-print filter-card" style="border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); background: #ffffff;">
+                <div class="card-body" style="padding: 16px 20px;">
+                    <div id="qfBar" style="margin-bottom: 12px;"></div>
+
+                    <form id="filterForm" onsubmit="event.preventDefault(); consultarBalance();" class="row g-2 align-items-end">
+                        <!-- Ejercicio -->
+                        <div class="col-md-2 col-sm-4">
+                            <label for="filtroEjercicio" class="form-label mb-1" style="font-size: 0.8rem; font-weight: 700; color: #475569;">
+                                Ejercicio (*)
+                            </label>
+                            <input type="number" id="filtroEjercicio" class="form-control form-control-sm font-bold" th:value="${ejercicio}" required style="font-weight: 700;">
+                        </div>
+
+                        <!-- Fec. Desde -->
+                        <div class="col-md-2 col-sm-4">
+                            <label for="fechaDesde" class="form-label mb-1" style="font-size: 0.8rem; font-weight: 700; color: #475569;">
+                                Fecha Desde (*)
+                            </label>
+                            <input type="date" id="fechaDesde" class="form-control form-control-sm" th:value="${firstDayOfMonth}" required style="font-weight: 600;">
+                        </div>
+
+                        <!-- Fec. Hasta -->
+                        <div class="col-md-2 col-sm-4">
+                            <label for="fechaHasta" class="form-label mb-1" style="font-size: 0.8rem; font-weight: 700; color: #475569;">
+                                Fecha Hasta (*)
+                            </label>
+                            <input type="date" id="fechaHasta" class="form-control form-control-sm" th:value="${currentDate}" required style="font-weight: 600;">
+                        </div>
+
+                        <!-- Nivel Máx -->
+                        <div class="col-md-2 col-sm-4">
+                            <label for="filtroNivelMax" class="form-label mb-1" style="font-size: 0.8rem; font-weight: 700; color: #475569;">
+                                Nivel Máx.
+                            </label>
+                            <select id="filtroNivelMax" class="form-select form-select-sm" style="font-weight: 600;">
+                                <option value="">Todos los Niveles</option>
+                                <option value="1">Nivel 1 (Grupos)</option>
+                                <option value="2">Nivel 2 (Subgrupos)</option>
+                                <option value="3">Nivel 3 (Rubros)</option>
+                                <option value="4">Nivel 4 (Cuentas)</option>
+                                <option value="5" selected>Nivel 5 (Imputables)</option>
+                            </select>
+                        </div>
+
+                        <!-- Asientos Cierre -->
+                        <div class="col-md-2 col-sm-4">
+                            <label for="filtroCierre" class="form-label mb-1" style="font-size: 0.8rem; font-weight: 700; color: #475569;">
+                                Asientos Cierre
+                            </label>
+                            <select id="filtroCierre" class="form-select form-select-sm" style="font-weight: 600;">
+                                <option value="N" selected>Excluir Cierre</option>
+                                <option value="S">Solo Cierre</option>
+                                <option value="TODOS">Incluir Todos</option>
+                            </select>
+                        </div>
+
+                        <!-- Check Solo con Saldo -->
+                        <div class="col-md-2 col-sm-4 d-flex align-items-center" style="height: 31px;">
+                            <div class="form-check mb-0">
+                                <input class="form-check-input" type="checkbox" id="checkSoloSaldo" checked>
+                                <label class="form-check-label font-bold" for="checkSoloSaldo" style="font-size: 0.8rem; font-weight: 600; color: #334155; cursor: pointer;">
+                                    Solo con Saldo
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Cuenta Desde -->
+                        <div class="col-md-4 col-sm-6">
+                            <label for="ctaDesde" class="form-label mb-1" style="font-size: 0.8rem; font-weight: 700; color: #475569;">
+                                Cuenta Inicial (Opcional)
+                            </label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" id="ctaDesde" class="form-control form-control-sm font-mono font-bold" placeholder="Desde cuenta..." style="text-transform: uppercase;">
+                                <button class="btn btn-outline-secondary" type="button" onclick="openCuentaSearchModal('desde')" title="Buscar Cuenta">
+                                    <i class="ph ph-magnifying-glass"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('ctaDesde').value=''" title="Limpiar">
+                                    <i class="ph ph-x"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Cuenta Hasta -->
+                        <div class="col-md-4 col-sm-6">
+                            <label for="ctaHasta" class="form-label mb-1" style="font-size: 0.8rem; font-weight: 700; color: #475569;">
+                                Cuenta Final (Opcional)
+                            </label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" id="ctaHasta" class="form-control form-control-sm font-mono font-bold" placeholder="Hasta cuenta..." style="text-transform: uppercase;">
+                                <button class="btn btn-outline-secondary" type="button" onclick="openCuentaSearchModal('hasta')" title="Buscar Cuenta">
+                                    <i class="ph ph-magnifying-glass"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('ctaHasta').value=''" title="Limpiar">
+                                    <i class="ph ph-x"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Botones de Acción -->
+                        <div class="col-md-4 col-sm-12 d-flex gap-2 justify-content-end">
+                            <button type="submit" class="btn btn-primary btn-sm flex-grow-1" style="font-weight: 700; height: 32px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                                <i class="ph ph-magnifying-glass"></i> Consultar Reporte
+                            </button>
+                            <button type="button" onclick="limpiarFiltros()" class="btn btn-outline-secondary btn-sm" style="font-weight: 600; height: 32px;" title="Restablecer Filtros">
+                                <i class="ph ph-arrows-counter-clockwise"></i> Limpiar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Report Container (Imprimible y en Pantalla) -->
+            <div class="card mb-4" style="border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); background: #ffffff;">
+                <div class="card-header bg-white py-3 px-4" style="border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h5 class="mb-0" style="font-weight: 800; font-size: 1.05rem; color: #0f172a;">
+                            Detalle del Balance Contable (<span id="txtCantCuentas">0</span> cuentas)
+                        </h5>
+                        <small style="color: #64748b; font-weight: 500;">
+                            Empresa: <b id="lblEmpresaRazon" th:text="${(session.empresaDesc != null and session.empresaDesc != '') ? session.empresaDesc : 'EMPRESA'}">EMPRESA</b> · RUC: <b id="lblEmpresaRuc">---</b>
+                        </small>
+                    </div>
+                    <div class="no-print" style="width: 260px;">
+                        <input type="text" id="filtroEnTabla" class="form-control form-control-sm" placeholder="🔍 Filtrar en tabla..." oninput="filtrarTablaEnVivo()">
+                    </div>
+                </div>
+
+                <div class="table-responsive" style="max-height: calc(100vh - 430px); overflow-y: auto;">
+                    <table class="bal-table" id="tablaBalance">
+                        <thead class="sticky-top">
+                            <tr>
+                                <th style="width: 140px;">Cuenta</th>
+                                <th>Nombre Cuenta</th>
+                                <th style="width: 65px; text-align: center;">Nivel</th>
+                                <th style="width: 75px; text-align: center;">Asent.</th>
+                                <th style="width: 110px; text-align: center;">Tipo</th>
+                                <th style="width: 130px; text-align: right;">Total Debe</th>
+                                <th style="width: 130px; text-align: right;">Total Haber</th>
+                                <th style="width: 150px; text-align: right;">Saldo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="balanceTbody">
+                            <tr>
+                                <td colspan="8" class="text-center py-5 text-muted">
+                                    <i class="ph ph-spinner spinner" style="font-size: 1.6rem;"></i> Cargando balance contable...
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot id="balanceTfoot" style="background: #f8fafc; font-weight: 800; border-top: 2px solid #cbd5e1;">
+                            <tr>
+                                <td colspan="5" class="text-end py-2 px-3">TOTAL GENERAL ACUMULADO:</td>
+                                <td class="text-end py-2 px-3 font-mono" id="tfootTotalDebe">₲ 0</td>
+                                <td class="text-end py-2 px-3 font-mono" id="tfootTotalHaber">₲ 0</td>
+                                <td class="text-end py-2 px-3 font-mono" id="tfootTotalSaldo">₲ 0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Resumen de Partidas Demostrativas (Nivel 1) -->
+            <div class="card mb-4" id="cardResumen" style="border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); background: #ffffff;">
+                <div class="card-header bg-white py-3 px-4" style="border-bottom: 1px solid #e2e8f0;">
+                    <h5 class="mb-0" style="font-weight: 800; font-size: 1.05rem; color: #0f172a;">
+                        <i class="ph ph-chart-pie-slice text-primary me-2"></i> RESUMEN DE PARTIDAS DEMOSTRATIVAS
+                    </h5>
+                    <small style="color: #64748b;">Consolidación por Grupos Principales del Plan de Cuentas</small>
+                </div>
+                <div class="card-body p-4" style="max-width: 750px; margin: 0 auto;">
+                    <table class="resumen-table">
+                        <thead>
+                            <tr style="background: #f8fafc; color: #334155;">
+                                <th style="width: 110px; text-align: center;">Cuenta</th>
+                                <th>Descripción</th>
+                                <th style="width: 170px; text-align: right;">Saldo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resumenTbody">
+                            <!-- Injected by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Printable Footer Meta -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; font-size: 10px; font-weight: 500; color: #64748b; border-top: 1px solid #cbd5e1; padding-top: 8px;">
+                <div>
+                    Generado por ContaPro · Formulario CORBALAP · <span id="lblTimestamp">--/--/---- --:--</span>
+                </div>
+                <div>
+                    Página 1/1
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- SUB-MODAL BUSCADOR DE CUENTAS -->
+    <div class="modal fade no-print" id="cuentaSearchModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 10px;">
+                <div class="modal-header bg-dark text-white py-2">
+                    <h6 class="modal-title font-bold" style="font-weight: 700;">
+                        <i class="ph ph-magnifying-glass"></i> Seleccionar Cuenta para Balance Analítico
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <input type="text" id="cuentaModalSearchInput" class="form-control form-control-sm mb-2" placeholder="Buscar por código o descripción..." oninput="filtrarCuentasModal()">
+                    <div style="max-height: 350px; overflow-y: auto;">
+                        <table class="table table-hover table-sm align-middle mb-0" style="font-size: 0.83rem;">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 160px;">Código</th>
+                                    <th>Descripción</th>
+                                    <th style="width: 110px; text-align: center;">Tipo</th>
+                                    <th style="width: 80px; text-align: center;">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cuentasModalTbody">
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts Section -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script th:src="@{/js/filtros-rapidos.js}"></script>
+    <script th:inline="javascript">
+        const EJER_INI = /*[[${ejerInicio}]]*/ '';
+        const EJER_FIN = /*[[${ejerFinal}]]*/ '';
+        const EJERCICIO = /*[[${ejercicio}]]*/ '';
+
+        let catalogoCuentas = [];
+        let balanceData = [];
+        let resumenData = [];
+        let activeSearchTarget = 'desde'; // 'desde' o 'hasta'
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof FiltrosRapidos !== 'undefined' && FiltrosRapidos.init) {
+                FiltrosRapidos.init({
+                    container: 'qfBar',
+                    ini: EJER_INI,
+                    fin: EJER_FIN,
+                    ejercicio: EJERCICIO,
+                    onApply: () => consultarBalance()
+                });
+            }
+            loadCatalogoCuentas();
+            consultarBalance();
+        });
+
+        function loadCatalogoCuentas() {
+            fetch('/api/asientos/buscar-cuentas')
+                .then(r => r.json())
+                .then(data => {
+                    catalogoCuentas = data || [];
+                })
+                .catch(() => {});
+        }
+
+        function openCuentaSearchModal(target) {
+            activeSearchTarget = target;
+            document.getElementById('cuentaModalSearchInput').value = '';
+            filtrarCuentasModal();
+            const modalEl = document.getElementById('cuentaSearchModal');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+            setTimeout(() => document.getElementById('cuentaModalSearchInput').focus(), 300);
+        }
+
+        function filtrarCuentasModal() {
+            const q = (document.getElementById('cuentaModalSearchInput').value || '').trim().toLowerCase();
+            const tbody = document.getElementById('cuentasModalTbody');
+            tbody.innerHTML = '';
+
+            const filtered = catalogoCuentas.filter(c => {
+                if (!q) return true;
+                const cod = (c.COD_CUENTA || '').toLowerCase();
+                const nom = (c.DESCRIPCION || '').toLowerCase();
+                return cod.includes(q) || nom.includes(q);
+            }).slice(0, 100);
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">No se encontraron cuentas</td></tr>';
+                return;
+            }
+
+            filtered.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="font-mono font-bold" style="font-weight: 700;">${c.COD_CUENTA}</td>
+                    <td>${c.DESCRIPCION}</td>
+                    <td class="text-center"><span class="badge ${c.TIPO_CUENTA === 'A' ? 'bg-primary' : 'bg-secondary'}" style="font-size: 0.7rem;">${c.TIPO_CUENTA === 'A' ? 'ASENTABLE' : 'RUBRO'}</span></td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-primary py-0 px-2" onclick="seleccionarCuentaParaFiltro('${c.COD_CUENTA}')">
+                            Elegir
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function seleccionarCuentaParaFiltro(cod) {
+            if (activeSearchTarget === 'desde') {
+                document.getElementById('ctaDesde').value = cod;
+            } else {
+                document.getElementById('ctaHasta').value = cod;
+            }
+            const modalEl = document.getElementById('cuentaSearchModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+
+        function limpiarFiltros() {
+            document.getElementById('filtroNivelMax').value = '5';
+            document.getElementById('filtroCierre').value = 'N';
+            document.getElementById('checkSoloSaldo').checked = true;
+            document.getElementById('ctaDesde').value = '';
+            document.getElementById('ctaHasta').value = '';
+            document.getElementById('filtroEnTabla').value = '';
+            consultarBalance();
+        }
+
+        function consultarBalance() {
+            const ejercicio = document.getElementById('filtroEjercicio').value;
+            const fechaDesde = document.getElementById('fechaDesde').value;
+            const fechaHasta = document.getElementById('fechaHasta').value;
+            const nivelMax = document.getElementById('filtroNivelMax').value;
+            const cierre = document.getElementById('filtroCierre').value;
+            const soloConSaldo = document.getElementById('checkSoloSaldo').checked;
+            const ctaDesde = document.getElementById('ctaDesde').value.trim();
+            const ctaHasta = document.getElementById('ctaHasta').value.trim();
+
+            const params = new URLSearchParams();
+            if (ejercicio) params.append('ejercicio', ejercicio);
+            if (fechaDesde) params.append('fechaDesde', fechaDesde);
+            if (fechaHasta) params.append('fechaHasta', fechaHasta);
+            if (nivelMax) params.append('nivelMax', nivelMax);
+            if (cierre) params.append('cierre', cierre);
+            params.append('soloConSaldo', soloConSaldo);
+            if (ctaDesde) params.append('ctaDesde', ctaDesde);
+            if (ctaHasta) params.append('ctaHasta', ctaHasta);
+
+            document.getElementById('balanceTbody').innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center py-5 text-muted">
+                        <i class="ph ph-spinner spinner" style="font-size: 1.6rem; animation: spin 1s linear infinite;"></i>
+                        <p class="mt-2 mb-0 font-bold">Cargando y calculando balance contable en tiempo real...</p>
+                    </td>
+                </tr>`;
+
+            fetch(`/api/balance-analitico/datos?${params.toString()}`)
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status !== 'success') {
+                        throw new Error(res.message || 'Error al obtener datos');
+                    }
+                    balanceData = res.detalle || [];
+                    resumenData = res.resumen || [];
+                    renderKPIs(res.kpis || {});
+                    renderBalanceTable(balanceData);
+                    renderResumenTable(resumenData, res.kpis || {});
+                    
+                    const emp = res.empresaInfo || {};
+                    document.getElementById('lblEmpresaRazon').textContent = emp.razonSocial || 'EMPRESA';
+                    document.getElementById('lblEmpresaRuc').textContent = emp.ruc || '---';
+                    document.getElementById('lblTimestamp').textContent = res.timestampGeneracion || '';
+                })
+                .catch(err => {
+                    console.error("Error cargando balance:", err);
+                    document.getElementById('balanceTbody').innerHTML = `
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-danger font-bold">
+                                Error al calcular datos del Balance Analítico. Verifique los filtros seleccionados.
+                            </td>
+                        </tr>`;
+                });
+        }
+
+        function renderKPIs(kpis) {
+            const totActivo = Number(kpis.totalActivo || 0);
+            const totPasivoPatrim = Number(kpis.totalPasivoPatrim || 0);
+            const totIngresos = Number(kpis.totalIngresos || 0);
+            const totEgresos = Number(kpis.totalEgresos || 0);
+            const resultado = Number(kpis.resultadoEjercicio || 0);
+            const diff = Number(kpis.diferenciaCuadre || 0);
+            const isCuadrado = kpis.isCuadrado === true;
+
+            document.getElementById('kpiActivo').textContent = formatCurrency(totActivo);
+            document.getElementById('kpiPasivoPatrim').textContent = formatCurrency(totPasivoPatrim);
+            document.getElementById('kpiIngresos').textContent = formatCurrency(totIngresos);
+            document.getElementById('kpiEgresos').textContent = formatCurrency(totEgresos);
+            
+            const kpiResEl = document.getElementById('kpiResultado');
+            kpiResEl.textContent = formatCurrency(resultado);
+            kpiResEl.style.color = resultado < 0 ? '#dc2626' : '#16a34a';
+
+            const banner = document.getElementById('bannerCuadre');
+            const txtBanner = document.getElementById('txtBannerCuadre');
+            if (isCuadrado) {
+                banner.className = 'bal-cuadre-banner bal-cuadre-ok no-print';
+                banner.innerHTML = `<i class="ph ph-check-circle" style="font-size: 1.3rem;"></i> <span>✅ Balance Cuadrado: Total Activos (${formatCurrency(totActivo)}) es igual a Pasivos + Patrimonio + Resultado del Ejercicio.</span>`;
+            } else {
+                banner.className = 'bal-cuadre-banner bal-cuadre-err no-print';
+                banner.innerHTML = `<i class="ph ph-warning-circle" style="font-size: 1.3rem;"></i> <span>⚠️ Descuadre de Balance: Existe una diferencia de ${formatCurrency(diff)} entre Activos y Pasivo + Patrimonio + Resultado.</span>`;
+            }
+        }
+
+        function renderBalanceTable(list) {
+            const tbody = document.getElementById('balanceTbody');
+            tbody.innerHTML = '';
+            document.getElementById('txtCantCuentas').textContent = list.length;
+
+            if (list.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted font-bold">
+                            No se encontraron cuentas contables coincidentes con los filtros seleccionados.
+                        </td>
+                    </tr>`;
+                document.getElementById('tfootTotalDebe').textContent = '₲ 0';
+                document.getElementById('tfootTotalHaber').textContent = '₲ 0';
+                document.getElementById('tfootTotalSaldo').textContent = '₲ 0';
+                return;
+            }
+
+            let sumDebe = 0;
+            let sumHaber = 0;
+            let sumSaldo = 0;
+
+            list.forEach(item => {
+                const nivel = Number(item.nivel || 1);
+                const asentable = item.asentable === 'S';
+                const rowClass = nivel === 1 ? 'bal-row-lvl1' : (nivel === 2 ? 'bal-row-lvl2' : (asentable ? 'bal-row-leaf' : 'bal-row-title'));
+                const paddingLeft = Math.max(0, (nivel - 1) * 16);
+
+                const debeVal = Number(item.debe || 0);
+                const haberVal = Number(item.haber || 0);
+                const saldoVal = Number(item.saldo || 0);
+
+                // Acumulamos para el total general solo las de nivel 1 o imputables
+                if (asentable) {
+                    sumDebe += debeVal;
+                    sumHaber += haberVal;
+                    sumSaldo += saldoVal;
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = rowClass;
+                tr.innerHTML = `
+                    <td class="font-mono" style="font-weight: 700;">${item.codCuenta}</td>
+                    <td style="padding-left: ${paddingLeft + 8}px;">${item.nomCuenta}</td>
+                    <td style="text-align: center;"><span class="badge ${nivel === 1 ? 'bg-dark' : 'bg-light text-dark'}" style="font-size: 0.72rem;">N${nivel}</span></td>
+                    <td style="text-align: center;">${asentable ? '<span class="badge bg-success" style="font-size: 0.68rem;">SÍ</span>' : '<span class="badge bg-secondary" style="font-size: 0.68rem;">NO</span>'}</td>
+                    <td style="text-align: center; font-size: 0.75rem; font-weight: 600;">${item.tipoCuenta || (asentable ? 'IMPUTABLE' : 'MAYOR')}</td>
+                    <td style="text-align: right; font-family: monospace;">${debeVal !== 0 ? formatNumber(debeVal) : ''}</td>
+                    <td style="text-align: right; font-family: monospace;">${haberVal !== 0 ? formatNumber(haberVal) : ''}</td>
+                    <td style="text-align: right; font-family: monospace;" class="${saldoVal < 0 ? 'saldo-negativo' : 'saldo-positivo'}">
+                        ${formatNumber(saldoVal)}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('tfootTotalDebe').textContent = formatCurrency(sumDebe);
+            document.getElementById('tfootTotalHaber').textContent = formatCurrency(sumHaber);
+            document.getElementById('tfootTotalSaldo').textContent = formatCurrency(sumSaldo);
+        }
+
+        function renderResumenTable(resumen, kpis) {
+            const tbody = document.getElementById('resumenTbody');
+            tbody.innerHTML = '';
+
+            if (resumen.length === 0) {
+                document.getElementById('cardResumen').style.display = 'none';
+                return;
+            }
+            document.getElementById('cardResumen').style.display = 'block';
+
+            // Grupos Patrimoniales (Activo, Pasivo, Patrimonio)
+            const patrimoniales = resumen.filter(r => r.grupo === 'ACTIVO' || r.grupo === 'PASIVO' || r.grupo === 'PATRIMONIO');
+            // Grupos de Resultados (Ingresos, Egresos)
+            const resultados = resumen.filter(r => r.grupo === 'INGRESOS' || r.grupo === 'EGRESOS');
+
+            // Render Patrimoniales
+            patrimoniales.forEach(r => {
+                const saldo = Number(r.saldo || 0);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="text-center font-mono font-bold">${r.codCuenta}</td>
+                    <td style="font-weight: 700;">${r.nomCuenta}</td>
+                    <td style="text-align: right; font-family: monospace;" class="${saldo < 0 ? 'saldo-negativo' : 'saldo-positivo'}">${formatNumber(saldo)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            const subtotalPatrim = Number(kpis.totalActivo || 0) - Number(kpis.totalPasivoPatrim || 0);
+            const trSubtPatrim = document.createElement('tr');
+            trSubtPatrim.className = 'resumen-subtotal-row';
+            trSubtPatrim.innerHTML = `
+                <td colspan="2" style="text-align: right; font-weight: 800;">DIFERENCIA PATRIMONIAL (Activo - Pasivo - Patrimonio) :</td>
+                <td style="text-align: right; font-family: monospace; font-weight: 800;" class="${subtotalPatrim < 0 ? 'saldo-negativo' : 'saldo-positivo'}">${formatNumber(subtotalPatrim)}</td>
+            `;
+            tbody.appendChild(trSubtPatrim);
+
+            // Separador
+            const trSep = document.createElement('tr');
+            trSep.innerHTML = `<td colspan="3" style="height: 12px; border: none; background: #f8fafc;"></td>`;
+            tbody.appendChild(trSep);
+
+            // Render Resultados
+            resultados.forEach(r => {
+                const saldo = Number(r.saldo || 0);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="text-center font-mono font-bold">${r.codCuenta}</td>
+                    <td style="font-weight: 700;">${r.nomCuenta}</td>
+                    <td style="text-align: right; font-family: monospace;" class="${saldo < 0 ? 'saldo-negativo' : 'saldo-positivo'}">${formatNumber(saldo)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            const resOperativo = Number(kpis.resultadoEjercicio || 0);
+            const trSubtRes = document.createElement('tr');
+            trSubtRes.className = 'resumen-subtotal-row';
+            trSubtRes.innerHTML = `
+                <td colspan="2" style="text-align: right; font-weight: 800;">RESULTADO DEL EJERCICIO (Ingresos - Egresos) :</td>
+                <td style="text-align: right; font-family: monospace; font-weight: 800;" class="${resOperativo < 0 ? 'saldo-negativo' : 'saldo-positivo'}">${formatNumber(resOperativo)}</td>
+            `;
+            tbody.appendChild(trSubtRes);
+        }
+
+        function filtrarTablaEnVivo() {
+            const term = (document.getElementById('filtroEnTabla').value || '').trim().toLowerCase();
+            if (!term) {
+                renderBalanceTable(balanceData);
+                return;
+            }
+            const filtrados = balanceData.filter(r => {
+                const cod = (r.codCuenta || '').toLowerCase();
+                const nom = (r.nomCuenta || '').toLowerCase();
+                return cod.includes(term) || nom.includes(term);
+            });
+            renderBalanceTable(filtrados);
+        }
+
+        function exportarExcel() {
+            if (!balanceData || balanceData.length === 0) {
+                Swal.fire('Atención', 'No hay datos cargados para exportar.', 'info');
+                return;
+            }
+
+            let csv = '\uFEFF'; // BOM para soporte UTF-8 en Excel
+            csv += 'CUENTA;NOMBRE CUENTA;NIVEL;ASENTABLE;TIPO;TOTAL DEBE;TOTAL HABER;SALDO\r\n';
+
+            balanceData.forEach(r => {
+                const cuenta = `"${r.codCuenta || ''}"`;
+                const nombre = `"${(r.nomCuenta || '').replace(/"/g, '""')}"`;
+                const nivel = r.nivel || 1;
+                const asentable = r.asentable || 'N';
+                const tipo = `"${r.tipoCuenta || ''}"`;
+                const debe = r.debe || 0;
+                const haber = r.haber || 0;
+                const saldo = r.saldo || 0;
+
+                csv += `${cuenta};${nombre};${nivel};${asentable};${tipo};${debe};${haber};${saldo}\r\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            const ejer = document.getElementById('filtroEjercicio').value || '2026';
+            const fecHasta = document.getElementById('fechaHasta').value || '';
+            link.setAttribute('download', `CORBALAP_Balance_Analitico_${ejer}_${fecHasta}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function formatNumber(num) {
+            if (num === null || num === undefined) return '0';
+            const val = Number(num);
+            if (isNaN(val)) return '0';
+            return new Intl.NumberFormat('es-PY', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(val);
+        }
+
+        function formatCurrency(num) {
+            return '₲ ' + formatNumber(num);
+        }
+    </script>
+</body>
+</html>
