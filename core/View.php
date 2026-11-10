@@ -73,21 +73,21 @@ class View {
 
         // Reemplazar fragmento head
         $html = preg_replace_callback(
-            '/<head[^>]*th:replace="~\{fragments\/layout\s*::\s*head\(\'([^\']*)\'\)\}"[^>]*>\s*<\/head>/is',
+            '/<head[^>]*th:replace="~\{fragments\/layout\s*::\s*head\(\'([^\']*)\'\)\}"[^>]*>.*?<\/head>/is',
             fn($m) => self::renderHeadFragment($m[1]),
             $html
         );
 
         // Reemplazar fragmento sidebar
         $html = preg_replace_callback(
-            '/<(div|aside)[^>]*th:replace="~\{fragments\/layout\s*::\s*sidebar\}"[^>]*>\s*<\/\1>/is',
+            '/<(div|aside)[^>]*th:replace="~\{fragments\/layout\s*::\s*sidebar\}"[^>]*>.*?<\/\1>/is',
             fn($m) => self::renderSidebarFragment($modulos, $planSummary, $esSuperAdmin),
             $html
         );
 
         // Reemplazar fragmento navbar
         $html = preg_replace_callback(
-            '/<(div|header)[^>]*th:replace="~\{fragments\/layout\s*::\s*navbar\(\'([^\']*)\'\)\}"[^>]*>\s*<\/\1>/is',
+            '/<(div|header)[^>]*th:replace="~\{fragments\/layout\s*::\s*navbar\(\'([^\']*)\'\)\}"[^>]*>.*?<\/\1>/is',
             fn($m) => self::renderNavbarFragment($m[2], $planSummary, $esSuperAdmin),
             $html
         );
@@ -95,7 +95,7 @@ class View {
         // Reemplazar fragmento scripts
         $scriptsReplaced = 0;
         $html = preg_replace_callback(
-            '/<div[^>]*th:replace="~\{fragments\/layout\s*::\s*scripts\}"[^>]*>\s*<\/div>/is',
+            '/<div[^>]*th:replace="~\{fragments\/layout\s*::\s*scripts\}"[^>]*>.*?<\/div>/is',
             fn($m) => self::renderScriptsFragment(),
             $html,
             -1,
