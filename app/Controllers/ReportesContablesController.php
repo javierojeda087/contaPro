@@ -4565,15 +4565,6 @@ class ReportesContablesController {
                     ]
                 ]
             ]);
-                        'totalPagado'    => $kpiTotalPagado,
-                        'totalSaldo'     => $kpiTotalSaldo,
-                        'cantTotal'      => count($items),
-                        'cantPendientes' => $cantPendientes,
-                        'cantParciales'  => $cantParciales,
-                        'cantCanceladas' => $cantCanceladas,
-                    ]
-                ]
-            ]);
         } catch (\Throwable $e) {
             View::json([
                 'status'  => 'error',
