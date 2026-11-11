@@ -33,7 +33,11 @@
                     <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                         <div style="display: inline-flex; background: #f1f5f9; padding: 4px; border-radius: 10px; border: 1px solid #e2e8f0; gap: 4px;">
                             <button type="button" id="tabBtnFacturas" class="saldos-tab-btn active" onclick="cambiarTabVista('facturas')">
-                                <i class="ph ph-files"></i> Detalle por Factura
+                                <i class="ph ph-files"></i> Facturas con Saldo
+                            </button>
+                            <button type="button" id="tabBtnCanceladas" class="saldos-tab-btn" onclick="cambiarTabVista('canceladas')">
+                                <i class="ph ph-check-circle" style="color: #16a34a;"></i> Facturas Canceladas
+                                <span id="badgeTabCanceladas" style="font-size: 0.7rem; font-weight: 800; background: #dcfce7; color: #15803d; padding: 1px 7px; border-radius: 9999px; margin-left: 3px;">0</span>
                             </button>
                             <button type="button" id="tabBtnClientes" class="saldos-tab-btn" onclick="cambiarTabVista('clientes')">
                                 <i class="ph ph-users"></i> Resumen por Cliente
@@ -244,7 +248,80 @@
                 </div>
             </div>
 
-            <!-- TAB 2: RESUMEN POR CLIENTE -->
+            <!-- TAB 2: DETALLE DE FACTURAS CRÉDITO CANCELADAS CON RECIBO -->
+            <div id="viewTabCanceladas" class="card" style="display: none; background: white; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 4px 16px rgba(0,0,0,0.04); overflow: hidden;">
+                <div style="padding: 12px 18px; background: #f0fdf4; border-bottom: 1px solid #bbf7d0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <div style="font-weight: 800; font-size: 0.9rem; color: #14532d; display: flex; align-items: center; gap: 8px;">
+                        <i class="ph ph-check-circle" style="color: #16a34a; font-size: 1.25rem;"></i>
+                        <span>Facturas Crédito Totalmente Cobradas (Canceladas con Recibo)</span>
+                        <span id="badgeTotalFilasCanceladas" style="font-size: 0.72rem; font-weight: 800; background: #bbf7d0; color: #14532d; padding: 2px 8px; border-radius: 6px;">0</span>
+                    </div>
+                    <div style="font-size: 0.76rem; color: #166534; font-weight: 600;">
+                        Comprobantes de ventas a crédito que ya han sido cancelados al 100% mediante Recibos de Cobro
+                    </div>
+                </div>
+
+                <div class="table-responsive" style="max-height: 65vh; overflow-y: auto;">
+                    <table class="table table-hover table-striped mb-0" id="tablaFacturasCanceladas" style="font-size: 0.84rem; vertical-align: middle;">
+                        <thead style="position: sticky; top: 0; background: #14532d; color: white; z-index: 5;">
+                            <tr>
+                                <th style="padding: 10px 12px; width: 45px; text-align: center; white-space: nowrap;">#</th>
+                                <th onclick="ordenarCanceladas('fecIngreso')" style="padding: 10px 12px; width: 100px; text-align: center; white-space: nowrap; cursor: pointer;">
+                                    Fecha Emisión <span id="sort_canc_fecIngreso" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarCanceladas('asiento')" style="padding: 10px 12px; width: 85px; text-align: center; white-space: nowrap; cursor: pointer;">
+                                    Asiento <span id="sort_canc_asiento" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarCanceladas('rucCliente')" style="padding: 10px 12px; width: 130px; white-space: nowrap; cursor: pointer;">
+                                    RUC <span id="sort_canc_rucCliente" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarCanceladas('nomCliente')" style="padding: 10px 12px; white-space: nowrap; cursor: pointer;">
+                                    Cliente / Razón Social <span id="sort_canc_nomCliente" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarCanceladas('nroTimbrado')" style="padding: 10px 12px; width: 100px; text-align: center; white-space: nowrap; cursor: pointer;">
+                                    Timbrado <span id="sort_canc_nroTimbrado" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarCanceladas('nroFactura')" style="padding: 10px 12px; width: 145px; text-align: center; white-space: nowrap; cursor: pointer;">
+                                    N° Factura <span id="sort_canc_nroFactura" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarCanceladas('valorTotal')" style="padding: 10px 12px; width: 125px; text-align: right; white-space: nowrap; cursor: pointer;">
+                                    Total Factura <span id="sort_canc_valorTotal" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarCanceladas('totalCobrado')" style="padding: 10px 12px; width: 125px; text-align: right; white-space: nowrap; cursor: pointer;">
+                                    Total Cobrado <span id="sort_canc_totalCobrado" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarCanceladas('cantRecibos')" style="padding: 10px 12px; width: 105px; text-align: center; white-space: nowrap; cursor: pointer;">
+                                    Recibos <span id="sort_canc_cantRecibos" class="sort-icon">↕</span>
+                                </th>
+                                <th style="padding: 10px 12px; width: 140px; text-align: center; white-space: nowrap;">
+                                    Último Recibo
+                                </th>
+                                <th style="padding: 10px 12px; width: 115px; text-align: center; white-space: nowrap;">
+                                    Estado
+                                </th>
+                                <th class="no-print" style="padding: 10px 12px; width: 100px; text-align: center; white-space: nowrap;">Detalle</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyFacturasCanceladas">
+                            <tr>
+                                <td colspan="13" class="text-center py-5 text-muted">
+                                    No hay facturas canceladas con recibos para mostrar en el periodo seleccionado.
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot style="position: sticky; bottom: 0; background: #f8fafc; font-weight: 800; border-top: 2px solid #cbd5e1; z-index: 5;">
+                            <tr>
+                                <td colspan="7" style="padding: 10px 12px; text-align: right; text-transform: uppercase;">TOTAL FACTURAS CANCELADAS:</td>
+                                <td id="tfootCancTotalFactura" style="padding: 10px 12px; text-align: right; color: #0f172a; font-family: monospace; font-size: 0.92rem;">0</td>
+                                <td id="tfootCancTotalCobrado" style="padding: 10px 12px; text-align: right; color: #16a34a; font-family: monospace; font-size: 0.92rem;">0</td>
+                                <td colspan="4"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 3: RESUMEN POR CLIENTE -->
             <div id="viewTabClientes" class="card" style="display: none; background: white; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 4px 16px rgba(0,0,0,0.04); overflow: hidden;">
                 <div style="padding: 12px 18px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                     <div style="font-weight: 800; font-size: 0.9rem; color: #0f172a; display: flex; align-items: center; gap: 8px;">
@@ -379,12 +456,15 @@
 
     <script th:inline="javascript">
         let listaFacturasGlobal = [];
+        let listaCanceladasGlobal = [];
         let listaClientesGlobal = [];
         let vistaActual = 'facturas';
 
         // Variables de ordenamiento
         let sortColFactura = 'fecIngreso';
         let sortAscFactura = true;
+        let sortColCanc = 'fecIngreso';
+        let sortAscCanc = false;
         let sortColCliente = 'saldo';
         let sortAscCliente = false;
 
@@ -404,21 +484,19 @@
         function cambiarTabVista(tab) {
             vistaActual = tab;
             const btnFac = document.getElementById('tabBtnFacturas');
+            const btnCanc = document.getElementById('tabBtnCanceladas');
             const btnCli = document.getElementById('tabBtnClientes');
             const viewFac = document.getElementById('viewTabFacturas');
+            const viewCanc = document.getElementById('viewTabCanceladas');
             const viewCli = document.getElementById('viewTabClientes');
 
-            if (tab === 'facturas') {
-                btnFac.classList.add('active');
-                btnCli.classList.remove('active');
-                viewFac.style.display = 'block';
-                viewCli.style.display = 'none';
-            } else {
-                btnCli.classList.add('active');
-                btnFac.classList.remove('active');
-                viewCli.style.display = 'block';
-                viewFac.style.display = 'none';
-            }
+            btnFac.classList.toggle('active', tab === 'facturas');
+            if (btnCanc) btnCanc.classList.toggle('active', tab === 'canceladas');
+            btnCli.classList.toggle('active', tab === 'clientes');
+
+            viewFac.style.display = tab === 'facturas' ? 'block' : 'none';
+            if (viewCanc) viewCanc.style.display = tab === 'canceladas' ? 'block' : 'none';
+            viewCli.style.display = tab === 'clientes' ? 'block' : 'none';
         }
 
         function aplicarPeriodoRapido(modo) {
@@ -467,6 +545,17 @@
                     </td>
                 </tr>`;
 
+            const tbodyCanc = document.getElementById('tbodyFacturasCanceladas');
+            if (tbodyCanc) {
+                tbodyCanc.innerHTML = `
+                    <tr>
+                        <td colspan="13" class="text-center py-5 text-muted">
+                            <i class="ph ph-spinner-gap" style="font-size: 2rem; animation: spin 1s linear infinite; display: block; margin-bottom: 8px;"></i>
+                            Cargando facturas canceladas con recibos...
+                        </td>
+                    </tr>`;
+            }
+
             try {
                 const params = new URLSearchParams();
                 if (fDesde) params.set('fechaDesde', fDesde);
@@ -484,6 +573,7 @@
                 }
 
                 listaFacturasGlobal = res.data.facturas || [];
+                listaCanceladasGlobal = res.data.facturasCanceladas || [];
                 listaClientesGlobal = res.data.resumenClientes || [];
                 const kpis = res.data.kpis || {};
 
@@ -499,6 +589,9 @@
                 const pct = kpis.totalCredito > 0 ? Math.min(100, Math.round((kpis.totalCobrado / kpis.totalCredito) * 1000) / 10) : 0;
                 document.getElementById('kpiPorcentajeCobrado').textContent = pct.toFixed(1) + '%';
 
+                const badgeTab = document.getElementById('badgeTabCanceladas');
+                if (badgeTab) badgeTab.textContent = String(listaCanceladasGlobal.length);
+
                 // Texto periodo para impresión
                 let periodoTxt = 'Todo el ejercicio';
                 if (fDesde && fHasta) {
@@ -511,6 +604,7 @@
                 document.getElementById('printPeriodoTexto').textContent = 'Periodo: ' + periodoTxt;
 
                 aplicarOrdenFacturas();
+                aplicarOrdenCanceladas();
                 aplicarOrdenClientes();
 
             } catch (err) {
@@ -519,7 +613,7 @@
             }
         }
 
-        // --- ORDENAMIENTO DE FACTURAS ---
+        // --- ORDENAMIENTO DE FACTURAS PENDIENTES ---
         function ordenarFacturas(col) {
             if (sortColFactura === col) {
                 sortAscFactura = !sortAscFactura;
@@ -531,7 +625,6 @@
         }
 
         function aplicarOrdenFacturas() {
-            // Actualizar iconos
             document.querySelectorAll('#tablaFacturasCredito .sort-icon').forEach(el => el.textContent = '↕');
             const icon = document.getElementById('sort_' + sortColFactura);
             if (icon) icon.textContent = sortAscFactura ? '▲' : '▼';
@@ -557,6 +650,45 @@
             });
 
             filtrarTablaEnVivo();
+        }
+
+        // --- ORDENAMIENTO DE FACTURAS CANCELADAS ---
+        function ordenarCanceladas(col) {
+            if (sortColCanc === col) {
+                sortAscCanc = !sortAscCanc;
+            } else {
+                sortColCanc = col;
+                sortAscCanc = true;
+            }
+            aplicarOrdenCanceladas();
+        }
+
+        function aplicarOrdenCanceladas() {
+            document.querySelectorAll('#tablaFacturasCanceladas .sort-icon').forEach(el => el.textContent = '↕');
+            const icon = document.getElementById('sort_canc_' + sortColCanc);
+            if (icon) icon.textContent = sortAscCanc ? '▲' : '▼';
+
+            listaCanceladasGlobal.sort((a, b) => {
+                let vA = a[sortColCanc];
+                let vB = b[sortColCanc];
+
+                if (sortColCanc === 'valorTotal' || sortColCanc === 'totalCobrado' || sortColCanc === 'asiento' || sortColCanc === 'cantRecibos') {
+                    vA = Number(vA) || 0;
+                    vB = Number(vB) || 0;
+                } else if (sortColCanc === 'fecIngreso') {
+                    vA = String(vA || '');
+                    vB = String(vB || '');
+                } else {
+                    vA = String(vA || '').toUpperCase();
+                    vB = String(vB || '').toUpperCase();
+                }
+
+                if (vA < vB) return sortAscCanc ? -1 : 1;
+                if (vA > vB) return sortAscCanc ? 1 : -1;
+                return 0;
+            });
+
+            filtrarTablaCanceladas();
         }
 
         // --- ORDENAMIENTO DE CLIENTES ---
@@ -675,6 +807,78 @@
             document.getElementById('tfootTotalSaldo').textContent = formatGs(sumSaldo);
         }
 
+        function renderTablaCanceladas(lista) {
+            const tbody = document.getElementById('tbodyFacturasCanceladas');
+            const badge = document.getElementById('badgeTotalFilasCanceladas');
+            if (badge) badge.textContent = String(lista.length);
+            const badgeTab = document.getElementById('badgeTabCanceladas');
+            if (badgeTab) badgeTab.textContent = String(lista.length);
+
+            if (lista.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="13" class="text-center py-5 text-muted">
+                            <i class="ph ph-check-circle" style="font-size: 2.2rem; color: #a7f3d0; display: block; margin-bottom: 6px;"></i>
+                            No se registran facturas crédito canceladas con recibos para los criterios seleccionados.
+                        </td>
+                    </tr>`;
+                document.getElementById('tfootCancTotalFactura').textContent = '0';
+                document.getElementById('tfootCancTotalCobrado').textContent = '0';
+                return;
+            }
+
+            let sumCredito = 0;
+            let sumCobrado = 0;
+
+            tbody.innerHTML = lista.map((f, i) => {
+                sumCredito += Number(f.valorTotal) || 0;
+                sumCobrado += Number(f.totalCobrado) || 0;
+
+                const cantRec = f.cantRecibos || (f.recibos ? f.recibos.length : 0);
+                const btnRecibos = cantRec > 0
+                    ? `<button type="button" class="btn-recibos-link" onclick="abrirModalRecibosCancelada(${i})">
+                           <i class="ph ph-hand-coins"></i> ${cantRec} recibo(s)
+                       </button>`
+                    : `<span style="color: #94a3b8; font-size: 0.76rem;">Sin recibos</span>`;
+
+                const ultRec = f.ultimoReciboNro ? `Rec. #${f.ultimoReciboNro} (${f.ultimoReciboFmt || ''})` : '-';
+
+                return `
+                    <tr>
+                        <td style="text-align: center; color: #64748b; font-weight: 700; white-space: nowrap;">${i + 1}</td>
+                        <td style="text-align: center; font-weight: 700; color: #334155; white-space: nowrap;">${f.fecIngresoFmt || f.fecIngreso || '-'}</td>
+                        <td style="text-align: center; font-family: monospace; font-weight: 800; color: #4338ca; white-space: nowrap;">${f.asiento ? '#' + f.asiento : '-'}</td>
+                        <td style="font-family: monospace; font-weight: 800; color: #0f172a; white-space: nowrap;">${f.rucCliente || '-'}</td>
+                        <td style="font-weight: 700; color: #0f172a;" title="${escapeHtml(f.nomCliente || '')}">
+                            ${escapeHtml(f.nomCliente || '-')}
+                        </td>
+                        <td style="text-align: center; font-family: monospace; font-size: 0.8rem; color: #475569; white-space: nowrap;">${f.nroTimbrado || '-'}</td>
+                        <td style="text-align: center; font-family: monospace; font-weight: 800; color: #1e3a8a; white-space: nowrap;">
+                            ${f.nroFactura || '-'}${f.serie ? ' [' + f.serie + ']' : ''}
+                        </td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 800; color: #0f172a; white-space: nowrap;">
+                            ${formatGs(f.valorTotal)}
+                        </td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 800; color: #16a34a; white-space: nowrap;">
+                            ${formatGs(f.totalCobrado)}
+                        </td>
+                        <td style="text-align: center; font-weight: 800; color: #059669; white-space: nowrap;">
+                            ${cantRec}
+                        </td>
+                        <td style="text-align: center; font-family: monospace; font-size: 0.76rem; color: #334155; white-space: nowrap;">
+                            ${ultRec}
+                        </td>
+                        <td style="text-align: center; white-space: nowrap;">
+                            <span class="badge-pagado"><i class="ph ph-check-circle"></i> COBRADO 100%</span>
+                        </td>
+                        <td class="no-print" style="text-align: center; white-space: nowrap;">${btnRecibos}</td>
+                    </tr>`;
+            }).join('');
+
+            document.getElementById('tfootCancTotalFactura').textContent = formatGs(sumCredito);
+            document.getElementById('tfootCancTotalCobrado').textContent = formatGs(sumCobrado);
+        }
+
         function renderTablaClientes(lista) {
             const tbody = document.getElementById('tbodyClientesResumen');
             document.getElementById('badgeTotalClientes').textContent = String(lista.length);
@@ -745,6 +949,7 @@
             const q = (document.getElementById('filtroBusqueda').value || '').trim().toUpperCase();
             if (!q) {
                 renderTablaFacturas(listaFacturasGlobal);
+                filtrarTablaCanceladas();
                 return;
             }
             const filtradas = listaFacturasGlobal.filter(f => {
@@ -757,12 +962,41 @@
                 return fac.includes(q) || ruc.includes(q) || nom.includes(q) || timb.includes(q) || asie.includes(q) || matchEnRecibos;
             });
             renderTablaFacturas(filtradas);
+            filtrarTablaCanceladas();
+        }
+
+        function filtrarTablaCanceladas() {
+            const q = (document.getElementById('filtroBusqueda').value || '').trim().toUpperCase();
+            if (!q) {
+                renderTablaCanceladas(listaCanceladasGlobal);
+                return;
+            }
+            const filtradas = listaCanceladasGlobal.filter(f => {
+                const fac = String(f.nroFactura || '').toUpperCase();
+                const ruc = String(f.rucCliente || '').toUpperCase();
+                const nom = String(f.nomCliente || '').toUpperCase();
+                const timb = String(f.nroTimbrado || '').toUpperCase();
+                const asie = String(f.asiento || '').toUpperCase();
+                const ult = String(f.ultimoReciboNro || '').toUpperCase();
+                const matchEnRecibos = (f.recibos || []).some(r => String(r.nroRecibo || '').toUpperCase().includes(q));
+                return fac.includes(q) || ruc.includes(q) || nom.includes(q) || timb.includes(q) || asie.includes(q) || ult.includes(q) || matchEnRecibos;
+            });
+            renderTablaCanceladas(filtradas);
         }
 
         function abrirModalRecibos(index) {
             const f = listaFacturasGlobal[index];
             if (!f) return;
+            mostrarModalRecibosComun(f);
+        }
 
+        function abrirModalRecibosCancelada(index) {
+            const f = listaCanceladasGlobal[index];
+            if (!f) return;
+            mostrarModalRecibosComun(f);
+        }
+
+        function mostrarModalRecibosComun(f) {
             document.getElementById('modalFacturaSubtitulo').textContent =
                 `Factura: ${f.nroFactura || '-'} | Cliente: ${f.rucCliente || ''} - ${f.nomCliente || ''}`;
 
@@ -820,7 +1054,7 @@
 
             const wb = XLSX.utils.book_new();
 
-            // Hoja 1: Detalle de Facturas Crédito Ventas
+            // Hoja 1: Detalle de Facturas Crédito Ventas (con saldo o activas)
             const dataFac = [
                 ['#', 'FECHA EMISIÓN', 'ASIENTO', 'RUC CLIENTE', 'RAZÓN SOCIAL', 'TIMBRADO', 'N° FACTURA', 'SERIE', 'TOTAL FACTURA', 'TOTAL COBRADO', 'SALDO PENDIENTE', '% COBRADO', 'ESTADO', 'RECIBOS DE COBRO']
             ];
@@ -846,9 +1080,35 @@
             });
 
             const wsFac = XLSX.utils.aoa_to_sheet(dataFac);
-            XLSX.utils.book_append_sheet(wb, wsFac, 'Facturas Crédito Ventas');
+            XLSX.utils.book_append_sheet(wb, wsFac, 'Facturas Crédito');
 
-            // Hoja 2: Resumen por Cliente
+            // Hoja 2: Facturas Crédito Canceladas con Recibo
+            const dataCanc = [
+                ['#', 'FECHA EMISIÓN', 'ASIENTO', 'RUC CLIENTE', 'RAZÓN SOCIAL', 'TIMBRADO', 'N° FACTURA', 'SERIE', 'TOTAL FACTURA', 'TOTAL COBRADO (100%)', 'CANT. RECIBOS', 'ÚLTIMO RECIBO', 'ESTADO', 'HISTORIAL RECIBOS']
+            ];
+            listaCanceladasGlobal.forEach((f, idx) => {
+                const recStr = (f.recibos || []).map(r => `Rec #${r.nroRecibo} (${r.fecReciboFmt}): Gs. ${formatGs(r.importe)}`).join(' | ');
+                dataCanc.push([
+                    idx + 1,
+                    f.fecIngresoFmt || f.fecIngreso || '',
+                    f.asiento || '',
+                    f.rucCliente || '',
+                    f.nomCliente || '',
+                    f.nroTimbrado || '',
+                    f.nroFactura || '',
+                    f.serie || '',
+                    Number(f.valorTotal) || 0,
+                    Number(f.totalCobrado) || 0,
+                    f.cantRecibos || 0,
+                    f.ultimoReciboNro ? `Rec #${f.ultimoReciboNro} (${f.ultimoReciboFmt})` : '',
+                    'COBRADO 100%',
+                    recStr
+                ]);
+            });
+            const wsCanc = XLSX.utils.aoa_to_sheet(dataCanc);
+            XLSX.utils.book_append_sheet(wb, wsCanc, 'Canceladas con Recibo');
+
+            // Hoja 3: Resumen por Cliente
             const dataCli = [
                 ['#', 'RUC CLIENTE', 'RAZÓN SOCIAL', 'CANT. FACTURAS', 'TOTAL CRÉDITO', 'TOTAL COBRADO', 'SALDO PENDIENTE', '% COBRADO']
             ];

@@ -4373,6 +4373,7 @@ class ReportesContablesController {
 
             // 3. Cruzar cada factura crédito con sus recibos de pago
             $items = [];
+            $canceladasItems = [];
             $kpiTotalCredito = 0.0;
             $kpiTotalPagado  = 0.0;
             $kpiTotalSaldo   = 0.0;
@@ -4446,17 +4447,6 @@ class ReportesContablesController {
                     $cantPendientes++;
                 }
 
-                // Filtrar por estadoSaldo si no es 'TODOS'
-                if ($estadoSaldo === 'PENDIENTES' && $estadoCod !== 'PENDIENTE' && $estadoCod !== 'PARCIAL') {
-                    continue;
-                }
-                if ($estadoSaldo === 'CANCELADOS' && $estadoCod !== 'CANCELADO') {
-                    continue;
-                }
-                if ($estadoSaldo === 'PARCIALES' && $estadoCod !== 'PARCIAL') {
-                    continue;
-                }
-
                 // Filtro de texto libre si fue proporcionado
                 if ($filtroBusqueda !== '') {
                     $q = strtoupper($filtroBusqueda);
@@ -4497,37 +4487,59 @@ class ReportesContablesController {
                 $proveedoresMap[$pKey]['totalPagado']  += $totalPagado;
                 $proveedoresMap[$pKey]['saldo']        += $saldo;
 
-                $items[] = [
-                    'idEgreso'        => $idEgr,
-                    'tipDoc'          => (string)($f['TIP_DOC'] ?? 'FAC'),
-                    'nroTimbrado'     => (string)($f['NRO_TIMBRADO'] ?? ''),
-                    'nroFactura'      => (string)($f['NRO_FACTURA'] ?? ''),
-                    'serie'           => (string)($f['SERIE'] ?? ''),
-                    'fecEgreso'       => (string)($f['FEC_EGRESO'] ?? ''),
-                    'fecEgresoFmt'    => (string)($f['FEC_EGRESO_FMT'] ?? ''),
-                    'rucProveedor'    => (string)($f['RUC_PROVEEDOR'] ?? ''),
-                    'nomProveedor'    => (string)($f['NOM_PROVEEDOR'] ?? ''),
-                    'codProveedor'    => (string)($f['COD_PROVEEDOR'] ?? ''),
-                    'condicion'       => (string)($f['CONDICION'] ?? 'CREDITO'),
-                    'codMoneda'       => (string)($f['COD_MONEDA'] ?? '1'),
-                    'tasaCambio'      => (float)($f['TASA_CAMBIO'] ?? 1),
-                    'grav10'          => (float)($f['GRAV10'] ?? 0),
-                    'iva10'           => (float)($f['IVA10'] ?? 0),
-                    'grav5'           => (float)($f['GRAV5'] ?? 0),
-                    'iva5'            => (float)($f['IVA5'] ?? 0),
-                    'exentas'         => (float)($f['EXENTAS'] ?? 0),
-                    'totIva'          => (float)($f['TOT_IVA'] ?? 0),
-                    'valorTotal'      => $vTotal,
-                    'totalPagado'     => $totalPagado,
-                    'saldo'           => $saldo,
-                    'porcentajePago'  => $vTotal > 0 ? min(100, round(($totalPagado / $vTotal) * 100, 1)) : 100,
-                    'estadoCod'       => $estadoCod,
-                    'estadoLabel'     => $estadoLabel,
-                    'badgeClass'      => $badgeClass,
-                    'anulada'         => $anulada ? 'S' : 'N',
-                    'recibos'         => $recibosDetalles,
-                    'cantRecibos'     => count($recibosDetalles),
+                $ultimoRec = !empty($recibosDetalles) ? end($recibosDetalles) : null;
+
+                $itemObj = [
+                    'idEgreso'          => $idEgr,
+                    'tipDoc'            => (string)($f['TIP_DOC'] ?? 'FAC'),
+                    'nroTimbrado'       => (string)($f['NRO_TIMBRADO'] ?? ''),
+                    'nroFactura'        => (string)($f['NRO_FACTURA'] ?? ''),
+                    'serie'             => (string)($f['SERIE'] ?? ''),
+                    'fecEgreso'         => (string)($f['FEC_EGRESO'] ?? ''),
+                    'fecEgresoFmt'      => (string)($f['FEC_EGRESO_FMT'] ?? ''),
+                    'rucProveedor'      => (string)($f['RUC_PROVEEDOR'] ?? ''),
+                    'nomProveedor'      => (string)($f['NOM_PROVEEDOR'] ?? ''),
+                    'codProveedor'      => (string)($f['COD_PROVEEDOR'] ?? ''),
+                    'condicion'         => (string)($f['CONDICION'] ?? 'CREDITO'),
+                    'codMoneda'         => (string)($f['COD_MONEDA'] ?? '1'),
+                    'tasaCambio'        => (float)($f['TASA_CAMBIO'] ?? 1),
+                    'grav10'            => (float)($f['GRAV10'] ?? 0),
+                    'iva10'             => (float)($f['IVA10'] ?? 0),
+                    'grav5'             => (float)($f['GRAV5'] ?? 0),
+                    'iva5'              => (float)($f['IVA5'] ?? 0),
+                    'exentas'           => (float)($f['EXENTAS'] ?? 0),
+                    'totIva'            => (float)($f['TOT_IVA'] ?? 0),
+                    'valorTotal'        => $vTotal,
+                    'totalPagado'       => $totalPagado,
+                    'saldo'             => $saldo,
+                    'porcentajePago'    => $vTotal > 0 ? min(100, round(($totalPagado / $vTotal) * 100, 1)) : 100,
+                    'estadoCod'         => $estadoCod,
+                    'estadoLabel'       => $estadoLabel,
+                    'badgeClass'        => $badgeClass,
+                    'anulada'           => $anulada ? 'S' : 'N',
+                    'recibos'           => $recibosDetalles,
+                    'cantRecibos'       => count($recibosDetalles),
+                    'ultimoReciboNro'   => $ultimoRec ? ($ultimoRec['nroRecibo'] ?? '') : '',
+                    'ultimoReciboFmt'   => $ultimoRec ? ($ultimoRec['fecReciboFmt'] ?? '') : '',
                 ];
+
+                // Si fue cancelada con recibo(s), registrar en lista de canceladas
+                if (!$anulada && $saldo <= 0.009 && count($recibosDetalles) > 0) {
+                    $canceladasItems[] = $itemObj;
+                }
+
+                // Filtrar para la pestaña principal de comprobantes según estadoSaldo
+                if ($estadoSaldo === 'PENDIENTES' && $estadoCod !== 'PENDIENTE' && $estadoCod !== 'PARCIAL') {
+                    continue;
+                }
+                if ($estadoSaldo === 'CANCELADOS' && $estadoCod !== 'CANCELADO') {
+                    continue;
+                }
+                if ($estadoSaldo === 'PARCIALES' && $estadoCod !== 'PARCIAL') {
+                    continue;
+                }
+
+                $items[] = $itemObj;
             }
 
             // Ordenar proveedores por mayor saldo pendiente
@@ -4540,9 +4552,19 @@ class ReportesContablesController {
                 'status' => 'success',
                 'data'   => [
                     'facturas'            => $items,
+                    'facturasCanceladas'  => $canceladasItems,
                     'resumenProveedores'  => $resumenProveedores,
                     'kpis' => [
                         'totalCredito'   => $kpiTotalCredito,
+                        'totalPagado'    => $kpiTotalPagado,
+                        'totalSaldo'     => $kpiTotalSaldo,
+                        'cantTotal'      => count($items),
+                        'cantPendientes' => $cantPendientes,
+                        'cantParciales'  => $cantParciales,
+                        'cantCanceladas' => $cantCanceladas,
+                    ]
+                ]
+            ]);
                         'totalPagado'    => $kpiTotalPagado,
                         'totalSaldo'     => $kpiTotalSaldo,
                         'cantTotal'      => count($items),
@@ -4726,6 +4748,7 @@ class ReportesContablesController {
 
             // 3. Cruzar cada factura crédito con sus recibos de cobro
             $items = [];
+            $canceladasItems = [];
             $kpiTotalCredito = 0.0;
             $kpiTotalCobrado = 0.0;
             $kpiTotalSaldo   = 0.0;
@@ -4799,17 +4822,6 @@ class ReportesContablesController {
                     $cantPendientes++;
                 }
 
-                // Filtrar por estadoSaldo si no es 'TODOS'
-                if ($estadoSaldo === 'PENDIENTES' && $estadoCod !== 'PENDIENTE' && $estadoCod !== 'PARCIAL') {
-                    continue;
-                }
-                if ($estadoSaldo === 'CANCELADOS' && $estadoCod !== 'CANCELADO') {
-                    continue;
-                }
-                if ($estadoSaldo === 'PARCIALES' && $estadoCod !== 'PARCIAL') {
-                    continue;
-                }
-
                 // Filtro de texto libre si fue proporcionado
                 if ($filtroBusqueda !== '') {
                     $q = strtoupper($filtroBusqueda);
@@ -4850,7 +4862,9 @@ class ReportesContablesController {
                 $clientesMap[$cKey]['totalCobrado'] += $totalCobrado;
                 $clientesMap[$cKey]['saldo']        += $saldo;
 
-                $items[] = [
+                $ultimoRec = !empty($recibosDetalles) ? end($recibosDetalles) : null;
+
+                $itemObj = [
                     'idIngreso'       => $idIng,
                     'tipDoc'          => (string)($f['TIP_DOC'] ?? 'FAC'),
                     'nroTimbrado'     => (string)($f['NRO_TIMBRADO'] ?? ''),
@@ -4881,7 +4895,27 @@ class ReportesContablesController {
                     'anulada'         => $anulada ? 'S' : 'N',
                     'recibos'         => $recibosDetalles,
                     'cantRecibos'     => count($recibosDetalles),
+                    'ultimoReciboNro' => $ultimoRec ? ($ultimoRec['nroRecibo'] ?? '') : '',
+                    'ultimoReciboFmt' => $ultimoRec ? ($ultimoRec['fecReciboFmt'] ?? '') : '',
                 ];
+
+                // Si fue cancelada con recibo(s), registrar en lista de canceladas
+                if (!$anulada && $saldo <= 0.009 && count($recibosDetalles) > 0) {
+                    $canceladasItems[] = $itemObj;
+                }
+
+                // Filtrar para la pestaña principal de comprobantes según estadoSaldo
+                if ($estadoSaldo === 'PENDIENTES' && $estadoCod !== 'PENDIENTE' && $estadoCod !== 'PARCIAL') {
+                    continue;
+                }
+                if ($estadoSaldo === 'CANCELADOS' && $estadoCod !== 'CANCELADO') {
+                    continue;
+                }
+                if ($estadoSaldo === 'PARCIALES' && $estadoCod !== 'PARCIAL') {
+                    continue;
+                }
+
+                $items[] = $itemObj;
             }
 
             // Ordenar clientes por mayor saldo pendiente
@@ -4893,8 +4927,9 @@ class ReportesContablesController {
             View::json([
                 'status' => 'success',
                 'data'   => [
-                    'facturas'         => $items,
-                    'resumenClientes'  => $resumenClientes,
+                    'facturas'            => $items,
+                    'facturasCanceladas'  => $canceladasItems,
+                    'resumenClientes'     => $resumenClientes,
                     'kpis' => [
                         'totalCredito'   => $kpiTotalCredito,
                         'totalCobrado'   => $kpiTotalCobrado,
