@@ -433,6 +433,12 @@ if (preg_match('#^/(?:app/)?([^/]+)$#', $uri, $m)) {
         'SALDOS_EGRESOS'        => [ReportesContablesController::class, 'pageSaldosFacturasCredito'],
         'SALDOS-FACTURAS-CREDITO' => [ReportesContablesController::class, 'pageSaldosFacturasCredito'],
         'SALDOS_FACTURAS_CREDITO' => [ReportesContablesController::class, 'pageSaldosFacturasCredito'],
+        'COSALING'              => [ReportesContablesController::class, 'pageSaldosFacturasCreditoVentas'],
+        'COSALVEN'              => [ReportesContablesController::class, 'pageSaldosFacturasCreditoVentas'],
+        'SALDOS-VENTAS'         => [ReportesContablesController::class, 'pageSaldosFacturasCreditoVentas'],
+        'SALDOS_VENTAS'         => [ReportesContablesController::class, 'pageSaldosFacturasCreditoVentas'],
+        'SALDOS-FACTURAS-CREDITO-VENTAS' => [ReportesContablesController::class, 'pageSaldosFacturasCreditoVentas'],
+        'SALDOS_FACTURAS_CREDITO_VENTAS' => [ReportesContablesController::class, 'pageSaldosFacturasCreditoVentas'],
     ];
 
     if (isset($formaMap[$upper])) {
@@ -766,6 +772,9 @@ $exactApiRoutes = [
     '/api/reportes/saldos-facturas-credito'        => [ReportesContablesController::class, 'apiSaldosFacturasCreditoData'],
     '/api/reportes/saldos-egresos'                 => [ReportesContablesController::class, 'apiSaldosFacturasCreditoData'],
     '/api/saldos-facturas-credito/data'            => [ReportesContablesController::class, 'apiSaldosFacturasCreditoData'],
+    '/api/reportes/saldos-facturas-credito-ventas' => [ReportesContablesController::class, 'apiSaldosFacturasCreditoVentasData'],
+    '/api/reportes/saldos-ventas'                  => [ReportesContablesController::class, 'apiSaldosFacturasCreditoVentasData'],
+    '/api/saldos-facturas-credito-ventas/data'     => [ReportesContablesController::class, 'apiSaldosFacturasCreditoVentasData'],
 ];
 
 if (isset($exactApiRoutes[$uri])) {

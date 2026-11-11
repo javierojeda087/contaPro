@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Saldos de Facturas Crédito (Ventas)')}">
+</head>
+<body style="background-color: #f1f5f9; color: #1e293b;">
+
+    <!-- Sidebar -->
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="main-content">
+        <div th:replace="~{fragments/layout :: navbar('Saldos de Facturas Crédito (Ventas)')}"></div>
+
+        <div class="content-area" style="padding: 1.5rem;">
+
+            <!-- Header Card & Filters -->
+            <div class="card no-print" style="height: auto !important; background: #ffffff; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; margin-bottom: 1.5rem; overflow: hidden;">
+                <div style="padding: 1.15rem 1.5rem; border-bottom: 1px solid #f1f5f9; background: #ffffff; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #ecfdf5, #d1fae5); color: #059669; display: flex; align-items: center; justify-content: center; font-size: 1.45rem; border: 1px solid #a7f3d0;">
+                            <i class="ph ph-receipt"></i>
+                        </div>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #0f172a;">Saldos de Facturas Crédito (Ventas)</h3>
+                                <span style="font-family: monospace; font-size: 0.72rem; font-weight: 800; background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px; letter-spacing: 0.05em;">COSALING</span>
+                            </div>
+                            <p style="margin: 2px 0 0 0; font-size: 0.82rem; color: #64748b; font-weight: 500;">
+                                Control y liquidación de facturas a crédito de ventas (Ingresos) cruzadas con Recibos de Cobro
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <div style="display: inline-flex; background: #f1f5f9; padding: 4px; border-radius: 10px; border: 1px solid #e2e8f0; gap: 4px;">
+                            <button type="button" id="tabBtnFacturas" class="saldos-tab-btn active" onclick="cambiarTabVista('facturas')">
+                                <i class="ph ph-files"></i> Detalle por Factura
+                            </button>
+                            <button type="button" id="tabBtnClientes" class="saldos-tab-btn" onclick="cambiarTabVista('clientes')">
+                                <i class="ph ph-users"></i> Resumen por Cliente
+                            </button>
+                        </div>
+                        <a href="/recibos-cobro" style="height: 38px; padding: 0 14px; background: #f0fdf4; color: #15803d; border: 1.5px solid #bbf7d0; border-radius: 8px; font-weight: 800; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: all 0.2s;" onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">
+                            <i class="ph ph-hand-coins" style="font-size: 1.15rem;"></i> Ir a Recibos de Cobro
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Form Controls & Quick Selectors -->
+                <div style="padding: 1.15rem 1.5rem; background: #fafafa;">
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 0.85rem;">
+                        <span style="font-size: 0.72rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-right: 4px;">
+                            <i class="ph ph-lightning" style="color: #16a34a;"></i> Rápido · Ejercicio <span th:text="${ejercicio}">2026</span>:
+                        </span>
+                        <button type="button" class="qf-btn active" onclick="aplicarPeriodoRapido('anio')">Todo el ejercicio</button>
+                        <button type="button" class="qf-btn" onclick="aplicarPeriodoRapido('mes')">Este mes</button>
+                        <button type="button" class="qf-btn" onclick="aplicarPeriodoRapido('mesAnt')">Mes anterior</button>
+                        <button type="button" class="qf-btn" onclick="aplicarPeriodoRapido('todo')">Sin límite de fecha</button>
+                    </div>
+
+                    <form id="filterForm" onsubmit="event.preventDefault(); cargarDatosSaldos();" style="display: flex; flex-wrap: wrap; gap: 0.85rem; align-items: flex-end;">
+                        <input type="hidden" id="hdnEjercicioActual" th:value="${ejercicio}">
+                        <input type="hidden" id="hdnEmpresaDesc" th:value="${empresa.descripcion}">
+                        <div style="flex: 1 1 150px; max-width: 180px;">
+                            <label style="display: block; font-size: 0.74rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Fecha Desde</label>
+                            <input type="date" id="fechaDesde" th:value="${defFechaDesde}" class="form-control" style="height: 40px; border-radius: 8px; font-weight: 700; font-size: 0.84rem;">
+                        </div>
+
+                        <div style="flex: 1 1 150px; max-width: 180px;">
+                            <label style="display: block; font-size: 0.74rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Fecha Hasta</label>
+                            <input type="date" id="fechaHasta" th:value="${defFechaHasta}" class="form-control" style="height: 40px; border-radius: 8px; font-weight: 700; font-size: 0.84rem;">
+                        </div>
+
+                        <div style="flex: 1 1 180px; max-width: 220px;">
+                            <label style="display: block; font-size: 0.74rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Estado de Saldo</label>
+                            <select id="filtroEstadoSaldo" class="form-control" style="height: 40px; border-radius: 8px; font-weight: 700; font-size: 0.84rem; cursor: pointer;">
+                                <option value="TODOS">Todos los comprobantes</option>
+                                <option value="PENDIENTES" selected>Solo con Saldo Pendiente</option>
+                                <option value="PARCIALES">Con Cobro Parcial</option>
+                                <option value="CANCELADOS">Totalmente Cobradas</option>
+                            </select>
+                        </div>
+
+                        <div style="flex: 2 1 240px;">
+                            <label style="display: block; font-size: 0.74rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 0.35rem;">Buscar Cliente / N° Factura / Recibo</label>
+                            <div style="position: relative;">
+                                <input type="text" id="filtroBusqueda" class="form-control" placeholder="RUC, RAZÓN SOCIAL, TIMBRADO, FACTURA..." style="height: 40px; border-radius: 8px; font-weight: 700; font-size: 0.84rem; text-transform: uppercase; padding-right: 36px;" autocomplete="off" onkeyup="filtrarTablaEnVivo()">
+                                <i class="ph ph-magnifying-glass" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 1.1rem;"></i>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 4px;">
+                            <input type="checkbox" id="incluirAnuladas" style="width: 18px; height: 18px; accent-color: #16a34a; cursor: pointer;">
+                            <label for="incluirAnuladas" style="font-size: 0.82rem; font-weight: 700; color: #334155; cursor: pointer; margin: 0; white-space: nowrap;">Incluir Anuladas</label>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <button type="submit" style="height: 40px; padding: 0 1.25rem; background: #0f172a; color: white; border: none; border-radius: 8px; font-weight: 800; font-size: 0.86rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                <i class="ph ph-funnel" style="font-size: 1rem;"></i> Consultar
+                            </button>
+                            <button type="button" onclick="imprimirReporteSaldos()" style="height: 40px; padding: 0 1.1rem; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: 800; font-size: 0.86rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#0369a1'" onmouseout="this.style.background='#0284c7'">
+                                <i class="ph ph-printer-bold" style="font-size: 1.05rem;"></i> Imprimir
+                            </button>
+                            <button type="button" onclick="exportarExcelSaldos()" style="height: 40px; padding: 0 1.1rem; background: #16a34a; color: white; border: none; border-radius: 8px; font-weight: 800; font-size: 0.86rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
+                                <i class="ph ph-file-xls" style="font-size: 1.1rem;"></i> Excel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- KPI Cards Summary -->
+            <div class="no-print" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+                <div style="background: white; border-radius: 12px; padding: 1.1rem 1.3rem; border: 1px solid #e2e8f0; border-left: 5px solid #2563eb; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Total Facturado Crédito</span>
+                        <i class="ph ph-receipt" style="color: #2563eb; font-size: 1.25rem;"></i>
+                    </div>
+                    <div id="kpiTotalCredito" style="font-size: 1.35rem; font-weight: 900; color: #0f172a; margin-top: 4px;">Gs. 0</div>
+                    <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">
+                        <span id="kpiCantFacturas" style="font-weight: 800; color: #2563eb;">0</span> comprobante(s)
+                    </div>
+                </div>
+
+                <div style="background: white; border-radius: 12px; padding: 1.1rem 1.3rem; border: 1px solid #e2e8f0; border-left: 5px solid #16a34a; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Total Cobrado (Recibos)</span>
+                        <i class="ph ph-check-circle" style="color: #16a34a; font-size: 1.25rem;"></i>
+                    </div>
+                    <div id="kpiTotalCobrado" style="font-size: 1.35rem; font-weight: 900; color: #16a34a; margin-top: 4px;">Gs. 0</div>
+                    <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">
+                        <span id="kpiCantCanceladas" style="font-weight: 800; color: #16a34a;">0</span> cobradas totalmente
+                    </div>
+                </div>
+
+                <div style="background: white; border-radius: 12px; padding: 1.1rem 1.3rem; border: 1px solid #e2e8f0; border-left: 5px solid #dc2626; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.72rem; font-weight: 800; color: #dc2626; text-transform: uppercase;">Saldo Pendiente por Cobrar</span>
+                        <i class="ph ph-warning-circle" style="color: #dc2626; font-size: 1.25rem;"></i>
+                    </div>
+                    <div id="kpiTotalSaldo" style="font-size: 1.35rem; font-weight: 900; color: #dc2626; margin-top: 4px;">Gs. 0</div>
+                    <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">
+                        <span id="kpiCantPendientes" style="font-weight: 800; color: #dc2626;">0</span> pendientes con saldo
+                    </div>
+                </div>
+
+                <div style="background: white; border-radius: 12px; padding: 1.1rem 1.3rem; border: 1px solid #e2e8f0; border-left: 5px solid #059669; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase;">% Cobrado</span>
+                        <i class="ph ph-chart-pie-slice" style="color: #059669; font-size: 1.25rem;"></i>
+                    </div>
+                    <div id="kpiPorcentajeCobrado" style="font-size: 1.35rem; font-weight: 900; color: #059669; margin-top: 4px;">0.0%</div>
+                    <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">
+                        <span id="kpiCantParciales" style="font-weight: 800; color: #059669;">0</span> con cobros parciales
+                    </div>
+                </div>
+            </div>
+
+            <!-- PRINT HEADER (Solo visible al imprimir) -->
+            <div class="print-only" style="display: none; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 12px;">
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.3rem; font-weight: 900; color: #0f172a;" th:text="${empresa.descripcion}">EMPRESA S.A.</h2>
+                        <div style="font-size: 0.85rem; color: #475569; font-weight: 700; margin-top: 2px;">
+                            RUC: <span th:text="${empresa.rucEmpresa}">80000000-0</span> | Actividad: <span th:text="${empresa.actividad}">COMERCIAL</span>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0f172a;">INFORME DE SALDOS DE FACTURAS CRÉDITO (VENTAS)</h3>
+                        <div style="font-size: 0.8rem; color: #64748b; font-weight: 600;" id="printPeriodoTexto">Periodo: -</div>
+                        <div style="font-size: 0.75rem; color: #94a3b8;">Impreso el <span id="spanFechaImpresion" th:text="${#dates.format(#dates.createNow(), 'dd/MM/yyyy HH:mm')}"></span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 1: DETALLE DE FACTURAS CRÉDITO -->
+            <div id="viewTabFacturas" class="card" style="background: white; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 4px 16px rgba(0,0,0,0.04); overflow: hidden;">
+                <div style="padding: 12px 18px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <div style="font-weight: 800; font-size: 0.9rem; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                        <i class="ph ph-list-numbers" style="color: #16a34a; font-size: 1.15rem;"></i>
+                        <span>Facturas de Venta a Crédito</span>
+                        <span id="badgeTotalFilasFacturas" style="font-size: 0.72rem; font-weight: 800; background: #e2e8f0; color: #334155; padding: 2px 8px; border-radius: 6px;">0</span>
+                    </div>
+                    <div style="font-size: 0.76rem; color: #64748b; font-weight: 600;">
+                        Los saldos se calculan automáticamente restando los cobros vinculados en Recibos de Cobro
+                    </div>
+                </div>
+
+                <div class="table-responsive" style="max-height: 65vh; overflow-y: auto;">
+                    <table class="table table-hover table-striped mb-0" id="tablaFacturasCredito" style="font-size: 0.84rem; vertical-align: middle;">
+                        <thead style="position: sticky; top: 0; background: #0f172a; color: white; z-index: 5;">
+                            <tr>
+                                <th style="padding: 10px 12px; width: 45px; text-align: center; white-space: nowrap;">#</th>
+                                <th onclick="ordenarFacturas('fecIngreso')" style="padding: 10px 12px; width: 100px; text-align: center; white-space: nowrap; cursor: pointer;">
+                                    Fecha <span id="sort_fecIngreso" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarFacturas('asiento')" style="padding: 10px 12px; width: 85px; text-align: center; white-space: nowrap; cursor: pointer;">
+                                    Asiento <span id="sort_asiento" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarFacturas('rucCliente')" style="padding: 10px 12px; width: 130px; white-space: nowrap; cursor: pointer;">
+                                    RUC <span id="sort_rucCliente" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarFacturas('nomCliente')" style="padding: 10px 12px; white-space: nowrap; cursor: pointer;">
+                                    Cliente / Razón Social <span id="sort_nomCliente" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarFacturas('nroTimbrado')" style="padding: 10px 12px; width: 100px; text-align: center; white-space: nowrap; cursor: pointer;">
+                                    Timbrado <span id="sort_nroTimbrado" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarFacturas('nroFactura')" style="padding: 10px 12px; width: 145px; text-align: center; white-space: nowrap; cursor: pointer;">
+                                    N° Factura <span id="sort_nroFactura" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarFacturas('valorTotal')" style="padding: 10px 12px; width: 125px; text-align: right; white-space: nowrap; cursor: pointer;">
+                                    Total Factura <span id="sort_valorTotal" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarFacturas('totalCobrado')" style="padding: 10px 12px; width: 125px; text-align: right; white-space: nowrap; cursor: pointer;">
+                                    Total Cobrado <span id="sort_totalCobrado" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarFacturas('saldo')" style="padding: 10px 12px; width: 130px; text-align: right; white-space: nowrap; cursor: pointer;">
+                                    Saldo Pendiente <span id="sort_saldo" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarFacturas('estadoCod')" style="padding: 10px 12px; width: 115px; text-align: center; white-space: nowrap; cursor: pointer;">
+                                    Estado <span id="sort_estadoCod" class="sort-icon">↕</span>
+                                </th>
+                                <th class="no-print" style="padding: 10px 12px; width: 110px; text-align: center; white-space: nowrap;">Recibos</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyFacturasCredito">
+                            <tr>
+                                <td colspan="12" class="text-center py-5 text-muted">
+                                    <i class="ph ph-spinner-gap" style="font-size: 2rem; animation: spin 1s linear infinite; display: block; margin-bottom: 8px;"></i>
+                                    Cargando facturas y calculando saldos de ventas...
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot style="position: sticky; bottom: 0; background: #f8fafc; font-weight: 800; border-top: 2px solid #cbd5e1; z-index: 5;">
+                            <tr>
+                                <td colspan="7" style="padding: 10px 12px; text-align: right; text-transform: uppercase;">TOTALES GENERALES:</td>
+                                <td id="tfootTotalCredito" style="padding: 10px 12px; text-align: right; color: #0f172a; font-family: monospace; font-size: 0.92rem;">0</td>
+                                <td id="tfootTotalCobrado" style="padding: 10px 12px; text-align: right; color: #16a34a; font-family: monospace; font-size: 0.92rem;">0</td>
+                                <td id="tfootTotalSaldo" style="padding: 10px 12px; text-align: right; color: #dc2626; font-family: monospace; font-size: 0.92rem;">0</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 2: RESUMEN POR CLIENTE -->
+            <div id="viewTabClientes" class="card" style="display: none; background: white; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 4px 16px rgba(0,0,0,0.04); overflow: hidden;">
+                <div style="padding: 12px 18px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <div style="font-weight: 800; font-size: 0.9rem; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                        <i class="ph ph-users" style="color: #059669; font-size: 1.15rem;"></i>
+                        <span>Resumen Consolidado por Cliente</span>
+                        <span id="badgeTotalClientes" style="font-size: 0.72rem; font-weight: 800; background: #e2e8f0; color: #334155; padding: 2px 8px; border-radius: 6px;">0</span>
+                    </div>
+                    <div style="font-size: 0.76rem; color: #64748b; font-weight: 600;">
+                        Clientes ordenados de mayor a menor saldo pendiente de cobro
+                    </div>
+                </div>
+
+                <div class="table-responsive" style="max-height: 65vh; overflow-y: auto;">
+                    <table class="table table-hover table-striped mb-0" id="tablaClientesResumen" style="font-size: 0.84rem; vertical-align: middle;">
+                        <thead style="position: sticky; top: 0; background: #064e3b; color: white; z-index: 5;">
+                            <tr>
+                                <th style="padding: 10px 12px; width: 45px; text-align: center; white-space: nowrap;">#</th>
+                                <th onclick="ordenarClientes('ruc')" style="padding: 10px 12px; width: 140px; white-space: nowrap; cursor: pointer;">
+                                    RUC <span id="sort_c_ruc" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarClientes('nombre')" style="padding: 10px 12px; white-space: nowrap; cursor: pointer;">
+                                    Cliente / Razón Social <span id="sort_c_nombre" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarClientes('cantFacturas')" style="padding: 10px 12px; width: 110px; text-align: center; white-space: nowrap; cursor: pointer;">
+                                    Facturas <span id="sort_c_cantFacturas" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarClientes('totalCredito')" style="padding: 10px 12px; width: 140px; text-align: right; white-space: nowrap; cursor: pointer;">
+                                    Total Crédito <span id="sort_c_totalCredito" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarClientes('totalCobrado')" style="padding: 10px 12px; width: 140px; text-align: right; white-space: nowrap; cursor: pointer;">
+                                    Total Cobrado <span id="sort_c_totalCobrado" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarClientes('saldo')" style="padding: 10px 12px; width: 150px; text-align: right; white-space: nowrap; cursor: pointer;">
+                                    Saldo Pendiente <span id="sort_c_saldo" class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="ordenarClientes('porcentajeCobro')" style="padding: 10px 12px; width: 110px; text-align: center; white-space: nowrap; cursor: pointer;">
+                                    % Cobrado <span id="sort_c_porcentajeCobro" class="sort-icon">↕</span>
+                                </th>
+                                <th class="no-print" style="padding: 10px 12px; width: 110px; text-align: center; white-space: nowrap;">Filtrar</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyClientesResumen">
+                            <tr>
+                                <td colspan="9" class="text-center py-5 text-muted">No hay datos de clientes para mostrar.</td>
+                            </tr>
+                        </tbody>
+                        <tfoot style="position: sticky; bottom: 0; background: #f8fafc; font-weight: 800; border-top: 2px solid #cbd5e1; z-index: 5;">
+                            <tr>
+                                <td colspan="3" style="padding: 10px 12px; text-align: right; text-transform: uppercase;">TOTALES POR CLIENTE:</td>
+                                <td id="tfootCliCantFac" style="padding: 10px 12px; text-align: center; color: #0f172a; font-family: monospace;">0</td>
+                                <td id="tfootCliTotalCredito" style="padding: 10px 12px; text-align: right; color: #0f172a; font-family: monospace; font-size: 0.92rem;">0</td>
+                                <td id="tfootCliTotalCobrado" style="padding: 10px 12px; text-align: right; color: #16a34a; font-family: monospace; font-size: 0.92rem;">0</td>
+                                <td id="tfootCliTotalSaldo" style="padding: 10px 12px; text-align: right; color: #dc2626; font-family: monospace; font-size: 0.92rem;">0</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- MODAL DETALLE DE RECIBOS DE COBRO APLICADOS -->
+    <div id="modalRecibosOverlay" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.65); backdrop-filter: blur(4px); z-index: 1050; align-items: center; justify-content: center; padding: 1.5rem;">
+        <div style="background: white; border-radius: 16px; max-width: 720px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid #cbd5e1; overflow: hidden; display: flex; flex-direction: column; max-height: 90vh;">
+            <div style="padding: 16px 22px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 38px; height: 38px; border-radius: 10px; background: #dcfce7; color: #15803d; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+                        <i class="ph ph-hand-coins"></i>
+                    </div>
+                    <div>
+                        <h4 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #0f172a;">Recibos de Cobro Vinculados</h4>
+                        <div id="modalFacturaSubtitulo" style="font-size: 0.78rem; color: #64748b; font-weight: 600;">Factura: -</div>
+                    </div>
+                </div>
+                <button type="button" onclick="cerrarModalRecibos()" style="background: transparent; border: none; font-size: 1.4rem; color: #64748b; cursor: pointer; border-radius: 6px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#64748b'">
+                    <i class="ph ph-x"></i>
+                </button>
+            </div>
+
+            <!-- Info Summary Box -->
+            <div style="padding: 12px 22px; background: #ffffff; border-bottom: 1px solid #e2e8f0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px;">
+                    <div style="font-size: 0.68rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Total Factura</div>
+                    <div id="modalMontoTotalFactura" style="font-size: 1.05rem; font-weight: 900; color: #0f172a; margin-top: 2px;">Gs. 0</div>
+                </div>
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 8px 12px;">
+                    <div style="font-size: 0.68rem; font-weight: 800; color: #166534; text-transform: uppercase;">Total Cobrado</div>
+                    <div id="modalMontoTotalCobrado" style="font-size: 1.05rem; font-weight: 900; color: #15803d; margin-top: 2px;">Gs. 0</div>
+                </div>
+                <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 8px 12px;">
+                    <div style="font-size: 0.68rem; font-weight: 800; color: #991b1b; text-transform: uppercase;">Saldo Pendiente</div>
+                    <div id="modalMontoSaldoPendiente" style="font-size: 1.05rem; font-weight: 900; color: #dc2626; margin-top: 2px;">Gs. 0</div>
+                </div>
+            </div>
+
+            <!-- Tabla de Recibos -->
+            <div style="padding: 16px 22px; overflow-y: auto; flex: 1;">
+                <table class="table table-sm table-hover mb-0" style="font-size: 0.85rem; vertical-align: middle;">
+                    <thead style="background: #f1f5f9; color: #334155;">
+                        <tr>
+                            <th style="padding: 8px 10px; width: 40px; text-align: center; white-space: nowrap;">#</th>
+                            <th style="padding: 8px 10px; width: 105px; text-align: center; white-space: nowrap;">Fecha</th>
+                            <th style="padding: 8px 10px; white-space: nowrap;">N° Recibo de Cobro</th>
+                            <th style="padding: 8px 10px; width: 80px; text-align: center; white-space: nowrap;">Serie</th>
+                            <th style="padding: 8px 10px; text-align: right; width: 140px; white-space: nowrap;">Importe Aplicado</th>
+                            <th style="padding: 8px 10px; width: 90px; text-align: center; white-space: nowrap;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalTbodyRecibos">
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">Sin recibos de cobro registrados para esta factura.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="padding: 12px 22px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <a href="/recibos-cobro" style="font-size: 0.8rem; font-weight: 800; color: #16a34a; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                    <i class="ph ph-plus-circle"></i> Registrar Nuevo Recibo de Cobro
+                </a>
+                <button type="button" onclick="cerrarModalRecibos()" style="height: 36px; padding: 0 16px; background: #0f172a; color: white; border: none; border-radius: 8px; font-weight: 800; font-size: 0.82rem; cursor: pointer;">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SheetJS CDN para exportación a Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <script th:inline="javascript">
+        let listaFacturasGlobal = [];
+        let listaClientesGlobal = [];
+        let vistaActual = 'facturas';
+
+        // Variables de ordenamiento
+        let sortColFactura = 'fecIngreso';
+        let sortAscFactura = true;
+        let sortColCliente = 'saldo';
+        let sortAscCliente = false;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const sp = document.getElementById('spanFechaImpresion');
+            if (sp && !sp.textContent.trim()) {
+                sp.textContent = new Date().toLocaleDateString('es-PY') + ' ' + new Date().toLocaleTimeString('es-PY', {hour:'2-digit',minute:'2-digit'});
+            }
+            cargarDatosSaldos();
+        });
+
+        function formatGs(valor) {
+            const num = Math.round(Number(valor) || 0);
+            return num.toLocaleString('es-PY');
+        }
+
+        function cambiarTabVista(tab) {
+            vistaActual = tab;
+            const btnFac = document.getElementById('tabBtnFacturas');
+            const btnCli = document.getElementById('tabBtnClientes');
+            const viewFac = document.getElementById('viewTabFacturas');
+            const viewCli = document.getElementById('viewTabClientes');
+
+            if (tab === 'facturas') {
+                btnFac.classList.add('active');
+                btnCli.classList.remove('active');
+                viewFac.style.display = 'block';
+                viewCli.style.display = 'none';
+            } else {
+                btnCli.classList.add('active');
+                btnFac.classList.remove('active');
+                viewCli.style.display = 'block';
+                viewFac.style.display = 'none';
+            }
+        }
+
+        function aplicarPeriodoRapido(modo) {
+            document.querySelectorAll('.qf-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+
+            const anioActual = parseInt(document.getElementById('hdnEjercicioActual')?.value || '') || new Date().getFullYear();
+            const fDesde = document.getElementById('fechaDesde');
+            const fHasta = document.getElementById('fechaHasta');
+            const hoy = new Date();
+
+            if (modo === 'anio') {
+                fDesde.value = `${anioActual}-01-01`;
+                fHasta.value = `${anioActual}-12-31`;
+            } else if (modo === 'mes') {
+                const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+                const lastDay = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+                fDesde.value = `${anioActual}-${mes}-01`;
+                fHasta.value = `${anioActual}-${mes}-${String(lastDay).padStart(2, '0')}`;
+            } else if (modo === 'mesAnt') {
+                const prev = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+                const mes = String(prev.getMonth() + 1).padStart(2, '0');
+                const lastDay = new Date(prev.getFullYear(), prev.getMonth() + 1, 0).getDate();
+                fDesde.value = `${prev.getFullYear()}-${mes}-01`;
+                fHasta.value = `${prev.getFullYear()}-${mes}-${String(lastDay).padStart(2, '0')}`;
+            } else if (modo === 'todo') {
+                fDesde.value = '';
+                fHasta.value = '';
+            }
+            cargarDatosSaldos();
+        }
+
+        async function cargarDatosSaldos() {
+            const fDesde = document.getElementById('fechaDesde').value;
+            const fHasta = document.getElementById('fechaHasta').value;
+            const estadoSaldo = document.getElementById('filtroEstadoSaldo').value;
+            const busqueda = document.getElementById('filtroBusqueda').value.trim();
+            const incluirAnul = document.getElementById('incluirAnuladas').checked;
+
+            const tbodyFac = document.getElementById('tbodyFacturasCredito');
+            tbodyFac.innerHTML = `
+                <tr>
+                    <td colspan="12" class="text-center py-5 text-muted">
+                        <i class="ph ph-spinner-gap" style="font-size: 2rem; animation: spin 1s linear infinite; display: block; margin-bottom: 8px;"></i>
+                        Calculando saldos y cobros aplicados...
+                    </td>
+                </tr>`;
+
+            try {
+                const params = new URLSearchParams();
+                if (fDesde) params.set('fechaDesde', fDesde);
+                if (fHasta) params.set('fechaHasta', fHasta);
+                if (estadoSaldo) params.set('estadoSaldo', estadoSaldo);
+                if (busqueda) params.set('search', busqueda);
+                if (incluirAnul) params.set('incluirAnuladas', '1');
+
+                const r = await fetch('/api/reportes/saldos-facturas-credito-ventas?' + params.toString());
+                const res = await r.json();
+
+                if (res.status !== 'success' || !res.data) {
+                    tbodyFac.innerHTML = `<tr><td colspan="12" class="text-center py-4 text-danger">${res.message || 'Error al obtener los datos de saldos.'}</td></tr>`;
+                    return;
+                }
+
+                listaFacturasGlobal = res.data.facturas || [];
+                listaClientesGlobal = res.data.resumenClientes || [];
+                const kpis = res.data.kpis || {};
+
+                // Actualizar KPIs
+                document.getElementById('kpiTotalCredito').textContent = 'Gs. ' + formatGs(kpis.totalCredito);
+                document.getElementById('kpiTotalCobrado').textContent = 'Gs. ' + formatGs(kpis.totalCobrado);
+                document.getElementById('kpiTotalSaldo').textContent = 'Gs. ' + formatGs(kpis.totalSaldo);
+                document.getElementById('kpiCantFacturas').textContent = kpis.cantTotal || 0;
+                document.getElementById('kpiCantCanceladas').textContent = kpis.cantCanceladas || 0;
+                document.getElementById('kpiCantPendientes').textContent = kpis.cantPendientes || 0;
+                document.getElementById('kpiCantParciales').textContent = kpis.cantParciales || 0;
+
+                const pct = kpis.totalCredito > 0 ? Math.min(100, Math.round((kpis.totalCobrado / kpis.totalCredito) * 1000) / 10) : 0;
+                document.getElementById('kpiPorcentajeCobrado').textContent = pct.toFixed(1) + '%';
+
+                // Texto periodo para impresión
+                let periodoTxt = 'Todo el ejercicio';
+                if (fDesde && fHasta) {
+                    periodoTxt = `${fDesde.split('-').reverse().join('/')} al ${fHasta.split('-').reverse().join('/')}`;
+                } else if (fDesde) {
+                    periodoTxt = `Desde ${fDesde.split('-').reverse().join('/')}`;
+                } else if (fHasta) {
+                    periodoTxt = `Hasta ${fHasta.split('-').reverse().join('/')}`;
+                }
+                document.getElementById('printPeriodoTexto').textContent = 'Periodo: ' + periodoTxt;
+
+                aplicarOrdenFacturas();
+                aplicarOrdenClientes();
+
+            } catch (err) {
+                console.error(err);
+                tbodyFac.innerHTML = `<tr><td colspan="12" class="text-center py-4 text-danger">Error de conexión al cargar el reporte.</td></tr>`;
+            }
+        }
+
+        // --- ORDENAMIENTO DE FACTURAS ---
+        function ordenarFacturas(col) {
+            if (sortColFactura === col) {
+                sortAscFactura = !sortAscFactura;
+            } else {
+                sortColFactura = col;
+                sortAscFactura = true;
+            }
+            aplicarOrdenFacturas();
+        }
+
+        function aplicarOrdenFacturas() {
+            // Actualizar iconos
+            document.querySelectorAll('#tablaFacturasCredito .sort-icon').forEach(el => el.textContent = '↕');
+            const icon = document.getElementById('sort_' + sortColFactura);
+            if (icon) icon.textContent = sortAscFactura ? '▲' : '▼';
+
+            listaFacturasGlobal.sort((a, b) => {
+                let vA = a[sortColFactura];
+                let vB = b[sortColFactura];
+
+                if (sortColFactura === 'valorTotal' || sortColFactura === 'totalCobrado' || sortColFactura === 'saldo' || sortColFactura === 'asiento') {
+                    vA = Number(vA) || 0;
+                    vB = Number(vB) || 0;
+                } else if (sortColFactura === 'fecIngreso') {
+                    vA = String(vA || '');
+                    vB = String(vB || '');
+                } else {
+                    vA = String(vA || '').toUpperCase();
+                    vB = String(vB || '').toUpperCase();
+                }
+
+                if (vA < vB) return sortAscFactura ? -1 : 1;
+                if (vA > vB) return sortAscFactura ? 1 : -1;
+                return 0;
+            });
+
+            filtrarTablaEnVivo();
+        }
+
+        // --- ORDENAMIENTO DE CLIENTES ---
+        function ordenarClientes(col) {
+            if (sortColCliente === col) {
+                sortAscCliente = !sortAscCliente;
+            } else {
+                sortColCliente = col;
+                sortAscCliente = true;
+            }
+            aplicarOrdenClientes();
+        }
+
+        function aplicarOrdenClientes() {
+            document.querySelectorAll('#tablaClientesResumen .sort-icon').forEach(el => el.textContent = '↕');
+            const icon = document.getElementById('sort_c_' + sortColCliente);
+            if (icon) icon.textContent = sortAscCliente ? '▲' : '▼';
+
+            listaClientesGlobal.sort((a, b) => {
+                let vA = a[sortColCliente];
+                let vB = b[sortColCliente];
+
+                if (sortColCliente === 'porcentajeCobro') {
+                    vA = a.totalCredito > 0 ? (a.totalCobrado / a.totalCredito) : 0;
+                    vB = b.totalCredito > 0 ? (b.totalCobrado / b.totalCredito) : 0;
+                } else if (sortColCliente === 'totalCredito' || sortColCliente === 'totalCobrado' || sortColCliente === 'saldo' || sortColCliente === 'cantFacturas') {
+                    vA = Number(vA) || 0;
+                    vB = Number(vB) || 0;
+                } else {
+                    vA = String(vA || '').toUpperCase();
+                    vB = String(vB || '').toUpperCase();
+                }
+
+                if (vA < vB) return sortAscCliente ? -1 : 1;
+                if (vA > vB) return sortAscCliente ? 1 : -1;
+                return 0;
+            });
+
+            renderTablaClientes(listaClientesGlobal);
+        }
+
+        function renderTablaFacturas(lista) {
+            const tbody = document.getElementById('tbodyFacturasCredito');
+            document.getElementById('badgeTotalFilasFacturas').textContent = String(lista.length);
+
+            if (lista.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="12" class="text-center py-5 text-muted">
+                            <i class="ph ph-receipt-x" style="font-size: 2.2rem; color: #cbd5e1; display: block; margin-bottom: 6px;"></i>
+                            No se encontraron facturas de venta a crédito con los criterios seleccionados.
+                        </td>
+                    </tr>`;
+                document.getElementById('tfootTotalCredito').textContent = '0';
+                document.getElementById('tfootTotalCobrado').textContent = '0';
+                document.getElementById('tfootTotalSaldo').textContent = '0';
+                return;
+            }
+
+            let sumCredito = 0;
+            let sumCobrado = 0;
+            let sumSaldo   = 0;
+
+            tbody.innerHTML = lista.map((f, i) => {
+                sumCredito += Number(f.valorTotal) || 0;
+                sumCobrado += Number(f.totalCobrado) || 0;
+                sumSaldo   += Number(f.saldo) || 0;
+
+                let badgeHtml = '';
+                if (f.anulada === 'S') {
+                    badgeHtml = `<span class="badge-anulada">ANULADA</span>`;
+                } else if (f.estadoCod === 'CANCELADO') {
+                    badgeHtml = `<span class="badge-pagado"><i class="ph ph-check-circle"></i> COBRADO</span>`;
+                } else if (f.estadoCod === 'PARCIAL') {
+                    badgeHtml = `<span class="badge-parcial"><i class="ph ph-clock"></i> PARCIAL (${f.porcentajeCobro}%)</span>`;
+                } else {
+                    badgeHtml = `<span class="badge-pendiente"><i class="ph ph-hourglass-high"></i> PENDIENTE</span>`;
+                }
+
+                const cantRec = f.cantRecibos || (f.recibos ? f.recibos.length : 0);
+                const btnRecibos = cantRec > 0
+                    ? `<button type="button" class="btn-recibos-link" onclick="abrirModalRecibos(${i})">
+                           <i class="ph ph-hand-coins"></i> ${cantRec} recibo(s)
+                       </button>`
+                    : `<span style="color: #94a3b8; font-size: 0.76rem;">Sin recibos</span>`;
+
+                return `
+                    <tr>
+                        <td style="text-align: center; color: #64748b; font-weight: 700; white-space: nowrap;">${i + 1}</td>
+                        <td style="text-align: center; font-weight: 700; color: #334155; white-space: nowrap;">${f.fecIngresoFmt || f.fecIngreso || '-'}</td>
+                        <td style="text-align: center; font-family: monospace; font-weight: 800; color: #4338ca; white-space: nowrap;">${f.asiento ? '#' + f.asiento : '-'}</td>
+                        <td style="font-family: monospace; font-weight: 800; color: #0f172a; white-space: nowrap;">${f.rucCliente || '-'}</td>
+                        <td style="font-weight: 700; color: #0f172a;" title="${escapeHtml(f.nomCliente || '')}">
+                            ${escapeHtml(f.nomCliente || '-')}
+                        </td>
+                        <td style="text-align: center; font-family: monospace; font-size: 0.8rem; color: #475569; white-space: nowrap;">${f.nroTimbrado || '-'}</td>
+                        <td style="text-align: center; font-family: monospace; font-weight: 800; color: #1e3a8a; white-space: nowrap;">
+                            ${f.nroFactura || '-'}${f.serie ? ' [' + f.serie + ']' : ''}
+                        </td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 800; color: #0f172a; white-space: nowrap;">
+                            ${formatGs(f.valorTotal)}
+                        </td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 800; color: #16a34a; white-space: nowrap;">
+                            ${formatGs(f.totalCobrado)}
+                        </td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 900; color: ${f.saldo > 0 ? '#dc2626' : '#15803d'}; background: ${f.saldo > 0 ? '#fef2f2' : '#f0fdf4'}; white-space: nowrap;">
+                            ${formatGs(f.saldo)}
+                        </td>
+                        <td style="text-align: center; white-space: nowrap;">${badgeHtml}</td>
+                        <td class="no-print" style="text-align: center; white-space: nowrap;">${btnRecibos}</td>
+                    </tr>`;
+            }).join('');
+
+            document.getElementById('tfootTotalCredito').textContent = formatGs(sumCredito);
+            document.getElementById('tfootTotalCobrado').textContent = formatGs(sumCobrado);
+            document.getElementById('tfootTotalSaldo').textContent = formatGs(sumSaldo);
+        }
+
+        function renderTablaClientes(lista) {
+            const tbody = document.getElementById('tbodyClientesResumen');
+            document.getElementById('badgeTotalClientes').textContent = String(lista.length);
+
+            if (lista.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">No se registran clientes con facturas a crédito.</td></tr>`;
+                document.getElementById('tfootCliCantFac').textContent = '0';
+                document.getElementById('tfootCliTotalCredito').textContent = '0';
+                document.getElementById('tfootCliTotalCobrado').textContent = '0';
+                document.getElementById('tfootCliTotalSaldo').textContent = '0';
+                return;
+            }
+
+            let sumFac = 0;
+            let sumCred = 0;
+            let sumCob = 0;
+            let sumSal = 0;
+
+            tbody.innerHTML = lista.map((c, i) => {
+                sumFac  += Number(c.cantFacturas) || 0;
+                sumCred += Number(c.totalCredito) || 0;
+                sumCob  += Number(c.totalCobrado) || 0;
+                sumSal  += Number(c.saldo) || 0;
+
+                const pct = c.totalCredito > 0 ? Math.min(100, Math.round((c.totalCobrado / c.totalCredito) * 100)) : 100;
+                const rucVal = c.ruc || '';
+
+                return `
+                    <tr>
+                        <td style="text-align: center; color: #64748b; font-weight: 700; white-space: nowrap;">${i + 1}</td>
+                        <td style="font-family: monospace; font-weight: 800; color: #0f172a; white-space: nowrap;">${rucVal || '-'}</td>
+                        <td style="font-weight: 700; color: #0f172a;" title="${escapeHtml(c.nombre || '')}">${escapeHtml(c.nombre || '-')}</td>
+                        <td style="text-align: center; font-family: monospace; font-weight: 800; color: #059669; white-space: nowrap;">${c.cantFacturas || 0}</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 800; color: #0f172a; white-space: nowrap;">${formatGs(c.totalCredito)}</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 800; color: #16a34a; white-space: nowrap;">${formatGs(c.totalCobrado)}</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 900; color: ${c.saldo > 0 ? '#dc2626' : '#15803d'}; background: ${c.saldo > 0 ? '#fef2f2' : '#f0fdf4'}; white-space: nowrap;">
+                            ${formatGs(c.saldo)}
+                        </td>
+                        <td style="text-align: center; white-space: nowrap;">
+                            <div style="font-size: 0.76rem; font-weight: 800; color: ${pct === 100 ? '#15803d' : '#059669'};">
+                                ${pct}%
+                            </div>
+                            <div style="width: 100%; height: 5px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-top: 2px;">
+                                <div style="width: ${pct}%; height: 100%; background: ${pct === 100 ? '#16a34a' : (pct > 0 ? '#059669' : '#cbd5e1')};"></div>
+                            </div>
+                        </td>
+                        <td class="no-print" style="text-align: center; white-space: nowrap;">
+                            <button type="button" class="btn btn-sm" onclick="filtrarPorClienteDirecto('${rucVal.replace(/'/g, "\\'")}')" style="background: #dcfce7; color: #166534; font-weight: 800; font-size: 0.74rem; padding: 2px 8px; border-radius: 6px; border: 1px solid #bbf7d0;">
+                                <i class="ph ph-magnifying-glass"></i> Ver Fac.
+                            </button>
+                        </td>
+                    </tr>`;
+            }).join('');
+
+            document.getElementById('tfootCliCantFac').textContent = String(sumFac);
+            document.getElementById('tfootCliTotalCredito').textContent = formatGs(sumCred);
+            document.getElementById('tfootCliTotalCobrado').textContent = formatGs(sumCob);
+            document.getElementById('tfootCliTotalSaldo').textContent = formatGs(sumSal);
+        }
+
+        function filtrarPorClienteDirecto(ruc) {
+            document.getElementById('filtroBusqueda').value = ruc;
+            cambiarTabVista('facturas');
+            filtrarTablaEnVivo();
+        }
+
+        function filtrarTablaEnVivo() {
+            const q = (document.getElementById('filtroBusqueda').value || '').trim().toUpperCase();
+            if (!q) {
+                renderTablaFacturas(listaFacturasGlobal);
+                return;
+            }
+            const filtradas = listaFacturasGlobal.filter(f => {
+                const fac = String(f.nroFactura || '').toUpperCase();
+                const ruc = String(f.rucCliente || '').toUpperCase();
+                const nom = String(f.nomCliente || '').toUpperCase();
+                const timb = String(f.nroTimbrado || '').toUpperCase();
+                const asie = String(f.asiento || '').toUpperCase();
+                const matchEnRecibos = (f.recibos || []).some(r => String(r.nroRecibo || '').toUpperCase().includes(q));
+                return fac.includes(q) || ruc.includes(q) || nom.includes(q) || timb.includes(q) || asie.includes(q) || matchEnRecibos;
+            });
+            renderTablaFacturas(filtradas);
+        }
+
+        function abrirModalRecibos(index) {
+            const f = listaFacturasGlobal[index];
+            if (!f) return;
+
+            document.getElementById('modalFacturaSubtitulo').textContent =
+                `Factura: ${f.nroFactura || '-'} | Cliente: ${f.rucCliente || ''} - ${f.nomCliente || ''}`;
+
+            document.getElementById('modalMontoTotalFactura').textContent = 'Gs. ' + formatGs(f.valorTotal);
+            document.getElementById('modalMontoTotalCobrado').textContent = 'Gs. ' + formatGs(f.totalCobrado);
+            document.getElementById('modalMontoSaldoPendiente').textContent = 'Gs. ' + formatGs(f.saldo);
+
+            const tbody = document.getElementById('modalTbodyRecibos');
+            const recibos = f.recibos || [];
+
+            if (recibos.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">No se registran recibos de cobro aplicados a esta factura.</td></tr>`;
+            } else {
+                tbody.innerHTML = recibos.map((r, i) => `
+                    <tr>
+                        <td style="text-align: center; color: #64748b; font-weight: 700; white-space: nowrap;">${i + 1}</td>
+                        <td style="text-align: center; font-weight: 700; color: #334155; white-space: nowrap;">${r.fecReciboFmt || r.fecRecibo || '-'}</td>
+                        <td style="font-family: monospace; font-weight: 800; color: #1e3a8a; white-space: nowrap;">
+                            <i class="ph ph-hand-coins" style="color: #16a34a;"></i> Recibo N° ${r.nroRecibo || '-'}
+                        </td>
+                        <td style="text-align: center; font-weight: 800; color: #64748b; white-space: nowrap;">${r.serieRecibo || '-'}</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 900; color: #16a34a; white-space: nowrap;">
+                            Gs. ${formatGs(r.importe)}
+                        </td>
+                        <td style="text-align: center; white-space: nowrap;">
+                            <button type="button" class="btn btn-sm" onclick="imprimirReciboIndividual(${r.idRecibo})" style="background: #f1f5f9; color: #0284c7; border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px 8px; font-weight: 800; font-size: 0.74rem;" title="Imprimir Recibo de Cobro">
+                                <i class="ph ph-printer"></i> Imprimir
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            document.getElementById('modalRecibosOverlay').style.display = 'flex';
+        }
+
+        function imprimirReciboIndividual(idRecibo) {
+            if (!idRecibo) return;
+            window.open(`/app/recibos-cobro/print?id=${encodeURIComponent(idRecibo)}`, '_blank');
+        }
+
+        function cerrarModalRecibos() {
+            document.getElementById('modalRecibosOverlay').style.display = 'none';
+        }
+
+        function imprimirReporteSaldos() {
+            window.print();
+        }
+
+        function exportarExcelSaldos() {
+            if (typeof XLSX === 'undefined') {
+                alert('La librería SheetJS está cargando. Por favor, reintente en un momento.');
+                return;
+            }
+
+            const wb = XLSX.utils.book_new();
+
+            // Hoja 1: Detalle de Facturas Crédito Ventas
+            const dataFac = [
+                ['#', 'FECHA EMISIÓN', 'ASIENTO', 'RUC CLIENTE', 'RAZÓN SOCIAL', 'TIMBRADO', 'N° FACTURA', 'SERIE', 'TOTAL FACTURA', 'TOTAL COBRADO', 'SALDO PENDIENTE', '% COBRADO', 'ESTADO', 'RECIBOS DE COBRO']
+            ];
+
+            listaFacturasGlobal.forEach((f, idx) => {
+                const recStr = (f.recibos || []).map(r => `Rec #${r.nroRecibo} (${r.fecReciboFmt}): Gs. ${formatGs(r.importe)}`).join(' | ');
+                dataFac.push([
+                    idx + 1,
+                    f.fecIngresoFmt || f.fecIngreso || '',
+                    f.asiento || '',
+                    f.rucCliente || '',
+                    f.nomCliente || '',
+                    f.nroTimbrado || '',
+                    f.nroFactura || '',
+                    f.serie || '',
+                    Number(f.valorTotal) || 0,
+                    Number(f.totalCobrado) || 0,
+                    Number(f.saldo) || 0,
+                    (Number(f.porcentajeCobro) || 0) + '%',
+                    f.estadoLabel || '',
+                    recStr
+                ]);
+            });
+
+            const wsFac = XLSX.utils.aoa_to_sheet(dataFac);
+            XLSX.utils.book_append_sheet(wb, wsFac, 'Facturas Crédito Ventas');
+
+            // Hoja 2: Resumen por Cliente
+            const dataCli = [
+                ['#', 'RUC CLIENTE', 'RAZÓN SOCIAL', 'CANT. FACTURAS', 'TOTAL CRÉDITO', 'TOTAL COBRADO', 'SALDO PENDIENTE', '% COBRADO']
+            ];
+            listaClientesGlobal.forEach((c, idx) => {
+                const pct = c.totalCredito > 0 ? Math.min(100, Math.round((c.totalCobrado / c.totalCredito) * 100)) : 100;
+                dataCli.push([
+                    idx + 1,
+                    c.ruc || '',
+                    c.nombre || '',
+                    Number(c.cantFacturas) || 0,
+                    Number(c.totalCredito) || 0,
+                    Number(c.totalCobrado) || 0,
+                    Number(c.saldo) || 0,
+                    pct + '%'
+                ]);
+            });
+
+            const wsCli = XLSX.utils.aoa_to_sheet(dataCli);
+            XLSX.utils.book_append_sheet(wb, wsCli, 'Resumen por Cliente');
+
+            const fDesde = document.getElementById('fechaDesde').value || 'INICIO';
+            const fHasta = document.getElementById('fechaHasta').value || 'FIN';
+            const fileName = `Saldos_Facturas_Credito_Ventas_${fDesde}_${fHasta}.xlsx`;
+
+            XLSX.writeFile(wb, fileName);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+
+    <style>
+        .sort-icon {
+            font-size: 0.72rem;
+            color: #94a3b8;
+            margin-left: 3px;
+            display: inline-block;
+            vertical-align: middle;
+            user-select: none;
+        }
+        .saldos-tab-btn {
+            background: transparent;
+            border: none;
+            padding: 8px 16px;
+            font-size: 0.84rem;
+            font-weight: 800;
+            color: #64748b;
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .saldos-tab-btn.active {
+            background: #ffffff;
+            color: #059669;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .qf-btn {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 3px 10px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #334155;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .qf-btn:hover {
+            border-color: #16a34a;
+            color: #16a34a;
+        }
+        .qf-btn.active {
+            background: #dcfce7;
+            border-color: #86efac;
+            color: #15803d;
+            font-weight: 800;
+        }
+        .badge-pagado {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #dcfce7;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-weight: 800;
+            font-size: 0.72rem;
+        }
+        .badge-parcial {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #e0f2fe;
+            color: #0369a1;
+            border: 1px solid #bae6fd;
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-weight: 800;
+            font-size: 0.72rem;
+        }
+        .badge-pendiente {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-weight: 800;
+            font-size: 0.72rem;
+        }
+        .badge-anulada {
+            display: inline-flex;
+            align-items: center;
+            background: #f1f5f9;
+            color: #64748b;
+            border: 1px solid #cbd5e1;
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-weight: 800;
+            font-size: 0.72rem;
+        }
+        .btn-recibos-link {
+            background: #f0fdf4;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+            border-radius: 6px;
+            padding: 3px 8px;
+            font-weight: 800;
+            font-size: 0.74rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+        .btn-recibos-link:hover {
+            background: #16a34a;
+            color: white;
+            border-color: #16a34a;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        @media print {
+            body { background: white !important; font-size: 10pt; color: black; }
+            .no-print, .sidebar, .top-navbar, .footer { display: none !important; }
+            .main-content { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+            .content-area { padding: 0 !important; }
+            .print-only { display: block !important; }
+            .card { border: none !important; box-shadow: none !important; }
+            .table-responsive { max-height: none !important; overflow: visible !important; }
+            table { width: 100% !important; border-collapse: collapse !important; font-size: 8pt !important; }
+            th { background: #e2e8f0 !important; color: black !important; border: 1px solid #94a3b8 !important; padding: 4px 6px !important; }
+            td { border: 1px solid #cbd5e1 !important; padding: 4px 6px !important; }
+            tfoot { background: #f1f5f9 !important; border-top: 2px solid black !important; }
+        }
+    </style>
+</body>
+</html>

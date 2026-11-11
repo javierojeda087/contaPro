@@ -105,6 +105,12 @@ class RouteHelper {
         'SALDOS-EGRESOS'        => 'saldos-facturas-credito',
         'SALDOS_FACTURAS_CREDITO' => 'saldos-facturas-credito',
         'SALDOS-FACTURAS-CREDITO' => 'saldos-facturas-credito',
+        'COSALING'              => 'saldos-facturas-credito-ventas',
+        'COSALVEN'              => 'saldos-facturas-credito-ventas',
+        'SALDOS_VENTAS'         => 'saldos-facturas-credito-ventas',
+        'SALDOS-VENTAS'         => 'saldos-facturas-credito-ventas',
+        'SALDOS_FACTURAS_CREDITO_VENTAS' => 'saldos-facturas-credito-ventas',
+        'SALDOS-FACTURAS-CREDITO-VENTAS' => 'saldos-facturas-credito-ventas',
     ];
 
     public static function getRoute(?string $nomForma): string {

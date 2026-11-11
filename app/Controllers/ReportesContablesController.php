@@ -4559,4 +4559,358 @@ class ReportesContablesController {
             ], 500);
         }
     }
+
+    // =========================================================================
+    // SALDOS DE FACTURAS CRÉDITO VENTAS (COSALING)
+    // =========================================================================
+    public static function pageSaldosFacturasCreditoVentas(): void {
+        if (!self::requireAuth(false)) return;
+        $codEmpresa = TenantContext::empresa();
+        $ejercicio  = EjercicioService::getEjercicio();
+        $empData    = self::fetchEmpresaInfo($codEmpresa, $ejercicio);
+        $rango      = EjercicioService::getRango($codEmpresa, $ejercicio);
+        $def        = EjercicioService::defaultMes($rango);
+
+        self::renderFormPage('saldos_facturas_credito_ventas', [
+            'nomForma'      => 'COSALING',
+            'tituloForma'   => 'Saldos de Facturas Crédito (Ventas)',
+            'empresa'       => $empData,
+            'defFechaDesde' => $def[0],
+            'defFechaHasta' => $def[1],
+            'ejerInicio'    => $rango[0],
+            'ejerFinal'     => $rango[1],
+            'ejercicio'     => $ejercicio,
+        ]);
+    }
+
+    public static function apiSaldosFacturasCreditoVentasData(): void {
+        if (!self::requireAuth()) return;
+        $idProp  = TenantContext::idPropietario();
+        $empresa = TenantContext::empresa();
+
+        $fechaDesde      = trim((string)($_GET['fechaDesde'] ?? $_GET['desde'] ?? ''));
+        $fechaHasta      = trim((string)($_GET['fechaHasta'] ?? $_GET['hasta'] ?? ''));
+        $ejercicio       = trim((string)($_GET['ejercicio'] ?? $_GET['anio'] ?? ''));
+        $rucCliente      = trim((string)($_GET['rucCliente'] ?? $_GET['ruc'] ?? ''));
+        $codCliente      = trim((string)($_GET['codCliente'] ?? ''));
+        $filtroBusqueda  = trim((string)($_GET['search'] ?? $_GET['q'] ?? ''));
+        $estadoSaldo     = strtoupper(trim((string)($_GET['estadoSaldo'] ?? $_GET['estado'] ?? 'TODOS')));
+        $incluirAnuladas = !empty($_GET['incluirAnuladas']) && $_GET['incluirAnuladas'] !== 'false' && $_GET['incluirAnuladas'] !== '0';
+
+        try {
+            // 1. Obtener todas las facturas a crédito de ingresos (ventas)
+            $sqlIng = "SELECT i.id_ingreso,
+                              i.cod_empresa,
+                              COALESCE(i.tip_doc, 'FAC') AS tip_doc,
+                              COALESCE(i.nro_timbrado, '') AS nro_timbrado,
+                              COALESCE(i.nro_factura, '') AS nro_factura,
+                              COALESCE(i.serie, '') AS serie,
+                              DATE_FORMAT(i.fec_ingreso, '%Y-%m-%d') AS fec_ingreso,
+                              DATE_FORMAT(i.fec_ingreso, '%d/%m/%Y') AS fec_ingreso_fmt,
+                              COALESCE(i.ruc_cliente, '') AS ruc_cliente,
+                              COALESCE(i.nom_cliente, '') AS nom_cliente,
+                              COALESCE(i.cod_cliente, '') AS cod_cliente,
+                              COALESCE(i.condicion, 'CREDITO') AS condicion,
+                              COALESCE(i.cod_moneda, '1') AS cod_moneda,
+                              COALESCE(i.tasa_cambio, 1) AS tasa_cambio,
+                              COALESCE(i.grav10, 0) AS grav10,
+                              COALESCE(i.iva10, 0) AS iva10,
+                              COALESCE(i.grav5, 0) AS grav5,
+                              COALESCE(i.iva5, 0) AS iva5,
+                              COALESCE(i.exentas, 0) AS exentas,
+                              COALESCE(i.tot_iva, 0) AS tot_iva,
+                              COALESCE(i.valor_total, 0) AS valor_total,
+                              COALESCE(i.asiento, 0) AS asiento,
+                              CASE WHEN UPPER(COALESCE(i.anulada, 'N')) = 'S' OR UPPER(COALESCE(i.estado, 'A')) = 'I' THEN 'S' ELSE 'N' END AS anulada,
+                              COALESCE(i.observacion, '') AS observacion
+                       FROM co_ingresos i
+                       WHERE i.id_propietario = ?
+                         AND i.cod_empresa = ?
+                         AND (UPPER(TRIM(i.condicion)) IN ('CRE', 'CREDITO', 'CRÉDITO') OR UPPER(i.condicion) LIKE 'CRE%') ";
+            $paramsIng = [$idProp, $empresa];
+
+            if (!$incluirAnuladas) {
+                $sqlIng .= "AND COALESCE(i.anulada, 'N') <> 'S' AND COALESCE(i.inutilizado, 'N') <> 'S' AND COALESCE(i.estado, 'A') <> 'I' ";
+            }
+
+            if ($fechaDesde !== '' && $fechaHasta !== '') {
+                $sqlIng .= "AND DATE(i.fec_ingreso) >= ? AND DATE(i.fec_ingreso) <= ? ";
+                $paramsIng[] = $fechaDesde;
+                $paramsIng[] = $fechaHasta;
+            } elseif ($fechaDesde !== '') {
+                $sqlIng .= "AND DATE(i.fec_ingreso) >= ? ";
+                $paramsIng[] = $fechaDesde;
+            } elseif ($fechaHasta !== '') {
+                $sqlIng .= "AND DATE(i.fec_ingreso) <= ? ";
+                $paramsIng[] = $fechaHasta;
+            } elseif ($ejercicio !== '' && strcasecmp($ejercicio, 'TODOS') !== 0) {
+                $sqlIng .= "AND YEAR(i.fec_ingreso) = ? ";
+                $paramsIng[] = (int)$ejercicio;
+            }
+
+            if ($rucCliente !== '') {
+                $cleanRuc = str_replace(['-', ' '], '', $rucCliente);
+                $sqlIng .= "AND (UPPER(TRIM(i.ruc_cliente)) = UPPER(?) OR UPPER(REPLACE(i.ruc_cliente, '-', '')) = UPPER(?)) ";
+                $paramsIng[] = $rucCliente;
+                $paramsIng[] = $cleanRuc;
+            } elseif ($codCliente !== '') {
+                $sqlIng .= "AND TRIM(i.cod_cliente) = ? ";
+                $paramsIng[] = $codCliente;
+            }
+
+            $sqlIng .= "ORDER BY i.fec_ingreso ASC, i.id_ingreso ASC";
+            $facturas = Database::queryForListUpper($sqlIng, $paramsIng);
+
+            // 2. Obtener todos los detalles de recibos de cobro activos para la empresa
+            $sqlCobros = "SELECT d.id_detalle,
+                                 d.id_recibo,
+                                 d.id_ingreso,
+                                 d.tip_doc,
+                                 COALESCE(d.nro_timbrado, '') AS nro_timbrado,
+                                 COALESCE(d.nro_factura, '') AS nro_factura,
+                                 COALESCE(d.serie, '') AS serie_factura,
+                                 DATE_FORMAT(d.fec_ingreso, '%Y-%m-%d') AS fec_ingreso,
+                                 COALESCE(d.valor_total, 0) AS valor_total,
+                                 COALESCE(d.saldo, 0) AS saldo_det,
+                                 COALESCE(d.importe, 0) AS importe,
+                                 COALESCE(c.nro_recibo, '') AS nro_recibo,
+                                 COALESCE(c.serie, '') AS serie_recibo,
+                                 DATE_FORMAT(c.fec_recibo, '%Y-%m-%d') AS fec_recibo,
+                                 DATE_FORMAT(c.fec_recibo, '%d/%m/%Y') AS fec_recibo_fmt,
+                                 COALESCE(c.ruc_cliente, '') AS ruc_cliente,
+                                 COALESCE(c.nom_cliente, '') AS nom_cliente,
+                                 COALESCE(c.cod_cliente, '') AS cod_cliente,
+                                 COALESCE(c.anulada, 'N') AS recibo_anulado
+                          FROM co_recibos_cobro_det d
+                          JOIN co_recibos_cobro c
+                            ON c.id_propietario = d.id_propietario AND c.id_recibo = d.id_recibo
+                          WHERE d.id_propietario = ?
+                            AND d.cod_empresa = ?
+                            AND COALESCE(c.anulada, 'N') <> 'S'
+                            AND COALESCE(c.estado, 'A') <> 'I'
+                            AND COALESCE(d.estado, 'A') <> 'I'
+                          ORDER BY c.fec_recibo ASC, d.id_detalle ASC";
+            $cobrosRows = Database::queryForListUpper($sqlCobros, [$idProp, $empresa]);
+
+            $cobrosPorId = [];
+            $cobrosPorDocRuc = [];
+            $cobrosPorDocSolo = [];
+
+            foreach ($cobrosRows as $c) {
+                $idIng     = (int)($c['ID_INGRESO'] ?? 0);
+                $docRaw    = strtoupper(trim(str_replace(['-', ' '], '', (string)($c['NRO_FACTURA'] ?? ''))));
+                $rucCli    = strtoupper(trim(str_replace(['-', ' '], '', (string)($c['RUC_CLIENTE'] ?? ''))));
+                $imp       = (float)($c['IMPORTE'] ?? 0);
+
+                $itemCobro = [
+                    'idRecibo'       => (int)($c['ID_RECIBO'] ?? 0),
+                    'nroRecibo'      => (string)($c['NRO_RECIBO'] ?? ''),
+                    'serieRecibo'    => (string)($c['SERIE_RECIBO'] ?? ''),
+                    'fecRecibo'      => (string)($c['FEC_RECIBO'] ?? ''),
+                    'fecReciboFmt'   => (string)($c['FEC_RECIBO_FMT'] ?? ''),
+                    'importe'        => $imp,
+                    'rucCliente'     => (string)($c['RUC_CLIENTE'] ?? ''),
+                    'nomCliente'     => (string)($c['NOM_CLIENTE'] ?? ''),
+                ];
+
+                if ($idIng > 0) {
+                    $cobrosPorId[$idIng][] = $itemCobro;
+                }
+                if ($docRaw !== '') {
+                    if ($rucCli !== '') {
+                        $cobrosPorDocRuc[$docRaw . '|' . $rucCli][] = $itemCobro;
+                    }
+                    $cobrosPorDocSolo[$docRaw][] = $itemCobro;
+                }
+            }
+
+            // 3. Cruzar cada factura crédito con sus recibos de cobro
+            $items = [];
+            $kpiTotalCredito = 0.0;
+            $kpiTotalCobrado = 0.0;
+            $kpiTotalSaldo   = 0.0;
+            $cantPendientes  = 0;
+            $cantParciales   = 0;
+            $cantCanceladas  = 0;
+
+            $clientesMap = [];
+
+            foreach ($facturas as $f) {
+                $idIng     = (int)($f['ID_INGRESO'] ?? 0);
+                $docClean  = strtoupper(trim(str_replace(['-', ' '], '', (string)($f['NRO_FACTURA'] ?? ''))));
+                $rucClean  = strtoupper(trim(str_replace(['-', ' '], '', (string)($f['RUC_CLIENTE'] ?? ''))));
+                $vTotal    = (float)($f['VALOR_TOTAL'] ?? 0);
+                if ($vTotal <= 0) {
+                    $vTotal = (float)($f['GRAV10'] ?? 0) + (float)($f['GRAV5'] ?? 0) + (float)($f['EXENTAS'] ?? 0);
+                }
+
+                // Obtener recibos asociados
+                $recibosAsoc = [];
+                if ($idIng > 0 && !empty($cobrosPorId[$idIng])) {
+                    $recibosAsoc = $cobrosPorId[$idIng];
+                } elseif ($docClean !== '' && $rucClean !== '' && !empty($cobrosPorDocRuc[$docClean . '|' . $rucClean])) {
+                    $recibosAsoc = $cobrosPorDocRuc[$docClean . '|' . $rucClean];
+                } elseif ($docClean !== '' && !empty($cobrosPorDocSolo[$docClean])) {
+                    $recibosAsoc = $cobrosPorDocSolo[$docClean];
+                }
+
+                $totalCobrado = 0.0;
+                $recibosDetalles = [];
+                $vistosRecibos = [];
+
+                foreach ($recibosAsoc as $r) {
+                    $rKey = ($r['idRecibo'] ?: 0) . '_' . ($r['nroRecibo'] ?: '') . '_' . ($r['importe'] ?: 0);
+                    if (isset($vistosRecibos[$rKey])) continue;
+                    $vistosRecibos[$rKey] = true;
+
+                    $totalCobrado += (float)$r['importe'];
+                    $recibosDetalles[] = [
+                        'idRecibo'     => $r['idRecibo'],
+                        'nroRecibo'    => $r['nroRecibo'],
+                        'serieRecibo'  => $r['serieRecibo'],
+                        'fecRecibo'    => $r['fecRecibo'],
+                        'fecReciboFmt' => $r['fecReciboFmt'],
+                        'importe'      => $r['importe'],
+                    ];
+                }
+
+                $anulada = ($f['ANULADA'] ?? 'N') === 'S';
+                $saldo = $anulada ? 0.0 : max(0.0, $vTotal - $totalCobrado);
+
+                // Estado de saldo
+                if ($anulada) {
+                    $estadoCod = 'ANULADA';
+                    $estadoLabel = 'ANULADA';
+                    $badgeClass = 'badge-anulada';
+                } elseif ($saldo <= 0.009) {
+                    $estadoCod = 'CANCELADO';
+                    $estadoLabel = 'COBRADO';
+                    $badgeClass = 'badge-pagado';
+                    $cantCanceladas++;
+                } elseif ($totalCobrado > 0.009) {
+                    $estadoCod = 'PARCIAL';
+                    $estadoLabel = 'COBRO PARCIAL';
+                    $badgeClass = 'badge-parcial';
+                    $cantParciales++;
+                } else {
+                    $estadoCod = 'PENDIENTE';
+                    $estadoLabel = 'PENDIENTE';
+                    $badgeClass = 'badge-pendiente';
+                    $cantPendientes++;
+                }
+
+                // Filtrar por estadoSaldo si no es 'TODOS'
+                if ($estadoSaldo === 'PENDIENTES' && $estadoCod !== 'PENDIENTE' && $estadoCod !== 'PARCIAL') {
+                    continue;
+                }
+                if ($estadoSaldo === 'CANCELADOS' && $estadoCod !== 'CANCELADO') {
+                    continue;
+                }
+                if ($estadoSaldo === 'PARCIALES' && $estadoCod !== 'PARCIAL') {
+                    continue;
+                }
+
+                // Filtro de texto libre si fue proporcionado
+                if ($filtroBusqueda !== '') {
+                    $q = strtoupper($filtroBusqueda);
+                    $hayMatch = str_contains(strtoupper((string)($f['NRO_FACTURA'] ?? '')), $q) ||
+                                str_contains(strtoupper((string)($f['RUC_CLIENTE'] ?? '')), $q) ||
+                                str_contains(strtoupper((string)($f['NOM_CLIENTE'] ?? '')), $q) ||
+                                str_contains(strtoupper((string)($f['NRO_TIMBRADO'] ?? '')), $q);
+                    if (!$hayMatch) {
+                        foreach ($recibosDetalles as $rd) {
+                            if (str_contains(strtoupper((string)$rd['nroRecibo']), $q)) {
+                                $hayMatch = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!$hayMatch) continue;
+                }
+
+                $kpiTotalCredito += $vTotal;
+                $kpiTotalCobrado += $totalCobrado;
+                $kpiTotalSaldo   += $saldo;
+
+                // Agrupador por cliente
+                $cKey = $rucClean ?: ($f['NOM_CLIENTE'] ?? 'SIN_CLIENTE');
+                if (!isset($clientesMap[$cKey])) {
+                    $clientesMap[$cKey] = [
+                        'ruc'           => (string)($f['RUC_CLIENTE'] ?? ''),
+                        'nombre'        => (string)($f['NOM_CLIENTE'] ?? ''),
+                        'codCliente'    => (string)($f['COD_CLIENTE'] ?? ''),
+                        'cantFacturas'  => 0,
+                        'totalCredito'  => 0.0,
+                        'totalCobrado'  => 0.0,
+                        'saldo'         => 0.0,
+                    ];
+                }
+                $clientesMap[$cKey]['cantFacturas']++;
+                $clientesMap[$cKey]['totalCredito'] += $vTotal;
+                $clientesMap[$cKey]['totalCobrado'] += $totalCobrado;
+                $clientesMap[$cKey]['saldo']        += $saldo;
+
+                $items[] = [
+                    'idIngreso'       => $idIng,
+                    'tipDoc'          => (string)($f['TIP_DOC'] ?? 'FAC'),
+                    'nroTimbrado'     => (string)($f['NRO_TIMBRADO'] ?? ''),
+                    'nroFactura'      => (string)($f['NRO_FACTURA'] ?? ''),
+                    'serie'           => (string)($f['SERIE'] ?? ''),
+                    'fecIngreso'      => (string)($f['FEC_INGRESO'] ?? ''),
+                    'fecIngresoFmt'   => (string)($f['FEC_INGRESO_FMT'] ?? ''),
+                    'rucCliente'      => (string)($f['RUC_CLIENTE'] ?? ''),
+                    'nomCliente'      => (string)($f['NOM_CLIENTE'] ?? ''),
+                    'codCliente'      => (string)($f['COD_CLIENTE'] ?? ''),
+                    'condicion'       => (string)($f['CONDICION'] ?? 'CREDITO'),
+                    'codMoneda'       => (string)($f['COD_MONEDA'] ?? '1'),
+                    'tasaCambio'      => (float)($f['TASA_CAMBIO'] ?? 1),
+                    'grav10'          => (float)($f['GRAV10'] ?? 0),
+                    'iva10'           => (float)($f['IVA10'] ?? 0),
+                    'grav5'           => (float)($f['GRAV5'] ?? 0),
+                    'iva5'            => (float)($f['IVA5'] ?? 0),
+                    'exentas'         => (float)($f['EXENTAS'] ?? 0),
+                    'totIva'          => (float)($f['TOT_IVA'] ?? 0),
+                    'valorTotal'      => $vTotal,
+                    'totalCobrado'    => $totalCobrado,
+                    'saldo'           => $saldo,
+                    'asiento'         => (int)($f['ASIENTO'] ?? 0),
+                    'porcentajeCobro' => $vTotal > 0 ? min(100, round(($totalCobrado / $vTotal) * 100, 1)) : 100,
+                    'estadoCod'       => $estadoCod,
+                    'estadoLabel'     => $estadoLabel,
+                    'badgeClass'      => $badgeClass,
+                    'anulada'         => $anulada ? 'S' : 'N',
+                    'recibos'         => $recibosDetalles,
+                    'cantRecibos'     => count($recibosDetalles),
+                ];
+            }
+
+            // Ordenar clientes por mayor saldo pendiente
+            $resumenClientes = array_values($clientesMap);
+            usort($resumenClientes, function($a, $b) {
+                return $b['saldo'] <=> $a['saldo'];
+            });
+
+            View::json([
+                'status' => 'success',
+                'data'   => [
+                    'facturas'         => $items,
+                    'resumenClientes'  => $resumenClientes,
+                    'kpis' => [
+                        'totalCredito'   => $kpiTotalCredito,
+                        'totalCobrado'   => $kpiTotalCobrado,
+                        'totalSaldo'     => $kpiTotalSaldo,
+                        'cantTotal'      => count($items),
+                        'cantPendientes' => $cantPendientes,
+                        'cantParciales'  => $cantParciales,
+                        'cantCanceladas' => $cantCanceladas,
+                    ]
+                ]
+            ]);
+        } catch (\Throwable $e) {
+            View::json([
+                'status'  => 'error',
+                'message' => 'Error al calcular saldos de facturas a crédito de ventas: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
