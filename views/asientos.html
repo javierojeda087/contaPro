@@ -266,11 +266,16 @@
                                 <div class="col-md-3">
                                     <label class="form-label font-bold" style="font-size: 0.8rem; font-weight: 600; color: #475569;">Tipo / Origen:</label>
                                     <select id="origenComprobante" class="form-select form-select-sm" style="font-weight: 600; color: #1e293b;">
-                                        <option value="MANUAL" selected>ASIENTO MANUAL</option>
+                                        <option value="MANUAL" selected>MANUAL (Asiento Directo)</option>
+                                        <option value="COEGRES">COEGRES (Compra / Egreso)</option>
+                                        <option value="COINGRES">COINGRES (Venta / Ingreso)</option>
                                         <option value="COMPRA">FACTURA COMPRA</option>
                                         <option value="VENTA">FACTURA VENTA</option>
                                         <option value="EGRESO">REGISTRO EGRESO</option>
                                         <option value="INGRESO">REGISTRO INGRESO</option>
+                                        <option value="COAPER">COAPER (Apertura)</option>
+                                        <option value="COCIERRE">COCIERRE (Cierre)</option>
+                                        <option value="AJUSTE">AJUSTE CONTABLE</option>
                                     </select>
                                 </div>
 
@@ -750,7 +755,41 @@
 
                     document.getElementById('numAsiento').value = cab.NUM_ASIENTO;
                     document.getElementById('modalTitleText').innerText = `Modificar Asiento Contable N° ${cab.NUM_ASIENTO}`;
-                    document.getElementById('origenComprobante').value = cab.ORIGEN_COMPROBANTE || 'MANUAL';
+                    
+                    const rawOrig = String(cab.ORIGEN_COMPROBANTE || cab.origen_comprobante || 'MANUAL').trim().toUpperCase();
+                    const selOrigen = document.getElementById('origenComprobante');
+                    if (selOrigen) {
+                        let matched = false;
+                        for (let opt of selOrigen.options) {
+                            if (opt.value.toUpperCase() === rawOrig) {
+                                selOrigen.value = opt.value;
+                                matched = true;
+                                break;
+                            }
+                        }
+                        if (!matched) {
+                            if (rawOrig.includes('EGRE') || rawOrig.includes('COMPRA')) {
+                                selOrigen.value = 'COEGRES';
+                                matched = true;
+                            } else if (rawOrig.includes('INGR') || rawOrig.includes('VENTA')) {
+                                selOrigen.value = 'COINGRES';
+                                matched = true;
+                            } else if (rawOrig.includes('APER')) {
+                                selOrigen.value = 'COAPER';
+                                matched = true;
+                            } else if (rawOrig.includes('CIER')) {
+                                selOrigen.value = 'COCIERRE';
+                                matched = true;
+                            }
+                        }
+                        if (!matched) {
+                            const newOpt = document.createElement('option');
+                            newOpt.value = rawOrig;
+                            newOpt.text = rawOrig;
+                            selOrigen.appendChild(newOpt);
+                            selOrigen.value = rawOrig;
+                        }
+                    }
                     document.getElementById('fechaAsiento').value = cab.FEC_ASIENTO;
                     if (cab.COD_SUCURSAL) document.getElementById('codSucursal').value = cab.COD_SUCURSAL;
                     document.getElementById('idComprobante').value = cab.ID_COMPROBANTE || '';
