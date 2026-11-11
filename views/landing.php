@@ -479,9 +479,9 @@
 
         <div class="features-grid">
             <div class="feature-card anim-item anim-delay-1">
-                <div class="feature-icon"><i class="ph ph-qr-code"></i></div>
-                <h3>Integración CDC SIFEN y DNIT</h3>
-                <p>Verificación automática de comprobantes electrónicos por CDC y autocompletado de RUC/Razón Social en línea.</p>
+                <div class="feature-icon"><i class="ph ph-scales"></i></div>
+                <h3>Balance Analítico y Estados Contables</h3>
+                <p>Cálculo y generación en tiempo real de Balance General, Balance Analítico por Fechas (CORBALAP), Libro Diario y Libro Mayor.</p>
             </div>
             <div class="feature-card anim-item anim-delay-2">
                 <div class="feature-icon"><i class="ph ph-file-zip"></i></div>
@@ -563,7 +563,7 @@
                         <li><i class="ph ph-check-circle"></i> Hasta <strong><?= (int)$pl['max_contribuyentes'] ?> Contribuyentes / Empresas</strong></li>
                         <li><i class="ph ph-check-circle"></i> Hasta <strong><?= (int)$pl['max_usuarios'] ?> Usuarios</strong> por cuenta</li>
                         <li><i class="ph ph-check-circle"></i> Libros IVA, Diario, Mayor y Form. 120</li>
-                        <li><i class="ph ph-check-circle"></i> Exportación RG 90 Marangatu y Consulta CDC</li>
+                        <li><i class="ph ph-check-circle"></i> Exportación RG 90 Marangatu (ZIP)</li>
                         <li><i class="ph ph-check-circle"></i> Respaldo en la nube y soporte técnico</li>
                     </ul>
                     <a href="<?= htmlspecialchars($waPlanUrl) ?>" target="_blank" rel="noopener" class="btn-hero" style="text-align: center; background: <?= $isPopular ? '#15803d' : '#16a34a' ?>;">
