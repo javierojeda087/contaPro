@@ -349,9 +349,9 @@
     </style>
 
     <script th:inline="javascript">
-        const EJERCICIO = /*[[${ejercicio}]]*/ '<?= (int)($ejercicio ?? date('Y')) ?>' || '2026';
-        const EJER_INI  = /*[[${ejerInicio}]]*/ '<?= htmlspecialchars($ejerInicio ?? date('Y-01-01')) ?>' || '2026-01-01';
-        const EJER_FIN  = /*[[${ejerFinal}]]*/ '<?= htmlspecialchars($ejerFinal ?? date('Y-12-31')) ?>' || '2026-12-31';
+        const EJERCICIO = /*[[${ejercicio}]]*/ '2026';
+        const EJER_INI  = /*[[${ejerInicio}]]*/ '2026-01-01';
+        const EJER_FIN  = /*[[${ejerFinal}]]*/ '2026-12-31';
 
         let pendientesList = [];
         let filtroTipoActual = 'TODOS';
