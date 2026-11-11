@@ -935,6 +935,65 @@
         </div>
     </div>
 
+    <!-- MODAL CREAR PERSONA DIRECTAMENTE (CI / RUC) -->
+    <div class="modal fade" id="modalCrearPersona" tabindex="-1" style="z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 18px; border: 1px solid #cbd5e1; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);">
+                <div class="modal-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 18px 24px;">
+                    <div class="d-flex align-items-center gap-2">
+                        <div style="width: 38px; height: 38px; border-radius: 10px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                            <i class="ph ph-user-plus"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold m-0 text-dark" style="font-size: 1.02rem;">Registrar como Persona</h5>
+                            <div class="text-muted" style="font-size: 0.75rem;">Guarda en la base de datos de Personas para asociarlo al Propietario</div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="padding: 22px 24px;">
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold small mb-1">Tipo de Documento</label>
+                            <select id="mperTipoDoc" class="form-select fw-semibold">
+                                <option value="CI" selected>C.I. (Cédula de Identidad)</option>
+                                <option value="RUC">RUC</option>
+                                <option value="PASAPORTE">Pasaporte</option>
+                                <option value="OTRO">Otro Documento</option>
+                            </select>
+                        </div>
+                        <div class="col-md-7">
+                            <label class="form-label fw-bold small mb-1">Número de Documento *</label>
+                            <input type="text" id="mperNumero" class="form-control fw-bold" placeholder="Ej: 6240302">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold small mb-1">Nombre Completo o Razón Social *</label>
+                            <input type="text" id="mperNombre" class="form-control text-uppercase fw-bold" placeholder="Ej: JUAN PEREZ">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small mb-1">Teléfono / WhatsApp</label>
+                            <input type="text" id="mperTelefono" class="form-control" placeholder="Ej: 0981 123456">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small mb-1">Correo Electrónico</label>
+                            <input type="email" id="mperEmail" class="form-control" placeholder="correo@ejemplo.com">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold small mb-1">Dirección (Opcional)</label>
+                            <input type="text" id="mperDireccion" class="form-control" placeholder="Ej: Asunción, Paraguay">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 24px;">
+                    <button type="button" class="sa-btn sa-btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="sa-btn sa-btn-primary" onclick="guardarPersonaSuperAdmin()">
+                        <i class="ph ph-check"></i> Guardar y Usar Persona
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL RENOVAR SUSCRIPCIÓN / REGISTRAR PAGO -->
     <div class="modal fade" id="modalRenovar" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -1010,7 +1069,7 @@
         let listaPagos = [];
         let listaGrupos = [];
         let configSistema = {};
-        let modalPlanObj, modalPropObj, modalRenovarObj;
+        let modalPlanObj, modalPropObj, modalRenovarObj, modalCrearPersonaObj;
 
         function escHtml(str) {
             return String(str ?? '')
@@ -1042,6 +1101,7 @@
             modalPlanObj = new bootstrap.Modal(document.getElementById('modalPlan'));
             modalPropObj = new bootstrap.Modal(document.getElementById('modalPropietario'));
             modalRenovarObj = new bootstrap.Modal(document.getElementById('modalRenovar'));
+            modalCrearPersonaObj = new bootstrap.Modal(document.getElementById('modalCrearPersona'));
             cargarDatosSuperAdmin();
         });
 
@@ -1577,7 +1637,16 @@
                         break;
 
                     default:
-                        setPropRucEstado('warn', `<i class="ph ph-info"></i> RUC no encontrado en la DNIT ni en la base de datos. Complete los datos manualmente.`);
+                        const rucVal = (document.getElementById('propRuc')?.value || '').trim();
+                        const rucEsc = escHtml(rucVal);
+                        setPropRucEstado('warn', `
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <span><i class="ph ph-info"></i> RUC no encontrado en la DNIT ni en la base de datos.</span>
+                                <button type="button" class="btn btn-sm btn-success text-white py-1 px-2 fw-bold d-inline-flex align-items-center gap-1" onclick="abrirModalCrearPersona('${rucEsc}')" style="font-size: 0.78rem; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.08);">
+                                    <i class="ph ph-user-plus"></i> Crear como Persona
+                                </button>
+                            </div>
+                        `);
                 }
             } catch (err) {
                 console.error(err);
@@ -1689,6 +1758,80 @@
                 cargarDatosSuperAdmin();
             } else {
                 showAlert(json.message || 'Error al guardar propietario', 'error');
+            }
+        }
+
+        function abrirModalCrearPersona(docDefecto = '') {
+            const num = docDefecto || document.getElementById('propRuc')?.value.trim() || '';
+            document.getElementById('mperNumero').value = num;
+            document.getElementById('mperTipoDoc').value = num.includes('-') ? 'RUC' : 'CI';
+            document.getElementById('mperNombre').value = document.getElementById('propNombre')?.value || '';
+            document.getElementById('mperTelefono').value = document.getElementById('propTelefono')?.value || '';
+            document.getElementById('mperEmail').value = document.getElementById('propEmail')?.value || '';
+            document.getElementById('mperDireccion').value = '';
+            modalCrearPersonaObj.show();
+            setTimeout(() => {
+                const elNom = document.getElementById('mperNombre');
+                if (elNom && !elNom.value) {
+                    elNom.focus();
+                } else {
+                    document.getElementById('mperNumero')?.focus();
+                }
+            }, 120);
+        }
+
+        async function guardarPersonaSuperAdmin() {
+            const tipoDoc = document.getElementById('mperTipoDoc').value;
+            const numero = (document.getElementById('mperNumero').value || '').trim();
+            const nombre = (document.getElementById('mperNombre').value || '').trim();
+            const telefono = (document.getElementById('mperTelefono').value || '').trim();
+            const email = (document.getElementById('mperEmail').value || '').trim();
+            const direccion = (document.getElementById('mperDireccion').value || '').trim();
+
+            if (!numero) {
+                showAlert('Ingrese el número de documento de la persona.', 'warning');
+                document.getElementById('mperNumero')?.focus();
+                return;
+            }
+            if (!nombre) {
+                showAlert('Ingrese el nombre completo o razón social.', 'warning');
+                document.getElementById('mperNombre')?.focus();
+                return;
+            }
+
+            try {
+                const body = new URLSearchParams({
+                    tipoDoc,
+                    numero,
+                    nombre,
+                    telefono,
+                    email,
+                    direccion
+                });
+                const res = await fetch('/api/superadmin/persona/save', { method: 'POST', body });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    modalCrearPersonaObj.hide();
+                    showToast(json.message || 'Persona registrada correctamente');
+
+                    // Auto-completar en el formulario de propietario
+                    document.getElementById('propRuc').value = numero;
+                    document.getElementById('propNombre').value = nombre.toUpperCase();
+                    if (telefono && !document.getElementById('propTelefono').value) {
+                        document.getElementById('propTelefono').value = telefono;
+                    }
+                    if (email && !document.getElementById('propEmail').value) {
+                        document.getElementById('propEmail').value = email;
+                    }
+                    ultimoRucPropVerificado = numero;
+                    const cod = json.data?.cod_persona ? ` (Cód. ${json.data.cod_persona})` : '';
+                    setPropRucEstado('ok', `<i class="ph ph-user-check"></i> Persona registrada exitosamente${cod} y vinculada al Propietario.`);
+                } else {
+                    showAlert(json.message || 'Error al guardar la persona.', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showAlert('Error de conexión al guardar la persona.', 'error');
             }
         }
 

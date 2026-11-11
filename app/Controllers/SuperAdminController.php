@@ -319,12 +319,16 @@ class SuperAdminController {
         // Sincronizar y registrar como Persona en el sistema
         try {
             if ($ruc !== '' || $nombre !== '') {
+                $tipoDoc = strtoupper(trim((string)($_POST['tipoDocumento'] ?? '')));
+                if ($tipoDoc === '') {
+                    $tipoDoc = str_contains($ruc, '-') ? 'RUC' : 'CI';
+                }
                 \App\Services\PersonaService::syncPersonaData(
-                    null, $nombre, $ruc, 'RUC', null, $telefono, $email, $idProp
+                    null, $nombre, $ruc, $tipoDoc, null, $telefono, $email, $idProp
                 );
                 if ($idProp !== 1) {
                     \App\Services\PersonaService::syncPersonaData(
-                        null, $nombre, $ruc, 'RUC', null, $telefono, $email, 1
+                        null, $nombre, $ruc, $tipoDoc, null, $telefono, $email, 1
                     );
                 }
             }
@@ -334,6 +338,46 @@ class SuperAdminController {
             'status'  => 'success',
             'message' => 'Propietario #' . $idProp . ' (' . $nombre . ') guardado con correo ' . $email . ' y asignado al grupo ' . $grupoPlan . '.'
         ];
+    }
+
+    /**
+     * Registra una persona física o jurídica directamente desde el panel SuperAdmin
+     */
+    public static function savePersona(): array {
+        self::checkAccess();
+        $payload   = $_POST;
+        $tipoDoc   = strtoupper(trim((string)($payload['tipoDocumento'] ?? 'CI'))) ?: 'CI';
+        $numero    = trim((string)($payload['numero'] ?? ''));
+        $nombre    = mb_strtoupper(trim((string)($payload['nombre'] ?? '')), 'UTF-8');
+        $telefono  = trim((string)($payload['telefono'] ?? ''));
+        $email     = strtolower(trim((string)($payload['email'] ?? '')));
+        $direccion = trim((string)($payload['direccion'] ?? ''));
+
+        if ($numero === '') {
+            return ['status' => 'error', 'message' => 'El número de documento es obligatorio.'];
+        }
+        if ($nombre === '') {
+            return ['status' => 'error', 'message' => 'El nombre completo es obligatorio.'];
+        }
+
+        try {
+            $codPersona = \App\Services\PersonaService::syncPersonaData(
+                null, $nombre, $numero, $tipoDoc, $direccion, $telefono, $email, 1
+            );
+            return [
+                'status'     => 'success',
+                'codPersona' => $codPersona,
+                'nombre'     => $nombre,
+                'numero'     => $numero,
+                'tipoDoc'    => $tipoDoc,
+                'telefono'   => $telefono,
+                'email'      => $email,
+                'direccion'  => $direccion,
+                'message'    => 'Persona registrada correctamente en la base de datos.'
+            ];
+        } catch (\Throwable $e) {
+            return ['status' => 'error', 'message' => 'Error al guardar persona: ' . $e->getMessage()];
+        }
     }
 
     /**

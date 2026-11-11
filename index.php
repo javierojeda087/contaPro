@@ -206,6 +206,10 @@ if (($uri === '/api/superadmin/propietario/save' || $uri === '/api/superadmin/pr
     View::json(SuperAdminController::savePropietario());
     exit;
 }
+if (($uri === '/api/superadmin/persona/save' || $uri === '/api/superadmin/personas/save') && $method === 'POST') {
+    View::json(SuperAdminController::savePersona());
+    exit;
+}
 if ($uri === '/api/superadmin/propietario/renovar' && $method === 'POST') {
     View::json(SuperAdminController::renovarSuscripcion());
     exit;
