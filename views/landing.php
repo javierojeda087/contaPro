@@ -480,8 +480,8 @@
         <div class="features-grid">
             <div class="feature-card anim-item anim-delay-1">
                 <div class="feature-icon"><i class="ph ph-scales"></i></div>
-                <h3>Balance Analítico y Estados Contables</h3>
-                <p>Cálculo y generación en tiempo real de Balance General, Balance Analítico por Fechas (CORBALAP), Libro Diario y Libro Mayor.</p>
+                <h3>Balance General y Analítico</h3>
+                <p>Cálculo y emisión en tiempo real de Balance General, Balance Analítico por fechas y verificación automática de cuadre patrimonial.</p>
             </div>
             <div class="feature-card anim-item anim-delay-2">
                 <div class="feature-icon"><i class="ph ph-file-zip"></i></div>
