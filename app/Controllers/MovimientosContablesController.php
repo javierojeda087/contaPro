@@ -1003,6 +1003,15 @@ class MovimientosContablesController {
                 if (str_contains($fullCta, ' - ')) {
                     [$codCta, $nomCta] = array_map('trim', explode(' - ', $fullCta, 2));
                 }
+                $descOficial = Database::queryForValue(
+                    "SELECT descripcion FROM co_plan_cuentas 
+                     WHERE (id_propietario = ? OR id_propietario = 1) AND cod_cuenta = ? 
+                     ORDER BY (id_propietario = ?) DESC LIMIT 1",
+                    [$idProp, $codCta, $idProp]
+                );
+                if (!empty($descOficial)) {
+                    $nomCta = $descOficial;
+                }
                 $montoDebe = (float)($d['debe'] ?? 0);
                 $totalDebe += $montoDebe;
                 $detRows[] = [$idProp, $empresa, $numAsiento, $secuencia++, $codCta, $nomCta, $descBase, $montoDebe, 0.0];
@@ -1015,6 +1024,15 @@ class MovimientosContablesController {
                 $nomCta = $fullCta;
                 if (str_contains($fullCta, ' - ')) {
                     [$codCta, $nomCta] = array_map('trim', explode(' - ', $fullCta, 2));
+                }
+                $descOficial = Database::queryForValue(
+                    "SELECT descripcion FROM co_plan_cuentas 
+                     WHERE (id_propietario = ? OR id_propietario = 1) AND cod_cuenta = ? 
+                     ORDER BY (id_propietario = ?) DESC LIMIT 1",
+                    [$idProp, $codCta, $idProp]
+                );
+                if (!empty($descOficial)) {
+                    $nomCta = $descOficial;
                 }
                 $montoHaber = (float)($h['haber'] ?? 0);
                 $totalHaber += $montoHaber;
@@ -2505,11 +2523,33 @@ class MovimientosContablesController {
                 return;
             }
 
+            // Sincronizar nombres con co_plan_cuentas para mantener coherencia en la BD
+            try {
+                Database::update(
+                    "UPDATE co_asientos_det d
+                     JOIN co_plan_cuentas p 
+                       ON (p.id_propietario = d.id_propietario OR p.id_propietario = 1) 
+                      AND p.cod_cuenta = d.cod_cuenta
+                     SET d.nom_cuenta = p.descripcion
+                     WHERE d.id_propietario = ? AND d.cod_empresa = ? AND d.num_asiento = ? 
+                       AND (d.nom_cuenta != p.descripcion OR d.nom_cuenta IS NULL)",
+                    [$idProp, $codEmpresa, $num]
+                );
+            } catch (\Throwable $e) {}
+
             $detalles = Database::queryForListUpper(
-                "SELECT secuencia, cod_cuenta, nom_cuenta, descripcion, debe, haber
-                 FROM co_asientos_det
-                 WHERE id_propietario = ? AND cod_empresa = ? AND num_asiento = ?
-                 ORDER BY secuencia ASC",
+                "SELECT d.secuencia, d.cod_cuenta,
+                        COALESCE(
+                            (SELECT p.descripcion FROM co_plan_cuentas p 
+                             WHERE (p.id_propietario = d.id_propietario OR p.id_propietario = 1) 
+                               AND p.cod_cuenta = d.cod_cuenta 
+                             ORDER BY (p.id_propietario = d.id_propietario) DESC LIMIT 1),
+                            d.nom_cuenta
+                        ) AS nom_cuenta,
+                        d.descripcion, d.debe, d.haber
+                 FROM co_asientos_det d
+                 WHERE d.id_propietario = ? AND d.cod_empresa = ? AND d.num_asiento = ?
+                 ORDER BY d.secuencia ASC",
                 [$idProp, $codEmpresa, $num]
             );
             View::json([
@@ -2676,6 +2716,14 @@ class MovimientosContablesController {
 
             foreach ($detalles as $idx => $det) {
                 $secuencia = $idx + 1;
+                $codCta = trim((string)($det['codCuenta'] ?? ''));
+                $descOficial = Database::queryForValue(
+                    "SELECT descripcion FROM co_plan_cuentas 
+                     WHERE (id_propietario = ? OR id_propietario = 1) AND cod_cuenta = ? 
+                     ORDER BY (id_propietario = ?) DESC LIMIT 1",
+                    [$idProp, $codCta, $idProp]
+                );
+                $nomCta = !empty($descOficial) ? $descOficial : trim((string)($det['nomCuenta'] ?? ''));
                 $debe  = (float)($det['debe'] ?? 0);
                 $haber = (float)($det['haber'] ?? 0);
                 $descLinea = trim((string)($det['descripcion'] ?? '')) ?: $concepto;
@@ -2686,9 +2734,7 @@ class MovimientosContablesController {
                      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     [
                         $idProp, $codEmpresa, $numAsiento, $secuencia,
-                        trim((string)($det['codCuenta'] ?? '')),
-                        trim((string)($det['nomCuenta'] ?? '')),
-                        $descLinea, $debe, $haber
+                        $codCta, $nomCta, $descLinea, $debe, $haber
                     ]
                 );
             }
@@ -3412,6 +3458,15 @@ class MovimientosContablesController {
                 if (str_contains($fullCta, ' - ')) {
                     [$codCta, $nomCta] = array_map('trim', explode(' - ', $fullCta, 2));
                 }
+                $descOficial = Database::queryForValue(
+                    "SELECT descripcion FROM co_plan_cuentas 
+                     WHERE (id_propietario = ? OR id_propietario = 1) AND cod_cuenta = ? 
+                     ORDER BY (id_propietario = ?) DESC LIMIT 1",
+                    [$idProp, $codCta, $idProp]
+                );
+                if (!empty($descOficial)) {
+                    $nomCta = $descOficial;
+                }
                 $montoDebe = (float)($d['debe'] ?? 0);
                 $totalDebe += $montoDebe;
                 $detRows[] = [$idProp, $empresa, $numAsiento, $secuencia++, $codCta, $nomCta, $descBase, $montoDebe, 0.0];
@@ -3424,6 +3479,15 @@ class MovimientosContablesController {
                 $nomCta = $fullCta;
                 if (str_contains($fullCta, ' - ')) {
                     [$codCta, $nomCta] = array_map('trim', explode(' - ', $fullCta, 2));
+                }
+                $descOficial = Database::queryForValue(
+                    "SELECT descripcion FROM co_plan_cuentas 
+                     WHERE (id_propietario = ? OR id_propietario = 1) AND cod_cuenta = ? 
+                     ORDER BY (id_propietario = ?) DESC LIMIT 1",
+                    [$idProp, $codCta, $idProp]
+                );
+                if (!empty($descOficial)) {
+                    $nomCta = $descOficial;
                 }
                 $montoHaber = (float)($h['haber'] ?? 0);
                 $totalHaber += $montoHaber;

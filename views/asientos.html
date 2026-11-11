@@ -240,7 +240,7 @@
 
     <!-- MODAL REGISTRAR / MODIFICAR ASIENTO (ALL IN 1 SINGLE VIEW - NO TABS) -->
     <div class="modal fade" id="asientoModal" tabindex="-1" aria-labelledby="asientoModalLabel" aria-hidden="true" data-bs-backdrop="static">
-        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 95vw; width: 1450px;">
             <div class="modal-content" style="border-radius: 10px; overflow: hidden; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
                 
                 <!-- Modal Header -->
@@ -313,12 +313,12 @@
                                 <table class="table table-bordered table-sm align-middle" style="font-size: 0.83rem; width: 100%;">
                                     <thead style="background: #f1f5f9; color: #334155; position: sticky; top: 0; z-index: 5;">
                                         <tr class="text-center">
-                                            <th style="width: 40px;">#</th>
-                                            <th style="width: 200px;">Código Cuenta</th>
-                                            <th>Nombre Cuenta</th>
-                                            <th>Descripción / Glosa Línea</th>
-                                            <th style="width: 140px;">Debe (₲)</th>
-                                            <th style="width: 140px;">Haber (₲)</th>
+                                            <th style="width: 35px;">#</th>
+                                            <th style="width: 175px;">Código Cuenta</th>
+                                            <th style="min-width: 260px; width: 28%;">Nombre Cuenta</th>
+                                            <th style="min-width: 280px; width: 34%;">Descripción / Glosa Línea</th>
+                                            <th style="width: 145px;">Debe (₲)</th>
+                                            <th style="width: 145px;">Haber (₲)</th>
                                             <th style="width: 45px;"></th>
                                         </tr>
                                     </thead>
@@ -761,7 +761,12 @@
                     tbody.innerHTML = '';
 
                     detList.forEach((d) => {
-                        agregarLineaDetalle(d.COD_CUENTA, d.NOM_CUENTA, d.DESCRIPCION, d.DEBE, d.HABER);
+                        let nom = d.NOM_CUENTA || '';
+                        if (catalogoCuentas && catalogoCuentas.length > 0) {
+                            const found = catalogoCuentas.find(c => c.COD_CUENTA === d.COD_CUENTA);
+                            if (found && found.DESCRIPCION) nom = found.DESCRIPCION;
+                        }
+                        agregarLineaDetalle(d.COD_CUENTA, nom, d.DESCRIPCION, d.DEBE, d.HABER);
                     });
 
                     recalcularTotales();
