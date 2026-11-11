@@ -78,8 +78,19 @@ class SuperAdminController {
              ORDER BY p.id_propietario ASC"
         );
 
+        $storage = self::calculateStorageStats();
+        $propsStorage = $storage['props'] ?? [];
+
         $props = [];
         foreach ($propsRaw as $pr) {
+            $pId = (int)$pr['id_propietario'];
+            $st = $propsStorage[$pId] ?? null;
+            $pr['espacio_bytes'] = $st ? $st['bytes'] : 0;
+            $pr['espacio_fmt']   = $st ? $st['fmt'] : '0 KB';
+            $pr['espacio_pct']   = $st ? $st['pct'] : 0.0;
+            $pr['total_filas']   = $st ? $st['filas'] : 0;
+            $pr['tablas_usadas'] = $st ? $st['tablas'] : 0;
+
             $props[] = TenantContext::enrichSubscriptionInfo($pr);
         }
 
@@ -101,6 +112,7 @@ class SuperAdminController {
             'grupos'       => $grupos,
             'propietarios' => $props,
             'pagos'        => $pagos,
+            'storage'      => $storage,
             'config'       => TenantContext::getSystemConfig(true),
         ];
     }
@@ -630,5 +642,191 @@ class SuperAdminController {
             'message' => 'Configuración de WhatsApp (' . $whatsappSoporte . ') y mensaje de renovación actualizados correctamente.',
             'config'  => TenantContext::getSystemConfig(true),
         ];
+    }
+
+    /**
+     * Calcula estadísticas de almacenamiento de la BD, espacio libre en disco y consumo por propietario.
+     */
+    public static function calculateStorageStats(): array {
+        $storage = [
+            'total_db_bytes'  => 0,
+            'total_db_fmt'    => '0 MB',
+            'data_bytes'      => 0,
+            'data_fmt'        => '0 MB',
+            'index_bytes'     => 0,
+            'index_fmt'       => '0 MB',
+            'db_free_bytes'   => 0,
+            'db_free_fmt'     => '0 MB',
+            'total_tablas'    => 0,
+            'disk_free_bytes' => 0,
+            'disk_free_fmt'   => 'Desconocido',
+            'disk_total_bytes'=> 0,
+            'disk_total_fmt'  => 'Desconocido',
+            'disk_used_bytes' => 0,
+            'disk_used_fmt'   => 'Desconocido',
+            'disk_free_pct'   => 0,
+            'disk_used_pct'   => 0,
+            'top_tablas'      => [],
+            'props'           => [],
+        ];
+
+        try {
+            // 1. Estadísticas globales de la Base de Datos
+            $globalStats = Database::queryForList(
+                "SELECT 
+                    COALESCE(SUM(DATA_LENGTH), 0) AS data_bytes,
+                    COALESCE(SUM(INDEX_LENGTH), 0) AS index_bytes,
+                    COALESCE(SUM(DATA_LENGTH + INDEX_LENGTH), 0) AS total_bytes,
+                    COALESCE(SUM(DATA_FREE), 0) AS free_bytes,
+                    COUNT(*) AS total_tablas
+                 FROM information_schema.TABLES
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'"
+            );
+
+            if (!empty($globalStats[0])) {
+                $row = $globalStats[0];
+                $storage['data_bytes']     = (float)($row['data_bytes'] ?? 0);
+                $storage['data_fmt']       = self::formatBytes($storage['data_bytes']);
+                $storage['index_bytes']    = (float)($row['index_bytes'] ?? 0);
+                $storage['index_fmt']      = self::formatBytes($storage['index_bytes']);
+                $storage['total_db_bytes'] = (float)($row['total_bytes'] ?? 0);
+                $storage['total_db_fmt']   = self::formatBytes($storage['total_db_bytes']);
+                $storage['db_free_bytes']  = (float)($row['free_bytes'] ?? 0);
+                $storage['db_free_fmt']    = self::formatBytes($storage['db_free_bytes']);
+                $storage['total_tablas']   = (int)($row['total_tablas'] ?? 0);
+            }
+
+            // Top tablas más pesadas
+            try {
+                $topTablasRaw = Database::queryForList(
+                    "SELECT 
+                        TABLE_NAME AS nombre,
+                        COALESCE(TABLE_ROWS, 0) AS filas,
+                        COALESCE(DATA_LENGTH + INDEX_LENGTH, 0) AS total_bytes
+                     FROM information_schema.TABLES
+                     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'
+                     ORDER BY (DATA_LENGTH + INDEX_LENGTH) DESC
+                     LIMIT 8"
+                );
+                foreach ($topTablasRaw as $tt) {
+                    $b = (float)$tt['total_bytes'];
+                    $storage['top_tablas'][] = [
+                        'nombre' => $tt['nombre'],
+                        'filas'  => (int)$tt['filas'],
+                        'bytes'  => $b,
+                        'fmt'    => self::formatBytes($b),
+                    ];
+                }
+            } catch (\Throwable $ignored) {}
+
+            // 2. Espacio de disco del servidor
+            $diskPath = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2);
+            $diskFree = @disk_free_space($diskPath);
+            $diskTotal = @disk_total_space($diskPath);
+            if (($diskFree === false || $diskFree <= 0) && function_exists('disk_free_space')) {
+                $diskFree = @disk_free_space('/');
+                $diskTotal = @disk_total_space('/');
+            }
+            if ($diskTotal && $diskTotal > 0 && $diskFree !== false) {
+                $used = max(0, $diskTotal - $diskFree);
+                $storage['disk_free_bytes'] = (float)$diskFree;
+                $storage['disk_free_fmt']   = self::formatBytes($diskFree);
+                $storage['disk_total_bytes']= (float)$diskTotal;
+                $storage['disk_total_fmt']  = self::formatBytes($diskTotal);
+                $storage['disk_used_bytes'] = (float)$used;
+                $storage['disk_used_fmt']   = self::formatBytes($used);
+                $storage['disk_free_pct']   = round(($diskFree / $diskTotal) * 100, 1);
+                $storage['disk_used_pct']   = round(($used / $diskTotal) * 100, 1);
+            }
+
+            // 3. Tablas multitenant con columna id_propietario
+            $tablesWithProp = Database::queryForList(
+                "SELECT 
+                    t.TABLE_NAME,
+                    COALESCE(t.DATA_LENGTH + t.INDEX_LENGTH, 0) AS total_bytes
+                 FROM information_schema.TABLES t
+                 JOIN information_schema.COLUMNS c 
+                   ON c.TABLE_SCHEMA = t.TABLE_SCHEMA 
+                  AND c.TABLE_NAME = t.TABLE_NAME 
+                  AND c.COLUMN_NAME = 'id_propietario'
+                 WHERE t.TABLE_SCHEMA = DATABASE() 
+                   AND t.TABLE_TYPE = 'BASE TABLE'"
+            );
+
+            $propsAccum = [];
+            foreach ($tablesWithProp as $t) {
+                $tblName = $t['TABLE_NAME'];
+                $tblBytes = (float)$t['total_bytes'];
+                if ($tblBytes <= 0) continue;
+
+                try {
+                    $counts = Database::queryForList(
+                        "SELECT id_propietario, COUNT(*) AS cnt 
+                         FROM `{$tblName}` 
+                         WHERE id_propietario IS NOT NULL 
+                         GROUP BY id_propietario"
+                    );
+
+                    $sumRows = 0;
+                    foreach ($counts as $c) {
+                        $sumRows += (int)$c['cnt'];
+                    }
+
+                    if ($sumRows > 0) {
+                        foreach ($counts as $c) {
+                            $pId = (int)$c['id_propietario'];
+                            $pCnt = (int)$c['cnt'];
+                            if (!isset($propsAccum[$pId])) {
+                                $propsAccum[$pId] = [
+                                    'bytes'  => 0.0,
+                                    'filas'  => 0,
+                                    'tablas' => 0,
+                                ];
+                            }
+                            $share = $pCnt / $sumRows;
+                            $propsAccum[$pId]['bytes'] += ($tblBytes * $share);
+                            $propsAccum[$pId]['filas'] += $pCnt;
+                            $propsAccum[$pId]['tablas']++;
+                        }
+                    }
+                } catch (\Throwable $ignored) {
+                    continue;
+                }
+            }
+
+            // Calcular porcentajes relativos
+            $totalDb = max(1.0, (float)$storage['total_db_bytes']);
+            foreach ($propsAccum as $pId => $st) {
+                $b = (float)$st['bytes'];
+                $pct = round(($b / $totalDb) * 100, 2);
+                $storage['props'][$pId] = [
+                    'id_propietario' => $pId,
+                    'bytes'          => $b,
+                    'fmt'            => self::formatBytes($b),
+                    'filas'          => $st['filas'],
+                    'tablas'         => $st['tablas'],
+                    'pct'            => $pct,
+                ];
+            }
+
+        } catch (\Throwable $e) {
+            error_log("Error calculateStorageStats: " . $e->getMessage());
+        }
+
+        return $storage;
+    }
+
+    private static function formatBytes(float $bytes, int $precision = 2): string {
+        if ($bytes <= 0) return '0 B';
+        if ($bytes >= 1073741824) { // GB
+            return number_format($bytes / 1073741824, $precision, ',', '.') . ' GB';
+        }
+        if ($bytes >= 1048576) { // MB
+            return number_format($bytes / 1048576, $precision, ',', '.') . ' MB';
+        }
+        if ($bytes >= 1024) { // KB
+            return number_format($bytes / 1024, 1, ',', '.') . ' KB';
+        }
+        return number_format($bytes, 0, ',', '.') . ' B';
     }
 }

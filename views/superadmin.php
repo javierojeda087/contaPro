@@ -9,22 +9,46 @@
         <?= \Core\View::renderNavbarFragment('Administración de Propietarios, Planes y Suscripciones (SaaS)', $planSummary ?? null, $esSuperAdmin ?? false) ?>
 
         <style>
+            .content-area {
+                padding: 1.15rem 1.5rem 2.25rem 1.5rem !important;
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+
             .sa-wrapper {
-                max-width: 1480px;
-                margin: 0 auto;
+                width: 100%;
+                max-width: 100%;
+                margin: 0;
                 display: flex;
                 flex-direction: column;
-                gap: 22px;
+                gap: 20px;
                 padding-bottom: 36px;
+            }
+
+            /* Responsive Modal Widths */
+            #modalPropietario .modal-dialog {
+                max-width: 1240px;
+                width: 95%;
+            }
+            #modalPlan .modal-dialog {
+                max-width: 920px;
+                width: 90%;
+            }
+            #modalStorage .modal-dialog {
+                max-width: 1100px;
+                width: 92%;
             }
 
             /* KPI Cards */
             .sa-kpi-grid {
                 display: grid;
-                grid-template-columns: repeat(4, 1fr);
+                grid-template-columns: repeat(5, 1fr);
                 gap: 16px;
             }
-            @media (max-width: 1100px) {
+            @media (max-width: 1400px) {
+                .sa-kpi-grid { grid-template-columns: repeat(3, 1fr); }
+            }
+            @media (max-width: 950px) {
                 .sa-kpi-grid { grid-template-columns: repeat(2, 1fr); }
             }
             @media (max-width: 600px) {
@@ -58,6 +82,7 @@
             .sa-kpi-card.kpi-green::before  { background: #16a34a; }
             .sa-kpi-card.kpi-amber::before  { background: #d97706; }
             .sa-kpi-card.kpi-red::before    { background: #dc2626; }
+            .sa-kpi-card.kpi-purple::before { background: #7c3aed; }
 
             .sa-kpi-card:hover {
                 transform: translateY(-2px);
@@ -97,10 +122,11 @@
                 font-size: 1.55rem;
                 flex-shrink: 0;
             }
-            .kpi-blue .sa-kpi-icon  { background: #e0f2fe; color: #0284c7; }
-            .kpi-green .sa-kpi-icon { background: #dcfce7; color: #16a34a; }
-            .kpi-amber .sa-kpi-icon { background: #fef3c7; color: #d97706; }
-            .kpi-red .sa-kpi-icon   { background: #fee2e2; color: #dc2626; }
+            .kpi-blue .sa-kpi-icon   { background: #e0f2fe; color: #0284c7; }
+            .kpi-green .sa-kpi-icon  { background: #dcfce7; color: #16a34a; }
+            .kpi-amber .sa-kpi-icon  { background: #fef3c7; color: #d97706; }
+            .kpi-red .sa-kpi-icon    { background: #fee2e2; color: #dc2626; }
+            .kpi-purple .sa-kpi-icon { background: #f3e8ff; color: #7c3aed; }
 
             /* Top Action & View Switcher Bar */
             .sa-toolbar {
@@ -473,6 +499,17 @@
                             <i class="ph ph-warning-octagon"></i>
                         </div>
                     </div>
+
+                    <div class="sa-kpi-card kpi-purple" id="kpiCardStorage" onclick="cambiarVistaSeccion('storage')" title="Clic para ver detalle de Almacenamiento de Base de Datos y Disco">
+                        <div>
+                            <div class="sa-kpi-label">Almacenamiento BD y Servidor</div>
+                            <div class="sa-kpi-value" id="kpiDbSize" style="color: #7c3aed; font-size: 1.55rem;">0 MB</div>
+                            <div class="sa-kpi-sub" id="kpiDiskFree">Espacio libre: Calculando...</div>
+                        </div>
+                        <div class="sa-kpi-icon">
+                            <i class="ph ph-database"></i>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 2. BARRA DE NAVEGACIÓN DE SECCIONES Y ACCIONES RÁPIDAS -->
@@ -490,12 +527,18 @@
                         <button type="button" class="sa-tab-btn" id="tabBtnPagos" onclick="cambiarVistaSeccion('pagos')">
                             <i class="ph ph-receipt"></i> Historial de Pagos <span class="sa-tab-count" id="tabCountPagos">0</span>
                         </button>
+                        <button type="button" class="sa-tab-btn" id="tabBtnStorage" onclick="cambiarVistaSeccion('storage')">
+                            <i class="ph ph-hard-drives"></i> Almacenamiento BD <span class="sa-tab-count" id="tabCountStorage">0 MB</span>
+                        </button>
                         <button type="button" class="sa-tab-btn" id="tabBtnConfig" onclick="cambiarVistaSeccion('config')">
                             <i class="ph ph-whatsapp-logo"></i> WhatsApp y Avisos
                         </button>
                     </div>
 
                     <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" class="sa-btn sa-btn-ghost" onclick="cambiarVistaSeccion('storage')" title="Ver consumo y espacio en disco">
+                            <i class="ph ph-database" style="color: #7c3aed; font-size: 1.05rem;"></i> Uso BD
+                        </button>
                         <button type="button" class="sa-btn sa-btn-ghost" onclick="cambiarVistaSeccion('config')" title="Configurar número de WhatsApp y mensajes de suspensión/renovación">
                             <i class="ph ph-whatsapp-logo" style="color: #16a34a; font-size: 1.05rem;"></i> Configurar WhatsApp
                         </button>
@@ -522,6 +565,11 @@
                         </div>
 
                         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <span class="badge px-3 py-2 d-none d-xl-inline-flex align-items-center gap-2 fw-semibold" style="background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; border-radius: 9px; font-size: 0.76rem;" id="badgeStorageSummary" title="Almacenamiento total de la base de datos y espacio disponible en el servidor">
+                                <i class="ph ph-database" style="font-size: 0.95rem; color: #7c3aed;"></i> BD: <strong class="text-dark" id="lblBdSizeSum">0 MB</strong>
+                                <span class="text-muted">·</span>
+                                <i class="ph ph-hard-drive" style="font-size: 0.95rem; color: #16a34a;"></i> Disco Libre: <strong class="text-dark" id="lblDiskFreeSum">Calculando...</strong>
+                            </span>
                             <div class="sa-search-wrap">
                                 <i class="ph ph-magnifying-glass"></i>
                                 <input type="text" id="searchPropietarios" class="sa-search-input" placeholder="Buscar propietario, RUC o usuario..." oninput="renderPropietarios()">
@@ -545,6 +593,7 @@
                                     <th>Plan Asignado</th>
                                     <th class="text-center">Contribuyentes</th>
                                     <th class="text-center">Usuarios</th>
+                                    <th class="text-center">Espacio BD</th>
                                     <th class="text-center">Vencimiento / Suscripción</th>
                                     <th class="text-center">Estado Cuenta</th>
                                     <th class="text-end pe-4">Acciones</th>
@@ -631,7 +680,93 @@
                     </div>
                 </div>
 
-                <!-- 6. PANEL DE CONFIGURACIÓN DE WHATSAPP Y AVISOS DE SUSCRIPCIÓN -->
+                <!-- 6. SECCIÓN ALMACENAMIENTO BD Y ESPACIO LIBRE EN DISCO -->
+                <div class="sa-card" id="secStorage">
+                    <div class="sa-card-header">
+                        <div class="sa-card-title-wrap">
+                            <div class="sa-card-icon" style="background: #f3e8ff; color: #7c3aed;">
+                                <i class="ph ph-database"></i>
+                            </div>
+                            <div>
+                                <h3 class="sa-card-title">Almacenamiento de Base de Datos y Espacio Libre</h3>
+                                <p class="sa-card-subtitle">Cálculo en tiempo real del tamaño de la base de datos, espacio libre en el servidor y consumo por estudio contable</p>
+                            </div>
+                        </div>
+
+                        <button type="button" class="sa-btn sa-btn-ghost" onclick="cargarDatosSuperAdmin()">
+                            <i class="ph ph-arrows-clockwise" style="color: #7c3aed;"></i> Recalcular Espacio
+                        </button>
+                    </div>
+
+                    <!-- Métricas globales de almacenamiento -->
+                    <div class="p-4" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="bg-white p-3 rounded-3 border" style="border-color: #e2e8f0 !important;">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <span class="text-muted small fw-bold text-uppercase">Base de Datos ContaPro</span>
+                                        <i class="ph ph-database text-purple" style="font-size: 1.35rem; color: #7c3aed;"></i>
+                                    </div>
+                                    <div class="fs-3 fw-bold text-dark" id="stgDbTotal">0 MB</div>
+                                    <div class="text-muted small mt-1" id="stgDbDetalle">Datos: 0 MB · Índices: 0 MB · 0 tablas</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="bg-white p-3 rounded-3 border" style="border-color: #e2e8f0 !important;">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <span class="text-muted small fw-bold text-uppercase">Espacio Libre Servidor / Disco</span>
+                                        <i class="ph ph-hard-drive text-success" style="font-size: 1.35rem; color: #16a34a;"></i>
+                                    </div>
+                                    <div class="fs-3 fw-bold text-success" id="stgDiskFree">0 GB</div>
+                                    <div class="text-muted small mt-1" id="stgDiskDetalle">De un total de 0 GB (0% libre)</div>
+                                    <div class="progress mt-2" style="height: 6px; background: #e2e8f0;">
+                                        <div class="progress-bar bg-success" id="stgDiskBar" role="progressbar" style="width: 0%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="bg-white p-3 rounded-3 border" style="border-color: #e2e8f0 !important;">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <span class="text-muted small fw-bold text-uppercase">Distribución Multitenant</span>
+                                        <i class="ph ph-users-three text-primary" style="font-size: 1.35rem; color: #0284c7;"></i>
+                                    </div>
+                                    <div class="fs-3 fw-bold text-dark" id="stgPropsTotalFilas">0 reg.</div>
+                                    <div class="text-muted small mt-1" id="stgPropsDetalle">Calculado entre todos los propietarios</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Consumo por Propietario -->
+                    <div style="overflow-x: auto;">
+                        <table class="sa-table">
+                            <thead>
+                                <tr>
+                                    <th class="ps-4">Ranking</th>
+                                    <th>Propietario / Estudio Contable</th>
+                                    <th>RUC / Contacto</th>
+                                    <th>Plan</th>
+                                    <th class="text-end">Espacio Estimado</th>
+                                    <th style="min-width: 170px;">% Uso Base de Datos</th>
+                                    <th class="text-center">Total Filas</th>
+                                    <th class="text-center">Tablas Usadas</th>
+                                    <th class="text-center pe-4">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaStorageBody"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Tablas más pesadas -->
+                    <div class="p-4" style="background: #ffffff; border-top: 1px solid #e2e8f0;">
+                        <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2" style="font-size: 0.9rem;">
+                            <i class="ph ph-table" style="color: #7c3aed; font-size: 1.15rem;"></i> Tablas con Mayor Volumen de Datos en la Base de Datos
+                        </h6>
+                        <div class="row g-2" id="stgTopTablasWrap"></div>
+                    </div>
+                </div>
+
+                <!-- 7. PANEL DE CONFIGURACIÓN DE WHATSAPP Y AVISOS DE SUSCRIPCIÓN -->
                 <div class="sa-card" id="secConfiguracion">
                     <div class="sa-card-header">
                         <div class="sa-card-title-wrap">
@@ -1069,6 +1204,7 @@
         let listaPagos = [];
         let listaGrupos = [];
         let configSistema = {};
+        let infoStorage = {};
         let modalPlanObj, modalPropObj, modalRenovarObj, modalCrearPersonaObj;
 
         function escHtml(str) {
@@ -1112,6 +1248,7 @@
             listaPropietarios = data.propietarios || [];
             listaPagos = data.pagos || [];
             listaGrupos = data.grupos || [];
+            infoStorage = data.storage || {};
 
             const dl = document.getElementById('datalistGruposPlan');
             if (dl && listaGrupos.length > 0) {
@@ -1121,6 +1258,8 @@
             document.getElementById('tabCountProp').textContent = listaPropietarios.length;
             document.getElementById('tabCountPlanes').textContent = listaPlanes.length;
             document.getElementById('tabCountPagos').textContent = listaPagos.length;
+            const tabStg = document.getElementById('tabCountStorage');
+            if (tabStg) tabStg.textContent = infoStorage.total_db_fmt || '0 MB';
 
             configSistema = data.config || {};
             const inpWa = document.getElementById('cfgWhatsappSoporte');
@@ -1139,6 +1278,7 @@
             renderPlanes();
             renderPropietarios();
             renderPagos();
+            renderStorageInfo();
         }
 
         function cambiarVistaSeccion(sec) {
@@ -1146,6 +1286,7 @@
             const secProp = document.getElementById('secPropietarios');
             const secPlanes = document.getElementById('secPlanes');
             const secPagos = document.getElementById('secPagos');
+            const secStorage = document.getElementById('secStorage');
             const secCfg = document.getElementById('secConfiguracion');
 
             if (sec === 'propietarios') {
@@ -1153,24 +1294,38 @@
                 secProp.style.display = '';
                 secPlanes.style.display = 'none';
                 secPagos.style.display = 'none';
+                if (secStorage) secStorage.style.display = 'none';
                 if (secCfg) secCfg.style.display = 'none';
             } else if (sec === 'planes') {
                 document.getElementById('tabBtnPlanes').classList.add('active');
                 secProp.style.display = 'none';
                 secPlanes.style.display = '';
                 secPagos.style.display = 'none';
+                if (secStorage) secStorage.style.display = 'none';
                 if (secCfg) secCfg.style.display = 'none';
             } else if (sec === 'pagos') {
                 document.getElementById('tabBtnPagos').classList.add('active');
                 secProp.style.display = 'none';
                 secPlanes.style.display = 'none';
                 secPagos.style.display = '';
+                if (secStorage) secStorage.style.display = 'none';
                 if (secCfg) secCfg.style.display = 'none';
+            } else if (sec === 'storage') {
+                document.getElementById('tabBtnStorage')?.classList.add('active');
+                secProp.style.display = 'none';
+                secPlanes.style.display = 'none';
+                secPagos.style.display = 'none';
+                if (secCfg) secCfg.style.display = 'none';
+                if (secStorage) {
+                    secStorage.style.display = '';
+                    secStorage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
             } else if (sec === 'config') {
                 document.getElementById('tabBtnConfig')?.classList.add('active');
                 secProp.style.display = 'none';
                 secPlanes.style.display = 'none';
                 secPagos.style.display = 'none';
+                if (secStorage) secStorage.style.display = 'none';
                 if (secCfg) {
                     secCfg.style.display = '';
                     secCfg.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1180,6 +1335,7 @@
                 secProp.style.display = '';
                 secPlanes.style.display = '';
                 secPagos.style.display = '';
+                if (secStorage) secStorage.style.display = '';
                 if (secCfg) secCfg.style.display = '';
             }
         }
@@ -1216,6 +1372,128 @@
             document.getElementById('kpiPorVencer').textContent = porVencer;
             document.getElementById('kpiVencidos').textContent = vencidos;
             document.getElementById('kpiMrrSub').textContent = `MRR Activo: Gs. ${mrrActivo.toLocaleString('es-PY')}/mes`;
+
+            // KPI Almacenamiento y Disco
+            if (infoStorage) {
+                const elDb = document.getElementById('kpiDbSize');
+                const elDisk = document.getElementById('kpiDiskFree');
+                if (elDb) elDb.textContent = infoStorage.total_db_fmt || '0 MB';
+                if (elDisk) {
+                    if (infoStorage.disk_free_fmt && infoStorage.disk_free_fmt !== 'Desconocido') {
+                        elDisk.innerHTML = `Libre: <b>${infoStorage.disk_free_fmt}</b> (${infoStorage.disk_free_pct}% disp.)`;
+                    } else if (infoStorage.db_free_fmt) {
+                        elDisk.innerHTML = `Espacio libre: <b>${infoStorage.db_free_fmt}</b>`;
+                    }
+                }
+                const tabStorage = document.getElementById('tabCountStorage');
+                if (tabStorage) tabStorage.textContent = infoStorage.total_db_fmt || '0 MB';
+
+                const lblBd = document.getElementById('lblBdSizeSum');
+                if (lblBd) lblBd.textContent = infoStorage.total_db_fmt || '0 MB';
+                const lblDk = document.getElementById('lblDiskFreeSum');
+                if (lblDk) {
+                    lblDk.textContent = infoStorage.disk_free_fmt && infoStorage.disk_free_fmt !== 'Desconocido'
+                        ? `${infoStorage.disk_free_fmt} (${infoStorage.disk_free_pct}% libre)`
+                        : (infoStorage.db_free_fmt || 'Disponible');
+                }
+            }
+        }
+
+        function renderStorageInfo() {
+            if (!infoStorage) return;
+
+            const elDbTot = document.getElementById('stgDbTotal');
+            if (elDbTot) elDbTot.textContent = infoStorage.total_db_fmt || '0 MB';
+            const elDbDet = document.getElementById('stgDbDetalle');
+            if (elDbDet) {
+                elDbDet.textContent = `Datos: ${infoStorage.data_fmt || '0 MB'} · Índices: ${infoStorage.index_fmt || '0 MB'} · ${infoStorage.total_tablas || 0} tablas activas`;
+            }
+
+            const elFree = document.getElementById('stgDiskFree');
+            const elDet = document.getElementById('stgDiskDetalle');
+            const elBar = document.getElementById('stgDiskBar');
+            if (elFree && elDet) {
+                if (infoStorage.disk_total_fmt && infoStorage.disk_total_fmt !== 'Desconocido') {
+                    elFree.textContent = infoStorage.disk_free_fmt;
+                    elDet.textContent = `De un total de ${infoStorage.disk_total_fmt} (${infoStorage.disk_free_pct}% libre · ${infoStorage.disk_used_pct}% usado)`;
+                    if (elBar) {
+                        elBar.style.width = `${Math.min(100, Math.max(infoStorage.disk_used_pct, 2))}%`;
+                        elBar.className = infoStorage.disk_free_pct < 15 ? 'progress-bar bg-danger' : (infoStorage.disk_free_pct < 30 ? 'progress-bar bg-warning' : 'progress-bar bg-success');
+                    }
+                } else {
+                    elFree.textContent = infoStorage.db_free_fmt || '0 MB';
+                    elDet.textContent = `Espacio libre disponible en tablespace MySQL`;
+                    if (elBar) elBar.style.width = '10%';
+                }
+            }
+
+            let totalFilasGlobal = 0;
+            listaPropietarios.forEach(p => totalFilasGlobal += Number(p.total_filas || 0));
+            const elPropsFilas = document.getElementById('stgPropsTotalFilas');
+            if (elPropsFilas) elPropsFilas.textContent = `${totalFilasGlobal.toLocaleString('es-PY')} reg.`;
+            const elPropsDet = document.getElementById('stgPropsDetalle');
+            if (elPropsDet) elPropsDet.textContent = `Total acumulado entre los ${listaPropietarios.length} estudios contables`;
+
+            // Render tabla de ranking de almacenamiento
+            const tb = document.getElementById('tablaStorageBody');
+            if (tb) {
+                const sorted = [...listaPropietarios].sort((a, b) => Number(b.espacio_bytes || 0) - Number(a.espacio_bytes || 0));
+
+                if (!sorted.length) {
+                    tb.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Sin datos de almacenamiento disponibles.</td></tr>`;
+                } else {
+                    tb.innerHTML = sorted.map((pr, idx) => {
+                        const pct = Math.min(100, Math.max(Number(pr.espacio_pct || 0), 0));
+                        const colorBar = pct > 50 ? '#7c3aed' : (pct > 25 ? '#0284c7' : '#16a34a');
+                        return `
+                            <tr>
+                                <td class="ps-4 fw-bold text-muted">#${idx + 1}</td>
+                                <td>
+                                    <div class="fw-bold text-dark">${escHtml(pr.nombre_propietario)}</div>
+                                    <div class="small text-muted">Propietario ID: #${pr.id_propietario}</div>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold text-dark">${escHtml(pr.ruc || 'Sin RUC')}</div>
+                                    <div class="small text-muted">${escHtml(pr.email || '-')}</div>
+                                </td>
+                                <td><span class="sa-pill sa-pill-slate">${escHtml(pr.nombre_plan || 'Plan')}</span></td>
+                                <td class="text-end fw-bold" style="color: #7c3aed; font-size: 0.92rem;">
+                                    <i class="ph ph-database me-1"></i>${pr.espacio_fmt || '0 KB'}
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress flex-grow-1" style="height: 6px; background: #e2e8f0;">
+                                            <div class="progress-bar" style="width: ${Math.max(pct, 2)}%; background: ${colorBar};"></div>
+                                        </div>
+                                        <span class="small fw-bold text-dark" style="min-width: 48px;">${pct.toFixed(2)}%</span>
+                                    </div>
+                                </td>
+                                <td class="text-center fw-semibold text-dark">${Number(pr.total_filas || 0).toLocaleString('es-PY')}</td>
+                                <td class="text-center"><span class="sa-pill sa-pill-blue">${Number(pr.tablas_usadas || 0)} tablas</span></td>
+                                <td class="text-center pe-4">
+                                    ${pr.estado === 'A' ? '<span class="sa-pill sa-pill-green"><span class="sa-dot sa-dot-green"></span> Activo</span>' : '<span class="sa-pill sa-pill-red"><span class="sa-dot sa-dot-red"></span> Inactivo</span>'}
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            }
+
+            // Top tablas más grandes
+            const wrap = document.getElementById('stgTopTablasWrap');
+            if (wrap && infoStorage.top_tablas) {
+                wrap.innerHTML = infoStorage.top_tablas.map(t => `
+                    <div class="col-md-3 col-sm-6">
+                        <div class="p-2 px-3 rounded-2 border d-flex align-items-center justify-content-between" style="background: #f8fafc; font-size: 0.8rem; border-color: #e2e8f0 !important;">
+                            <div>
+                                <div class="fw-bold text-dark font-monospace">${escHtml(t.nombre)}</div>
+                                <div class="text-muted small">${Number(t.filas || 0).toLocaleString('es-PY')} filas</div>
+                            </div>
+                            <span class="badge fw-bold" style="background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe;">${t.fmt}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
         }
 
         function renderPlanes() {
@@ -1337,7 +1615,7 @@
             });
 
             if (filtrados.length === 0) {
-                tb.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-5">
+                tb.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-5">
                     <i class="ph ph-magnifying-glass" style="font-size: 2rem; display: block; margin-bottom: 6px; opacity: 0.5;"></i>
                     No se encontraron propietarios con el filtro seleccionado.
                 </td></tr>`;
@@ -1422,6 +1700,20 @@
                             </div>
                             <div class="sa-meter-bar">
                                 <div class="sa-meter-fill" style="width: ${pctU}%; background: ${colorU};"></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        <div class="sa-meter-wrap" title="${escHtml(pr.espacio_fmt || '0 KB')} (${pr.espacio_pct || 0}% de la base de datos)">
+                            <div class="fw-bold text-dark d-flex align-items-center justify-content-center gap-1" style="font-size: 0.84rem;">
+                                <i class="ph ph-database" style="color: #7c3aed; font-size: 0.95rem;"></i>
+                                <span>${pr.espacio_fmt || '0 KB'}</span>
+                            </div>
+                            <div class="sa-meter-bar" style="margin: 4px auto 0 auto; max-width: 90px; height: 5px;">
+                                <div class="sa-meter-fill" style="width: ${Math.min(100, Math.max(pr.espacio_pct || 0, 3))}%; background: #7c3aed;"></div>
+                            </div>
+                            <div class="text-muted mt-1" style="font-size: 0.72rem;">
+                                ${Number(pr.total_filas || 0).toLocaleString('es-PY')} reg. (${pr.espacio_pct || 0}%)
                             </div>
                         </div>
                     </td>
