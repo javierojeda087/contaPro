@@ -245,49 +245,49 @@
                 <!-- PESTAÑA 1: INFORME DE LISTADO (TABLA) -->
                 <div id="vistaInformeListado" style="overflow-x: auto; flex: 1; min-height: 520px;">
                     <table class="table table-hover align-middle m-0" style="font-size: 0.9rem;">
-                        <thead style="background: #f8fafc; color: #334155; font-weight: 800; font-size: 0.85rem; border-bottom: 2px solid #e2e8f0;">
+                        <thead style="background: #f8fafc; color: #334155; font-weight: 800; font-size: 0.85rem; border-bottom: 2px solid #e2e8f0; white-space: nowrap;">
                             <tr>
-                                <th onclick="ordenarTabla('nroFactura')" style="padding: 14px 16px; cursor: pointer; user-select: none;">
-                                    Factura <span class="sort-icon" id="sort_nroFactura" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                <th onclick="ordenarTabla('nroFactura')" style="padding: 12px 14px; cursor: pointer; user-select: none; white-space: nowrap;">
+                                    Factura <span class="sort-icon" id="sort_nroFactura" style="font-size: 0.8rem; color: #94a3b8; display: inline-block;">↕</span>
                                 </th>
-                                <th onclick="ordenarTabla('asiento')" style="padding: 14px 16px; text-align: center; cursor: pointer; user-select: none;">
-                                    Asiento <span class="sort-icon" id="sort_asiento" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                <th onclick="ordenarTabla('asiento')" style="padding: 12px 14px; text-align: center; cursor: pointer; user-select: none; white-space: nowrap;">
+                                    Asiento <span class="sort-icon" id="sort_asiento" style="font-size: 0.8rem; color: #94a3b8; display: inline-block;">↕</span>
                                 </th>
-                                <th onclick="ordenarTabla('nroTimbrado')" style="padding: 14px 16px; cursor: pointer; user-select: none;">
-                                    Timbrado <span class="sort-icon" id="sort_nroTimbrado" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                <th onclick="ordenarTabla('nroTimbrado')" style="padding: 12px 14px; cursor: pointer; user-select: none; white-space: nowrap;">
+                                    Timbrado <span class="sort-icon" id="sort_nroTimbrado" style="font-size: 0.8rem; color: #94a3b8; display: inline-block;">↕</span>
                                 </th>
-                                <th onclick="ordenarTabla('tipDoc')" style="padding: 14px 16px; cursor: pointer; user-select: none;">
-                                    Tipo <span class="sort-icon" id="sort_tipDoc" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                <th onclick="ordenarTabla('tipDoc')" style="padding: 12px 14px; cursor: pointer; user-select: none; white-space: nowrap;">
+                                    Tipo <span class="sort-icon" id="sort_tipDoc" style="font-size: 0.8rem; color: #94a3b8; display: inline-block;">↕</span>
                                 </th>
-                                <th onclick="ordenarTabla('fecIngreso')" style="padding: 14px 16px; text-align: center; cursor: pointer; user-select: none;">
-                                    Fecha <span class="sort-icon" id="sort_fecIngreso" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                <th onclick="ordenarTabla('fecIngreso')" style="padding: 12px 14px; text-align: center; cursor: pointer; user-select: none; white-space: nowrap;">
+                                    Fecha <span class="sort-icon" id="sort_fecIngreso" style="font-size: 0.8rem; color: #94a3b8; display: inline-block;">↕</span>
                                 </th>
-                                <th onclick="ordenarTabla('rucCliente')" style="padding: 14px 16px; cursor: pointer; user-select: none;">
-                                    Ruc <span class="sort-icon" id="sort_rucCliente" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                <th onclick="ordenarTabla('rucCliente')" style="padding: 12px 14px; cursor: pointer; user-select: none; white-space: nowrap;">
+                                    Ruc <span class="sort-icon" id="sort_rucCliente" style="font-size: 0.8rem; color: #94a3b8; display: inline-block;">↕</span>
                                 </th>
-                                <th onclick="ordenarTabla('nomCliente')" style="padding: 14px 16px; cursor: pointer; user-select: none;">
-                                    Cliente <span class="sort-icon" id="sort_nomCliente" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                <th onclick="ordenarTabla('nomCliente')" style="padding: 12px 14px; cursor: pointer; user-select: none; white-space: nowrap;">
+                                    Cliente <span class="sort-icon" id="sort_nomCliente" style="font-size: 0.8rem; color: #94a3b8; display: inline-block;">↕</span>
                                 </th>
-                                <th onclick="ordenarTabla('regimen')" style="padding: 14px 16px; text-align: center; cursor: pointer; user-select: none;">
-                                    Régimen <span class="sort-icon" id="sort_regimen" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                <th onclick="ordenarTabla('regimen')" style="padding: 12px 14px; text-align: center; cursor: pointer; user-select: none; white-space: nowrap;">
+                                    Régimen <span class="sort-icon" id="sort_regimen" style="font-size: 0.8rem; color: #94a3b8; display: inline-block;">↕</span>
                                 </th>
-                                <th onclick="ordenarTabla('condicion')" style="padding: 14px 16px; text-align: center; cursor: pointer; user-select: none;">
-                                    C.V. <span class="sort-icon" id="sort_condicion" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                <th onclick="ordenarTabla('condicion')" style="padding: 12px 14px; text-align: center; cursor: pointer; user-select: none; white-space: nowrap;">
+                                    C.V. <span class="sort-icon" id="sort_condicion" style="font-size: 0.8rem; color: #94a3b8; display: inline-block;">↕</span>
                                 </th>
-                                <th onclick="ordenarTabla('codMoneda')" style="padding: 14px 16px; text-align: center; cursor: pointer; user-select: none;">
-                                    Mon. <span class="sort-icon" id="sort_codMoneda" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                <th onclick="ordenarTabla('codMoneda')" style="padding: 12px 14px; text-align: center; cursor: pointer; user-select: none; white-space: nowrap;">
+                                    Mon. <span class="sort-icon" id="sort_codMoneda" style="font-size: 0.8rem; color: #94a3b8; display: inline-block;">↕</span>
                                 </th>
-                                <th onclick="ordenarTabla('exentas')" style="padding: 14px 16px; text-align: right; cursor: pointer; user-select: none;">
-                                    Exenta <span class="sort-icon" id="sort_exentas" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                <th onclick="ordenarTabla('exentas')" style="padding: 12px 14px; text-align: right; cursor: pointer; user-select: none; white-space: nowrap;">
+                                    Exenta <span class="sort-icon" id="sort_exentas" style="font-size: 0.8rem; color: #94a3b8; display: inline-block;">↕</span>
                                 </th>
-                                <th onclick="ordenarTabla('iva5')" style="padding: 14px 16px; text-align: right; cursor: pointer; user-select: none;">
-                                    IVA 5% <span class="sort-icon" id="sort_iva5" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                <th onclick="ordenarTabla('iva5')" style="padding: 12px 14px; text-align: right; cursor: pointer; user-select: none; white-space: nowrap;">
+                                    IVA 5% <span class="sort-icon" id="sort_iva5" style="font-size: 0.8rem; color: #94a3b8; display: inline-block;">↕</span>
                                 </th>
-                                <th onclick="ordenarTabla('iva10')" style="padding: 14px 16px; text-align: right; cursor: pointer; user-select: none;">
-                                    IVA 10% <span class="sort-icon" id="sort_iva10" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                <th onclick="ordenarTabla('iva10')" style="padding: 12px 14px; text-align: right; cursor: pointer; user-select: none; white-space: nowrap;">
+                                    IVA 10% <span class="sort-icon" id="sort_iva10" style="font-size: 0.8rem; color: #94a3b8; display: inline-block;">↕</span>
                                 </th>
-                                <th onclick="ordenarTabla('valorTotal')" style="padding: 14px 16px; text-align: right; cursor: pointer; user-select: none;">
-                                    Total <span class="sort-icon" id="sort_valorTotal" style="font-size: 0.8rem; color: #94a3b8;">↕</span>
+                                <th onclick="ordenarTabla('valorTotal')" style="padding: 12px 14px; text-align: right; cursor: pointer; user-select: none; white-space: nowrap;">
+                                    Total <span class="sort-icon" id="sort_valorTotal" style="font-size: 0.8rem; color: #94a3b8; display: inline-block;">↕</span>
                                 </th>
                             </tr>
                         </thead>
@@ -1055,6 +1055,23 @@
                     return fac.includes(query) || nom.includes(query) || ruc.includes(query) || timb.includes(query) || tip.includes(query);
                 });
             }
+
+            if (currentSortColumn) {
+                filtered.sort((a, b) => {
+                    const valA = getSortValueIngreso(a, currentSortColumn);
+                    const valB = getSortValueIngreso(b, currentSortColumn);
+
+                    if (typeof valA === 'number' && typeof valB === 'number') {
+                        return currentSortAsc ? (valA - valB) : (valB - valA);
+                    }
+                    const strA = String(valA).toUpperCase();
+                    const strB = String(valB).toUpperCase();
+                    if (strA < strB) return currentSortAsc ? -1 : 1;
+                    if (strA > strB) return currentSortAsc ? 1 : -1;
+                    return 0;
+                });
+            }
+
             return filtered;
         }
 
@@ -1735,6 +1752,48 @@
             });
         }
 
+        function getSortValueIngreso(item, key) {
+            if (!item) return '';
+            switch (key) {
+                case 'nroFactura':
+                    return String(item.NRO_FACTURA ?? item.nro_factura ?? '').trim();
+                case 'asiento':
+                    return parseInt(item.ASIENTO ?? item.asiento ?? 0, 10) || 0;
+                case 'nroTimbrado':
+                    return String(item.NRO_TIMBRADO ?? item.nro_timbrado ?? '').trim();
+                case 'tipDoc':
+                    return String(item.TIP_DOC ?? item.tip_doc ?? '').trim().toUpperCase();
+                case 'fecIngreso': {
+                    let f = item.FEC_INGRESO ?? item.fec_ingreso ?? item.FEC_INGRESO_FMT ?? item.fec_ingreso_fmt ?? '';
+                    if (typeof f === 'string' && f.includes('/')) {
+                        const parts = f.split('/');
+                        if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    }
+                    return String(f).split('T')[0];
+                }
+                case 'rucCliente':
+                    return String(item.RUC_CLIENTE ?? item.ruc_cliente ?? '').trim();
+                case 'nomCliente':
+                    return String(item.NOM_CLIENTE ?? item.nom_cliente ?? '').trim().toUpperCase();
+                case 'regimen':
+                    return String(item.REGIMEN ?? item.regimen ?? item.COD_REGIMEN ?? item.cod_regimen ?? '').trim().toUpperCase();
+                case 'condicion':
+                    return String(item.CONDICION ?? item.condicion ?? '').trim().toUpperCase();
+                case 'codMoneda':
+                    return String(item.COD_MONEDA ?? item.cod_moneda ?? '').trim().toUpperCase();
+                case 'exentas':
+                    return parseFloat(item.EXENTAS ?? item.exentas ?? 0) || 0;
+                case 'iva5':
+                    return parseFloat(item.IVA5 ?? item.iva5 ?? 0) || 0;
+                case 'iva10':
+                    return parseFloat(item.IVA10 ?? item.iva10 ?? 0) || 0;
+                case 'valorTotal':
+                    return parseFloat(item.VALOR_TOTAL ?? item.valor_total ?? 0) || 0;
+                default:
+                    return String(item[key] ?? item[key.toUpperCase()] ?? item[key.toLowerCase()] ?? '').trim().toUpperCase();
+            }
+        }
+
         function ordenarTabla(columnKey) {
             if (currentSortColumn === columnKey) {
                 currentSortAsc = !currentSortAsc;
@@ -1750,25 +1809,7 @@
                 iconEl.innerText = currentSortAsc ? '▲' : '▼';
             }
 
-            const dataToSort = [...(_ultimoListadoIngresosFiltrado.length > 0 ? _ultimoListadoIngresosFiltrado : listIngresosData)];
-            dataToSort.sort((a, b) => {
-                let valA = a[columnKey] || a[columnKey.toUpperCase()] || a[columnKey.toLowerCase()] || '';
-                let valB = b[columnKey] || b[columnKey.toUpperCase()] || b[columnKey.toLowerCase()] || '';
-
-                if (['valorTotal', 'exentas', 'iva5', 'iva10'].includes(columnKey)) {
-                    valA = parseFloat(valA) || 0;
-                    valB = parseFloat(valB) || 0;
-                } else {
-                    valA = String(valA).toUpperCase();
-                    valB = String(valB).toUpperCase();
-                }
-
-                if (valA < valB) return currentSortAsc ? -1 : 1;
-                if (valA > valB) return currentSortAsc ? 1 : -1;
-                return 0;
-            });
-
-            renderTabla(dataToSort);
+            filtrarIngresos();
         }
 
         function actualizarBotonAnularSegunSeleccion(item) {
