@@ -17,19 +17,7 @@
             
             <!-- Panel Principal de Configuración y Generación de Backup -->
             <div style="background: white; border-radius: 14px; padding: 1.5rem 2rem; margin-bottom: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border: 1px solid rgba(203, 213, 225, 0.7);">
-                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding-bottom: 1.25rem; border-bottom: 1px solid #f1f5f9;">
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <div style="background: linear-gradient(135deg, #16a34a, #15803d); color: white; width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.75rem; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);">
-                            <i class="ph ph-database"></i>
-                        </div>
-                        <div>
-                            <h2 style="margin: 0; font-size: 1.32rem; color: #0f172a; font-weight: 800;">Respaldo de Base de Datos</h2>
-                            <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.88rem;">
-                                Genere copias de seguridad de <strong>todas las tablas del proyecto</strong>: lleve <strong>todos los propietarios y todos los contribuyentes</strong>, o seleccione un <strong>Propietario específico con todos sus contribuyentes</strong>, y elija la carpeta donde guardar el archivo <code>.sql</code>.
-                            </p>
-                        </div>
-                    </div>
-
+                <div style="display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 1rem; padding-bottom: 1.25rem; border-bottom: 1px solid #f1f5f9;">
                     <button class="btn btn-primary" onclick="generarBackup()" id="btnGenerarMain" style="padding: 0.78rem 1.65rem; font-size: 0.98rem; border-radius: 10px; font-weight: 700; background: linear-gradient(135deg, #16a34a, #15803d); border: none; color: #fff; cursor: pointer; box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35); display: flex; align-items: center; gap: 8px;">
                         <i class="ph ph-hard-drives" style="font-size: 1.3rem;"></i>
                         <span>Generar Backup Ahora</span>
