@@ -17,18 +17,11 @@
             
             <!-- Panel Principal de Configuración y Generación de Backup -->
             <div style="background: white; border-radius: 14px; padding: 1.5rem 2rem; margin-bottom: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border: 1px solid rgba(203, 213, 225, 0.7);">
-                <div style="display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 1rem; padding-bottom: 1.25rem; border-bottom: 1px solid #f1f5f9;">
-                    <button class="btn btn-primary" onclick="generarBackup()" id="btnGenerarMain" style="padding: 0.78rem 1.65rem; font-size: 0.98rem; border-radius: 10px; font-weight: 700; background: linear-gradient(135deg, #16a34a, #15803d); border: none; color: #fff; cursor: pointer; box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35); display: flex; align-items: center; gap: 8px;">
-                        <i class="ph ph-hard-drives" style="font-size: 1.3rem;"></i>
-                        <span>Generar Backup Ahora</span>
-                    </button>
-                </div>
-
                 <!-- Controles: Buscador de Propietario / Contribuyente y Selección de Carpeta Destino -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.25rem; margin-top: 1.25rem; align-items: end;">
+                <div style="display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: flex-end;">
                     
                     <!-- 1. Opción: Buscador Inteligente (Todos, Por Propietario o Por Contribuyente) -->
-                    <div style="position: relative;" id="backupSelectorContainer">
+                    <div style="position: relative; flex: 1 1 340px; min-width: 0;" id="backupSelectorContainer">
                         <label style="display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 0.84rem; font-weight: 700; color: #1e293b; margin-bottom: 6px;">
                             <span style="display: flex; align-items: center; gap: 6px;">
                                 <i class="ph ph-users-three" style="color: #16a34a; font-size: 1.05rem;"></i>
@@ -93,7 +86,7 @@
                     </div>
 
                     <!-- 2. Opción: Seleccionar Carpeta donde se desea guardar la copia -->
-                    <div>
+                    <div style="flex: 1 1 340px; min-width: 0;">
                         <label style="display: flex; align-items: center; justify-content: space-between; font-size: 0.84rem; font-weight: 700; color: #1e293b; margin-bottom: 6px;">
                             <span style="display: flex; align-items: center; gap: 6px;">
                                 <i class="ph ph-folder-open" style="color: #0284c7; font-size: 1.05rem;"></i>
@@ -108,6 +101,13 @@
                                 <i class="ph ph-folder-notch-open" style="font-size: 1.1rem;"></i> Elegir Carpeta...
                             </button>
                         </div>
+                    </div>
+
+                    <div style="flex: 0 0 auto;">
+                        <button class="btn btn-primary" onclick="generarBackup()" id="btnGenerarMain" style="height: 42px; padding: 0 1.4rem; font-size: 0.95rem; white-space: nowrap; border-radius: 10px; font-weight: 700; background: linear-gradient(135deg, #16a34a, #15803d); border: none; color: #fff; cursor: pointer; box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35); display: flex; align-items: center; gap: 8px;">
+                            <i class="ph ph-hard-drives" style="font-size: 1.3rem;"></i>
+                            <span>Generar Backup Ahora</span>
+                        </button>
                     </div>
 
                 </div>
