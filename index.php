@@ -59,6 +59,7 @@ spl_autoload_register(function (string $class): void {
     }
 });
 
+use Core\Csrf;
 use Core\DatabaseMigrator;
 use Core\RouteHelper;
 use Core\TenantContext;
@@ -87,6 +88,12 @@ if (preg_match('#^/index\.php(/.*)?$#', $rawUri, $m2)) {
 }
 $GLOBALS['BASE_PREFIX'] = $basePrefix;
 $uri = rtrim($rawUri, '/') ?: '/';
+
+// 6. Protección CSRF: token por sesión, inyectado en toda página HTML y exigido en
+//    peticiones que modifican datos y en /api/* (ver core/Csrf.php)
+Csrf::token();
+ob_start(fn(string $buf): string => Csrf::inyectarEnHtml($buf));
+Csrf::proteger($uri, $method);
 
 if ($basePrefix !== '') {
     header_register_callback(function () use ($basePrefix): void {

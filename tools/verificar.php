@@ -153,7 +153,9 @@ if ($smoke) {
 
     $puerto = 8790 + random_int(0, 99);
     $log = sys_get_temp_dir() . DIRECTORY_SEPARATOR . "contapro_smoke_{$puerto}.log";
-    $cmd = escapeshellarg(PHP_BINARY) . " -d display_errors=stderr -S 127.0.0.1:{$puerto} index.php";
+    // Comando como arreglo (sin cmd.exe intermedio): así proc_terminate cierra el php.exe real
+    // y el verificador no queda esperando a un servidor huérfano en Windows
+    $cmd = [PHP_BINARY, "-d", "display_errors=stderr", "-S", "127.0.0.1:{$puerto}", "index.php"];
     $proc = proc_open($cmd, [0 => ['pipe', 'r'], 1 => ['file', $log, 'w'], 2 => ['file', $log, 'a']], $pipes, $root);
     if (!is_resource($proc)) {
         fallo('No se pudo iniciar php -S');
@@ -165,19 +167,52 @@ if ($smoke) {
             if ($s) { fclose($s); break; }
             usleep(100000);
         }
-        $ctx = stream_context_create(['http' => ['ignore_errors' => true, 'follow_location' => 0, 'timeout' => 20]]);
+        // Sesión + token CSRF como un navegador: sin ellos todas las APIs responden 403 y no se prueban
+        $cookie = '';
+        $csrf   = '';
+        $pedir = function (string $u) use ($puerto, &$cookie, &$csrf): array {
+            $hdrs = "X-CSRF-Token: {$csrf}\r\n" . ($cookie !== '' ? "Cookie: {$cookie}\r\n" : '');
+            $ctx = stream_context_create(['http' => ['ignore_errors' => true, 'follow_location' => 0, 'timeout' => 20, 'header' => $hdrs]]);
+            $body = @file_get_contents("http://127.0.0.1:{$puerto}{$u}", false, $ctx);
+            $hdr = $http_response_header ?? [];
+            foreach ($hdr as $h) {
+                if (preg_match('/^Set-Cookie:\s*(PHPSESSID=[^;]+)/i', $h, $cm)) $cookie = $cm[1];
+                if (preg_match('/^X-CSRF-Token:\s*([a-f0-9]+)/i', $h, $tm)) $csrf = $tm[1];
+            }
+            if (is_string($body) && preg_match("/window\.CSRF_TOKEN='([a-f0-9]+)'/", $body, $bm)) $csrf = $bm[1];
+            $status = isset($hdr[0]) && preg_match('/\s(\d{3})\s?/', $hdr[0], $sm) ? (int)$sm[1] : 0;
+            return [$status, $body, $hdr];
+        };
+        $pedir('/login');
         $fallosHumo = 0;
         $estados = [];
         foreach ($urls as $u) {
-            $body = @file_get_contents("http://127.0.0.1:{$puerto}{$u}", false, $ctx);
-            $hdr = $http_response_header ?? [];
-            $status = isset($hdr[0]) && preg_match('/\s(\d{3})\s?/', $hdr[0], $sm) ? (int)$sm[1] : 0;
+            [$status, $body, $hdr] = $pedir($u);
+            // Token renovado (p.ej. tras /logout): reintentar una vez, igual que el navegador
+            if ($status === 403 && preg_grep('/^X-CSRF-Failed:/i', $hdr)) {
+                [$status, $body, $hdr] = $pedir($u);
+            }
             $estados[$status] = ($estados[$status] ?? 0) + 1;
             $fatal = is_string($body) && preg_match('/(Fatal error|Parse error|Uncaught \w+)/i', $body);
+            if ($status === 403 && preg_grep("/^X-CSRF-Failed:/i", $hdr)) {
+                $fallosHumo++;
+                fallo("GET {$u} -> rechazada por CSRF aun enviando el token");
+                continue;
+            }
             if ($status === 0 || $status >= 500 || $fatal) {
                 $fallosHumo++;
                 fallo("GET {$u} -> HTTP {$status}" . ($fatal ? ' (error PHP en la respuesta)' : ''));
             }
+        }
+        // Protección CSRF: una API que modifica datos sin token debe responder 403
+        $ctxSin = stream_context_create(['http' => ['ignore_errors' => true, 'follow_location' => 0, 'timeout' => 20, 'header' => $cookie !== '' ? "Cookie: {$cookie}\r\n" : '']]);
+        @file_get_contents("http://127.0.0.1:{$puerto}/api/usuarios/delete?codUsuario=__SMOKE__", false, $ctxSin);
+        $hdrSin = $http_response_header ?? [];
+        if (!isset($hdrSin[0]) || !preg_match('/\s403\s?/', $hdrSin[0])) {
+            $fallosHumo++;
+            fallo('CSRF: /api/usuarios/delete sin token no devolvió 403 (' . ($hdrSin[0] ?? 'sin respuesta') . ')');
+        } else {
+            ok('CSRF: petición sin token rechazada con 403');
         }
         proc_terminate($proc);
         proc_close($proc);
