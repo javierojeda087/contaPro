@@ -735,7 +735,7 @@ class DefinicionesContablesController {
         if ($parsed === null) {
             try {
                 $idProp = TenantContext::check() ? TenantContext::idPropietario() : 1;
-                $row = Database::queryForRow(
+                $row = Database::queryForMap(
                     "SELECT DATE_FORMAT(fecha, '%Y-%m-%d') AS fecha_iso, val_compra, val_venta
                      FROM cotizaciones
                      WHERE id_propietario = ? AND cod_moneda = '2' AND val_compra > 0 AND val_venta > 0

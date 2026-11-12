@@ -318,8 +318,8 @@ if (preg_match('#^/(?:app/)?([^/]+)$#', $uri, $m)) {
         'COPERSON'              => [DirectoriosContablesController::class, 'pageCoPersonas'],
         'CO-PERSONAS'           => [DirectoriosContablesController::class, 'pageCoPersonas'],
         'CO_PERSONAS'           => [DirectoriosContablesController::class, 'pageCoPersonas'],
-        'BSPERSON'              => [DirectoriosContablesController::class, 'pagePersonas'],
-        'PERSONAS'              => [DirectoriosContablesController::class, 'pagePersonas'],
+        'BSPERSON'              => [DirectoriosContablesController::class, 'pageCoPersonas'],
+        'PERSONAS'              => [DirectoriosContablesController::class, 'pageCoPersonas'],
         'COCLIENT'              => [DirectoriosContablesController::class, 'pageCoClientes'],
         'CO-CLIENTES'           => [DirectoriosContablesController::class, 'pageCoClientes'],
         'CO_CLIENTES'           => [DirectoriosContablesController::class, 'pageCoClientes'],
@@ -334,8 +334,6 @@ if (preg_match('#^/(?:app/)?([^/]+)$#', $uri, $m)) {
         'COEJERCI'              => [DefinicionesContablesController::class, 'pageEjercicios'],
         'EJERCICIOS'            => [DefinicionesContablesController::class, 'pageEjercicios'],
         'EJERCICIOS_FISCALES'   => [DefinicionesContablesController::class, 'pageEjercicios'],
-        'BSMONEDA'              => [DefinicionesContablesController::class, 'pageMonedas'],
-        'MONEDAS'               => [DefinicionesContablesController::class, 'pageMonedas'],
         'BSCOTIZA'              => [DefinicionesContablesController::class, 'pageCotizaciones'],
         'COTIZACIONES'          => [DefinicionesContablesController::class, 'pageCotizaciones'],
         'COPLANCT'              => [DefinicionesContablesController::class, 'pagePlanCuentas'],
@@ -466,7 +464,7 @@ if (preg_match('#^/(?:app/)?([^/]+)$#', $uri, $m)) {
     }
 
     // Fallback para formularios creados dinámicamente en la tabla `formas` que aún no tengan vista personalizada
-    $formaRow = \Core\Database::queryForRow(
+    $formaRow = \Core\Database::queryForMap(
         "SELECT nom_forma, cod_modulo, titulo, descripcion, tipo
          FROM formas
          WHERE UPPER(TRIM(nom_forma)) = ?
