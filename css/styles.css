@@ -353,3 +353,87 @@
 .cp-toolbar > label.btn > i {
     font-size: 1.1rem !important;
 }
+
+/* ==========================================================================
+   Cabecera estándar de registros (Ingresos, Egresos, Retenciones, Recibos)
+   Fila 1: .cp-toolbar-row  -> botones de acción a la izquierda + búsqueda a la derecha
+   Fila 2: .cp-filterbar    -> filtros "etiqueta + campo" sin recuadros dobles
+   ========================================================================== */
+.cp-toolbar-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.cp-search {
+    position: relative;
+    /* Flexible: ocupa el espacio libre entre 220px y 340px y solo baja de línea si no cabe */
+    flex: 1 1 220px;
+    max-width: 340px;
+}
+/* Cuando la barra de acciones es larga, la búsqueda va al final de la fila de filtros */
+.cp-filterbar > .cp-search {
+    margin-left: auto;
+}
+.cp-search input {
+    height: 38px !important;
+    border-radius: 8px !important;
+    border: 1.5px solid #cbd5e1 !important;
+    font-size: 0.86rem !important;
+    padding-left: 12px !important;
+    padding-right: 36px !important;
+}
+.cp-filterbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 24px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
+}
+.cp-filterbar .cp-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px !important;
+    height: auto !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    font-size: 0.86rem !important;
+}
+.cp-filterbar .cp-filter > span:first-child {
+    font-size: 0.74rem !important;
+    font-weight: 800 !important;
+    color: #64748b !important;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.cp-filterbar select,
+.cp-filterbar input[type="date"] {
+    box-sizing: border-box !important;
+    height: 38px !important;
+    border-width: 1.5px !important;
+    border-radius: 8px !important;
+    font-size: 0.86rem !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+.cp-filterbar button {
+    box-sizing: border-box !important;
+    height: 38px !important;
+    padding: 0 12px !important;
+    border-width: 1.5px !important;
+    border-radius: 8px !important;
+    font-size: 0.84rem !important;
+    font-weight: 700 !important;
+    gap: 6px !important;
+}
+.cp-filterbar button > i {
+    font-size: 1.05rem !important;
+}
+/* El selector de mes se dimensionaba por su opción más larga ("Por Rango de Fechas...") */
+.cp-filterbar #filtroMes {
+    width: 150px !important;
+    min-width: 0 !important;
+}
