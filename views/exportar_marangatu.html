@@ -63,7 +63,7 @@
                                 <input type="date" id="fechaFinal" name="fechaFinal" th:value="${currentDate}" th:min="${ejerInicio}" th:max="${ejerFinal}" class="form-control" style="height: 42px; border-radius: 8px; font-weight: 600;" onchange="actualizarResumen()">
                             </div>
 
-                            <div style="display: flex; gap: 8px;">
+                            <div class="cp-toolbar" style="display: flex; gap: 8px;">
                                 <button type="submit" style="height: 42px; padding: 0 1.4rem; background: #16a34a; color: #ffffff; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; box-shadow: 0 2px 6px rgba(22,163,74,0.25); transition: all 0.2s;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
                                     <i class="ph ph-file-zip" style="font-size: 1.15rem;"></i> Exportar Archivo (.ZIP)
                                 </button>

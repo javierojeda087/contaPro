@@ -317,3 +317,39 @@
     background-color: #15803d !important;
     color: #ffffff !important;
 }
+/* ==========================================================================
+   Barra de acciones estándar (Nuevo, Modificar, Eliminar, Imprimir, Excel...)
+   Unifica tamaño, tipografía y forma de los botones en todos los formularios.
+   Los colores de cada botón se mantienen; aquí solo se fija la geometría.
+   Uso: agregar class="cp-toolbar" al contenedor directo de los botones.
+   ========================================================================== */
+.cp-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px !important;
+}
+.cp-toolbar > button,
+.cp-toolbar > a,
+.cp-toolbar > label.btn {
+    box-sizing: border-box !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    padding: 0 14px !important;
+    font-size: 0.86rem !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    border-radius: 8px !important;
+    /* No se fuerza `display`: hay botones ocultos (display:none) que el JS muestra a demanda */
+    align-items: center !important;
+    justify-content: center;
+    gap: 6px !important;
+    white-space: nowrap !important;
+    text-decoration: none !important;
+    margin: 0 !important;
+}
+.cp-toolbar > button > i,
+.cp-toolbar > a > i,
+.cp-toolbar > label.btn > i {
+    font-size: 1.1rem !important;
+}
